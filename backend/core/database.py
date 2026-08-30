@@ -23,6 +23,15 @@ def get_db() -> AsyncIOMotorDatabase:
     return get_client()[settings.DB_NAME]
 
 
+class _DatabaseProxy:
+    """Lazy proxy so `db["collection"]` works without eager client creation."""
+    def __getitem__(self, name: str):
+        return get_db()[name]
+
+
+db = _DatabaseProxy()
+
+
 def col(name: str):
     """
     Get a named collection from the database.

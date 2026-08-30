@@ -5,7 +5,6 @@ All routers will be registered here with their URL prefixes.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from core.database import col, close_db
 from core.config import settings
@@ -123,7 +122,7 @@ app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 # Code Quality & Multi-Language Intelligence Engine
 app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code Quality"])
 
-# Simple AI Evaluation (No Auth Required)
+# AI Evaluation (Requires Auth)
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["AI Evaluation"])
 
 # Role-specific dashboards
