@@ -523,11 +523,6 @@ async def add_qa_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_QA_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only QA role can submit QA feedback")
-    - Quality focus (1-5)
-    - Test coverage (1-5)
-    - Bug response (1-5)
-    - Regression awareness (1-5)
-    """
     try:
         service = PerformanceService()
         feedback = {
@@ -561,11 +556,6 @@ async def add_devops_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_DEVOPS_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only DevOps role can submit DevOps feedback")
-    - Deployment quality (1-5)
-    - CI/CD compliance (1-5)
-    - Monitoring awareness (1-5)
-    - Incident response (1-5)
-    """
     try:
         service = PerformanceService()
         feedback = {
@@ -599,11 +589,6 @@ async def add_ceo_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_CEO_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only CEO role can submit CEO feedback")
-    - Business impact (1-5)
-    - Innovation (1-5)
-    - Company alignment (1-5)
-    - Leadership potential (1-5)
-    """
     try:
         service = PerformanceService()
         feedback = {
@@ -637,11 +622,6 @@ async def add_hr_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_HR_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only HR role can submit HR feedback")
-    - Collaboration (1-5)
-    - Professionalism (1-5)
-    - Communication skills (1-5)
-    - Cultural fit (1-5)
-    """
     try:
         service = PerformanceService()
         feedback = {
