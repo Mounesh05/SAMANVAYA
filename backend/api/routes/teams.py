@@ -11,6 +11,7 @@ from core.database import col
 from repositories.user_repository import UserRepository
 from core.dependencies import get_current_user, require_admin
 from core.permissions import Permission, get_user_permissions
+from core.audit import log_audit, AuditAction
 
 router = APIRouter()
 
@@ -124,6 +125,15 @@ async def create_team(
         }
         
         await teams_col.insert_one(team_doc)
+        
+        # Audit log
+        await log_audit(
+            action=AuditAction.TEAM_CREATED,
+            actor=user,
+            resource_type="team",
+            resource_id=team.team_id,
+            details={"name": team.name}
+        )
         
         return TeamResponse(
             team_id=team.team_id,
@@ -346,15 +356,30 @@ async def update_team(
     """
     Update team information.
     
-    **Required Permission:** MANAGE_TEAMS (ADMIN or HR)
+    **Permission Check:**
+    - HR/ADMIN: Full edit (name, description, lead, members, active status)
+    - LEAD: Technical scope only (name, description) for own team
     """
-    # Check permission
+    user_role = user.get('role', '').upper()
     user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
+        user_role,
         user.get('is_admin', False)
     )
     
-    if Permission.MANAGE_TEAMS not in user_permissions:
+    is_own_team = team_id == user.get('team_id')
+    is_lead = user_role == 'LEAD'
+    is_hr_admin = Permission.MANAGE_TEAMS in user_permissions
+    
+    # LEAD can only edit name/description on own team
+    if is_lead and is_own_team:
+        # Restrict LEAD to technical scope fields only
+        blocked_fields = {'team_lead_id', 'project_ids', 'is_active'}
+        if any(getattr(updates, f, None) is not None for f in blocked_fields):
+            raise HTTPException(
+                status_code=403,
+                detail="LEAD can only update team name and description. Contact HR for membership/lead changes."
+            )
+    elif not is_hr_admin:
         raise HTTPException(
             status_code=403,
             detail="Insufficient permissions to update teams"
@@ -652,6 +677,15 @@ async def assign_team_lead(
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
             }
+        )
+        
+        # Audit log
+        await log_audit(
+            action=AuditAction.TEAM_LEAD_ASSIGNED,
+            actor=user,
+            resource_type="team",
+            resource_id=team_id,
+            details={"new_lead_id": employee_id}
         )
         
         return {"message": f"Employee {employee_id} assigned as team lead of {team_id}"}

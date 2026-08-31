@@ -24,14 +24,18 @@ async def register(user_data: UserCreate):
     """
     Register a new user/employee.
     
-    - **employee_id**: Unique employee identifier
-    - **name**: Full name
-    - **email**: Email address
-    - **role**: CEO|HR|PM|LEAD|DEVELOPER|DEVOPS|QA
-    - **dept**: Department name
-    - **organisation_password**: Organization-level password
-    - **employee_password**: Employee-specific password
+    Restricted roles: CEO and HR cannot self-register.
+    Only DEVELOPER, LEAD, PM, QA, DEVOPS can register.
+    HR/CEO accounts must be created by HR via the employees endpoint.
     """
+    # Block privileged role self-registration
+    restricted_roles = {"CEO", "HR"}
+    if user_data.role.upper() in restricted_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{user_data.role}' cannot self-register. Contact HR to create this account."
+        )
+    
     try:
         user = await auth_service.register_user(user_data)
         return user

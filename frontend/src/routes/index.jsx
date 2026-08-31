@@ -49,6 +49,21 @@ const CEODashboardPage = React.lazy(() =>
     default: m.CEODashboardPage,
   }))
 );
+const CEOQualityPage = React.lazy(() =>
+  import('../pages/ceo/CEOQualityPage').then((m) => ({
+    default: m.CEOQualityPage,
+  }))
+);
+const CEORiskPage = React.lazy(() =>
+  import('../pages/ceo/CEORiskPage').then((m) => ({
+    default: m.CEORiskPage,
+  }))
+);
+const CEOOrganizationPage = React.lazy(() =>
+  import('../pages/ceo/CEOOrganizationPage').then((m) => ({
+    default: m.CEOOrganizationPage,
+  }))
+);
 
 // Work Management
 const ProjectsPage = React.lazy(() =>
@@ -307,6 +322,30 @@ export function AppRoutes() {
             element={
               <RoleGuard allowedRoles={[ROLES.CEO]}>
                 <CEODashboardPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="quality"
+            element={
+              <RoleGuard allowedRoles={[ROLES.CEO]}>
+                <CEOQualityPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="risk"
+            element={
+              <RoleGuard allowedRoles={[ROLES.CEO]}>
+                <CEORiskPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="organization"
+            element={
+              <RoleGuard allowedRoles={[ROLES.CEO, ROLES.HR]}>
+                <CEOOrganizationPage />
               </RoleGuard>
             }
           />

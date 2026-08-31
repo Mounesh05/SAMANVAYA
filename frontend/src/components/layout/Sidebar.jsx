@@ -8,6 +8,7 @@ import {
   ListTodo,
   KanbanSquare,
   ShieldCheck,
+  ShieldAlert,
   Cpu,
   Award,
   MessageSquareQuote,
@@ -202,6 +203,30 @@ export function Sidebar() {
         roles: [ROLES.HR, ROLES.CEO],
       }
     );
+
+    // CEO-only executive pages
+    if (role === ROLES.CEO) {
+      items.push(
+        {
+          to: '/quality',
+          icon: <ShieldCheck size={19} />,
+          label: 'Quality',
+          roles: [ROLES.CEO],
+        },
+        {
+          to: '/risk',
+          icon: <ShieldAlert size={19} />,
+          label: 'Risk',
+          roles: [ROLES.CEO],
+        },
+        {
+          to: '/organization',
+          icon: <Building2 size={19} />,
+          label: 'Organization',
+          roles: [ROLES.CEO, ROLES.HR],
+        }
+      );
+    }
 
     // Filter items according to current role
     return items.filter((item) => isAdmin || item.roles.includes(role));

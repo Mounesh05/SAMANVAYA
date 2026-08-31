@@ -22,6 +22,7 @@ from domain.models.developer_performance import (
 from core.config import settings
 from core.dependencies import get_current_user, require_admin
 from core.permissions import Permission, get_user_permissions
+from core.audit import log_audit, AuditAction
 
 router = APIRouter()
 
@@ -284,6 +285,15 @@ async def evaluate_developer_performance(
             repo_owner=repo_owner,
             repo_name=repo_name,
             evaluated_by=evaluated_by
+        )
+        
+        # Audit log
+        await log_audit(
+            action=AuditAction.EVALUATION_TRIGGERED,
+            actor=user,
+            resource_type="performance",
+            resource_id=developer_id,
+            details={"period": period, "project_id": project_id}
         )
         
         return performance

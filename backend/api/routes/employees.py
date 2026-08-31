@@ -11,6 +11,7 @@ from repositories.user_repository import UserRepository
 from core.dependencies import get_current_user, require_admin
 from core.permissions import Permission, get_user_permissions
 from core.security import hash_password
+from core.audit import log_audit, AuditAction
 
 router = APIRouter()
 
@@ -129,6 +130,15 @@ async def create_employee(
         }
         
         await repo.insert(employee_doc)
+        
+        # Audit log
+        await log_audit(
+            action=AuditAction.USER_CREATED,
+            actor=user,
+            resource_type="employee",
+            resource_id=employee.employee_id,
+            details={"role": employee.role, "dept": employee.dept}
+        )
         
         return EmployeeResponse(
             employee_id=employee.employee_id,
@@ -414,6 +424,14 @@ async def delete_employee(
                     "deactivated_by": user.get('employee_id')
                 }
             }
+        )
+        
+        # Audit log
+        await log_audit(
+            action=AuditAction.USER_DEACTIVATED,
+            actor=user,
+            resource_type="employee",
+            resource_id=employee_id
         )
         
         return {"message": f"Employee {employee_id} deactivated successfully"}
