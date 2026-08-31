@@ -192,7 +192,7 @@ async def list_employees(
             filter_query["is_active"] = is_active
         
         # Get employees
-        employees = await repo.find_all(filter_query, limit=limit)
+        employees = await repo.find_all(filter_query)
         
         return [
             EmployeeResponse(
