@@ -135,13 +135,13 @@ export function Sidebar() {
         to: '/tests',
         icon: <FlaskConical size={19} />,
         label: 'Tests',
-        roles: [ROLES.QA, ROLES.LEAD, ROLES.DEVELOPER],
+        roles: [ROLES.QA],
       },
       {
         to: '/bugs',
         icon: <Bug size={19} />,
         label: 'Bugs',
-        roles: [ROLES.QA, ROLES.DEVELOPER, ROLES.LEAD],
+        roles: [ROLES.QA],
       },
       {
         to: '/pipelines',

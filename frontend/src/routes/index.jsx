@@ -348,7 +348,7 @@ export function AppRoutes() {
           <Route
             path="tests"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA, ROLES.LEAD, ROLES.DEVELOPER]}>
+              <RoleGuard allowedRoles={[ROLES.QA]}>
                 <TestsPage />
               </RoleGuard>
             }
@@ -356,7 +356,7 @@ export function AppRoutes() {
           <Route
             path="bugs"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA, ROLES.DEVELOPER, ROLES.LEAD]}>
+              <RoleGuard allowedRoles={[ROLES.QA]}>
                 <BugsPage />
               </RoleGuard>
             }
