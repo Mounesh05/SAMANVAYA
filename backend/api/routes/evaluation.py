@@ -6,7 +6,7 @@ Requires authentication for all endpoints.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_roles
 import time
 import uuid
 
@@ -36,26 +36,11 @@ class EvaluationResult(BaseModel):
 
 
 @router.post("/evaluate", response_model=EvaluationResult)
-async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends(get_current_user)):
+async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends(require_roles("CEO", "HR", "LEAD"))):
     """
     AI-powered developer evaluation for a specific repository.
     
-    This endpoint:
-    1. Fetches repository data from GitHub
-    2. Analyzes recent commits/PRs by the developer
-    3. Runs AI evaluation using Ollama
-    4. Combines human score with AI insights
-    5. Returns comprehensive evaluation
-    
-    Example request:
-    {
-        "github_username": "gaearon",
-        "repo_owner": "facebook", 
-        "repo_name": "react",
-        "pr_number": 25840,
-        "human_score": 7.5,
-        "evaluation_focus": "code_quality"
-    }
+    Required roles: CEO, HR, or LEAD per RBAC spec.
     """
     try:
         evaluation_id = f"EVAL-{uuid.uuid4().hex[:8].upper()}"

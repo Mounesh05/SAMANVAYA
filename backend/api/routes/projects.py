@@ -14,11 +14,11 @@ project_service = ProjectService()
 @router.post("/", response_model=Project, status_code=201)
 async def create_project(
     project_data: ProjectCreate,
-    user: dict = Depends(require_roles("CEO", "PM", "HR")),
+    user: dict = Depends(require_roles("PM")),
 ):
     """
     Create a new project.
-    Only CEO, PM, and HR can create projects.
+    Only PM can create projects per canonical RBAC spec.
     """
     try:
         project = await project_service.create_project(

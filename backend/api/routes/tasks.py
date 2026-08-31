@@ -7,7 +7,7 @@ from domain.models.task import TaskCreate, Task
 from domain.models.workflow import TransitionRequest, AvailableTransitions
 from domain.services.task_service import TaskService
 from domain.services.workflow_service import WorkflowService
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_roles
 
 router = APIRouter()
 task_service = TaskService()
@@ -17,9 +17,9 @@ workflow_service = WorkflowService()
 @router.post("/", response_model=Task, status_code=201)
 async def create_task(
     task_data: TaskCreate,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
 ):
-    """Create a new task."""
+    """Create a new task. HR and CEO cannot create tasks per RBAC spec."""
     try:
         task = await task_service.create_task(task_data)
         return task
@@ -75,7 +75,7 @@ async def list_story_tasks(
 async def update_task_status(
     task_id: str,
     status: str = Query(..., regex="^(todo|in_progress|review|done|blocked)$"),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
 ):
     """Update task status (no workflow enforcement — use /transition for enforced moves)."""
     success = await task_service.update_task_status(task_id, status)
@@ -88,7 +88,7 @@ async def update_task_status(
 async def transition_task(
     task_id: str,
     body: TransitionRequest,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
 ):
     """
     Move a task to a new status via the workflow engine.

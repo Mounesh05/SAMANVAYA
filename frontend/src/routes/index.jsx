@@ -312,8 +312,8 @@ export function AppRoutes() {
           />
 
           {/* Work Management */}
-          <Route path="projects" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS, ROLES.CEO]}><ProjectsPage /></RoleGuard>} />
-          <Route path="projects/:projectId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS, ROLES.CEO]}><ProjectDetailPage /></RoleGuard>} />
+          <Route path="projects" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS, ROLES.CEO, ROLES.HR]}><ProjectsPage /></RoleGuard>} />
+          <Route path="projects/:projectId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS, ROLES.CEO, ROLES.HR]}><ProjectDetailPage /></RoleGuard>} />
           <Route path="teams" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.HR, ROLES.CEO]}><TeamsPage /></RoleGuard>} />
           <Route path="teams/:teamId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.HR, ROLES.CEO]}><TeamDetailPage /></RoleGuard>} />
           <Route

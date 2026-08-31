@@ -64,7 +64,7 @@ export function Sidebar() {
         to: '/sprints',
         icon: <Layers size={19} />,
         label: 'Sprints',
-        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
+        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER],
       },
       {
         to: '/stories',
@@ -76,13 +76,13 @@ export function Sidebar() {
         to: '/tasks',
         icon: <ListTodo size={19} />,
         label: 'Tasks',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM],
       },
       {
         to: '/board',
         icon: <KanbanSquare size={19} />,
         label: 'Kanban Board',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM],
       }
     );
 
@@ -117,7 +117,7 @@ export function Sidebar() {
         to: '/code-quality',
         icon: <ShieldCheck size={19} />,
         label: 'Code Quality',
-        roles: Object.values(ROLES),
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/pull-requests',
@@ -129,7 +129,7 @@ export function Sidebar() {
         to: '/github/sync',
         icon: <GitPullRequest size={19} />,
         label: 'GitHub Sync',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.DEVOPS],
       },
       {
         to: '/tests',

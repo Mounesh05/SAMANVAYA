@@ -21,7 +21,7 @@ from domain.models.developer_performance import (
 )
 from core.config import settings
 from core.dependencies import get_current_user, require_admin
-from core.permissions import Permission
+from core.permissions import Permission, get_user_permissions
 
 router = APIRouter()
 
@@ -389,6 +389,15 @@ async def get_performance_trend(
         }
         ```
     """
+    # Scope enforcement: DEVELOPER can only view own trend
+    user_role = user.get('role', '').upper()
+    user_id = user.get('employee_id', '')
+    if user_role == 'DEVELOPER' and developer_id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Developers can only view their own performance trend"
+        )
+
     try:
         service = PerformanceService()
         trend_data = await service.get_performance_trend(developer_id, limit)
@@ -651,6 +660,14 @@ async def get_team_performance(
     
     Perfect for team dashboards and comparative analysis.
     """
+    # Scope enforcement: DEVELOPER cannot view team performance
+    user_role = user.get('role', '').upper()
+    if user_role == 'DEVELOPER':
+        raise HTTPException(
+            status_code=403,
+            detail="Developers cannot view team performance data"
+        )
+
     try:
         service = PerformanceService()
         
@@ -757,61 +774,20 @@ async def get_developer_dashboard(
     """
     Complete developer dashboard data - matches frontend DashboardData interface.
     
-    Returns everything needed for a beautiful dashboard:
-    - Current score and grade
-    - Dimensional breakdown
-    - Trend over time
-    - Strengths and weaknesses
-    - AI recommendations
-    - Confidence level
-    
-    **This is your main dashboard endpoint!**
-    
-    Returns structure matching frontend types:
-    ```json
-    {
-      "current_performance": {
-        "developer_id": "dev001",
-        "developer_name": "John Doe",
-        "period": "2026-Q3",
-        "overall_score": 85.2,
-        "grade": "A",
-        "ai_evaluation": {
-          "overall_score": 76.8,
-          "dimension_scores": {
-            "code_quality": 22.5,
-            "delivery_speed": 18.0,
-            "collaboration": 13.5,
-            "reliability": 13.0,
-            "business_impact": 6.8,
-            "technical_judgment": 3.0
-          },
-          "strengths": ["Strong code quality", "Excellent collaboration"],
-          "weaknesses": ["Could improve delivery speed"],
-          "recommendations": ["Focus on breaking down tasks"],
-          "confidence_score": 85,
-          "evaluation_summary": "Strong performer with great technical skills"
-        },
-        "role_evaluations": [],
-        "trend_data": [],
-        "last_evaluated": "2026-08-10T00:00:00Z",
-        "evaluation_count": 1
-      },
-      "historical_trend": [
-        {
-          "period": "2026-Q3",
-          "score": 85.2,
-          "grade": "A"
-        }
-      ],
-      "peer_comparison": {
-        "team_average": 78.5,
-        "rank": 3,
-        "total_developers": 12
-      }
-    }
-    ```
+    Scope enforcement:
+    - DEVELOPER: own dashboard only
+    - LEAD/PM/QA/DEVOPS: authorized scope
+    - HR/CEO: organization-wide
     """
+    # Scope enforcement: DEVELOPER can only view own dashboard
+    user_role = user.get('role', '').upper()
+    user_id = user.get('employee_id', '')
+    if user_role == 'DEVELOPER' and developer_id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Developers can only view their own performance dashboard"
+        )
+
     try:
         service = PerformanceService()
         

@@ -4,7 +4,7 @@ Exposes Layer 5 (Intelligence Engine) capabilities for testing and use.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_roles
 from intelligence.risk_engine import RiskEngine
 from typing import Optional
 
@@ -16,7 +16,7 @@ risk_engine = RiskEngine()
 async def analyze_pr(
     pr_id: str,
     data: dict = Body(...),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "QA", "DEVOPS")),
 ):
     """
     Analyze a pull request for risk.
@@ -63,7 +63,7 @@ async def analyze_pr(
 async def analyze_sprint(
     sprint_id: str,
     data: dict = Body(default={}),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("LEAD", "PM")),
 ):
     """
     Analyze sprint health: Plan vs Reality.
@@ -97,7 +97,7 @@ async def analyze_sprint(
 async def analyze_deployment(
     deployment_id: str,
     data: dict = Body(...),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("DEVOPS", "LEAD")),
 ):
     """
     Analyze deployment risk based on CI/CD metrics.

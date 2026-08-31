@@ -5,7 +5,7 @@ Returns sprint/project items grouped into status columns.
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_roles
 from repositories.task_repository import TaskRepository
 from repositories.story_repository import StoryRepository
 from repositories.sprint_repository import SprintRepository
@@ -109,7 +109,7 @@ async def get_project_board(
 @router.patch("/move")
 async def move_item(
     body: MoveItemRequest,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
 ):
     """
     Move a task or story to a new status column.

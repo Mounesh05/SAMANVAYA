@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from intelligence.log_analyzer import LogAnalyzer
 from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_roles
 from repositories.ai_run_repository import AIRunRepository
 from core.database import db
 
@@ -73,7 +73,7 @@ class LogAnalysisResponse(BaseModel):
 @router.post("/analyze", response_model=LogAnalysisResponse)
 async def analyze_cicd_log(
     request: LogAnalysisRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_roles("DEVELOPER", "LEAD", "QA", "DEVOPS")),
 ):
     """
     Analyze CI/CD logs with Intelligence Engine + optional AI interpretation.
