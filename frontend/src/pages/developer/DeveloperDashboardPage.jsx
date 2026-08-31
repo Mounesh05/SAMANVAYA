@@ -29,7 +29,7 @@ import {
 export function DeveloperDashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const employeeId = user?.employee_id || 'E001';
+  const employeeId = user?.employee_id;
 
   // Role dashboard data
   const {

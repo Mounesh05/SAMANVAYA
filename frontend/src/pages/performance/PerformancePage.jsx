@@ -21,7 +21,7 @@ export function PerformancePage() {
   const role = user?.role?.toUpperCase();
   const isHRorCEO = role === ROLES.HR || role === ROLES.CEO;
 
-  const [selectedDevId, setSelectedDevId] = useState(user?.employee_id || 'E001');
+  const [selectedDevId, setSelectedDevId] = useState(user?.employee_id);
   const queryClient = useQueryClient();
 
   const { data: employees = [] } = useQuery({
