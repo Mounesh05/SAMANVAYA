@@ -8,13 +8,13 @@ from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from pydantic import BaseModel, Field
 
 from intelligence.log_analyzer import LogAnalyzer
-from agents.supervisor import create_supervisor_graph
+from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
 from core.dependencies import get_current_user
 from repositories.ai_run_repository import AIRunRepository
 from core.database import db
 
-router = APIRouter(prefix="/cicd-logs", tags=["CI/CD Logs"])
+router = APIRouter(tags=["CI/CD Logs"])
 
 
 class LogAnalysisRequest(BaseModel):
@@ -145,8 +145,6 @@ async def analyze_cicd_log(
             )
         
         try:
-            graph = create_supervisor_graph()
-            
             ai_state = {
                 "task_type": "cicd_analysis",
                 "evidence": evidence,
@@ -160,10 +158,7 @@ async def analyze_cicd_log(
                 "errors": [],
             }
             
-            # Note: Need to add cicd_analysis to supervisor routing
-            # For now, manually invoke cicd_agent
-            from agents.cicd_agent import cicd_analysis_node
-            ai_result = cicd_analysis_node(ai_state)
+            ai_result = invoke_agent("cicd_analysis", ai_state)
             
             response_data.update({
                 "ai_analysis": ai_result.get("analysis"),

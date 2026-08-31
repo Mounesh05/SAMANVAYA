@@ -21,7 +21,7 @@ from domain.models.developer_performance import (
 )
 from core.config import settings
 from core.dependencies import get_current_user, require_admin
-from core.permissions import Permission, check_resource_access
+from core.permissions import Permission
 
 router = APIRouter()
 
@@ -358,7 +358,8 @@ async def get_developer_performance(
 @router.get("/developer/{developer_id}/trend")
 async def get_performance_trend(
     developer_id: str,
-    limit: int = 10
+    limit: int = 10,
+    user: dict = Depends(get_current_user),
 ):
     """
     Get historical performance trend for a developer.
@@ -477,17 +478,18 @@ async def add_lead_feedback(
     code_quality: int = Body(..., ge=1, le=5),
     mentoring: int = Body(..., ge=1, le=5),
     technical_ownership: int = Body(..., ge=1, le=5),
-    comments: Optional[str] = Body(None)
+    comments: Optional[str] = Body(None),
+    user: dict = Depends(get_current_user),
 ):
     """
     Add Team Lead feedback (structured 1-5 ratings).
-    
-    **Lead evaluates:**
-    - Technical skill (1-5)
-    - Code quality (1-5)
-    - Mentoring (1-5)
-    - Technical ownership (1-5)
+
+    **Required Permission:** SUBMIT_LEAD_FEEDBACK (LEAD role only)
     """
+    from core.permissions import get_user_permissions
+    user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
+    if Permission.SUBMIT_LEAD_FEEDBACK not in user_permissions:
+        raise HTTPException(status_code=403, detail="Only Lead role can submit Lead feedback")
     try:
         service = PerformanceService()
         feedback = {
@@ -509,12 +511,18 @@ async def add_qa_feedback(
     test_coverage: int = Body(..., ge=1, le=5),
     bug_response: int = Body(..., ge=1, le=5),
     regression_awareness: int = Body(..., ge=1, le=5),
-    comments: Optional[str] = Body(None)
+    comments: Optional[str] = Body(None),
+    user: dict = Depends(get_current_user),
 ):
     """
     Add QA Engineer feedback (structured 1-5 ratings).
-    
-    **QA evaluates:**
+
+    **Required Permission:** SUBMIT_QA_FEEDBACK (QA role only)
+    """
+    from core.permissions import get_user_permissions
+    user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
+    if Permission.SUBMIT_QA_FEEDBACK not in user_permissions:
+        raise HTTPException(status_code=403, detail="Only QA role can submit QA feedback")
     - Quality focus (1-5)
     - Test coverage (1-5)
     - Bug response (1-5)
@@ -541,12 +549,18 @@ async def add_devops_feedback(
     ci_cd_compliance: int = Body(..., ge=1, le=5),
     monitoring_awareness: int = Body(..., ge=1, le=5),
     incident_response: int = Body(..., ge=1, le=5),
-    comments: Optional[str] = Body(None)
+    comments: Optional[str] = Body(None),
+    user: dict = Depends(get_current_user),
 ):
     """
     Add DevOps Engineer feedback (structured 1-5 ratings).
-    
-    **DevOps evaluates:**
+
+    **Required Permission:** SUBMIT_DEVOPS_FEEDBACK (DEVOPS role only)
+    """
+    from core.permissions import get_user_permissions
+    user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
+    if Permission.SUBMIT_DEVOPS_FEEDBACK not in user_permissions:
+        raise HTTPException(status_code=403, detail="Only DevOps role can submit DevOps feedback")
     - Deployment quality (1-5)
     - CI/CD compliance (1-5)
     - Monitoring awareness (1-5)
@@ -573,12 +587,18 @@ async def add_ceo_feedback(
     innovation: int = Body(..., ge=1, le=5),
     company_alignment: int = Body(..., ge=1, le=5),
     leadership_potential: int = Body(..., ge=1, le=5),
-    comments: Optional[str] = Body(None)
+    comments: Optional[str] = Body(None),
+    user: dict = Depends(get_current_user),
 ):
     """
     Add CEO feedback (structured 1-5 ratings).
-    
-    **CEO evaluates:**
+
+    **Required Permission:** SUBMIT_CEO_FEEDBACK (CEO role only)
+    """
+    from core.permissions import get_user_permissions
+    user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
+    if Permission.SUBMIT_CEO_FEEDBACK not in user_permissions:
+        raise HTTPException(status_code=403, detail="Only CEO role can submit CEO feedback")
     - Business impact (1-5)
     - Innovation (1-5)
     - Company alignment (1-5)
@@ -605,12 +625,18 @@ async def add_hr_feedback(
     professionalism: int = Body(..., ge=1, le=5),
     communication_skills: int = Body(..., ge=1, le=5),
     cultural_fit: int = Body(..., ge=1, le=5),
-    comments: Optional[str] = Body(None)
+    comments: Optional[str] = Body(None),
+    user: dict = Depends(get_current_user),
 ):
     """
     Add HR feedback (structured 1-5 ratings).
-    
-    **HR evaluates:**
+
+    **Required Permission:** SUBMIT_HR_FEEDBACK (HR role only)
+    """
+    from core.permissions import get_user_permissions
+    user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
+    if Permission.SUBMIT_HR_FEEDBACK not in user_permissions:
+        raise HTTPException(status_code=403, detail="Only HR role can submit HR feedback")
     - Collaboration (1-5)
     - Professionalism (1-5)
     - Communication skills (1-5)
@@ -633,7 +659,8 @@ async def add_hr_feedback(
 @router.get("/team/{project_id}/{period_label}")
 async def get_team_performance(
     project_id: str,
-    period_label: str
+    period_label: str,
+    user: dict = Depends(get_current_user),
 ):
     """
     Get performance summary for all developers in a project/period.
@@ -744,7 +771,8 @@ async def get_team_performance(
 @router.get("/dashboard/{developer_id}")
 async def get_developer_dashboard(
     developer_id: str,
-    periods: int = 6
+    periods: int = 6,
+    user: dict = Depends(get_current_user),
 ):
     """
     Complete developer dashboard data - matches frontend DashboardData interface.

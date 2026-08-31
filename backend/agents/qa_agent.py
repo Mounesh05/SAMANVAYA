@@ -9,25 +9,6 @@ from .llm_provider import get_ollama_llm
 from .parsers import safe_parse, AgentAnalysisResult
 
 
-SYSTEM_PROMPT = """You are a QA engineer analyzing test and quality metrics.
-
-Your role:
-- Interpret test coverage and quality evidence
-- Recommend testing strategies and improvements
-- Identify quality gaps and risks
-
-You receive EVIDENCE from the Intelligence Engine.
-DO NOT recalculate - interpret the provided metrics.
-
-Focus on:
-1. Test coverage gaps (files, branches, lines)
-2. Test quality patterns (flaky tests, slow tests)
-3. Quality assurance process improvements
-4. Risk mitigation through testing
-
-Be specific about what tests to add and why."""
-
-
 def qa_analysis_node(state: AgentState) -> Dict[str, Any]:
     """
     QA agent - interprets test/quality evidence and provides recommendations.
@@ -85,36 +66,3 @@ Return ONLY JSON. No prose."""
             "agent_history": state.get("agent_history", []) + ["qa_agent"],
             "next_agent": None,
         }
-
-
-def _parse_response(response: str) -> tuple[str, list[str], str, float]:
-    """Parse structured LLM response."""
-    lines = response.strip().split("\n")
-    
-    analysis = ""
-    recommendations = []
-    risk_level = "medium"
-    confidence = 0.7
-    current_section = None
-    
-    for line in lines:
-        line = line.strip()
-        
-        if line.startswith("ANALYSIS:"):
-            current_section = "analysis"
-            analysis = line.replace("ANALYSIS:", "").strip()
-        elif line.startswith("RECOMMENDATIONS:"):
-            current_section = "recommendations"
-        elif line.startswith("RISK_LEVEL:"):
-            risk_level = line.replace("RISK_LEVEL:", "").strip().lower()
-        elif line.startswith("CONFIDENCE:"):
-            try:
-                confidence = float(line.replace("CONFIDENCE:", "").strip())
-            except ValueError:
-                confidence = 0.7
-        elif current_section == "analysis" and line:
-            analysis += " " + line
-        elif current_section == "recommendations" and line.startswith("-"):
-            recommendations.append(line.lstrip("- ").strip())
-    
-    return analysis, recommendations, risk_level, confidence

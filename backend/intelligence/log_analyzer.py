@@ -251,7 +251,7 @@ class LogAnalyzer:
             patterns_found.append("network_error")
         
         # Dependency issues
-        if "npm ERR!" in log_content or "pip install" in log_content and "ERROR" in log_content:
+        if ("npm ERR!" in log_content or "pip install" in log_content) and "ERROR" in log_content:
             patterns_found.append("dependency_error")
         
         return patterns_found

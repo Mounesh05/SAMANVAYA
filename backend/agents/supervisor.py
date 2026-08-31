@@ -1,11 +1,9 @@
 """
-Supervisor Agent - LangGraph orchestrator
-Routes tasks to specialized agents based on task_type
+Agent Supervisor - Routes tasks to specialized agents
+Simple router without LangGraph dependency.
 """
 
-from typing import Literal
-from langgraph.graph import StateGraph, END
-from .state import AgentState
+from typing import Dict, Any
 from .code_agent import code_analysis_node
 from .qa_agent import qa_analysis_node
 from .devops_agent import devops_analysis_node
@@ -13,80 +11,32 @@ from .meeting_agent import meeting_insights_node
 from .cicd_agent import cicd_analysis_node
 
 
-def supervisor_router(state: AgentState) -> Literal["code_agent", "qa_agent", "devops_agent", "meeting_agent", "cicd_agent", "end"]:
+AGENT_REGISTRY = {
+    "code_review": code_analysis_node,
+    "qa_analysis": qa_analysis_node,
+    "devops_risk": devops_analysis_node,
+    "meeting_insights": meeting_insights_node,
+    "cicd_analysis": cicd_analysis_node,
+}
+
+
+def invoke_agent(task_type: str, state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Route to the appropriate agent based on task_type.
-    
+    Route task to the appropriate agent and return result.
+
     Args:
-        state: Current agent state with task_type
-        
-    Returns:
-        Next node to execute
-    """
-    task_type = state.get("task_type")
-    
-    route_map = {
-        "code_review": "code_agent",
-        "qa_analysis": "qa_agent",
-        "devops_risk": "devops_agent",
-        "meeting_insights": "meeting_agent",
-        "cicd_analysis": "cicd_agent",
-    }
-    
-    return route_map.get(task_type, "end")
+        task_type: One of code_review, qa_analysis, devops_risk, meeting_insights, cicd_analysis
+        state: Agent state with evidence, context, etc.
 
-
-def create_supervisor_graph() -> StateGraph:
-    """
-    Create LangGraph supervisor for agent orchestration.
-    
-    The supervisor routes tasks to specialized agents:
-    - code_agent: PR code review and quality analysis
-    - qa_agent: Test coverage and QA recommendations
-    - devops_agent: Deployment risk and infrastructure
-    - meeting_agent: Sprint insights and team performance
-    
     Returns:
-        Compiled StateGraph ready for execution
-        
-    Example:
-        graph = create_supervisor_graph()
-        result = graph.invoke({
-            "task_type": "code_review",
-            "evidence": {...},  # from Intelligence Engine
-            "context": {"pr_title": "Add feature X"},
-            "agent_history": [],
-            "errors": [],
-        })
+        Updated state with analysis results
     """
-    # Create graph
-    workflow = StateGraph(AgentState)
-    
-    # Add agent nodes
-    workflow.add_node("code_agent", code_analysis_node)
-    workflow.add_node("qa_agent", qa_analysis_node)
-    workflow.add_node("devops_agent", devops_analysis_node)
-    workflow.add_node("meeting_agent", meeting_insights_node)
-    workflow.add_node("cicd_agent", cicd_analysis_node)
-    
-    # Set entry point with conditional routing
-    workflow.set_conditional_entry_point(
-        supervisor_router,
-        {
-            "code_agent": "code_agent",
-            "qa_agent": "qa_agent",
-            "devops_agent": "devops_agent",
-            "meeting_agent": "meeting_agent",
-            "cicd_agent": "cicd_agent",
-            "end": END,
+    agent_node = AGENT_REGISTRY.get(task_type)
+    if not agent_node:
+        return {
+            **state,
+            "errors": state.get("errors", []) + [f"Unknown task type: {task_type}"],
+            "agent_history": state.get("agent_history", []),
         }
-    )
-    
-    # All agents terminate after execution (no chaining)
-    workflow.add_edge("code_agent", END)
-    workflow.add_edge("qa_agent", END)
-    workflow.add_edge("devops_agent", END)
-    workflow.add_edge("meeting_agent", END)
-    workflow.add_edge("cicd_agent", END)
-    
-    return workflow.compile()
+
+    return agent_node(state)

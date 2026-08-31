@@ -61,7 +61,7 @@ def cicd_analysis_node(state: AgentState) -> Dict[str, Any]:
 
 ### Failure Patterns Detected
 
-{self._format_failure_patterns(failure_summary.get('failure_patterns', []))}
+{_format_failure_patterns(failure_summary.get('failure_patterns', []))}
 
 ### Recent Log Excerpt (Error Context)
 

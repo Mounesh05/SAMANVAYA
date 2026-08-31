@@ -37,7 +37,7 @@ class WebhookService:
         """
         secret = settings.GITHUB_WEBHOOK_SECRET
         if not secret:
-            # No secret configured — skip verification (dev mode)
+            logger.warning("GITHUB_WEBHOOK_SECRET not configured — webhook signature verification disabled")
             return True
         
         expected = "sha256=" + hmac.new(

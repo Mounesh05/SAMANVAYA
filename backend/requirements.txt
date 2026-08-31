@@ -9,7 +9,6 @@ pymongo==4.9.2
 
 # === Authentication & Security ===
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
 
 # === Data Validation ===
@@ -20,7 +19,6 @@ email-validator==2.3.0
 # === AI/LLM (Ollama Integration) ===
 langchain-ollama==0.3.10
 langchain-core==0.3.86
-langgraph==0.2.38
 ollama==0.6.2
 
 # === HTTP Client ===

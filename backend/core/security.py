@@ -5,15 +5,15 @@ All auth primitives live here — nowhere else.
 
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from .config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(plain: str) -> str:
     """Hash a plain-text password using bcrypt."""
-    return pwd_context.hash(plain)
+    pw_bytes = plain.encode("utf-8")[:72]
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pw_bytes, salt).decode("utf-8")
 
 
 # Alias for compatibility
@@ -23,7 +23,9 @@ get_password_hash = hash_password
 def verify_password(plain: str, hashed: str) -> bool:
     """Verify a plain-text password against a hashed password."""
     try:
-        return pwd_context.verify(plain, hashed)
+        pw_bytes = plain.encode("utf-8")[:72]
+        hashed_bytes = hashed.encode("utf-8")
+        return bcrypt.checkpw(pw_bytes, hashed_bytes)
     except Exception:
         return False
 
