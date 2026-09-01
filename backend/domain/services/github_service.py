@@ -140,11 +140,17 @@ class GitHubService:
                         from agents.code_agent import code_analysis_node
                         from domain.models.code_quality_report import CodeQualityReport, QualityBreakdown
                         import time
+                        import tempfile
+                        import os
                         
                         start_time = time.time()
                         
+                        # Use platform-appropriate temp directory for evidence building
+                        temp_dir = tempfile.gettempdir()
+                        repo_work_dir = os.path.join(temp_dir, f"samanvaya-repo-{owner}-{repo}")
+                        
                         # Build comprehensive evidence package
-                        evidence_builder = EvidenceBuilder(f"/tmp/repo-{owner}-{repo}")  # TODO: Use actual cloned repo path
+                        evidence_builder = EvidenceBuilder(repo_work_dir)
                         
                         pr_context = {
                             "pr_title": github_pr.get("title", ""),

@@ -60,4 +60,4 @@ export const SEVERITY_LEVELS = {
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-export const DEFAULT_ORG_ID = 'ORG001';
+export const DEFAULT_ORG_ID = import.meta.env.VITE_DEFAULT_ORG_ID || 'ORG001';

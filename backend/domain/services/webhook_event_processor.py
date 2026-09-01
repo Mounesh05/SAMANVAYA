@@ -23,6 +23,7 @@ from domain.models.webhook_event import WebhookEvent
 from repositories.webhook_event_repository import WebhookEventRepository
 from repositories.pr_repository import PRRepository
 from repositories.project_repository import ProjectRepository
+from repositories.user_repository import UserRepository
 from domain.services.github_service import GitHubService
 from domain.services.notification_service import NotificationService
 from domain.services.traceability_service import TraceabilityService
@@ -44,11 +45,59 @@ class WebhookEventProcessor:
         self.event_repo = WebhookEventRepository()
         self.pr_repo = PRRepository()
         self.project_repo = ProjectRepository()
+        self.user_repo = UserRepository()
         self.github_service = GitHubService()
         self.notification_service = NotificationService()
         self.risk_engine = RiskEngine()
         self.traceability_service = TraceabilityService()
         self.recommendation_engine = RecommendationEngine()
+    
+    async def _get_project_team_lead(self, project_id: str) -> Optional[str]:
+        """
+        Look up the team lead for a project.
+        
+        Chain: Project -> team_id -> Team -> team_lead_id
+        Returns: employee_id of the team lead, or None
+        """
+        try:
+            project = await self.project_repo.find_by_id(project_id)
+            if not project:
+                return None
+            
+            team_id = project.get("team_id")
+            if not team_id:
+                return None
+            
+            from core.database import col
+            team = await col("teams").find_one({"id": team_id})
+            if not team:
+                return None
+            
+            return team.get("team_lead_id")
+        except Exception as e:
+            logger.warning(f"Error looking up team lead for project {project_id}: {e}")
+            return None
+    
+    async def _get_project_devops_members(self, project_id: str) -> List[str]:
+        """
+        Look up DevOps team members for a project.
+        
+        Returns: list of employee_ids with DEVOPS role on the project's team
+        """
+        try:
+            project = await self.project_repo.find_by_id(project_id)
+            if not project:
+                return []
+            
+            team_id = project.get("team_id")
+            if not team_id:
+                return []
+            
+            members = await self.user_repo.find_by_team(team_id)
+            return [m["employee_id"] for m in members if m.get("role", "").upper() == "DEVOPS"]
+        except Exception as e:
+            logger.warning(f"Error looking up DevOps members for project {project_id}: {e}")
+            return []
     
     async def process_github_event(
         self,
@@ -365,15 +414,18 @@ class WebhookEventProcessor:
             # Direct push to main - potential risk
             risks_detected.append(f"direct-push-main-{uuid.uuid4().hex[:8]}")
             
-            # Notify leads
-            notification_id = await self.notification_service.notify(
-                user_id="team-lead",  # TODO: Get actual team lead from project
-                notification_type="direct_push_main",
-                title=f"Direct push to {branch}",
-                body=f"{pusher} pushed {len(commits)} commit(s) directly to {branch} branch",
-                link=f"/activity/{event.repository}"
-            )
-            notifications_sent.append(notification_id["id"])
+            # Look up actual team lead
+            team_lead_id = await self._get_project_team_lead(event.project_id)
+            
+            if team_lead_id:
+                notification_id = await self.notification_service.notify(
+                    user_id=team_lead_id,
+                    notification_type="direct_push_main",
+                    title=f"Direct push to {branch}",
+                    body=f"{pusher} pushed {len(commits)} commit(s) directly to {branch} branch",
+                    link=f"/activity/{event.repository}"
+                )
+                notifications_sent.append(notification_id["id"])
         
         return {
             "triggers_executed": triggers_executed,
@@ -499,15 +551,18 @@ class WebhookEventProcessor:
             # Deployment failed - critical risk
             risks_detected.append(f"deployment-failure-{uuid.uuid4().hex[:8]}")
             
-            # Notify DevOps and team leads
-            notification = await self.notification_service.notify(
-                user_id="devops-team",  # TODO: Get actual DevOps team
-                notification_type="deployment_failed",
-                title="âŒ Deployment Failed",
-                body=f"Deployment failed for {event.repository}",
-                link=f"/deployments/{event.repository}"
-            )
-            notifications_sent.append(notification["id"])
+            # Look up actual DevOps members
+            devops_members = await self._get_project_devops_members(event.project_id)
+            
+            for member_id in devops_members:
+                notification = await self.notification_service.notify(
+                    user_id=member_id,
+                    notification_type="deployment_failed",
+                    title="Deployment Failed",
+                    body=f"Deployment failed for {event.repository}",
+                    link=f"/deployments/{event.repository}"
+                )
+                notifications_sent.append(notification["id"])
         
         return {
             "triggers_executed": ["deployment_status_tracking"],
@@ -602,15 +657,13 @@ class WebhookEventProcessor:
         """
         notification_ids = []
         
-        # Get team lead for project
-        # TODO: Query actual team members from project
-        team_lead_id = "team-lead-placeholder"
+        # Look up actual team lead for project
+        team_lead_id = await self._get_project_team_lead(project_id)
         
-        # Notification for team lead
         critical_issues = ai_analysis.get("critical_issues", [])
         risk_factors = ai_analysis.get("risk_factors", [])
         
-        emoji = "ðŸ”´" if risk_level == "critical" else "ðŸŸ "
+        emoji = "🔴" if risk_level == "critical" else "🟡"
         
         body_parts = [
             f"Risk Score: {risk_score}/100",
@@ -622,14 +675,16 @@ class WebhookEventProcessor:
         if risk_factors:
             body_parts.append(f"Risk Factors: {', '.join(risk_factors[:2])}")
         
-        notification = await self.notification_service.notify(
-            user_id=team_lead_id,
-            notification_type="pr_high_risk",
-            title=f"{emoji} High Risk PR #{pr_data.get('number')}",
-            body=" | ".join(body_parts),
-            link=f"/pr/{pr_data['id']}"
-        )
-        notification_ids.append(notification["id"])
+        # Notify team lead
+        if team_lead_id:
+            notification = await self.notification_service.notify(
+                user_id=team_lead_id,
+                notification_type="pr_high_risk",
+                title=f"{emoji} High Risk PR #{pr_data.get('number')}",
+                body=" | ".join(body_parts),
+                link=f"/pr/{pr_data['id']}"
+            )
+            notification_ids.append(notification["id"])
         
         # Also notify PR author with recommendations
         pr_author = pr_data.get("author")
@@ -659,24 +714,25 @@ class WebhookEventProcessor:
         """
         notification_ids = []
         
-        # Notify team lead
-        team_lead_id = "team-lead-placeholder"
+        # Look up actual team lead
+        team_lead_id = await self._get_project_team_lead(project_id)
         
         risk_emoji = {
-            "low": "ðŸŸ¢",
-            "medium": "ðŸŸ¡",
-            "high": "ðŸŸ ",
-            "critical": "ðŸ”´"
+            "low": "🟢",
+            "medium": "🟡",
+            "high": "🟠",
+            "critical": "🔴"
         }
         
-        notification = await self.notification_service.notify(
-            user_id=team_lead_id,
-            notification_type="pr_opened",
-            title=f"New PR #{pr_data.get('number')} opened",
-            body=f"{risk_emoji.get(risk_level, 'âšª')} Risk: {risk_level} | {pr_data.get('title', 'Untitled')}",
-            link=f"/pr/{pr_data['id']}"
-        )
-        notification_ids.append(notification["id"])
+        if team_lead_id:
+            notification = await self.notification_service.notify(
+                user_id=team_lead_id,
+                notification_type="pr_opened",
+                title=f"New PR #{pr_data.get('number')} opened",
+                body=f"{risk_emoji.get(risk_level, '⚪')} Risk: {risk_level} | {pr_data.get('title', 'Untitled')}",
+                link=f"/pr/{pr_data['id']}"
+            )
+            notification_ids.append(notification["id"])
         
         return notification_ids
 

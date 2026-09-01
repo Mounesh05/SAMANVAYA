@@ -1,7 +1,8 @@
 import apiClient from './client';
+import { DEFAULT_ORG_ID } from '../utils/constants';
 
 export const projectsApi = {
-  list: async (orgId = 'ORG001') => {
+  list: async (orgId = DEFAULT_ORG_ID) => {
     return apiClient.get('/projects/', { params: { org_id: orgId } });
   },
 

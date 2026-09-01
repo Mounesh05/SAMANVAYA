@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '../../api/projects.api';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { MetricCard } from '../../components/common/MetricCard';
 import { Card } from '../../components/common/Card';
@@ -24,7 +25,7 @@ export function PMDashboardPage() {
 
   const { data: projects = [], isLoading, error, refetch } = useQuery({
     queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list('ORG001'),
+    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
   });
 
   if (isLoading) return <LoadingState message="Loading Project Manager dashboard..." />;

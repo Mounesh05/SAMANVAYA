@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sprintsApi } from '../../api/sprints.api';
 import { projectsApi } from '../../api/projects.api';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Table } from '../../components/common/Table';
@@ -37,7 +38,7 @@ export function SprintsPage() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list('ORG001'),
+    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
   });
 
   // Select first project by default if available
