@@ -25,3 +25,11 @@ class TaskRepository(BaseRepository):
     async def find_by_id(self, task_id: str):
         """Find task by ID."""
         return await self.find_one({"id": task_id})
+    
+    async def find_by_number(self, project_id: str, task_number: int):
+        """
+        Find task by number within a project.
+        Assumes task IDs follow format: TASK-{number}
+        """
+        task_id = f"TASK-{task_number}"
+        return await self.find_one({"id": task_id, "project_id": project_id})

@@ -11,6 +11,12 @@ from .task import TaskCreate, Task
 from .pull_request import PRCreate, PullRequest
 from .risk import RiskFactor, Risk
 from .ai_run import AIRunRequest, AIRun, AIRunResponse
+from .webhook_event import WebhookEvent
+from .entity_relationship import (
+    EntityType, RelationshipType, EntityRelationship,
+    EntityNode, BlastRadius, HotspotFile, TraceabilityPath
+)
+from .recommendation import Recommendation, RecommendationPriority, RecommendationCategory, RecommendationStatus
 
 __all__ = [
     "UserCreate",
@@ -32,4 +38,18 @@ __all__ = [
     "AIRunRequest",
     "AIRun",
     "AIRunResponse",
+    "WebhookEvent",
+    "Recommendation",
+    "RecommendationPriority",
+    "RecommendationCategory",
+    "RecommendationStatus",
+    "EntityType",
+    "RelationshipType",
+    "EntityRelationship",
+    "EntityNode",
+    "BlastRadius",
+    "HotspotFile",
+    "TraceabilityPath",
 ]
+
+

@@ -1,4 +1,4 @@
-﻿"""
+"""
 FastAPI dependency injection.
 Every protected route uses Depends(get_current_user).
 Role-restricted routes use Depends(require_roles(...)).

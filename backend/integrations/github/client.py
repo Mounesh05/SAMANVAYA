@@ -1,4 +1,4 @@
-﻿"""
+"""
 GitHub API client.
 Handles authenticated requests to GitHub REST API.
 """

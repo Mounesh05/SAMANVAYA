@@ -1,4 +1,4 @@
-﻿"""
+"""
 Application logging configuration.
 Provides structured JSON logging for production and simple logging for development.
 """

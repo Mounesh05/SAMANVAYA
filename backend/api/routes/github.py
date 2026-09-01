@@ -1,4 +1,4 @@
-﻿"""
+"""
 GitHub integration API endpoints.
 Allows manual PR sync and repository management.
 """

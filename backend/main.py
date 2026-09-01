@@ -95,6 +95,7 @@ from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai,
     cicd_logs, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
+    recommendations, traceability,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -124,6 +125,10 @@ app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code 
 
 # AI Evaluation (Requires Auth)
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["AI Evaluation"])
+
+# Recommendations & Traceability (Phase 1)
+app.include_router(recommendations.router, prefix="/api/recommendations", tags=["Recommendations"])
+app.include_router(traceability.router, prefix="/api/traceability", tags=["Traceability"])
 
 # Role-specific dashboards
 app.include_router(developer.router, prefix="/api/role/developer", tags=["Role: Developer"])
