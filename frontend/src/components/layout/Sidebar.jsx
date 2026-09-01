@@ -77,13 +77,13 @@ export function Sidebar() {
         to: '/tasks',
         icon: <ListTodo size={19} />,
         label: 'Tasks',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM],
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/board',
         icon: <KanbanSquare size={19} />,
-        label: 'Kanban Board',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM],
+        label: 'Board',
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
       }
     );
 
