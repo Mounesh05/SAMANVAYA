@@ -32,3 +32,11 @@ desktop.ini
 *.log
 *.tmp
 .cache/
+
+# Documentation & summaries (not source code)
+IMPLEMENTATION_SUMMARY.txt
+PHASE_1_COMPLETE.txt
+*_COMPLETE.txt
+*_SUMMARY.txt
+backend/PHASE_*.md
+backend/verify_*.py
