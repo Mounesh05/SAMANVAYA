@@ -164,7 +164,7 @@ class PerformanceService:
         )
         
         # Step 9: Store in database
-        await self.performance_repo.create(performance.dict())
+        await self.performance_repo.create(performance.model_dump())
         
         print(f"✅ Evaluation complete: {final_score_percentage:.1f}/100 ({grade})")
         
@@ -224,7 +224,7 @@ class PerformanceService:
         performance.grade = self.evaluation_agent.determine_grade(performance.final_score)
         
         # Update in database
-        await self.performance_repo.update(performance_id, performance.dict())
+        await self.performance_repo.update(performance_id, performance.model_dump())
         
         return performance
     

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Code Quality Report Model
 Comprehensive report with separate quality and risk scores.
 """
@@ -64,7 +64,6 @@ class CodeQualityReport(BaseModel):
     security_findings: Dict[str, Any] = Field(default_factory=dict)
     test_metrics: Dict[str, Any] = Field(default_factory=dict)
     dependency_changes: Dict[str, Any] = Field(default_factory=dict)
-    historical_data: Dict[str, Any] = Field(default_factory=dict)
     architecture_analysis: Dict[str, Any] = Field(default_factory=dict)
     
     # AI Interpretation (from Ollama)

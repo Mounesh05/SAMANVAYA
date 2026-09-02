@@ -4,6 +4,13 @@ All MongoDB operations go through repositories.
 """
 
 from .base import BaseRepository
+from .activity_repository import ActivityRepository
+from .comment_repository import CommentRepository
+from .notification_repository import NotificationRepository
+from .performance_repository import PerformanceRepository
+from .recommendation_repository import RecommendationRepository
+from .entity_relationship_repository import EntityRelationshipRepository
+from .webhook_event_repository import WebhookEventRepository
 from .user_repository import UserRepository
 from .project_repository import ProjectRepository
 from .sprint_repository import SprintRepository
@@ -23,4 +30,11 @@ __all__ = [
     "PRRepository",
     "RiskRepository",
     "AIRunRepository",
+    "ActivityRepository",
+    "CommentRepository",
+    "NotificationRepository",
+    "PerformanceRepository",
+    "RecommendationRepository",
+    "EntityRelationshipRepository",
+    "WebhookEventRepository",
 ]

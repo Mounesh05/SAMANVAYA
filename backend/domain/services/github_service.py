@@ -1,4 +1,4 @@
-"""
+﻿"""
 GitHub Service.
 Orchestrates GitHub API client, data normalization, and integration with Samanvaya.
 """
@@ -208,7 +208,6 @@ class GitHubService:
                             security_findings=evidence.get("security", {}),
                             test_metrics=evidence.get("tests", {}),
                             dependency_changes=evidence.get("dependencies", {}),
-                            historical_data=evidence.get("history", {}),
                             architecture_analysis=evidence.get("architecture", {}),
                             ai_analysis=ai_result.get("analysis"),
                             critical_issues=ai_result.get("critical_issues", []),

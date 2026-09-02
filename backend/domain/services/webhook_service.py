@@ -1,4 +1,4 @@
-"""
+﻿"""
 Webhook Service — processes incoming GitHub webhook events.
 Auto-syncs PRs, logs commits, and triggers AI code review.
 """
@@ -12,6 +12,8 @@ from typing import Optional
 
 from core.config import settings
 from domain.services.notification_service import NotificationService
+from domain.services.enhanced_notification_service import EnhancedNotificationService
+from domain.services.notification_template_engine import NotificationTemplate
 from repositories.activity_repository import ActivityRepository
 from repositories.pr_repository import PRRepository
 
@@ -19,10 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 class WebhookService:
-    """Processes GitHub webhook payloads."""
+    """Processes GitHub webhook payloads with intelligence integration."""
     
     def __init__(self):
         self.notification_service = NotificationService()
+        self.enhanced_notifications = EnhancedNotificationService()
         self.activity_repo = ActivityRepository()
         self.pr_repo = PRRepository()
     
@@ -142,7 +145,10 @@ class WebhookService:
         if should_review:
             try:
                 from domain.services.github_service import GitHubService
+                
                 github_service = GitHubService()
+                
+                # Sync PR with AI analysis
                 await github_service.sync_pull_request(
                     owner=owner,
                     repo=repo_name,
@@ -152,7 +158,9 @@ class WebhookService:
                     use_deep_analysis=False,
                     triggered_by=f"webhook-{action}",
                 )
-            except Exception:
+                
+            except Exception as e:
+                logger.error(f"PR intelligence processing failed: {e}")
                 pass  # Non-critical — PR data is already saved
         
         return {
