@@ -154,7 +154,7 @@ class EnhancedNotificationService:
                 "id": f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
                 "user_id": user_id,
                 "type": f"digest_{frequency.value}",
-                "title": f"ðŸ“Š Your {frequency.value} digest ({len(notifications)} updates)",
+                "title": f"📊 Your {frequency.value} digest ({len(notifications)} updates)",
                 "body": digest_body,
                 "link": "/notifications",
                 "priority": "normal",
@@ -196,15 +196,15 @@ class EnhancedNotificationService:
         
         # High priority
         if "high" in by_priority:
-            lines.append(f"\nðŸ”´ HIGH PRIORITY ({len(by_priority['high'])}):")
+            lines.append(f"\n🔴 HIGH PRIORITY ({len(by_priority['high'])}):")
             for notif in by_priority["high"][:5]:
-                lines.append(f"  â€¢ {notif['rendered']['title']}")
+                lines.append(f"  • {notif['rendered']['title']}")
         
         # Normal
         if "normal" in by_priority:
-            lines.append(f"\nðŸ“‹ UPDATES ({len(by_priority['normal'])}):")
+            lines.append(f"\n📋 UPDATES ({len(by_priority['normal'])}):")
             for notif in by_priority["normal"][:10]:
-                lines.append(f"  â€¢ {notif['rendered']['title']}")
+                lines.append(f"  • {notif['rendered']['title']}")
         
         if len(notifications) > 20:
             lines.append(f"\n... and {len(notifications) - 20} more")
@@ -310,4 +310,3 @@ class EnhancedNotificationService:
     async def mark_all_read(self, user_id: str) -> int:
         """Mark all notifications as read. Returns count updated."""
         return await self.repo.mark_all_read(user_id)
-

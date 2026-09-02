@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan Ã¢â‚¬â€ startup and shutdown events."""
+    """Application lifespan — startup and shutdown events."""
     # Startup: nothing to do (client is created lazily)
     yield
     # Shutdown: close MongoDB connection
@@ -164,7 +164,7 @@ async def limit_request_size(request: Request, call_next):
 @app.get("/")
 async def root():
     return {
-        "message": "Samanvaya API v1.0 Ã¢â‚¬â€ AI-powered engineering intelligence platform",
+        "message": "Samanvaya API v1.0 — AI-powered engineering intelligence platform",
         "status": "operational",
         "version": "1.0.0",
     }
@@ -268,6 +268,5 @@ app.include_router(ceo.router, prefix="/api/role/ceo", tags=["Role: CEO"])
 app.include_router(hr.router, prefix="/api/role/hr", tags=["Role: HR"])
 app.include_router(qa.router, prefix="/api/role/qa", tags=["Role: QA"])
 app.include_router(devops.router, prefix="/api/role/devops", tags=["Role: DevOps"])
-
 
 

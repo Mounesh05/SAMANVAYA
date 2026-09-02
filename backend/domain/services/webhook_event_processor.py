@@ -457,9 +457,9 @@ class WebhookEventProcessor:
         # Notify PR author
         if pr_author and pr_author != reviewer:
             state_labels = {
-                "approved": "âœ… approved",
-                "changes_requested": "ðŸ”„ requested changes on",
-                "commented": "ðŸ’¬ commented on",
+                "approved": "✅ approved",
+                "changes_requested": "📄 requested changes on",
+                "commented": "💬 commented on",
             }
             label = state_labels.get(review_state, review_state)
             
@@ -735,6 +735,5 @@ class WebhookEventProcessor:
             notification_ids.append(notification["id"])
         
         return notification_ids
-
 
 
