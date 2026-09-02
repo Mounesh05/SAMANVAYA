@@ -6,6 +6,7 @@ Auto-syncs PRs, logs commits, and triggers AI code review.
 import hmac
 import hashlib
 import uuid
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -13,6 +14,8 @@ from core.config import settings
 from domain.services.notification_service import NotificationService
 from repositories.activity_repository import ActivityRepository
 from repositories.pr_repository import PRRepository
+
+logger = logging.getLogger(__name__)
 
 
 class WebhookService:
