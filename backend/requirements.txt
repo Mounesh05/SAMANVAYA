@@ -36,3 +36,19 @@ pytest-asyncio==0.24.0
 
 # === Rate Limiting ===
 slowapi==0.1.9
+
+# === Code Analysis Tools ===
+# Python analysis
+radon==6.0.1
+lizard==1.17.10
+bandit==1.7.10
+ruff==0.6.9
+mypy==1.11.2
+
+# Dependency security scanning
+pip-audit==2.7.3
+safety==3.2.8
+
+# C/C++ analysis
+# Note: cppcheck requires system installation (apt-get install cppcheck / brew install cppcheck)
+# The analyzers will gracefully fall back to AST mode if not installed

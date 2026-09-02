@@ -26,7 +26,7 @@ class GitHubService:
         self.client = GitHubClient(token=github_token)
         self.normalizer = GitHubNormalizer()
         self.pr_repo = PRRepository()
-        self.ai_run_repo = AIRunRepository(db)
+        self.ai_run_repo = AIRunRepository()
         self.risk_engine = RiskEngine()
 
     async def sync_pull_request(

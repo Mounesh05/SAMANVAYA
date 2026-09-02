@@ -5,7 +5,7 @@ Pure data collection - no analysis, just aggregation.
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from integrations.github.client import GitHubClient
 from repositories.pr_repository import PRRepository
 from repositories.task_repository import TaskRepository
@@ -68,7 +68,7 @@ class DeveloperDataAggregator:
                 "start": period_start.isoformat(),
                 "end": period_end.isoformat(),
             },
-            "data_collected_at": datetime.utcnow().isoformat(),
+            "data_collected_at": datetime.now(timezone.utc).isoformat(),
             
             # Will be populated
             "commits": [],

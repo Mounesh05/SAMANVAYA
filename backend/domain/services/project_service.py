@@ -2,7 +2,7 @@
 Project service for project management operations.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 from repositories.project_repository import ProjectRepository
@@ -39,7 +39,7 @@ class ProjectService:
             "main_module": project_data.main_module,
             "status": "active",
             "created_by": created_by,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         await self.project_repo.insert(project_doc)

@@ -105,7 +105,7 @@ class EnhancedNotificationService:
         await self.repo.insert(notification)
         logger.info(f"Sent notification {notification['id']} to {user_id}")
         
-return notification["id"]
+        return notification["id"]
     
     async def _queue_for_digest(
         self,
@@ -190,9 +190,9 @@ return notification["id"]
         
         # Urgent first
         if "urgent" in by_priority:
-            lines.append(f"\nðŸš¨ URGENT ({len(by_priority['urgent'])}):")
+            lines.append(f"\n🚨 URGENT ({len(by_priority['urgent'])}):")
             for notif in by_priority["urgent"][:5]:  # Top 5
-                lines.append(f"  â€¢ {notif['rendered']['title']}")
+                lines.append(f"  • {notif['rendered']['title']}")
         
         # High priority
         if "high" in by_priority:
@@ -292,3 +292,22 @@ return notification["id"]
             await self.notify(user_id, notification_type, title, body, link)
             count += 1
         return count
+    
+    async def get_user_notifications(
+        self, user_id: str, limit: int = 50, skip: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Get paginated notifications for a user."""
+        return await self.repo.find_by_user(user_id, limit, skip)
+    
+    async def get_unread_count(self, user_id: str) -> int:
+        """Get count of unread notifications."""
+        return await self.repo.count_unread(user_id)
+    
+    async def mark_read(self, notification_id: str) -> bool:
+        """Mark a notification as read."""
+        return await self.repo.mark_read(notification_id)
+    
+    async def mark_all_read(self, user_id: str) -> int:
+        """Mark all notifications as read. Returns count updated."""
+        return await self.repo.mark_all_read(user_id)
+

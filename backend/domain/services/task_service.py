@@ -2,7 +2,7 @@
 Task service for task management.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import uuid
 from repositories.task_repository import TaskRepository
@@ -36,7 +36,7 @@ class TaskService:
             "priority": task_data.priority,
             "due_date": task_data.due_date,
             "status": "todo",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         await self.task_repo.insert(task_doc)

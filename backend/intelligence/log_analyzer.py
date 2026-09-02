@@ -8,7 +8,7 @@ This prepares evidence for the CI/CD Agent (Layer 6) to interpret.
 
 import re
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class LogAnalyzer:
@@ -119,7 +119,7 @@ class LogAnalyzer:
             "log_excerpt": error_excerpt,
             "risk_score": risk_score,
             "risk_level": LogAnalyzer._classify_risk_level(risk_score),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     @staticmethod
@@ -172,7 +172,7 @@ class LogAnalyzer:
             "log_excerpt": error_excerpt,
             "risk_score": risk_score,
             "risk_level": LogAnalyzer._classify_risk_level(risk_score),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     @staticmethod
@@ -216,7 +216,7 @@ class LogAnalyzer:
             "log_excerpt": error_excerpt,
             "risk_score": risk_score,
             "risk_level": LogAnalyzer._classify_risk_level(risk_score),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     # ── Helper Methods ──────────────────────────────────────────

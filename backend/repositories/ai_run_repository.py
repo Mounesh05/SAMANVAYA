@@ -3,7 +3,7 @@ AI Run repository with agent execution tracking.
 """
 
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from .base import BaseRepository
 from core.database import col
 from domain.models.ai_run import AIRun
@@ -11,7 +11,7 @@ import uuid
 
 
 class AIRunRepository(BaseRepository):
-    def __init__(self, db):
+    def __init__(self):
         super().__init__(col("ai_runs"))
 
     async def create(self, ai_run: AIRun) -> str:
@@ -27,8 +27,8 @@ class AIRunRepository(BaseRepository):
             "execution_time_ms": ai_run.execution_time_ms,
             "model_name": ai_run.model_name,
             "triggered_by": ai_run.triggered_by,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
         await self.insert(doc)
         return run_id

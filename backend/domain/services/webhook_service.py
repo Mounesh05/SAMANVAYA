@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from core.config import settings
-from domain.services.notification_service import NotificationService
 from domain.services.enhanced_notification_service import EnhancedNotificationService
 from domain.services.notification_template_engine import NotificationTemplate
 from repositories.activity_repository import ActivityRepository
@@ -24,8 +23,7 @@ class WebhookService:
     """Processes GitHub webhook payloads with intelligence integration."""
     
     def __init__(self):
-        self.notification_service = NotificationService()
-        self.enhanced_notifications = EnhancedNotificationService()
+        self.notification_service = EnhancedNotificationService()
         self.activity_repo = ActivityRepository()
         self.pr_repo = PRRepository()
     

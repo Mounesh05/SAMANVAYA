@@ -2,6 +2,37 @@
 Evidence Builder
 Aggregates all analysis results into structured evidence package for LLM.
 
+⚠️ ARCHITECTURE DEBT - DUPLICATE ANALYZER SYSTEM ⚠️
+
+This file is part of the OLD analyzer architecture that duplicates functionality
+in the NEW intelligence/analyzers/* system:
+
+OLD SYSTEM (this file + dependencies):
+- intelligence/static_analysis/* (orchestrator, python_analyzer, javascript_analyzer)
+- intelligence/complexity_analyzer.py
+- intelligence/security_scanner.py  
+- intelligence/test_analyzer.py
+- intelligence/architecture_analyzer.py
+- intelligence/dependency_analyzer.py
+- THIS FILE (evidence_builder.py)
+
+NEW SYSTEM (preferred, plugin-based):
+- intelligence/analyzers/base.py (BaseAnalyzer contract)
+- intelligence/analyzers/registry.py (AnalyzerRegistry)
+- intelligence/analyzers/{python,java,c,cpp,javascript}/analyzer.py
+- intelligence/evidence/models.py (typed CodeQualityEvidence)
+
+CURRENT USAGE:
+- github_service.py sync_pr() uses OLD system via EvidenceBuilder
+- code_quality_service.py uses OLD system (marked as "Phase 0 Shim")
+- code_quality.py route uses NEW system directly
+
+TODO - CONSOLIDATION PLAN:
+1. Migrate github_service.py to use NEW AnalyzerRegistry
+2. Migrate code_quality_service.py to use NEW system
+3. Delete this file and all OLD system files
+4. Unified architecture: single analyzer pipeline for all code analysis
+
 This is the KEY INTEGRATION POINT that combines:
 - Static analysis
 - Complexity metrics

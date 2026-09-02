@@ -4,7 +4,7 @@ Database operations for developer performance data.
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from core.database import db
 
 
@@ -27,7 +27,7 @@ class PerformanceRepository:
     async def update(self, performance_id: str, data: Dict[str, Any]) -> bool:
         """Update performance record."""
         from bson import ObjectId
-        data["updated_at"] = datetime.utcnow()
+        data["updated_at"] = datetime.now(timezone.utc)
         result = await self.collection.update_one(
             {"_id": ObjectId(performance_id)},
             {"$set": data}

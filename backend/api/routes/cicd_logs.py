@@ -171,7 +171,7 @@ async def analyze_cicd_log(
             })
             
             # Save AI run
-            ai_run_repo = AIRunRepository(db)
+            ai_run_repo = AIRunRepository()
             from domain.models.ai_run import AIRun
             ai_run = AIRun(
                 agent_type="cicd_analysis",

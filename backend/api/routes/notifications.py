@@ -5,7 +5,7 @@ In-app notification management for users.
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from core.dependencies import get_current_user
-from domain.services.notification_service import NotificationService
+from domain.services.enhanced_notification_service import EnhancedNotificationService as NotificationService
 
 router = APIRouter()
 notification_service = NotificationService()

@@ -3,7 +3,7 @@ Password hashing and JWT token management.
 All auth primitives live here â€” nowhere else.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from jose import JWTError, jwt
 import bcrypt
 from .config import settings
@@ -40,7 +40,7 @@ def create_access_token(payload: dict) -> str:
     Returns:
         Encoded JWT token string
     """
-    expire = datetime.utcnow() + timedelta(
+    expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     return jwt.encode(

@@ -25,7 +25,7 @@ from repositories.pr_repository import PRRepository
 from repositories.project_repository import ProjectRepository
 from repositories.user_repository import UserRepository
 from domain.services.github_service import GitHubService
-from domain.services.notification_service import NotificationService
+from domain.services.enhanced_notification_service import EnhancedNotificationService as NotificationService
 from domain.services.traceability_service import TraceabilityService
 from domain.services.recommendation_engine import RecommendationEngine
 from intelligence.risk_engine import RiskEngine

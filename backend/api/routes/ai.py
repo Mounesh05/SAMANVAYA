@@ -6,7 +6,7 @@ Invoke specialized agents to interpret Intelligence Engine evidence
 from typing import Dict, Any, Literal
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
@@ -59,7 +59,7 @@ async def invoke_agent_endpoint(
     """
     Invoke AI agent to interpret Intelligence Engine evidence.
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     if not check_ollama_connection():
         raise HTTPException(
@@ -82,11 +82,11 @@ async def invoke_agent_endpoint(
 
         result = invoke_agent(request.task_type, initial_state)
 
-        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
         run_id = None
         if request.save_run:
-            ai_run_repo = AIRunRepository(db)
+            ai_run_repo = AIRunRepository()
             ai_run = AIRun(
                 agent_type=request.task_type,
                 input_data={"evidence": request.evidence, "context": request.context},
@@ -129,7 +129,7 @@ async def list_ai_runs(
     current_user: dict = Depends(get_current_user),
 ):
     """List recent AI agent runs with optional filtering."""
-    ai_run_repo = AIRunRepository(db)
+    ai_run_repo = AIRunRepository()
 
     filters = {}
     if agent_type:
@@ -145,7 +145,7 @@ async def get_ai_run(
     current_user: dict = Depends(get_current_user),
 ):
     """Get specific AI run by ID."""
-    ai_run_repo = AIRunRepository(db)
+    ai_run_repo = AIRunRepository()
     run = await ai_run_repo.get_by_id(run_id)
 
     if not run:

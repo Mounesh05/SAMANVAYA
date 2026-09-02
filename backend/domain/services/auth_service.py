@@ -3,7 +3,7 @@ Authentication service.
 Handles user registration, login, and authentication logic.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from core.security import hash_password, verify_password, create_access_token
 from repositories.user_repository import UserRepository
@@ -55,7 +55,7 @@ class AuthService:
             "team_id": user_data.team_id,
             "avatar": user_data.avatar,
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         await self.user_repo.insert(user_doc)

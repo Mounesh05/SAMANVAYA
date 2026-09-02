@@ -3,7 +3,7 @@ Audit Logging System
 Tracks all sensitive operations for compliance and security.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 from enum import Enum
 from core.database import col
@@ -94,8 +94,8 @@ class AuditLogger:
                 "user_agent": user_agent,
                 "success": success,
                 "error_message": error_message,
-                "timestamp": datetime.utcnow().isoformat(),
-                "date": datetime.utcnow().strftime("%Y-%m-%d"),  # For easier querying
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),  # For easier querying
             }
             
             await self.collection.insert_one(audit_log)
@@ -174,7 +174,7 @@ class AuditLogger:
         """
         from datetime import timedelta
         
-        start_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
         
         logs = await self.get_logs(actor_id=actor_id, start_date=start_date, limit=1000)
         

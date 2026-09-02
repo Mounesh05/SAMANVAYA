@@ -2,7 +2,7 @@
 Story service for user story management.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import uuid
 from repositories.story_repository import StoryRepository
@@ -37,7 +37,7 @@ class StoryService:
             "status": "todo",
             "risk": "low",
             "alignment_score": None,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         await self.story_repo.insert(story_doc)

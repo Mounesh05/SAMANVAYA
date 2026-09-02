@@ -2,7 +2,7 @@
 Sprint service for sprint management and Plan vs Reality logic.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 from repositories.sprint_repository import SprintRepository
@@ -37,7 +37,7 @@ class SprintService:
             "status": "planning",
             "velocity": None,
             "completion_pct": 0.0,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         await self.sprint_repo.insert(sprint_doc)
