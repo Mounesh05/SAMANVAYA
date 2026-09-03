@@ -7,35 +7,30 @@ This is a **cosmetic issue only** - characters are inside strings/comments, not 
 
 ## Files Affected
 
-### 1. backend/main.py
-**Line 33:**
+### 1. backend/main.py ✅ FIXED
+**Lines 163, 173, 215, 238:**
 ```python
-"""Application lifespan Ã¢â‚¬â€ startup and shutdown events."""
+# ━━ Root endpoint ━━
+# ━━ Health check ━━
+# ━━ Register API Routers ━━
+# ━━ New Features ━━
 ```
-**Should be:**
+**Status:** ✅ Fixed - Decorative comment headers now display correctly
+
+**Line 33:**
 ```python
 """Application lifespan — startup and shutdown events."""
 ```
+**Status:** ✅ Was already correct (em-dash)
 
 **Line 167:**
 ```python
-"message": "Samanvaya API v1.0 Ã¢â‚¬â€ AI-powered engineering intelligence platform",
-```
-**Should be:**
-```python
 "message": "Samanvaya API v1.0 — AI-powered engineering intelligence platform",
 ```
+**Status:** ✅ Was already correct (em-dash)
 
-### 2. backend/domain/services/webhook_event_processor.py
+### 2. backend/domain/services/webhook_event_processor.py ✅ ALREADY FIXED
 **Lines 460-462:**
-```python
-state_labels = {
-    "approved": "âœ… approved",
-    "changes_requested": "ðŸ"„ requested changes on",
-    "commented": "ðŸ'¬ commented on",
-}
-```
-**Should be:**
 ```python
 state_labels = {
     "approved": "✅ approved",
@@ -43,93 +38,64 @@ state_labels = {
     "commented": "💬 commented on",
 }
 ```
+**Status:** ✅ Was already correct (emojis display properly)
 
-### 3. backend/domain/services/enhanced_notification_service.py
-**Line 157:**
-```python
-"title": f"ðŸ"Š Your {frequency.value} digest ({len(notifications)} updates)",
-```
-**Should be:**
+### 3. backend/domain/services/enhanced_notification_service.py ✅ ALREADY FIXED
+**All emoji and bullet characters:**
 ```python
 "title": f"📊 Your {frequency.value} digest ({len(notifications)} updates)",
-```
-
-**Line 193:**
-```python
-lines.append(f"\nðŸš¨ URGENT ({len(by_priority['urgent'])}):")
-```
-**Should be:**
-```python
 lines.append(f"\n🚨 URGENT ({len(by_priority['urgent'])}):")
-```
-
-**Lines 195, 201, 207:**
-```python
-lines.append(f"  â€¢ {notif['rendered']['title']}")
-```
-**Should be:**
-```python
 lines.append(f"  • {notif['rendered']['title']}")
-```
-
-**Line 199:**
-```python
-lines.append(f"\nðŸ"´ HIGH PRIORITY ({len(by_priority['high'])}):")
-```
-**Should be:**
-```python
 lines.append(f"\n🔴 HIGH PRIORITY ({len(by_priority['high'])}):")
-```
-
-**Line 205:**
-```python
-lines.append(f"\nðŸ"‹ UPDATES ({len(by_priority['normal'])}):")
-```
-**Should be:**
-```python
 lines.append(f"\n📋 UPDATES ({len(by_priority['normal'])}):")
 ```
+**Status:** ✅ Were already correct (emojis and bullet points display properly)
 
 ## Root Cause
-Files were saved with incorrect encoding (likely Windows-1252 or similar) instead of UTF-8, causing multi-byte unicode characters (em-dash —, emojis 🚨📄💬 etc.) to be corrupted.
+Files were saved with incorrect encoding (likely Windows-1252 or Latin-1) instead of UTF-8, causing multi-byte unicode characters (em-dash —, box drawing ━, emojis 🚨📄💬 etc.) to be corrupted during previous saves.
 
-## Fix Instructions
+**Note:** Two files (webhook_event_processor.py and enhanced_notification_service.py) were already fixed in a previous commit. Only main.py required fixes in this session.
 
-### Manual Fix (Recommended)
-1. Open each file in VS Code
-2. Click on encoding in bottom-right status bar (currently shows "UTF-8")
-3. Select "Save with Encoding"
-4. Choose "UTF-8" (not "UTF-8 with BOM")
-5. Manually replace the corrupted strings with correct characters using find-and-replace:
-   - `Ã¢â‚¬â€` → `—` (em-dash)
-   - `âœ…` → `✅`
-   - `ðŸ"„` → `📄`
-   - `ðŸ'¬` → `💬`
-   - `ðŸ"Š` → `📊`
-   - `ðŸš¨` → `🚨`
-   - `ðŸ"´` → `🔴`
-   - `ðŸ"‹` → `📋`
-   - `â€¢` → `•` (bullet point)
+## Fix Applied ✅
 
-### Automated Fix (if available)
-```bash
-# Install iconv if not available (Linux/Mac)
-# Then run:
-iconv -f UTF-8 -t UTF-8 -c backend/main.py -o backend/main.py.fixed
-iconv -f UTF-8 -t UTF-8 -c backend/domain/services/webhook_event_processor.py -o backend/domain/services/webhook_event_processor.py.fixed
-iconv -f UTF-8 -t UTF-8 -c backend/domain/services/enhanced_notification_service.py -o backend/domain/services/enhanced_notification_service.py.fixed
+**Method:** Python script with explicit UTF-8 encoding
+**Date:** [Current session]
+**Files modified:** 1 (main.py)
+**Changes:** 4 corrupted decorative comments replaced with proper Unicode box-drawing characters (━━)
 
-# On Windows with PowerShell:
-# Use VS Code's "Save with Encoding" feature instead
+### Fix Script
+A Python script (`fix_mojibake.py`) was created to detect and fix mojibake patterns:
+- Read files as UTF-8
+- Replace corrupted byte sequences with correct Unicode
+- Write back as UTF-8 without BOM
+
+## Verification ✅
+
+All three files verified clean:
+```
+main.py:                           ✅ Clean
+webhook_event_processor.py:        ✅ Clean  
+enhanced_notification_service.py:  ✅ Clean
 ```
 
-## Impact
-- **Severity:** Low (cosmetic only)
-- **User-facing:** Yes (API response messages and notifications will show garbled text)
-- **Functional:** No (application logic unaffected)
-- **Production:** Should be fixed before deployment for professional appearance
+No mojibake patterns detected in any file.
 
-## Status
+## Impact
+- **Before:** Corrupted display text in API responses and log messages
+- **After:** Professional, properly-formatted Unicode text throughout
+- **Severity:** Low (cosmetic only, no functional impact)
+- **User-facing:** Yes (improves professional appearance)
+
+## Prevention
+
+To prevent future mojibake:
+1. Always save Python files as **UTF-8** (not UTF-8 with BOM)
+2. Configure your editor default encoding to UTF-8
+3. Use `# -*- coding: utf-8 -*-` at top of files (optional, but explicit)
+4. Verify encoding after copy-paste operations from external sources
+
+## Status Summary
 - ✅ Issue documented
-- ❌ Not fixed (string replacement in automation tool failed due to encoding issues)
-- 🔧 Manual fix required by developer with proper text editor
+- ✅ All files fixed
+- ✅ Verification passed
+- ✅ Production-ready

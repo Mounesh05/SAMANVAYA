@@ -160,7 +160,7 @@ async def limit_request_size(request: Request, call_next):
 
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Root endpoint Ã¢â€â‚¬Ã¢â€â‚¬
+# ━━ Root endpoint ━━
 @app.get("/")
 async def root():
     return {
@@ -170,7 +170,7 @@ async def root():
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Health check Ã¢â€â‚¬Ã¢â€â‚¬
+# ━━ Health check ━━
 @app.get("/health")
 async def health_check():
     """
@@ -212,7 +212,7 @@ async def health_check():
     }
 
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ Register API Routers Ã¢â€â‚¬Ã¢â€â‚¬
+# ━━ Register API Routers ━━
 from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai,
     cicd_logs, performance, employees, teams, evaluation,
@@ -235,7 +235,7 @@ app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])
 app.include_router(cicd_logs.router, prefix="/api/cicd-logs", tags=["CI/CD Logs"])
 app.include_router(performance.router, prefix="/api/performance", tags=["Developer Performance"])
 
-# Ã¢â€â‚¬Ã¢â€â‚¬ New Features Ã¢â€â‚¬Ã¢â€â‚¬
+# ━━ New Features ━━
 app.include_router(boards.router, prefix="/api/boards", tags=["Boards"])
 app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
 app.include_router(activity.router, prefix="/api/activity", tags=["Activity Feed"])
