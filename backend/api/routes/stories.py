@@ -5,7 +5,8 @@ Story API endpoints.
 from fastapi import APIRouter, HTTPException, Depends, Query
 from domain.models.story import StoryCreate, Story
 from domain.services.story_service import StoryService
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 
 router = APIRouter()
 story_service = StoryService()
@@ -14,11 +15,11 @@ story_service = StoryService()
 @router.post("/", response_model=Story, status_code=201)
 async def create_story(
     story_data: StoryCreate,
-    user: dict = Depends(require_roles("PM", "LEAD")),
+    user: dict = Depends(require_permission(Permission.CREATE_STORY)),
 ):
     """
     Create a new user story.
-    Only PM and LEAD can create stories.
+    Requires CREATE_STORY permission (DEVELOPER, LEAD, PM roles by default).
     """
     try:
         story = await story_service.create_story(story_data)

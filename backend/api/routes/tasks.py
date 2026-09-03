@@ -7,7 +7,8 @@ from domain.models.task import TaskCreate, Task
 from domain.models.workflow import TransitionRequest, AvailableTransitions
 from domain.services.task_service import TaskService
 from domain.services.workflow_service import WorkflowService
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 
 router = APIRouter()
 task_service = TaskService()
@@ -17,9 +18,12 @@ workflow_service = WorkflowService()
 @router.post("/", response_model=Task, status_code=201)
 async def create_task(
     task_data: TaskCreate,
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
+    user: dict = Depends(require_permission(Permission.CREATE_TASK)),
 ):
-    """Create a new task. HR and CEO cannot create tasks per RBAC spec."""
+    """
+    Create a new task.
+    Requires CREATE_TASK permission (LEAD, PM roles by default).
+    """
     try:
         task = await task_service.create_task(task_data)
         return task
@@ -75,9 +79,12 @@ async def list_story_tasks(
 async def update_task_status(
     task_id: str,
     status: str = Query(..., regex="^(todo|in_progress|review|done|blocked)$"),
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
+    user: dict = Depends(require_permission(Permission.MOVE_TASK)),
 ):
-    """Update task status (no workflow enforcement — use /transition for enforced moves)."""
+    """
+    Update task status (no workflow enforcement — use /transition for enforced moves).
+    Requires MOVE_TASK permission (LEAD, PM roles by default).
+    """
     success = await task_service.update_task_status(task_id, status)
     if not success:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -88,11 +95,12 @@ async def update_task_status(
 async def transition_task(
     task_id: str,
     body: TransitionRequest,
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
+    user: dict = Depends(require_permission(Permission.TRANSITION_TASK)),
 ):
     """
     Move a task to a new status via the workflow engine.
     Enforces valid transitions — returns 400 if the move is not allowed.
+    Requires TRANSITION_TASK permission (LEAD, PM roles by default).
     """
     user_id = user.get("employee_id", user.get("id", ""))
     user_name = user.get("name", "Unknown")

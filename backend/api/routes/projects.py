@@ -5,7 +5,8 @@ Project API endpoints.
 from fastapi import APIRouter, HTTPException, Depends, Query
 from domain.models.project import ProjectCreate, Project
 from domain.services.project_service import ProjectService
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 
 router = APIRouter()
 project_service = ProjectService()
@@ -14,11 +15,11 @@ project_service = ProjectService()
 @router.post("/", response_model=Project, status_code=201)
 async def create_project(
     project_data: ProjectCreate,
-    user: dict = Depends(require_roles("PM")),
+    user: dict = Depends(require_permission(Permission.CREATE_PROJECT)),
 ):
     """
     Create a new project.
-    Only PM can create projects per canonical RBAC spec.
+    Requires CREATE_PROJECT permission (PM role by default).
     """
     try:
         project = await project_service.create_project(

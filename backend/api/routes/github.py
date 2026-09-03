@@ -4,7 +4,8 @@ Allows manual PR sync and repository management.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 from domain.services.github_service import GitHubService
 from pydantic import BaseModel
 import httpx
@@ -111,11 +112,11 @@ async def list_repositories(
 @router.post("/sync-pr")
 async def sync_pull_request(
     request: PRSyncRequest,
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM")),
+    user: dict = Depends(require_permission(Permission.SYNC_PR)),
 ):
     """
     Sync a single PR from GitHub with AI analysis.
-    Requires authentication.
+    Requires SYNC_PR permission (DEVELOPER role by default).
     
     Fetches PR data, analyzes risk (Layer 5), optionally invokes AI agent (Layer 6),
     and stores results in database.

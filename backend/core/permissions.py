@@ -36,6 +36,23 @@ class Permission(str, Enum):
     VIEW_OWN_SUBMITTED_FEEDBACK = "VIEW_OWN_SUBMITTED_FEEDBACK"
     VIEW_ROLE_FEEDBACK = "VIEW_ROLE_FEEDBACK"
 
+    # CRUD Operations
+    CREATE_PROJECT = "CREATE_PROJECT"
+    CREATE_TASK = "CREATE_TASK"
+    CREATE_SPRINT = "CREATE_SPRINT"
+    CREATE_STORY = "CREATE_STORY"
+    CREATE_TEAM = "CREATE_TEAM"
+    CREATE_BUG = "CREATE_BUG"
+    CREATE_INCIDENT = "CREATE_INCIDENT"
+    
+    # Task Management
+    MOVE_TASK = "MOVE_TASK"
+    TRANSITION_TASK = "TRANSITION_TASK"
+    
+    # Code Analysis & Integration
+    TRIGGER_CODE_ANALYSIS = "TRIGGER_CODE_ANALYSIS"
+    SYNC_PR = "SYNC_PR"
+
     # Administration (ADMIN only)
     MANAGE_USERS = "MANAGE_USERS"
     MANAGE_TEAMS = "MANAGE_TEAMS"
@@ -72,6 +89,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
         Permission.VIEW_ORGANIZATION_DATA,
+        # CRUD permissions
+        Permission.CREATE_BUG,
+        Permission.CREATE_STORY,
+        # Integration
+        Permission.SYNC_PR,
     },
 
     OrganizationalRole.LEAD: {
@@ -82,6 +104,15 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_LEAD_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        # CRUD permissions
+        Permission.CREATE_TASK,
+        Permission.CREATE_STORY,
+        Permission.CREATE_BUG,
+        # Task management
+        Permission.MOVE_TASK,
+        Permission.TRANSITION_TASK,
+        # AI
+        Permission.TRIGGER_AI_EVALUATION,
     },
 
     OrganizationalRole.PM: {
@@ -92,6 +123,14 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_PM_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        # CRUD permissions
+        Permission.CREATE_PROJECT,
+        Permission.CREATE_TASK,
+        Permission.CREATE_SPRINT,
+        Permission.CREATE_STORY,
+        # Task management
+        Permission.MOVE_TASK,
+        Permission.TRANSITION_TASK,
     },
 
     OrganizationalRole.QA: {
@@ -102,6 +141,10 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_QA_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        # CRUD permissions
+        Permission.CREATE_BUG,
+        # Code analysis
+        Permission.TRIGGER_CODE_ANALYSIS,
     },
 
     OrganizationalRole.DEVOPS: {
@@ -112,6 +155,10 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_DEVOPS_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        # CRUD permissions
+        Permission.CREATE_INCIDENT,
+        # Code analysis
+        Permission.TRIGGER_CODE_ANALYSIS,
     },
 
     OrganizationalRole.HR: {
@@ -122,6 +169,15 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        # Admin permissions (HR gets some admin capabilities)
+        Permission.MANAGE_EMPLOYEES,
+        Permission.MANAGE_TEAMS,
+        Permission.ASSIGN_TEAM_LEAD,
+        Permission.ASSIGN_PROJECT,
+        Permission.TRIGGER_AI_EVALUATION,
+        Permission.VIEW_AUDIT_LOGS,
+        # CRUD permissions
+        Permission.CREATE_TEAM,
     },
 
     OrganizationalRole.CEO: {
@@ -133,6 +189,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.SUBMIT_CEO_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
         Permission.TRIGGER_AI_EVALUATION,
+        Permission.TRIGGER_BULK_EVALUATION,
+        Permission.EXPORT_DATA,
+        Permission.VIEW_AUDIT_LOGS,
+        # CRUD permissions
+        Permission.CREATE_INCIDENT,
     },
 }
 

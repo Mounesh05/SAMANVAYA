@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 from core.database import col
 from repositories.user_repository import UserRepository
-from core.dependencies import get_current_user, require_admin
+from core.dependencies import get_current_user, require_admin, require_permission
 from core.permissions import Permission, get_user_permissions
 from core.audit import log_audit, AuditAction
 
@@ -59,30 +59,18 @@ class TeamMemberResponse(BaseModel):
 @router.post("/", response_model=TeamResponse, status_code=201)
 async def create_team(
     team: TeamCreate,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_permission(Permission.CREATE_TEAM))
 ):
     """
     Create a new team.
     
-    **Required Permission:** MANAGE_TEAMS (ADMIN or HR)
+    **Required Permission:** CREATE_TEAM (HR role by default)
     
     Creates a team with:
     - Unique team ID and name
     - Optional team lead assignment
     - Optional project associations
     """
-    # Check permission
-    user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
-        user.get('is_admin', False)
-    )
-    
-    if Permission.MANAGE_TEAMS not in user_permissions:
-        raise HTTPException(
-            status_code=403,
-            detail="Insufficient permissions. Only ADMIN or HR can create teams."
-        )
-    
     try:
         teams_col = col("teams")
         

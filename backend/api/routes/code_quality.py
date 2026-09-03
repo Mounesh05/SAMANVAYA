@@ -20,7 +20,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from core.database import col
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
 from intelligence.analyzers.language_detector import LanguageDetector
@@ -64,11 +65,12 @@ class RunStatus(BaseModel):
 async def start_analysis(
     body: AnalyzeRequest,
     background_tasks: BackgroundTasks,
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "QA", "DEVOPS")),
+    user: dict = Depends(require_permission(Permission.TRIGGER_CODE_ANALYSIS)),
 ):
     """
     Start an async code quality analysis run.
     Returns run_id immediately — poll /runs/{run_id} for results.
+    Requires TRIGGER_CODE_ANALYSIS permission (QA, DEVOPS roles by default).
     """
     run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
     now = datetime.now(timezone.utc).isoformat()

@@ -5,7 +5,8 @@ Sprint API endpoints.
 from fastapi import APIRouter, HTTPException, Depends
 from domain.models.sprint import SprintCreate, Sprint
 from domain.services.sprint_service import SprintService
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 
 router = APIRouter()
 sprint_service = SprintService()
@@ -14,11 +15,11 @@ sprint_service = SprintService()
 @router.post("/", response_model=Sprint, status_code=201)
 async def create_sprint(
     sprint_data: SprintCreate,
-    user: dict = Depends(require_roles("PM", "LEAD")),
+    user: dict = Depends(require_permission(Permission.CREATE_SPRINT)),
 ):
     """
     Create a new sprint.
-    Only PM and LEAD can create sprints.
+    Requires CREATE_SPRINT permission (PM role by default).
     """
     try:
         sprint = await sprint_service.create_sprint(sprint_data)
