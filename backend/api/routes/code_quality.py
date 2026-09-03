@@ -286,7 +286,6 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
         if body.use_ai and body.analysis_level != "quick":
             try:
                 from agents.code_agent import code_analysis_node
-                from intelligence.evidence_builder import EvidenceBuilder
                 # Build a summary string for the agent
                 summary = (
                     f"Language: {evidence.primary_language}\n"

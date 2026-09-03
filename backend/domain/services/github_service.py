@@ -135,8 +135,9 @@ class GitHubService:
                 else:
                     # Decide which analysis to use
                     if use_deep_analysis:
-                        # NEW: Use comprehensive deep analysis
-                        from intelligence.evidence_builder import EvidenceBuilder
+                        # NEW: Use unified analyzer system
+                        from intelligence.analyzers.language_detector import LanguageDetector
+                        from intelligence.analyzers.registry import get_analyzers_for_profile
                         from agents.code_agent import code_analysis_node
                         from domain.models.code_quality_report import CodeQualityReport, QualityBreakdown
                         import time
@@ -145,12 +146,9 @@ class GitHubService:
                         
                         start_time = time.time()
                         
-                        # Use platform-appropriate temp directory for evidence building
+                        # Use platform-appropriate temp directory
                         temp_dir = tempfile.gettempdir()
                         repo_work_dir = os.path.join(temp_dir, f"samanvaya-repo-{owner}-{repo}")
-                        
-                        # Build comprehensive evidence package
-                        evidence_builder = EvidenceBuilder(repo_work_dir)
                         
                         pr_context = {
                             "pr_title": github_pr.get("title", ""),
@@ -158,16 +156,91 @@ class GitHubService:
                             "pr_number": pr_number,
                             "repo": f"{owner}/{repo}",
                             "project_id": project_id,
+                            "commit_sha": github_pr.get("head", {}).get("sha"),
                         }
                         
                         changed_file_paths = [f["filename"] for f in files]
                         
-                        # Run all analyzers and build evidence
-                        evidence = await evidence_builder.build_evidence(
-                            changed_files=changed_file_paths,
-                            pr_context=pr_context,
-                            deep_analysis=True
-                        )
+                        # Detect languages and get appropriate analyzers
+                        detector = LanguageDetector()
+                        language_profile = detector.detect_from_files(changed_file_paths)
+                        analyzers = get_analyzers_for_profile(language_profile)
+                        
+                        if not analyzers:
+                            logger.warning(f"No analyzers available for languages: {language_profile.detected_languages}")
+                            # Fallback to lightweight analysis
+                            evidence = {
+                                "static_analysis": {},
+                                "complexity": {},
+                                "security": {},
+                                "tests": {},
+                                "dependencies": {},
+                                "architecture": {},
+                                "quality_score": 50,
+                                "quality_factors": ["No analyzer available"],
+                                "overall_risk_score": 30,
+                                "risk_factors": ["Language not supported"],
+                            }
+                        else:
+                            # Run analysis with primary language analyzer
+                            primary_analyzer = list(analyzers.values())[0]
+                            evidence_obj = await primary_analyzer.analyze(
+                                changed_files=changed_file_paths,
+                                repo_path=repo_work_dir,
+                                pr_context=pr_context
+                            )
+                            
+                            # Convert CodeQualityEvidence to dict format for code_agent compatibility
+                            evidence = {
+                                "static_analysis": {
+                                    "findings": [
+                                        {
+                                            "file": f.file_path,
+                                            "line": f.line_number,
+                                            "rule_id": f.rule_id,
+                                            "category": f.category,
+                                            "severity": f.severity.value,
+                                            "message": f.message,
+                                            "source": f.source_tool,
+                                        }
+                                        for f in evidence_obj.static_findings
+                                    ],
+                                    "tools_used": evidence_obj.tools_executed,
+                                },
+                                "complexity": {
+                                    "average_complexity": evidence_obj.complexity.average_complexity if evidence_obj.complexity else 0,
+                                    "max_complexity": evidence_obj.complexity.max_complexity if evidence_obj.complexity else 0,
+                                    "high_complexity_functions": evidence_obj.complexity.high_complexity_functions if evidence_obj.complexity else [],
+                                    "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else 0,
+                                },
+                                "security": {
+                                    "critical_count": evidence_obj.security.critical_count if evidence_obj.security else 0,
+                                    "high_count": evidence_obj.security.high_count if evidence_obj.security else 0,
+                                    "findings": [
+                                        {"file": f.file_path, "line": f.line_number, "type": f.rule_id, "severity": f.severity.value}
+                                        for f in (evidence_obj.security.findings if evidence_obj.security else [])
+                                    ],
+                                },
+                                "tests": {
+                                    "total_tests": evidence_obj.testing.total_tests if evidence_obj.testing else 0,
+                                    "passed_tests": evidence_obj.testing.passed_tests if evidence_obj.testing else 0,
+                                    "failed_tests": evidence_obj.testing.failed_tests if evidence_obj.testing else 0,
+                                    "coverage_percentage": evidence_obj.testing.coverage_percentage if evidence_obj.testing else 0,
+                                },
+                                "dependencies": {
+                                    "new_packages": [],
+                                    "updated_packages": [],
+                                    "vulnerability_count": len(evidence_obj.security.dependency_vulnerabilities) if evidence_obj.security else 0,
+                                },
+                                "architecture": {
+                                    "layer_violations": [],
+                                    "circular_dependencies": [],
+                                },
+                                "quality_score": 70,  # Placeholder, will be computed by AI agent
+                                "quality_factors": [],
+                                "overall_risk_score": 30,  # Placeholder, will be computed by AI agent
+                                "risk_factors": [],
+                            }
                         
                         # Prepare state for enhanced AI agent
                         agent_state = {
