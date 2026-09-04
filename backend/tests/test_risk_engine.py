@@ -80,40 +80,44 @@ class TestPRRisk:
         return RiskEngine()
 
     def test_large_pr_risk(self, engine):
-        result = engine._build_simple_pr_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_pr_evidence(
             pr_id="PR-1",
             files_changed=25,
             lines_added=100,
             lines_deleted=50,
             commit_count=5,
-        )
+        ))
         assert result["risk_score"] > 20
         assert any("Large PR" in f for f in result["risk_factors"])
 
     def test_small_pr_no_size_penalty(self, engine):
-        result = engine._build_simple_pr_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_pr_evidence(
             pr_id="PR-2",
             files_changed=2,
             lines_added=10,
             lines_deleted=5,
             commit_count=1,
-        )
+        ))
         assert not any("Large PR" in f or "Medium PR" in f for f in result["risk_factors"])
 
     def test_failing_tests_high_risk(self, engine):
-        result = engine._build_simple_pr_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_pr_evidence(
             pr_id="PR-3",
             files_changed=3,
             lines_added=20,
             lines_deleted=10,
             commit_count=1,
             tests_failed=5,
-        )
+        ))
         assert result["risk_score"] >= 25
         assert any("failing tests" in f for f in result["risk_factors"])
 
     def test_coverage_decrease_risk(self, engine):
-        result = engine._build_simple_pr_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_pr_evidence(
             pr_id="PR-4",
             files_changed=3,
             lines_added=20,
@@ -121,18 +125,19 @@ class TestPRRisk:
             commit_count=1,
             previous_coverage=80.0,
             current_coverage=70.0,
-        )
+        ))
         assert any("Coverage decreased" in f for f in result["risk_factors"])
 
     def test_stale_pr_risk(self, engine):
-        result = engine._build_simple_pr_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_pr_evidence(
             pr_id="PR-5",
             files_changed=3,
             lines_added=20,
             lines_deleted=10,
             commit_count=1,
             pr_age_hours=200,
-        )
+        ))
         assert any("stale" in f for f in result["risk_factors"])
 
 

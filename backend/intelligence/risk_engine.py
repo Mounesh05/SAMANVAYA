@@ -120,7 +120,7 @@ class RiskEngine:
         commit_count = commit_count or 1
         
         # Build evidence using SIMPLE formulas (not deep analysis)
-        evidence = self._build_simple_pr_evidence(
+        evidence = await self._build_simple_pr_evidence(
             pr_id=pr_id,
             files_changed=files_changed,
             lines_added=lines_added,
@@ -135,7 +135,7 @@ class RiskEngine:
         
         return evidence
     
-    def _build_simple_pr_evidence(
+    async def _build_simple_pr_evidence(
         self,
         pr_id: str,
         files_changed: int,
