@@ -32,6 +32,7 @@ from intelligence.rules.risk_rules import (
 from repositories.pr_repository import PRRepository
 from repositories.sprint_repository import SprintRepository
 from repositories.story_repository import StoryRepository
+from domain.services.risk_config_service import get_risk_config_service
 
 
 class RiskEngine:
@@ -39,13 +40,43 @@ class RiskEngine:
     Central risk calculation engine for SIMPLE analysis.
     Coordinates all metrics calculators using formulas (NO AI, NO TOOLS).
     
-    For DEEP analysis with static analyzers and AI, use EvidenceBuilder directly.
+    For DEEP analysis with static analyzers and AI, use AnalyzerRegistry directly.
+    
+    Uses configurable risk weights and thresholds from database (with fallback to defaults).
     """
 
     def __init__(self):
         self.pr_repo = PRRepository()
         self.sprint_repo = SprintRepository()
         self.story_repo = StoryRepository()
+        self._config_service = get_risk_config_service()
+    
+    async def _classify_risk_level(
+        self,
+        risk_score: int,
+        project_id: Optional[str] = None
+    ) -> str:
+        """
+        Classify risk score using configurable thresholds.
+        
+        Args:
+            risk_score: Integer 0-100
+            project_id: Optional project ID for project-specific thresholds
+        
+        Returns:
+            Risk level: CRITICAL|HIGH|MEDIUM|LOW
+        """
+        config = await self._config_service.get_configuration(project_id)
+        thresholds = config.risk_thresholds
+        
+        if risk_score >= thresholds.critical:
+            return "CRITICAL"
+        elif risk_score >= thresholds.high:
+            return "HIGH"
+        elif risk_score >= thresholds.medium:
+            return "MEDIUM"
+        else:
+            return "LOW"
 
     async def analyze_pull_request(
         self,
@@ -160,7 +191,7 @@ class RiskEngine:
         
         # Cap at 100
         risk_score = min(risk_score, 100)
-        risk_level = RiskRules.classify_risk_level(risk_score)
+        risk_level = await self._classify_risk_level(risk_score)
         
         return {
             "pr_id": pr_id,
@@ -302,7 +333,7 @@ class RiskEngine:
             risk_factors.append("Low completion rate")
         
         risk_score = min(risk_score, 100)
-        risk_level = RiskRules.classify_risk_level(risk_score)
+        risk_level = await self._classify_risk_level(risk_score)
         
         return {
             "sprint_id": sprint_id,
@@ -398,7 +429,7 @@ class RiskEngine:
                 risk_factors.append(f"{rollbacks} rollbacks")
         
         risk_score = min(risk_score, 100)
-        risk_level = RiskRules.classify_risk_level(risk_score)
+        risk_level = await self._classify_risk_level(risk_score)
         
         return {
             "deployment_id": deployment_id,
@@ -428,7 +459,7 @@ class RiskEngine:
         Returns:
             Risk level: CRITICAL|HIGH|MEDIUM|LOW
         """
-        return RiskRules.classify_risk_level(risk_score)
+        return await self._classify_risk_level(risk_score)
 
     async def analyze_evidence(
         self,
@@ -454,9 +485,24 @@ class RiskEngine:
                 "dimension_scores": dict,
             }
         """
-        from intelligence.rules.risk_rules import RISK_DIMENSION_WEIGHTS, BASE_RISK
-
-        weights = RISK_DIMENSION_WEIGHTS
+        from domain.services.risk_config_service import get_risk_config_service
+        
+        # Load configurable weights (DB or fallback to hardcoded)
+        config_service = get_risk_config_service()
+        config = await config_service.get_configuration(
+            project_id=evidence.repository_id
+        )
+        
+        # Extract weights from configuration
+        weights = {
+            "alpha_size_zscore": config.risk_weights.alpha_size_zscore,
+            "beta_hotspot": config.risk_weights.beta_hotspot,
+            "gamma_dependency": config.risk_weights.gamma_dependency,
+            "delta_missing_tests": config.risk_weights.delta_missing_tests,
+            "epsilon_security": config.risk_weights.epsilon_security,
+            "zeta_complexity": config.risk_weights.zeta_complexity,
+        }
+        BASE_RISK = config.base_risk
         risk_factors: list[str] = []
         dimension_scores: dict = {}
 

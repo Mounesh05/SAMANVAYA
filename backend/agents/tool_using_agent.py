@@ -265,36 +265,7 @@ class CodeAnalysisAgent(ToolUsingAgent):
         ))
 
 
-class RiskAssessmentAgent(ToolUsingAgent):
-    """Agent specialized in risk assessment."""
-    
-    def __init__(self):
-        super().__init__(
-            name="RiskAssessmentAgent",
-            role="risk_assessment",
-            capabilities=[
-                AgentCapability.ANALYZE_METRICS,
-                AgentCapability.QUERY_DATABASE,
-                AgentCapability.RETRIEVE_EVIDENCE,
-                AgentCapability.CREATE_RECOMMENDATION
-            ]
-        )
-        self._register_default_tools()
-    
+# NOTE: RiskAssessmentAgent was removed - we use rule-based risk calculation
+# (intelligence/risk_engine.py) instead of ML-based prediction.
+# No plans for ML model integration, so the agent class was deleted.
 
-        
-        self.register_tool(AgentTool(
-            name="predict_failure_probability",
-            description="Predict failure probability using ML",
-            function=predict_failure_probability,
-            parameters={"pr_id": "string"},
-            requires_approval=False
-        ))
-        
-        self.register_tool(AgentTool(
-            name="retrieve_historical_patterns",
-            description="Get historical risk patterns",
-            function=retrieve_historical_patterns,
-            parameters={"entity_type": "string", "entity_id": "string"},
-            requires_approval=False
-        ))

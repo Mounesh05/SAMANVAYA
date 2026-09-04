@@ -273,7 +273,8 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
 
         # Calculate quality score
         from intelligence.quality_engine import QualityEngine
-        quality_result = QualityEngine().calculate(evidence)
+        quality_engine = QualityEngine()
+        quality_result = await quality_engine.calculate(evidence)
 
         # Calculate risk score
         from intelligence.risk_engine import RiskEngine

@@ -3,7 +3,11 @@ GitHub Service.
 Orchestrates GitHub API client, data normalization, and integration with Samanvaya.
 """
 
+import logging
 from typing import Optional, List, Dict, Any
+
+logger = logging.getLogger(__name__)
+
 from integrations.github.client import GitHubClient
 from integrations.github.normalizer import GitHubNormalizer
 from repositories.pr_repository import PRRepository

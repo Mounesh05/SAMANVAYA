@@ -12,16 +12,20 @@ Formula:
               w_complexity * C_pen + w_arch * A_pen + w_dup * D_pen)
 
 Each penalty is normalized to [0, 100] before weighting.
+
+Uses configurable quality weights from database (with fallback to defaults).
 """
 
 from intelligence.evidence.models import CodeQualityEvidence, SeverityEnum
-from intelligence.rules.risk_rules import QUALITY_DIMENSION_WEIGHTS
+from domain.services.risk_config_service import get_risk_config_service
 
 
 class QualityEngine:
     """
     Calculates an independent Code Quality Index (0–100).
     Does NOT reuse or invert the risk score.
+    
+    Uses configurable quality weights from database (with fallback to defaults).
     """
 
     # Maximum finding counts before a dimension is fully penalized
@@ -33,8 +37,11 @@ class QualityEngine:
     MAX_COMPLEXITY = 50             # avg complexity that triggers max penalty
     MAX_DUPLICATION = 30.0          # duplication % that triggers max penalty
     MAX_ARCH_VIOLATIONS = 10
+    
+    def __init__(self):
+        self._config_service = get_risk_config_service()
 
-    def calculate(self, evidence: CodeQualityEvidence) -> dict:
+    async def calculate(self, evidence: CodeQualityEvidence) -> dict:
         """
         Calculate the Quality Index from a CodeQualityEvidence package.
 
@@ -46,7 +53,18 @@ class QualityEngine:
                 "penalties": { dimension: float },
             }
         """
-        w = QUALITY_DIMENSION_WEIGHTS
+        # Load configurable quality weights
+        config = await self._config_service.get_configuration(
+            project_id=evidence.repository_id
+        )
+        
+        w = {
+            "static_security": config.quality_weights.static_security,
+            "testing": config.quality_weights.testing,
+            "complexity": config.quality_weights.complexity,
+            "architecture": config.quality_weights.architecture,
+            "duplication": config.quality_weights.duplication,
+        }
 
         penalties = {
             "static_security": self._static_security_penalty(evidence),

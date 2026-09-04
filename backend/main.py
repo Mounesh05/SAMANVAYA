@@ -217,7 +217,7 @@ from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai,
     cicd_logs, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
-    recommendations, traceability,
+    recommendations, traceability, risk_configurations,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -243,6 +243,10 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["Not
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 
 # Code Quality & Multi-Language Intelligence Engine
+app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code Quality"])
+
+# Risk Configuration Management (Production-scale configurable weights)
+app.include_router(risk_configurations.router, prefix="/api/risk-configurations", tags=["Risk Configuration"])
 app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code Quality"])
 
 # AI Evaluation (Requires Auth)

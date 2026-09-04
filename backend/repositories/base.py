@@ -56,9 +56,27 @@ class BaseRepository:
         return result.acknowledged
 
     async def update(self, query: dict, update: dict) -> bool:
-        """Update a single document matching query."""
+        """
+        Update a single document matching query.
+        Automatically wraps update in $set.
+        """
         result = await self.col.update_one(query, {"$set": update})
         return result.matched_count > 0
+    
+    async def update_one(self, query: dict, update: dict) -> bool:
+        """
+        Update a single document with raw MongoDB update operators.
+        Does NOT wrap in $set - allows full control with $set, $unset, $push, etc.
+        
+        Args:
+            query: MongoDB query filter
+            update: MongoDB update document (e.g., {"$set": {...}, "$unset": {...}})
+        
+        Returns:
+            True if document was modified
+        """
+        result = await self.col.update_one(query, update)
+        return result.modified_count > 0
 
     async def upsert(self, query: dict, doc: dict) -> bool:
         """Update or insert a document."""

@@ -4,7 +4,7 @@ Allows manual PR sync and repository management.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from core.dependencies import get_current_user, require_permission
+from core.dependencies import get_current_user, require_permission, require_roles
 from core.permissions import Permission
 from domain.services.github_service import GitHubService
 from pydantic import BaseModel
