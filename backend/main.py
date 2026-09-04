@@ -31,7 +31,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown events."""
-    # Startup: nothing to do (client is created lazily)
+    # Startup: Create database indexes
+    try:
+        from intelligence.baselines.repository_baseline import RepositoryBaseline
+        await RepositoryBaseline().ensure_index()
+        logger.info("✓ Database indexes created/verified")
+    except Exception as e:
+        logger.warning(f"Failed to create database indexes: {e}")
+    
     yield
     # Shutdown: close MongoDB connection
     await close_db()

@@ -511,7 +511,7 @@ class RiskEngine:
         if baseline:
             lines_changed = evidence.lines_added + evidence.lines_deleted
             z_size = await baseline.compute_zscore(
-                evidence.repository_id, "lines_added", lines_changed
+                evidence.repository_id, "lines_changed", lines_changed
             )
         else:
             # Fallback: simple threshold-based score

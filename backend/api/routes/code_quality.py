@@ -337,6 +337,7 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
                 "files_changed": float(evidence.files_analyzed),
                 "lines_added": float(evidence.lines_added),
                 "lines_deleted": float(evidence.lines_deleted),
+                "lines_changed": float(evidence.lines_added + evidence.lines_deleted),  # Combined metric for Z-score
                 "complexity_avg": evidence.complexity.average_complexity,
                 "test_coverage": evidence.testing.coverage_percentage or 0.0,
             },
