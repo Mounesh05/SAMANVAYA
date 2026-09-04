@@ -14,7 +14,6 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 from core.dependencies import get_current_user
-from domain.models.user import User
 from domain.models.risk_configuration import (
     RiskConfiguration,
     RiskDimensionWeights,
@@ -63,7 +62,7 @@ class RiskConfigResponse(BaseModel):
 async def list_risk_configurations(
     project_id: Optional[str] = None,
     include_inactive: bool = False,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     List all risk configurations.
@@ -103,7 +102,7 @@ async def list_risk_configurations(
 @router.get("/{project_id_or_global}", response_model=RiskConfigResponse)
 async def get_risk_configuration(
     project_id_or_global: str,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Get risk configuration for a specific project or global default.
@@ -143,7 +142,7 @@ async def get_risk_configuration(
 @router.post("/", response_model=dict)
 async def create_risk_configuration(
     request: CreateRiskConfigRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Create or update risk configuration.
@@ -159,7 +158,7 @@ async def create_risk_configuration(
     """
     # Check permissions (only certain roles can modify configurations)
     allowed_roles = ["LEAD", "PM", "CEO", "DEVOPS"]
-    if current_user.role not in allowed_roles:
+    if current_user.get("role") not in allowed_roles:
         raise HTTPException(
             status_code=403,
             detail=f"Only {', '.join(allowed_roles)} can modify risk configurations"
@@ -174,7 +173,7 @@ async def create_risk_configuration(
         base_risk=request.base_risk,
         risk_thresholds=request.risk_thresholds,
         pr_size_thresholds=request.pr_size_thresholds,
-        created_by=current_user.username,
+        created_by=current_user.get("name", current_user.get("employee_id")),
     )
     
     # Validate before saving
@@ -191,7 +190,7 @@ async def create_risk_configuration(
     # Save configuration
     service = get_risk_config_service()
     try:
-        config_id = await service.save_configuration(config, current_user.username)
+        config_id = await service.save_configuration(config, current_user.get("name", current_user.get("employee_id")))
         return {
             "message": "Risk configuration saved successfully",
             "config_id": config_id,
@@ -206,7 +205,7 @@ async def create_risk_configuration(
 @router.delete("/{project_id_or_global}", response_model=dict)
 async def delete_risk_configuration(
     project_id_or_global: str,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Soft-delete risk configuration (set is_active=False).
@@ -221,7 +220,7 @@ async def delete_risk_configuration(
     """
     # Check permissions
     allowed_roles = ["LEAD", "PM", "CEO", "DEVOPS"]
-    if current_user.role not in allowed_roles:
+    if current_user.get("role") not in allowed_roles:
         raise HTTPException(
             status_code=403,
             detail=f"Only {', '.join(allowed_roles)} can delete risk configurations"
@@ -248,7 +247,7 @@ async def delete_risk_configuration(
 @router.post("/cache/clear", response_model=dict)
 async def clear_cache(
     project_id: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Clear configuration cache.
@@ -261,7 +260,7 @@ async def clear_cache(
     Requires: DEVOPS or CEO role
     """
     # Only DEVOPS or CEO can clear cache
-    if current_user.role not in ["DEVOPS", "CEO"]:
+    if current_user.get("role") not in ["DEVOPS", "CEO"]:
         raise HTTPException(
             status_code=403,
             detail="Only DEVOPS or CEO can clear configuration cache"
@@ -279,7 +278,7 @@ async def clear_cache(
 @router.get("/validate/{project_id_or_global}", response_model=dict)
 async def validate_configuration(
     project_id_or_global: str,
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Validate a risk configuration without saving.

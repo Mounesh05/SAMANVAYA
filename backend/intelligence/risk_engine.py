@@ -9,7 +9,7 @@ NOTE: This is the SIMPLE risk engine for basic metrics.
 For DEEP ANALYSIS, use EvidenceBuilder + CodeAgent directly (see github_service.py)
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from intelligence.rules.risk_rules import (
     RiskRules,
