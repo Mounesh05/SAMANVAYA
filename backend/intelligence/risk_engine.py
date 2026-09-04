@@ -265,7 +265,7 @@ class RiskEngine:
             sprint_duration_days = sprint.get("duration_days", 14)
             days_elapsed = sprint_duration_days // 2  # assume midpoint if dates missing
         
-        evidence = self._build_simple_sprint_evidence(
+        evidence = await self._build_simple_sprint_evidence(
             sprint_id=sprint_id,
             total_stories=total_stories,
             completed_stories=completed_stories,
@@ -280,7 +280,7 @@ class RiskEngine:
         
         return evidence
     
-    def _build_simple_sprint_evidence(
+    async def _build_simple_sprint_evidence(
         self,
         sprint_id: str,
         total_stories: int,
@@ -379,7 +379,7 @@ class RiskEngine:
                 "metrics": {},
             }
         
-        evidence = self._build_simple_deployment_evidence(
+        evidence = await self._build_simple_deployment_evidence(
             deployment_id=deployment_id,
             **ci_data,
             **deployment_data,
@@ -387,7 +387,7 @@ class RiskEngine:
         
         return evidence
     
-    def _build_simple_deployment_evidence(
+    async def _build_simple_deployment_evidence(
         self,
         deployment_id: str,
         builds_total: int,
@@ -449,7 +449,7 @@ class RiskEngine:
             }
         }
 
-    def classify_risk(self, risk_score: int) -> str:
+    async def classify_risk(self, risk_score: int) -> str:
         """
         Classify a numeric risk score into a risk level.
         

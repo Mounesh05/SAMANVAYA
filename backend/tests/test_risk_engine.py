@@ -149,7 +149,8 @@ class TestSprintRisk:
         return RiskEngine()
 
     def test_blocked_sprint_high_risk(self, engine):
-        result = engine._build_simple_sprint_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_sprint_evidence(
             sprint_id="S-1",
             total_stories=10,
             completed_stories=2,
@@ -160,12 +161,13 @@ class TestSprintRisk:
             original_points=50,
             days_elapsed=7,
             sprint_duration_days=14,
-        )
+        ))
         assert result["risk_score"] >= 15
         assert any("blocked" in f for f in result["risk_factors"])
 
     def test_on_track_sprint_low_risk(self, engine):
-        result = engine._build_simple_sprint_evidence(
+        import asyncio
+        result = asyncio.run(engine._build_simple_sprint_evidence(
             sprint_id="S-2",
             total_stories=10,
             completed_stories=5,
@@ -176,6 +178,6 @@ class TestSprintRisk:
             original_points=50,
             days_elapsed=7,
             sprint_duration_days=14,
-        )
+        ))
         assert result["risk_score"] < 30
         assert result["risk_level"] in ["LOW", "MEDIUM"]
