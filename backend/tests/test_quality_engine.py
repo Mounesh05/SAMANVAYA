@@ -10,7 +10,7 @@ from intelligence.evidence.models import (
     SeverityEnum,
     ComplexityEvidence,
     DuplicationEvidence,
-    TestingEvidence,
+    TestingEvidence as TestingEvidenceModel,  # Alias to avoid pytest collection
     SecurityEvidence,
     ArchitectureEvidence,
     ChangeContext,
@@ -32,7 +32,7 @@ def _make_evidence(**overrides) -> CodeQualityEvidence:
         "static_findings": [],
         "complexity": ComplexityEvidence(),
         "duplication": DuplicationEvidence(),
-        "testing": TestingEvidence(),
+        "testing": TestingEvidenceModel(),
         "security": SecurityEvidence(),
         "architecture": ArchitectureEvidence(),
         "ci_cd": CICDEvidence(),
@@ -52,7 +52,7 @@ class TestQualityEngine:
     @pytest.mark.asyncio
     async def test_perfect_evidence_scores_100(self, engine):
         # Explicitly set 100% coverage to avoid the None-coverage penalty
-        testing = TestingEvidence(coverage_percentage=100.0)
+        testing = TestingEvidenceModel(coverage_percentage=100.0)
         evidence = _make_evidence(testing=testing)
         result = await engine.calculate(evidence)
         assert result["quality_score"] == 100
@@ -77,7 +77,7 @@ class TestQualityEngine:
 
     @pytest.mark.asyncio
     async def test_no_test_coverage_does_not_penalize(self, engine):
-        testing = TestingEvidence(coverage_percentage=None)
+        testing = TestingEvidenceModel(coverage_percentage=None)
         evidence = _make_evidence(testing=testing)
 
         result = await engine.calculate(evidence)
@@ -87,7 +87,7 @@ class TestQualityEngine:
 
     @pytest.mark.asyncio
     async def test_low_coverage_penalized(self, engine):
-        testing = TestingEvidence(coverage_percentage=50.0)
+        testing = TestingEvidenceModel(coverage_percentage=50.0)
         evidence = _make_evidence(testing=testing)
         result = await engine.calculate(evidence)
         # 50% coverage: gap=30, penalty=(30/80)*100=37.5, weighted=37.5*0.25=9.375
@@ -143,7 +143,7 @@ class TestQualityEngine:
             )
             for i in range(20)
         ]
-        testing = TestingEvidence(coverage_percentage=0.0)
+        testing = TestingEvidenceModel(coverage_percentage=0.0)
         complexity = ComplexityEvidence(average_complexity=50.0)
         arch = ArchitectureEvidence(
             layer_violations=[{"from": "a", "to": "b"}] * 10,
