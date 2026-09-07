@@ -6,10 +6,10 @@ analyzers and need to merge their results into a single comprehensive evidence o
 
 Merging Strategy:
 - static_findings: Concatenate all findings from all analyzers
-- complexity: Take max values (worst case) or average if specified
+- complexity: Weighted average by LOC for avg_complexity; max for max_complexity
 - security: Sum all counts (critical, high, medium, low)
-- testing: Sum test counts, average coverage if available
-- duplication: Sum duplicate counts
+- testing: Sum test counts, weighted average for coverage (by test count)
+- duplication: Accurate percentage calculated from total duplicated lines / total LOC
 - architecture: Concatenate all violations
 - cicd: Take worst values (highest failure rate)
 - tools_executed: Union of all tools
@@ -89,9 +89,10 @@ class EvidenceMerger:
             [ev.testing for ev in evidence_list]
         )
         
-        # Merge duplication (sum all counts)
+        # Merge duplication (sum all counts, recalculate percentage from total LOC)
         merged_duplication = EvidenceMerger._merge_duplication(
-            [ev.duplication for ev in evidence_list]
+            [ev.duplication for ev in evidence_list],
+            total_loc=merged_complexity.lines_of_code
         )
         
         # Merge architecture (concatenate violations)
@@ -331,8 +332,20 @@ class EvidenceMerger:
         )
 
     @staticmethod
-    def _merge_duplication(duplication_list: List[DuplicationEvidence]) -> DuplicationEvidence:
-        """Merge duplication evidence - sum all counts."""
+    def _merge_duplication(
+        duplication_list: List[DuplicationEvidence],
+        total_loc: Optional[int] = None
+    ) -> DuplicationEvidence:
+        """
+        Merge duplication evidence - sum all counts and recalculate percentage.
+        
+        Args:
+            duplication_list: List of duplication evidence from each analyzer
+            total_loc: Total lines of code from merged complexity evidence
+            
+        Returns:
+            Merged duplication evidence with accurate percentage
+        """
         if not duplication_list:
             return DuplicationEvidence()
         
@@ -347,15 +360,19 @@ class EvidenceMerger:
         for d in valid:
             all_dup_files.extend(d.duplicated_files)
         
-        # Calculate overall duplication percentage
-        # This is approximate - ideally we'd recalculate from total LOC
-        valid_pct = [d.duplication_percentage for d in valid if d.duplication_percentage > 0]
-        avg_pct = sum(valid_pct) / len(valid_pct) if valid_pct else 0.0
+        # Calculate overall duplication percentage accurately
+        if total_loc and total_loc > 0 and total_lines > 0:
+            # Accurate: duplicated lines / total LOC * 100
+            duplication_pct = (total_lines / total_loc) * 100
+        else:
+            # Fallback to simple average if total LOC unavailable
+            valid_pct = [d.duplication_percentage for d in valid if d.duplication_percentage > 0]
+            duplication_pct = sum(valid_pct) / len(valid_pct) if valid_pct else 0.0
         
         return DuplicationEvidence(
             duplicate_blocks_count=total_blocks,
             duplicated_lines_count=total_lines,
-            duplication_percentage=avg_pct,
+            duplication_percentage=round(duplication_pct, 2),
             duplicated_files=all_dup_files,
         )
 

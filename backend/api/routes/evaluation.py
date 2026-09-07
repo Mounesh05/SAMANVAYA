@@ -19,7 +19,7 @@ class SimpleEvalRequest(BaseModel):
     repo_owner: str                        # e.g., "microsoft" 
     repo_name: str                         # e.g., "vscode"
     pr_number: Optional[int] = None        # e.g., 200000 (optional)
-    human_score: float = 5.0               # Human baseline score (1-10)
+    human_score: Optional[float] = None    # Optional human feedback (1-10)
     evaluation_focus: str = "code_quality" # Focus area
 
 
@@ -28,7 +28,7 @@ class EvaluationResult(BaseModel):
     evaluation_id: str
     github_username: str
     repo_info: Dict[str, Any]
-    human_score: float
+    human_score: Optional[float]  # Optional human feedback (not manufactured)
     ai_analysis: Dict[str, Any]
     overall_score: float
     recommendations: list
@@ -71,24 +71,31 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
             except Exception as e:
                 pr_analysis = {"error": f"Could not analyze PR: {str(e)}"}
         
-        # Step 3: Run AI evaluation
-        ai_analysis = await _run_ai_evaluation(
+        # Step 3: Get evidence-based evaluation from engines (authoritative)
+        evidence_score = await _get_evidence_based_score(
+            repo_info=repo_info,
+            pr_analysis=pr_analysis,
+        )
+        
+        # Step 4: Run AI for explanations and recommendations (NOT for scoring)
+        ai_insights = await _run_ai_insights(
             github_username=request.github_username,
             repo_info=repo_info,
             pr_analysis=pr_analysis,
-            human_score=request.human_score,
+            evidence_score=evidence_score,
             focus=request.evaluation_focus
         )
         
-        # Step 4: Calculate overall score
-        ai_score = ai_analysis.get("technical_score", 0.0)
-        if ai_score > 0:
-            overall_score = (request.human_score * 0.3 + ai_score * 0.7)
+        # Step 5: Calculate overall score (90% evidence / 10% human feedback)
+        # Evidence-based engines provide authoritative scores
+        # Human feedback is optional calibration, not the primary signal
+        if request.human_score is not None:
+            overall_score = (evidence_score * 0.9 + request.human_score * 0.1)
         else:
-            overall_score = request.human_score  # AI unavailable, use human only
+            overall_score = evidence_score  # Pure evidence-based when no human input
         
-        # Step 5: Get recommendations from AI (no hardcoded fallbacks)
-        recommendations = ai_analysis.get("recommendations", [])
+        # Step 6: Get recommendations from AI (no hardcoded fallbacks)
+        recommendations = ai_insights.get("recommendations", [])
         
         return EvaluationResult(
             evaluation_id=evaluation_id,
@@ -101,7 +108,10 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
                 "stars": repo_info.get("github_url", "").split("/")[-1] if repo_info.get("github_url") else "N/A"
             },
             human_score=request.human_score,
-            ai_analysis=ai_analysis,
+            ai_analysis={
+                "evidence_score": evidence_score,
+                "insights": ai_insights,
+            },
             overall_score=round(overall_score, 2),
             recommendations=recommendations,
             timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
@@ -114,30 +124,85 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
         )
 
 
-async def _run_ai_evaluation(
+async def _get_evidence_based_score(
+    repo_info: Dict[str, Any],
+    pr_analysis: Optional[Dict[str, Any]],
+) -> float:
+    """
+    Calculate evidence-based score from deterministic engines.
+    This is the AUTHORITATIVE score, not LLM-generated.
+    
+    Returns score 0-10 based on:
+    - Quality score from QualityEngine (if PR analyzed)
+    - Risk score from RiskEngine (if PR analyzed)
+    - Repository metrics (stars, activity, etc.)
+    
+    Note: LLMs explain this score, they don't generate it.
+    """
+    # If we have PR analysis with quality/risk scores, use those
+    if pr_analysis and isinstance(pr_analysis, dict):
+        quality_score = pr_analysis.get("quality_score")
+        risk_score = pr_analysis.get("risk_score")
+        
+        if quality_score is not None:
+            # Quality score is 0-100, convert to 0-10
+            # High quality = high score
+            q_normalized = quality_score / 10.0
+            
+            if risk_score is not None:
+                # Risk score is 0-100, convert to 0-10
+                # High risk = low score (inverse)
+                r_normalized = (100 - risk_score) / 10.0
+                # Weighted: 70% quality, 30% risk
+                return round(q_normalized * 0.7 + r_normalized * 0.3, 2)
+            else:
+                return round(q_normalized, 2)
+    
+    # Fallback: basic repository metrics
+    # This is a simplified heuristic when no PR analysis available
+    stars = repo_info.get("stargazers_count", 0)
+    forks = repo_info.get("forks_count", 0)
+    has_issues = repo_info.get("has_issues", False)
+    
+    # Basic scoring: more stars/forks = more trusted contributor
+    # Max 10 points, logarithmic scale
+    import math
+    if stars > 0:
+        star_score = min(10.0, math.log10(stars + 1) * 2)
+    else:
+        star_score = 5.0  # Neutral when no data
+    
+    return round(star_score, 2)
+
+
+async def _run_ai_insights(
     github_username: str,
     repo_info: Dict[str, Any],
     pr_analysis: Optional[Dict[str, Any]],
-    human_score: float,
+    evidence_score: float,
     focus: str
 ) -> Dict[str, Any]:
-    """Run AI evaluation using Ollama."""
+    """
+    Run AI for insights and recommendations (NOT for scoring).
+    
+    The evidence_score is AUTHORITATIVE and comes from deterministic engines.
+    AI's job is to EXPLAIN the evidence and provide recommendations.
+    """
     try:
         from agents.llm_provider import get_ollama_llm, check_ollama_connection
         
         # Check if Ollama is available
         if not check_ollama_connection():
             return {
-                "technical_score": 0.0,
-                "analysis": "AI evaluation unavailable — Ollama not connected",
+                "analysis": "AI insights unavailable — Ollama not connected",
                 "confidence": 0.0,
                 "recommendations": [],
                 "error": "Ollama not available"
             }
         
-        # Build evaluation prompt
+        # Build insights prompt (EXPLANATION, not scoring)
         prompt = f"""
-Evaluate the technical performance of GitHub user '{github_username}' based on:
+Analyze the technical performance of GitHub user '{github_username}' based on evidence.
 
 Repository Context:
 - Repository: {repo_info.get('name', 'N/A')}
@@ -145,21 +210,25 @@ Repository Context:
 - Primary Language: {repo_info.get('language', 'N/A')}
 - Description: {repo_info.get('description', 'N/A')}
 
-Human Assessment: {human_score}/10
+Evidence-Based Score: {evidence_score}/10
+(This score comes from deterministic analysis engines - Quality and Risk assessment)
 
 Pull Request Analysis:
 {pr_analysis if pr_analysis else 'No specific PR analyzed'}
 
 Focus Area: {focus}
 
-Please provide:
-1. Technical Score (1-10): Based on code quality, architecture, best practices
-2. Analysis: Detailed assessment of technical skills
-3. Strengths: Key technical strengths observed
-4. Areas for Improvement: Specific areas to focus on
-5. Recommendations: 3-5 actionable recommendations
+Your task is to EXPLAIN the evidence and provide recommendations.
+DO NOT generate your own score - the {evidence_score}/10 is authoritative.
 
-Format as JSON with keys: technical_score, analysis, strengths, improvements, recommendations
+Please provide:
+1. Analysis: Explain what the evidence score means for this developer's skills
+2. Strengths: Key technical strengths observed from the evidence
+3. Areas for Improvement: Specific areas to focus on based on evidence
+4. Recommendations: 3-5 actionable recommendations
+
+Format as JSON with keys: analysis, strengths, improvements, recommendations
+DO NOT include a "technical_score" field - scoring is done by deterministic engines.
 """
 
         # Get AI response
@@ -177,9 +246,8 @@ Format as JSON with keys: technical_score, analysis, strengths, improvements, re
             else:
                 raise ValueError("No JSON found")
         except Exception:
-            # Fallback: return raw response without fabricating scores
+            # Fallback: return raw response
             ai_data = {
-                "technical_score": 0.0,
                 "analysis": response[:500] + "..." if len(response) > 500 else response,
                 "strengths": [],
                 "improvements": [],
@@ -187,18 +255,17 @@ Format as JSON with keys: technical_score, analysis, strengths, improvements, re
                 "parse_error": "Could not extract structured JSON from AI response"
             }
         
-        # Ensure technical_score is numeric
-        if "technical_score" not in ai_data or not isinstance(ai_data["technical_score"], (int, float)):
-            ai_data["technical_score"] = 0.0
+        # Remove any "technical_score" if LLM included it despite instructions
+        if "technical_score" in ai_data:
+            del ai_data["technical_score"]
         
         # Confidence based on whether we got a real structured response
-        ai_data["confidence"] = 0.8 if ai_data["technical_score"] > 0 else 0.0
+        ai_data["confidence"] = 0.8 if "analysis" in ai_data else 0.0
         return ai_data
         
     except Exception as e:
         return {
-            "technical_score": 0.0,
-            "analysis": f"AI evaluation failed: {str(e)}",
+            "analysis": f"AI insights generation failed: {str(e)}",
             "confidence": 0.0,
             "recommendations": [],
             "error": str(e)
