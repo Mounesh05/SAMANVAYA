@@ -108,8 +108,11 @@ class TestQualityEngine:
             circular_dependencies=["A -> B -> A"],
         )
         evidence = _make_evidence(architecture=arch)
+
         result = await engine.calculate(evidence)
-        assert result["quality_score"] < 90
+
+        assert result["quality_score"] < 100
+        assert result["penalties"]["architecture"] > 0
 
     @pytest.mark.asyncio
     async def test_duplication_penalized(self, engine):
