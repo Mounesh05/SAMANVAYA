@@ -73,22 +73,26 @@ class CodeQualityService:
                     analysis_duration_ms=(time.monotonic() - start) * 1000,
                 )
 
-            # Run ALL detected language analyzers (not just first)
-            # This ensures multi-language PRs get complete analysis
-            evidence = None
+            # Run ALL detected language analyzers and MERGE results
+            # This ensures multi-language PRs get complete analysis coverage
+            from intelligence.evidence.merger import EvidenceMerger
+            
+            evidence_list = []
             for lang, analyzer in analyzers.items():
                 logger.info(f"Running {lang} analyzer for code quality analysis")
-                evidence = await analyzer.analyze(
+                evidence_obj = await analyzer.analyze(
                     changed_files=changed_files,
                     repo_path=repo_path,
                     pr_context=pr_context
                 )
-                # Each analyzer returns full CodeQualityEvidence, last one wins
-                # TODO: In future, merge evidence from multiple analyzers
+                evidence_list.append(evidence_obj)
+            
+            # Merge all evidence from all analyzers
+            evidence = EvidenceMerger.merge(evidence_list)
+            logger.info(f"Merged evidence from {len(evidence_list)} analyzers")
 
             elapsed_ms = (time.monotonic() - start) * 1000
-            if evidence:
-                evidence.analysis_duration_ms = elapsed_ms
+            evidence.analysis_duration_ms = elapsed_ms
 
             return evidence
 

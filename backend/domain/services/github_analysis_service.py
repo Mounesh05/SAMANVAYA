@@ -219,9 +219,11 @@ class GitHubAnalysisService:
                 },
             }
         else:
-            # Run analysis with ALL detected language analyzers (not just first)
-            # This ensures multi-language PRs get full analysis coverage
-            evidence_obj = None
+            # Run analysis with ALL detected language analyzers and MERGE results
+            # This ensures multi-language PRs get complete analysis coverage
+            from intelligence.evidence.merger import EvidenceMerger
+            
+            evidence_list = []
             for lang, analyzer in analyzers.items():
                 logger.info(f"Running {lang} analyzer for deep PR analysis")
                 evidence_obj = await analyzer.analyze(
@@ -229,8 +231,11 @@ class GitHubAnalysisService:
                     repo_path=repo_work_dir,
                     pr_context=pr_context
                 )
-                # Each analyzer returns full CodeQualityEvidence, last one wins
-                # TODO: In future, merge evidence from multiple analyzers
+                evidence_list.append(evidence_obj)
+            
+            # Merge all evidence from all analyzers
+            evidence_obj = EvidenceMerger.merge(evidence_list)
+            logger.info(f"Merged evidence from {len(evidence_list)} analyzers")
             
             # Convert CodeQualityEvidence to dict format for code_agent compatibility
             evidence = {
@@ -253,7 +258,7 @@ class GitHubAnalysisService:
                     "average_complexity": evidence_obj.complexity.average_complexity if evidence_obj.complexity else None,
                     "max_complexity": evidence_obj.complexity.max_complexity if evidence_obj.complexity else None,
                     "high_complexity_functions": evidence_obj.complexity.high_complexity_functions if evidence_obj.complexity else [],
-                    "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else 0,
+                    "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else None,
                 },
                 "security": {
                     "critical_count": evidence_obj.security.critical_count if evidence_obj.security else 0,
