@@ -27,7 +27,6 @@ from domain.models.risk_configuration import (
     PRSizeThresholds,
 )
 from intelligence.rules.risk_rules import (
-    RISK_DIMENSION_WEIGHTS,
     QUALITY_DIMENSION_WEIGHTS,
     BASE_RISK,
     RiskRules,
@@ -60,12 +59,12 @@ async def seed_global_default():
         name="Global Default Configuration",
         created_by="system_migration",
         risk_weights=RiskDimensionWeights(
-            alpha_size_zscore=RISK_DIMENSION_WEIGHTS["alpha_size_zscore"],
-            beta_hotspot=RISK_DIMENSION_WEIGHTS["beta_hotspot"],
-            gamma_dependency=RISK_DIMENSION_WEIGHTS["gamma_dependency"],
-            delta_missing_tests=RISK_DIMENSION_WEIGHTS["delta_missing_tests"],
-            epsilon_security=RISK_DIMENSION_WEIGHTS["epsilon_security"],
-            zeta_complexity=RISK_DIMENSION_WEIGHTS["zeta_complexity"],
+            # Omitting legacy Z-score fields for schema compatibility
+            # alpha_size_zscore defaults to 12.0, zeta_complexity to 10.0
+            beta_hotspot=20.0,
+            gamma_dependency=15.0,
+            delta_missing_tests=18.0,
+            epsilon_security=25.0,
         ),
         quality_weights=QualityDimensionWeights(
             static_security=QUALITY_DIMENSION_WEIGHTS["static_security"],

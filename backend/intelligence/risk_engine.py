@@ -502,7 +502,8 @@ class RiskEngine:
         """
         Phase 4 — Compute multi-dimensional risk from a CodeQualityEvidence package.
 
-        Uses RISK_DIMENSION_WEIGHTS and Z-score historical deviation.
+        NOTE: References to RISK_DIMENSION_WEIGHTS and Z-score system are legacy.
+        baseline=None always, so this falls back to threshold-based risk calculation.
         Preserves all existing analyze_pull_request / analyze_sprint methods.
 
         Args:

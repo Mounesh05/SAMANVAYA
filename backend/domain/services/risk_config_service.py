@@ -28,7 +28,6 @@ from domain.models.risk_configuration import (
 
 # Import hardcoded defaults as fallback
 from intelligence.rules.risk_rules import (
-    RISK_DIMENSION_WEIGHTS,
     QUALITY_DIMENSION_WEIGHTS,
     BASE_RISK,
     RiskRules,
@@ -179,14 +178,12 @@ class RiskConfigService:
             name=f"Hardcoded Default ({'Global' if project_id is None else project_id})",
             created_by="system",
             risk_weights=RiskDimensionWeights(
-                # Legacy Z-score fields (unused, baseline=None)
-                alpha_size_zscore=RISK_DIMENSION_WEIGHTS["alpha_size_zscore"],
-                beta_hotspot=RISK_DIMENSION_WEIGHTS["beta_hotspot"],
-                gamma_dependency=RISK_DIMENSION_WEIGHTS["gamma_dependency"],
-                delta_missing_tests=RISK_DIMENSION_WEIGHTS["delta_missing_tests"],
-                epsilon_security=RISK_DIMENSION_WEIGHTS["epsilon_security"],
-                # Legacy Z-score field (unused, baseline=None)
-                zeta_complexity=RISK_DIMENSION_WEIGHTS["zeta_complexity"],
+                # Omitting legacy Z-score fields (alpha_size_zscore, zeta_complexity)
+                # They default to 12.0 and 10.0 from model for schema compatibility
+                beta_hotspot=20.0,
+                gamma_dependency=15.0,
+                delta_missing_tests=18.0,
+                epsilon_security=25.0,
             ),
             quality_weights=QualityDimensionWeights(
                 static_security=QUALITY_DIMENSION_WEIGHTS["static_security"],
