@@ -168,17 +168,24 @@ class RiskConfigService:
         Create default configuration from hardcoded values in risk_rules.py.
         
         This ensures the system always works even if database is unavailable.
+        
+        NOTE: alpha_size_zscore and zeta_complexity are legacy Z-score fields
+        that remain in the schema but are NEVER USED (baseline=None always).
+        RiskEngine falls back to simple threshold-based calculations.
+        Full removal requires database migration. See ARCHITECTURE.md.
         """
         return RiskConfiguration(
             project_id=project_id,
             name=f"Hardcoded Default ({'Global' if project_id is None else project_id})",
             created_by="system",
             risk_weights=RiskDimensionWeights(
+                # Legacy Z-score fields (unused, baseline=None)
                 alpha_size_zscore=RISK_DIMENSION_WEIGHTS["alpha_size_zscore"],
                 beta_hotspot=RISK_DIMENSION_WEIGHTS["beta_hotspot"],
                 gamma_dependency=RISK_DIMENSION_WEIGHTS["gamma_dependency"],
                 delta_missing_tests=RISK_DIMENSION_WEIGHTS["delta_missing_tests"],
                 epsilon_security=RISK_DIMENSION_WEIGHTS["epsilon_security"],
+                # Legacy Z-score field (unused, baseline=None)
                 zeta_complexity=RISK_DIMENSION_WEIGHTS["zeta_complexity"],
             ),
             quality_weights=QualityDimensionWeights(
