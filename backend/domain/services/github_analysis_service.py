@@ -198,18 +198,25 @@ class GitHubAnalysisService:
             logger.warning(
                 f"No analyzers available for languages: {language_profile.detected_languages}"
             )
-            # Fallback to lightweight analysis
-            evidence = {
-                "static_analysis": {},
-                "complexity": {},
-                "security": {},
-                "tests": {},
-                "dependencies": {},
-                "architecture": {},
-                "quality_score": 50,
-                "quality_factors": ["No analyzer available"],
-                "overall_risk_score": 30,
-                "risk_factors": ["Language not supported"],
+            # Return error - no fake scores
+            # Quality and risk will be calculated by engines if possible
+            return {
+                "ai_analysis": {
+                    "error": f"No analyzer available for languages: {language_profile.detected_languages}",
+                    "analysis": "Unable to perform deep analysis - language not supported",
+                    "recommendations": ["Add support for this language's analyzer"],
+                },
+                "code_quality_report": None,
+                "ai_run_data": {
+                    "agent_type": "code_review_deep",
+                    "input_data": {
+                        "languages": language_profile.detected_languages,
+                    },
+                    "output_data": {"error": "No analyzer available"},
+                    "status": "failed",
+                    "model_name": "ollama",
+                    "triggered_by": triggered_by,
+                },
             }
         else:
             # Run analysis with primary language analyzer
@@ -266,33 +273,40 @@ class GitHubAnalysisService:
                     "layer_violations": [],
                     "circular_dependencies": [],
                 },
-                "quality_score": 70,  # Placeholder, will be computed by AI agent
-                "quality_factors": [],
-                "overall_risk_score": 30,  # Placeholder, will be computed by AI agent
-                "risk_factors": [],
+                # NO FAKE SCORES - Let QualityEngine and RiskEngine calculate
             }
         
+        # Calculate quality and risk using engines (NOT AI)
+        from intelligence.quality_engine import QualityEngine
+        from intelligence.risk_engine import RiskEngine
+        
+        quality_result = await QualityEngine().calculate(evidence_obj)
+        risk_result = await RiskEngine().analyze_evidence(evidence_obj)
+        
         # Prepare state for enhanced AI agent
+        # AI provides explanation and recommendations, NOT authoritative scores
         agent_state = {
             "task_type": "code_review",
             "evidence": evidence,
+            "quality_result": quality_result,  # Pass engine results to AI
+            "risk_result": risk_result,
             "context": pr_context,
             "agent_history": [],
             "errors": [],
         }
         
-        # Invoke enhanced code agent
+        # Invoke enhanced code agent for explanation only
         ai_result = code_analysis_node(agent_state)
         
-        # Build CodeQualityReport
+        # Build CodeQualityReport using ENGINE scores, not AI scores
         quality_breakdown = QualityBreakdown(
-            correctness=ai_result.get("quality_breakdown", {}).get("correctness", 0),
-            maintainability=ai_result.get("quality_breakdown", {}).get("maintainability", 0),
-            security=ai_result.get("quality_breakdown", {}).get("security", 0),
-            testing=ai_result.get("quality_breakdown", {}).get("testing", 0),
-            performance=ai_result.get("quality_breakdown", {}).get("performance", 0),
-            architecture=ai_result.get("quality_breakdown", {}).get("architecture", 0),
-            readability=ai_result.get("quality_breakdown", {}).get("readability", 0),
+            correctness=quality_result["dimension_scores"].get("correctness", 0),
+            maintainability=quality_result["dimension_scores"].get("maintainability", 0),
+            security=quality_result["dimension_scores"].get("security", 0),
+            testing=quality_result["dimension_scores"].get("testing", 0),
+            performance=quality_result["dimension_scores"].get("performance", 0),
+            architecture=quality_result["dimension_scores"].get("architecture", 0),
+            readability=quality_result["dimension_scores"].get("readability", 0),
         )
         
         code_quality_report = CodeQualityReport(
@@ -300,35 +314,37 @@ class GitHubAnalysisService:
             pr_number=pr_data.get("pr_number"),
             pr_title=pr_data.get("title", ""),
             author=pr_data.get("author", ""),
-            quality_score=ai_result.get("quality_score", evidence.get("quality_score", 0)),
+            quality_score=quality_result["quality_score"],  # From QualityEngine
             quality_breakdown=quality_breakdown,
-            quality_factors=evidence.get("quality_factors", []),
-            failure_risk=ai_result.get("failure_risk", evidence.get("overall_risk_score", 0)),
-            risk_level=ai_result.get("risk_level", "medium"),
-            risk_factors=evidence.get("risk_factors", []),
+            quality_factors=quality_result.get("quality_factors", []),
+            failure_risk=risk_result["risk_score"],  # From RiskEngine
+            risk_level=risk_result["risk_level"],
+            risk_factors=risk_result["risk_factors"],
             static_analysis=evidence.get("static_analysis", {}),
             complexity_metrics=evidence.get("complexity", {}),
             security_findings=evidence.get("security", {}),
             test_metrics=evidence.get("tests", {}),
             dependency_changes=evidence.get("dependencies", {}),
             architecture_analysis=evidence.get("architecture", {}),
-            ai_analysis=ai_result.get("analysis"),
+            ai_analysis=ai_result.get("analysis"),  # AI explanation only
             critical_issues=ai_result.get("critical_issues", []),
             recommendations=ai_result.get("recommendations", []),
             review_focus=ai_result.get("review_focus"),
-            confidence=ai_result.get("confidence", 0.7),
+            confidence=evidence_obj.analysis_quality.confidence,  # From evidence quality
             tools_used=evidence.get("static_analysis", {}).get("tools_used", []),
             analysis_duration_ms=(time.time() - start_time) * 1000,
         )
         
+        # AI analysis contains explanation only, not authoritative scores
         ai_analysis = {
             "analysis": ai_result.get("analysis"),
             "recommendations": ai_result.get("recommendations", []),
-            "risk_level": ai_result.get("risk_level"),
-            "confidence": ai_result.get("confidence"),
-            "quality_score": ai_result.get("quality_score"),
-            "failure_risk": ai_result.get("failure_risk"),
             "critical_issues": ai_result.get("critical_issues", []),
+            "review_focus": ai_result.get("review_focus"),
+            # Engine scores provided separately for reference
+            "quality_score": quality_result["quality_score"],
+            "risk_score": risk_result["risk_score"],
+            "risk_level": risk_result["risk_level"],
         }
         
         return {

@@ -36,12 +36,12 @@ logger = logging.getLogger(__name__)
 # All weights sum to 100 so risk score stays in [0, 100].
 
 RISK_WEIGHTS: Dict[str, float] = {
-    "alpha_size_zscore":   12.0,   # PR size deviation from repo average
+    "alpha_size_zscore":   12.0,   # PR size risk (lines + files changed) - TODO: rename to alpha_size
     "beta_hotspot":        20.0,   # historically incident-prone files
     "gamma_dependency":    15.0,   # new / updated third-party packages
     "delta_missing_tests": 18.0,   # changed lines without test coverage
     "epsilon_security":    25.0,   # CVSS-weighted vulnerability score
-    "zeta_complexity":     10.0,   # cyclomatic spike above repo baseline
+    "zeta_complexity":     10.0,   # cyclomatic spike above threshold
 }
 BASE_RISK: float = 10.0           # Every PR starts with 10 base risk points
 

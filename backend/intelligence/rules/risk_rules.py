@@ -18,12 +18,12 @@ from typing import List, Dict
 # All weights sum to 100 so the final risk score stays within [0, 100].
 
 RISK_DIMENSION_WEIGHTS: Dict[str, float] = {
-    "alpha_size_zscore":   12.0,   # PR size Z-score vs. repo historical median
+    "alpha_size_zscore":   12.0,   # PR size risk (lines + files) - TODO: rename to alpha_size
     "beta_hotspot":        20.0,   # historical incident-prone files changed
     "gamma_dependency":    15.0,   # new or updated third-party packages
     "delta_missing_tests": 18.0,   # changed lines with no test coverage
     "epsilon_security":    25.0,   # CVSS-weighted vulnerability score
-    "zeta_complexity":     10.0,   # cyclomatic spike above repo baseline
+    "zeta_complexity":     10.0,   # cyclomatic complexity risk
 }
 BASE_RISK: float = 10.0            # Every PR starts with 10 base risk points
 

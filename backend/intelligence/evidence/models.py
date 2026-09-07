@@ -162,6 +162,57 @@ class AnalysisQuality(BaseModel):
         else:
             self.reason += f"; '{tool}' not available"
 
+    @staticmethod
+    def calculate_confidence(
+        tools_executed: List[str],
+        tools_skipped: List[str],
+        files_analyzed: int,
+        files_total: int,
+        has_test_data: bool,
+        has_coverage_data: bool,
+        has_security_scan: bool,
+    ) -> float:
+        """
+        Calculate confidence from actual evidence completeness.
+        
+        Confidence factors:
+        - Tool execution success rate (0-40%): How many expected tools ran?
+        - File analysis rate (0-30%): What % of files were successfully analyzed?
+        - Data completeness (0-30%): Do we have test/coverage/security data?
+        
+        Returns: float in [0.0, 1.0]
+        """
+        # Factor 1: Tool execution success (40% weight)
+        tools_total = len(tools_executed) + len(tools_skipped)
+        if tools_total > 0:
+            tool_success_rate = len(tools_executed) / tools_total
+        else:
+            tool_success_rate = 0.0  # No tools attempted = no confidence
+        
+        # Factor 2: File analysis rate (30% weight)
+        if files_total > 0:
+            file_analysis_rate = min(1.0, files_analyzed / files_total)
+        else:
+            file_analysis_rate = 0.5  # No files = moderate confidence
+        
+        # Factor 3: Data completeness (30% weight)
+        # Check presence of key data types
+        data_points_available = sum([
+            has_test_data,
+            has_coverage_data,
+            has_security_scan,
+        ])
+        data_completeness = data_points_available / 3.0
+        
+        # Weighted combination
+        confidence = (
+            tool_success_rate * 0.40 +
+            file_analysis_rate * 0.30 +
+            data_completeness * 0.30
+        )
+        
+        return round(max(0.0, min(1.0, confidence)), 2)
+
     def prompt_note(self) -> str:
         """Returns a calibration note to inject into Code Agent prompts."""
         if self.level == AnalysisLevelEnum.FULL:

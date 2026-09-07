@@ -465,18 +465,15 @@ class RiskEngine:
     async def analyze_evidence(
         self,
         evidence: "CodeQualityEvidence",
-        baseline: "RepositoryBaseline | None" = None,
     ) -> dict:
         """
         Phase 4 — Compute multi-dimensional risk from a CodeQualityEvidence package.
 
-        Uses RISK_DIMENSION_WEIGHTS and Z-score historical deviation.
-        Preserves all existing analyze_pull_request / analyze_sprint methods.
+        Uses direct evidence-based calculation with configurable thresholds.
+        No historical baseline or Z-scores - purely deterministic from current evidence.
 
         Args:
             evidence: Normalized CodeQualityEvidence from any language analyzer
-            baseline: Optional RepositoryBaseline for Z-score calculation;
-                      falls back to default thresholds if None
 
         Returns:
             {
@@ -495,8 +492,9 @@ class RiskEngine:
         )
         
         # Extract weights from configuration
+        # Note: alpha_size_zscore renamed to alpha_size for clarity (no longer Z-score based)
         weights = {
-            "alpha_size_zscore": config.risk_weights.alpha_size_zscore,
+            "alpha_size": config.risk_weights.alpha_size_zscore,  # TODO: Rename in DB schema
             "beta_hotspot": config.risk_weights.beta_hotspot,
             "gamma_dependency": config.risk_weights.gamma_dependency,
             "delta_missing_tests": config.risk_weights.delta_missing_tests,
@@ -507,24 +505,40 @@ class RiskEngine:
         risk_factors: list[str] = []
         dimension_scores: dict = {}
 
-        # ── 1. Size Z-score (alpha) ───────────────────────────────────────────
-        z_size = 0.0
-        if baseline:
-            lines_changed = evidence.lines_added + evidence.lines_deleted
-            z_size = await baseline.compute_zscore(
-                evidence.repository_id, "lines_changed", lines_changed
-            )
+        # ── 1. PR Size / Churn (alpha) ────────────────────────────────────────
+        # Direct threshold-based calculation (no historical baseline)
+        # Thresholds based on industry research:
+        # - Small PR: < 200 lines (easy to review)
+        # - Medium PR: 200-500 lines (manageable)
+        # - Large PR: 500-1000 lines (difficult)
+        # - Very Large: > 1000 lines (high risk)
+        
+        lines_changed = evidence.lines_added + evidence.lines_deleted
+        files_changed = evidence.files_analyzed
+        
+        # Calculate size score based on lines and files
+        alpha_score = 0.0
+        
+        if lines_changed > 1000:
+            alpha_score = 100.0
+            risk_factors.append(f"Very large PR: {lines_changed} lines changed")
+        elif lines_changed > 500:
+            alpha_score = 70.0
+            risk_factors.append(f"Large PR: {lines_changed} lines changed")
+        elif lines_changed > 200:
+            alpha_score = 35.0
+            risk_factors.append(f"Medium PR: {lines_changed} lines changed")
         else:
-            # Fallback: simple threshold-based score
-            lines_changed = evidence.lines_added + evidence.lines_deleted
-            z_size = min(3.0, lines_changed / 500.0)
-
-        alpha_score = min(100.0, max(0.0, z_size * 20))
-        dimension_scores["size_deviation"] = round(alpha_score, 1)
-        if z_size > 2.0:
-            risk_factors.append(
-                f"PR is {z_size:.1f}x larger than this repo's normal size"
-            )
+            alpha_score = 0.0  # Small PRs are low risk
+        
+        # Add file count factor
+        if files_changed > 20:
+            alpha_score = min(100.0, alpha_score + 30.0)
+            risk_factors.append(f"Many files changed: {files_changed} files")
+        elif files_changed > 10:
+            alpha_score = min(100.0, alpha_score + 15.0)
+        
+        dimension_scores["pr_size_risk"] = round(alpha_score, 1)
 
         # ── 2. Hotspot weight (beta) ──────────────────────────────────────────
         hotspot_count = len(evidence.change_context.hot_paths_touched)
@@ -603,7 +617,7 @@ class RiskEngine:
 
         # ── Weighted final score ──────────────────────────────────────────────
         weighted = (
-            weights["alpha_size_zscore"]   * (alpha_score   / 100) +
+            weights["alpha_size"]          * (alpha_score   / 100) +
             weights["beta_hotspot"]        * (beta_score    / 100) +
             weights["gamma_dependency"]    * (gamma_score   / 100) +
             weights["delta_missing_tests"] * (delta_score   / 100) +

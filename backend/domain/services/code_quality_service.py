@@ -68,9 +68,10 @@ class CodeQualityService:
 
             if not analyzers:
                 # No analyzer available for this language
+                # Calculate confidence: no tools available = 0.0
                 aq = AnalysisQuality(
                     level=AnalysisLevelEnum.INFERRED_ONLY,
-                    confidence=0.2,
+                    confidence=0.0,  # No tools = no confidence
                     reason=f"No analyzer available for languages: {profile.detected_languages}",
                 )
                 return CodeQualityEvidence(
@@ -114,9 +115,10 @@ class CodeQualityService:
             # Merge evidence from all languages
             if not all_evidence:
                 # Fallback if all analyzers failed
+                # Calculate confidence: analyzers ran but all failed = very low
                 aq = AnalysisQuality(
                     level=AnalysisLevelEnum.INFERRED_ONLY,
-                    confidence=0.2,
+                    confidence=0.1,  # Tried but all failed
                     reason="All language analyzers failed or had no relevant files",
                 )
                 return CodeQualityEvidence(
@@ -139,9 +141,10 @@ class CodeQualityService:
 
         except Exception as e:
             # Return a degraded evidence package rather than propagating the error
+            # Calculate confidence: exception during analysis = minimal
             aq = AnalysisQuality(
                 level=AnalysisLevelEnum.INFERRED_ONLY,
-                confidence=0.1,
+                confidence=0.05,  # Exception = almost no confidence
                 reason=f"Analyzer failed: {str(e)[:200]}",
             )
             return CodeQualityEvidence(
@@ -373,6 +376,20 @@ class CodeQualityService:
         merged.static_findings = all_findings
         merged.tools_executed = list(all_tools)
         merged.tools_skipped = list(all_skipped)
+        
+        # Calculate real confidence from evidence completeness
+        calculated_confidence = AnalysisQuality.calculate_confidence(
+            tools_executed=list(all_tools),
+            tools_skipped=list(all_skipped),
+            files_analyzed=total_files,
+            files_total=len(all_changed_files),
+            has_test_data=(total_tests_all > 0),
+            has_coverage_data=(len(coverage_values) > 0),
+            has_security_scan=(sec_critical > 0 or sec_high > 0 or sec_medium > 0 or len(sec_findings) > 0),
+        )
+        
+        # Use worst quality level but calculated confidence
+        worst_quality.confidence = calculated_confidence
         merged.analysis_quality = worst_quality
         
         # Copy CI/CD from primary language evidence (doesn't vary by language)
