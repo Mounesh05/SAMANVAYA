@@ -42,6 +42,42 @@ EXTENSION_MAP: Dict[str, str] = {
 }
 
 
+# ── Reverse map: Language → Extensions ───────────────────────────────────────
+
+def get_extensions_for_language(language: str) -> List[str]:
+    """Get list of file extensions for a given language."""
+    return [ext for ext, lang in EXTENSION_MAP.items() if lang == language]
+
+
+def filter_files_for_language(files: List[str], language: str) -> List[str]:
+    """
+    Filter file list to only include files relevant to the given language.
+    
+    Args:
+        files: List of file paths
+        language: Language identifier (e.g., 'python', 'javascript', 'typescript')
+        
+    Returns:
+        Filtered list containing only files matching the language's extensions
+        
+    Example:
+        files = ['app.py', 'util.js', 'test.ts', 'README.md']
+        filter_files_for_language(files, 'python')  → ['app.py']
+        filter_files_for_language(files, 'typescript')  → ['test.ts']
+    """
+    valid_extensions = get_extensions_for_language(language)
+    if not valid_extensions:
+        return []  # Unknown language, no files
+    
+    filtered = []
+    for file_path in files:
+        path = Path(file_path)
+        if path.suffix.lower() in valid_extensions:
+            filtered.append(file_path)
+    
+    return filtered
+
+
 # ── Build-system file → (language, build_system, package_manager) ─────────────
 
 BUILD_FILE_MAP: Dict[str, Dict[str, str]] = {

@@ -159,7 +159,13 @@ class EvidenceMerger:
 
     @staticmethod
     def _merge_complexity(complexity_list: List[ComplexityEvidence]) -> ComplexityEvidence:
-        """Merge complexity evidence - take max values (worst case)."""
+        """
+        Merge complexity evidence - use weighted average based on lines_of_code.
+        
+        Previously used max (conservative but unfair to large codebases).
+        Now uses weighted average: a small JS file with complexity 20 shouldn't
+        outweigh 200 Python files averaging complexity 6.
+        """
         if not complexity_list:
             return ComplexityEvidence()
         
@@ -168,17 +174,26 @@ class EvidenceMerger:
         if not valid:
             return ComplexityEvidence()
         
-        # Take max for conservative estimation
-        max_avg = max(c.average_complexity for c in valid)
-        max_max = max(c.max_complexity for c in valid)
+        # Calculate weighted average complexity based on lines_of_code
         total_loc = sum(c.lines_of_code for c in valid)
+        
+        if total_loc == 0:
+            # Fallback to simple average if no LOC data
+            weighted_avg = sum(c.average_complexity for c in valid) / len(valid)
+        else:
+            # Weighted average: (complexity * LOC) / total_LOC
+            weighted_sum = sum(c.average_complexity * c.lines_of_code for c in valid)
+            weighted_avg = weighted_sum / total_loc
+        
+        # Max complexity is still the actual maximum (worst single function)
+        max_max = max(c.max_complexity for c in valid)
         
         # Combine high complexity functions from all
         all_high_complexity = []
         for c in valid:
             all_high_complexity.extend(c.high_complexity_functions)
         
-        # Average ratios
+        # Average ratios (these are already percentages, simple average is OK)
         valid_comments = [c.comment_ratio for c in valid if c.comment_ratio > 0]
         avg_comment_ratio = sum(valid_comments) / len(valid_comments) if valid_comments else 0.0
         
@@ -189,7 +204,7 @@ class EvidenceMerger:
         avg_nesting = sum(valid_nesting) / len(valid_nesting) if valid_nesting else 0.0
         
         return ComplexityEvidence(
-            average_complexity=max_avg,
+            average_complexity=weighted_avg,
             max_complexity=max_max,
             high_complexity_functions=all_high_complexity,
             lines_of_code=total_loc,
@@ -234,7 +249,17 @@ class EvidenceMerger:
 
     @staticmethod
     def _merge_testing(testing_list: List[TestingEvidence]) -> TestingEvidence:
-        """Merge testing evidence - sum counts, average coverage."""
+        """
+        Merge testing evidence - sum counts, weighted average for coverage.
+        
+        Coverage is now weighted by test count as a proxy for codebase size.
+        A language with 10 tests at 100% coverage shouldn't have equal influence
+        as another with 1000 tests at 60% coverage.
+        
+        Test frameworks: Currently picks first, but ideally we'd track per-language.
+        Future improvement: Change test_framework to Dict[str, str] mapping
+        language → framework (e.g., {"python": "pytest", "javascript": "jest"}).
+        """
         if not testing_list:
             return TestingEvidence()
         
@@ -247,23 +272,55 @@ class EvidenceMerger:
         total_failed = sum(t.failed_tests for t in valid)
         total_skipped = sum(t.skipped_tests for t in valid)
         
-        # Average coverage if available
-        valid_coverage = [t.coverage_percentage for t in valid if t.coverage_percentage is not None]
-        avg_coverage = sum(valid_coverage) / len(valid_coverage) if valid_coverage else None
+        # Weighted average coverage using test count as weight
+        # (Better proxy than simple average when we don't have LOC)
+        valid_coverage = [(t.coverage_percentage, t.total_tests) 
+                          for t in valid if t.coverage_percentage is not None and t.total_tests > 0]
         
-        valid_changed_cov = [t.changed_code_coverage for t in valid if t.changed_code_coverage is not None]
-        avg_changed_cov = sum(valid_changed_cov) / len(valid_changed_cov) if valid_changed_cov else None
+        if valid_coverage:
+            total_weight = sum(weight for _, weight in valid_coverage)
+            if total_weight > 0:
+                weighted_sum = sum(cov * weight for cov, weight in valid_coverage)
+                avg_coverage = weighted_sum / total_weight
+            else:
+                # Fallback to simple average
+                avg_coverage = sum(cov for cov, _ in valid_coverage) / len(valid_coverage)
+        else:
+            avg_coverage = None
+        
+        # Same for changed code coverage
+        valid_changed_cov = [(t.changed_code_coverage, t.total_tests)
+                             for t in valid if t.changed_code_coverage is not None and t.total_tests > 0]
+        
+        if valid_changed_cov:
+            total_weight = sum(weight for _, weight in valid_changed_cov)
+            if total_weight > 0:
+                weighted_sum = sum(cov * weight for cov, weight in valid_changed_cov)
+                avg_changed_cov = weighted_sum / total_weight
+            else:
+                avg_changed_cov = sum(cov for cov, _ in valid_changed_cov) / len(valid_changed_cov)
+        else:
+            avg_changed_cov = None
         
         # Collect all untested paths
         all_untested = []
         for t in valid:
             all_untested.extend(t.untested_critical_paths)
         
-        # Prefer first non-None framework
-        test_framework = next((t.test_framework for t in valid if t.test_framework), None)
+        # Collect test frameworks and create summary
+        # Current model limitation: test_framework is Optional[str], not Dict[str, str]
+        # For now, collect all unique frameworks and join with commas
+        frameworks = set()
+        for t in valid:
+            if t.test_framework:
+                frameworks.add(t.test_framework)
+        
+        # Create comma-separated string of frameworks
+        # Future: Change model to support {"python": "pytest", "javascript": "jest"}
+        test_framework = ", ".join(sorted(frameworks)) if frameworks else None
         
         return TestingEvidence(
-            test_framework=test_framework,
+            test_framework=test_framework,  # e.g., "jest, pytest"
             total_tests=total_tests,
             passed_tests=total_passed,
             failed_tests=total_failed,

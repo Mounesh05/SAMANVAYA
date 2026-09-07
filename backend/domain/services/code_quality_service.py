@@ -74,20 +74,45 @@ class CodeQualityService:
                 )
 
             # Run ALL detected language analyzers and MERGE results
-            # This ensures multi-language PRs get complete analysis coverage
+            # Filter files per language to avoid wasting work
             from intelligence.evidence.merger import EvidenceMerger
+            from intelligence.analyzers.language_detector import filter_files_for_language
             
             evidence_list = []
             for lang, analyzer in analyzers.items():
-                logger.info(f"Running {lang} analyzer for code quality analysis")
+                # Filter to only files relevant to this language
+                lang_files = filter_files_for_language(changed_files, lang)
+                
+                if not lang_files:
+                    logger.info(f"No {lang} files found, skipping analyzer")
+                    continue
+                
+                logger.info(f"Running {lang} analyzer on {len(lang_files)} files")
                 evidence_obj = await analyzer.analyze(
-                    changed_files=changed_files,
+                    changed_files=lang_files,  # Only pass relevant files
                     repo_path=repo_path,
                     pr_context=pr_context
                 )
                 evidence_list.append(evidence_obj)
             
             # Merge all evidence from all analyzers
+            if not evidence_list:
+                # No analyzers produced evidence (shouldn't happen, but defensive)
+                aq = AnalysisQuality(
+                    level=AnalysisLevelEnum.INFERRED_ONLY,
+                    confidence=0.1,
+                    reason="No files matched detected languages",
+                )
+                return CodeQualityEvidence(
+                    repository_id=repo_id,
+                    pr_number=pr_context.get("pr_number"),
+                    commit_sha=pr_context.get("commit_sha"),
+                    primary_language=profile.primary_language,
+                    detected_languages=profile.detected_languages,
+                    analysis_quality=aq,
+                    analysis_duration_ms=(time.monotonic() - start) * 1000,
+                )
+            
             evidence = EvidenceMerger.merge(evidence_list)
             logger.info(f"Merged evidence from {len(evidence_list)} analyzers")
 

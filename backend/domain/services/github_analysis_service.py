@@ -220,20 +220,32 @@ class GitHubAnalysisService:
             }
         else:
             # Run analysis with ALL detected language analyzers and MERGE results
-            # This ensures multi-language PRs get complete analysis coverage
+            # Filter files per language to avoid wasting work
             from intelligence.evidence.merger import EvidenceMerger
+            from intelligence.analyzers.language_detector import filter_files_for_language
             
             evidence_list = []
             for lang, analyzer in analyzers.items():
-                logger.info(f"Running {lang} analyzer for deep PR analysis")
+                # Filter to only files relevant to this language
+                lang_files = filter_files_for_language(changed_file_paths, lang)
+                
+                if not lang_files:
+                    logger.info(f"No {lang} files found in PR, skipping analyzer")
+                    continue
+                
+                logger.info(f"Running {lang} analyzer on {len(lang_files)} files")
                 evidence_obj = await analyzer.analyze(
-                    changed_files=changed_file_paths,
+                    changed_files=lang_files,  # Only pass relevant files
                     repo_path=repo_work_dir,
                     pr_context=pr_context
                 )
                 evidence_list.append(evidence_obj)
             
             # Merge all evidence from all analyzers
+            if not evidence_list:
+                # No analyzers produced evidence (shouldn't happen, but defensive)
+                raise ValueError("No evidence produced from any analyzer")
+            
             evidence_obj = EvidenceMerger.merge(evidence_list)
             logger.info(f"Merged evidence from {len(evidence_list)} analyzers")
             
