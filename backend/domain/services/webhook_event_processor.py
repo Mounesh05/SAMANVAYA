@@ -24,7 +24,7 @@ from repositories.webhook_event_repository import WebhookEventRepository
 from repositories.pr_repository import PRRepository
 from repositories.project_repository import ProjectRepository
 from repositories.user_repository import UserRepository
-from domain.services.github_service import GitHubService
+from domain.services.github_sync_service import GitHubSyncService
 from domain.services.enhanced_notification_service import EnhancedNotificationService as NotificationService
 from domain.services.traceability_service import TraceabilityService
 from domain.services.recommendation_engine import RecommendationEngine
@@ -46,7 +46,7 @@ class WebhookEventProcessor:
         self.pr_repo = PRRepository()
         self.project_repo = ProjectRepository()
         self.user_repo = UserRepository()
-        self.github_service = GitHubService()
+        self.github_service = GitHubSyncService()
         self.notification_service = NotificationService()
         self.risk_engine = RiskEngine()
         self.traceability_service = TraceabilityService()

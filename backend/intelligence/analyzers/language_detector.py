@@ -85,18 +85,7 @@ class LanguageProfile:
     test_framework: Optional[str] = None
     is_polyglot: bool = False
 
-    # Confidence scoring:
-    # - 1.0 = High confidence: Build file + extensions agree (e.g., package.json + .js files)
-    # - 0.9 = Good confidence: Build file overrides extension majority (authoritative)
-    # - 0.6 = Medium confidence: Extension-only detection (no build file found)
-    # - 0.0 = No confidence: No files detected
-    #
-    # Rationale:
-    # - Build files (package.json, pom.xml, Cargo.toml) are authoritative ecosystem signals
-    # - Extensions alone can be ambiguous (.h files could be C or C++)
-    # - When both signals agree → highest confidence (1.0)
-    # - When build file overrides → trust it but slightly lower (0.9) as unusual
-    # - Extension-only → moderate confidence (0.6) as it's educated guess without ecosystem proof
+    # Confidence: 1.0 = both extension + build file agree; 0.5 = extension only
     confidence: float = 1.0
 
 
@@ -188,8 +177,6 @@ class LanguageDetector:
         test_framework: Optional[str],
     ) -> LanguageProfile:
         if not lang_counts:
-            # No language files detected at all
-            # Confidence: 0.0 (no data available)
             return LanguageProfile(
                 primary_language="unknown",
                 confidence=0.0,
@@ -198,24 +185,16 @@ class LanguageDetector:
         sorted_langs = sorted(lang_counts, key=lang_counts.get, reverse=True)
         primary = sorted_langs[0]
 
-        # Confidence calculation based on detection signals
-        # See LanguageProfile dataclass for confidence scoring rationale
-        
         # If build file overrides extension count, trust it
         build_lang = build_info.get("language", "")
         if build_lang and build_lang != primary:
-            # Build file is authoritative — override primary
-            # Confidence: 0.9 (good but unusual that build file disagrees with extension majority)
+            # Build file is authoritative — override
             primary = build_lang
             confidence = 0.9
         elif build_lang == primary:
-            # Perfect agreement: build file confirms extension-based detection
-            # Confidence: 1.0 (highest - both signals agree)
             confidence = 1.0
         else:
-            # Extension-only detection (no build file found)
-            # Confidence: 0.6 (medium - educated guess without ecosystem proof)
-            confidence = 0.6
+            confidence = 0.6  # extension-only
 
         return LanguageProfile(
             primary_language=primary,

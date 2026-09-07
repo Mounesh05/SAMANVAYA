@@ -20,6 +20,18 @@ class CodeMetrics:
         """
         total_lines_changed = lines_added + lines_deleted
         
+        # Guard: If no data provided, return None for risk_score
+        if files_changed == 0 and total_lines_changed == 0:
+            return {
+                "files_changed": 0,
+                "lines_added": 0,
+                "lines_deleted": 0,
+                "total_lines_changed": 0,
+                "risk_score": None,  # None = no data, not zero risk
+                "risk_factors": ["No change data available"],
+                "data_quality": "insufficient",
+            }
+        
         # Risk scoring based on size
         risk_score = 0
         risk_factors = []
@@ -67,6 +79,16 @@ class CodeMetrics:
         Returns:
             Analysis of file types and associated risk
         """
+        # Guard: If no files provided, return None for risk_score
+        if not changed_files:
+            return {
+                "file_types": {"code": 0, "test": 0, "config": 0, "docs": 0},
+                "high_risk_areas": [],
+                "risk_score": None,  # None = no data
+                "risk_factors": ["No files to analyze"],
+                "data_quality": "insufficient",
+            }
+        
         high_risk_patterns = {
             "auth": ["auth", "login", "password", "token", "session"],
             "database": ["migration", "schema", "model", "database"],
@@ -122,6 +144,17 @@ class CodeMetrics:
         Too many commits might indicate thrashing/uncertainty.
         Too few commits in old PR might indicate stale code.
         """
+        # Guard: commit_count should always be provided (minimum 1 for a PR)
+        # But if somehow 0, treat as insufficient data
+        if commit_count == 0:
+            return {
+                "commit_count": 0,
+                "pr_age_hours": pr_age_hours,
+                "risk_score": None,  # None = no data
+                "risk_factors": ["No commits in PR"],
+                "data_quality": "insufficient",
+            }
+        
         risk_score = 0
         risk_factors = []
         

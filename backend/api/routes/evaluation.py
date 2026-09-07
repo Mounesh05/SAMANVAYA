@@ -46,8 +46,8 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
         evaluation_id = f"EVAL-{uuid.uuid4().hex[:8].upper()}"
         
         # Step 1: Get repository info
-        from domain.services.github_service import GitHubService
-        github_service = GitHubService()
+        from domain.services.github_api_service import GitHubAPIService
+        github_service = GitHubAPIService()
         
         repo_info = await github_service.get_repository_info(
             request.repo_owner, 

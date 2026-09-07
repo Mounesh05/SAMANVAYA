@@ -276,9 +276,11 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
         quality_engine = QualityEngine()
         quality_result = await quality_engine.calculate(evidence)
 
-        # Calculate risk score (no baseline needed - direct evidence-based)
+        # Calculate risk score
         from intelligence.risk_engine import RiskEngine
-        risk_result = await RiskEngine().analyze_evidence(evidence)
+        from intelligence.baselines.repository_baseline import RepositoryBaseline
+        baseline = RepositoryBaseline()
+        risk_result = await RiskEngine().analyze_evidence(evidence, baseline)
 
         # AI Code Agent (if requested and not quick)
         ai_analysis = {}
@@ -327,6 +329,19 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
                 for f in evidence.static_findings[:500]  # Cap at 500 per run
             ]
             await findings_col.insert_many(finding_docs)
+
+        # Update baseline with this run's metrics
+        await baseline.update_baseline(
+            body.repository_id,
+            {
+                "files_changed": float(evidence.files_analyzed),
+                "lines_added": float(evidence.lines_added),
+                "lines_deleted": float(evidence.lines_deleted),
+                "lines_changed": float(evidence.lines_added + evidence.lines_deleted),  # Combined metric for Z-score
+                "complexity_avg": evidence.complexity.average_complexity,
+                "test_coverage": evidence.testing.coverage_percentage or 0.0,
+            },
+        )
 
         # Update run document with final results
         now = datetime.now(timezone.utc).isoformat()

@@ -149,6 +149,18 @@ class DevOpsMetrics:
         
         Higher frequency generally indicates better DevOps maturity.
         """
+        # Guard: If no deployment data at all, return None for risk_score
+        if deployments_last_week == 0 and deployments_last_month == 0:
+            return {
+                "deployments_last_week": 0,
+                "deployments_last_month": 0,
+                "weekly_average": 0.0,
+                "maturity_level": "UNKNOWN",
+                "risk_score": None,  # None = no data
+                "risk_factors": ["No deployment data available"],
+                "data_quality": "insufficient",
+            }
+        
         weekly_avg = deployments_last_month / 4  # approximate
         
         risk_score = 0
@@ -178,6 +190,7 @@ class DevOpsMetrics:
             "maturity_level": maturity_level,
             "risk_score": risk_score,
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -190,12 +203,14 @@ class DevOpsMetrics:
         
         Lower MTTR indicates better incident response.
         """
+        # Note: 0 incidents is actually GOOD (no risk), not missing data
         if incidents_count == 0:
             return {
                 "incidents_count": 0,
                 "mttr_hours": 0.0,
-                "risk_score": 0,
+                "risk_score": 0,  # 0 = actually no risk (no incidents)
                 "risk_factors": ["No incidents in period"],
+                "data_quality": "complete",  # This IS complete data
             }
         
         mttr = total_resolution_time_hours / incidents_count

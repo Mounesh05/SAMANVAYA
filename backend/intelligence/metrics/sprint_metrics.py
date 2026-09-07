@@ -44,6 +44,20 @@ class SprintMetrics:
         Returns:
             Detailed progress metrics and risk assessment
         """
+        # Guard: If no stories in sprint, cannot calculate risk
+        if total_stories == 0 and total_points == 0:
+            return {
+                "total_stories": 0,
+                "completed_stories": 0,
+                "story_completion_pct": 0.0,
+                "points_completion_pct": 0.0,
+                "progress_variance": 0.0,
+                "risk_score": None,  # None = no data
+                "risk_level": "UNKNOWN",
+                "risk_factors": ["No stories in sprint"],
+                "data_quality": "insufficient",
+            }
+        
         # Completion percentages
         story_completion_pct = (completed_stories / max(total_stories, 1)) * 100
         points_completion_pct = (completed_points / max(total_points, 1)) * 100
@@ -134,6 +148,19 @@ class SprintMetrics:
         
         Adding work mid-sprint increases delivery risk.
         """
+        # Guard: If no original scope, cannot detect creep
+        if original_points == 0 and current_points == 0:
+            return {
+                "original_points": 0,
+                "current_points": 0,
+                "scope_change": 0,
+                "scope_change_pct": 0.0,
+                "added_stories": added_stories,
+                "risk_score": None,  # None = no data
+                "risk_factors": ["No sprint scope defined"],
+                "data_quality": "insufficient",
+            }
+        
         scope_change = current_points - original_points
         scope_change_pct = (scope_change / max(original_points, 1)) * 100
         
@@ -175,6 +202,18 @@ class SprintMetrics:
         
         Declining velocity may indicate technical debt or team issues.
         """
+        # Guard: If current velocity is 0 or None, cannot assess trend
+        if not current_velocity or current_velocity == 0:
+            return {
+                "current_velocity": 0.0,
+                "previous_sprint_velocity": previous_sprint_velocity,
+                "velocity_change_pct": None,
+                "team_avg_velocity": team_avg_velocity,
+                "risk_score": None,  # None = no data
+                "risk_factors": ["No velocity data for current sprint"],
+                "data_quality": "insufficient",
+            }
+        
         risk_score = 0
         risk_factors = []
         

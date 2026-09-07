@@ -6,7 +6,7 @@ Allows manual PR sync and repository management.
 from fastapi import APIRouter, HTTPException, Depends, Query
 from core.dependencies import get_current_user, require_permission, require_roles
 from core.permissions import Permission
-from domain.services.github_service import GitHubService
+from domain.services.github_sync_service import GitHubSyncService
 from pydantic import BaseModel
 import httpx
 
@@ -40,7 +40,7 @@ async def github_integration_health():
     Tests if GitHub API is accessible with configured token.
     """
     try:
-        github_service = GitHubService()
+        github_service = GitHubSyncService()
         user_info = await github_service.client.get_authenticated_user()
         
         return {
@@ -69,7 +69,7 @@ async def get_repository_info(
     Example: /github/repository-info?owner=facebook&repo=react
     """
     try:
-        github_service = GitHubService()
+        github_service = GitHubSyncService()
         repo_info = await github_service.get_repository_info(owner, repo)
         
         return repo_info
@@ -93,7 +93,7 @@ async def list_repositories(
     Otherwise, lists authenticated user's repositories (requires GitHub token in backend config).
     """
     try:
-        github_service = GitHubService()
+        github_service = GitHubSyncService()
         repos = await github_service.list_repositories(org)
         
         return {
@@ -133,7 +133,7 @@ async def sync_pull_request(
     ```
     """
     try:
-        github_service = GitHubService()
+        github_service = GitHubSyncService()
         
         result = await github_service.sync_pull_request(
             owner=request.owner,
@@ -200,7 +200,7 @@ async def sync_repository_prs(
     ```
     """
     try:
-        github_service = GitHubService()
+        github_service = GitHubSyncService()
         
         results = await github_service.sync_repository_prs(
             owner=request.owner,

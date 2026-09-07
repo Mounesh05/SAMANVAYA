@@ -142,9 +142,9 @@ class WebhookService:
         
         if should_review:
             try:
-                from domain.services.github_service import GitHubService
+                from domain.services.github_sync_service import GitHubSyncService
                 
-                github_service = GitHubService()
+                github_service = GitHubSyncService()
                 
                 # Sync PR with AI analysis
                 await github_service.sync_pull_request(
