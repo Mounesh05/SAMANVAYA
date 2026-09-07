@@ -29,7 +29,6 @@ from domain.models.risk_configuration import (
 # Import hardcoded defaults as fallback
 from intelligence.rules.risk_rules import (
     QUALITY_DIMENSION_WEIGHTS,
-    BASE_RISK,
     RiskRules,
     PR_SIZE_LARGE_THRESHOLD,
     PR_SIZE_MEDIUM_THRESHOLD,
@@ -192,7 +191,7 @@ class RiskConfigService:
                 architecture=QUALITY_DIMENSION_WEIGHTS["architecture"],
                 duplication=QUALITY_DIMENSION_WEIGHTS["duplication"],
             ),
-            base_risk=BASE_RISK,
+            base_risk=10.0,  # Default base risk for all PRs
             risk_thresholds=RiskThresholds(
                 critical=RiskRules.RISK_THRESHOLDS["CRITICAL"],
                 high=RiskRules.RISK_THRESHOLDS["HIGH"],
