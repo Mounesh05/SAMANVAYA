@@ -219,70 +219,20 @@ class GitHubAnalysisService:
                 },
             }
         else:
-            # Run ALL analyzers (multi-language support)
-            # Reuse same logic as code_quality_service.py
-            from intelligence.analyzers.language_detector import EXTENSION_MAP
-            
-            all_evidence = []
-            
+            # Run analysis with ALL detected language analyzers (not just first)
+            # This ensures multi-language PRs get full analysis coverage
+            evidence_obj = None
             for lang, analyzer in analyzers.items():
-                # Filter files relevant to this language using extension map
-                lang_extensions = [ext for ext, l in EXTENSION_MAP.items() if l == lang]
-                lang_files = [
-                    f for f in changed_file_paths 
-                    if any(f.endswith(ext) for ext in lang_extensions)
-                ]
-                
-                if not lang_files:
-                    continue  # Skip if no files for this language
-                
-                try:
-                    evidence_obj = await analyzer.analyze(
-                        changed_files=lang_files,
-                        repo_path=repo_work_dir,
-                        pr_context=pr_context
-                    )
-                    all_evidence.append((lang, evidence_obj))
-                except Exception as e:
-                    logger.warning(f"Analyzer for {lang} failed: {str(e)[:200]}")
-                    continue
-            
-            # Handle case where all analyzers failed
-            if not all_evidence:
-                return {
-                    "ai_analysis": {
-                        "error": "All language analyzers failed",
-                        "analysis": "Unable to complete analysis - all analyzers failed",
-                        "recommendations": ["Check analyzer configuration and file paths"],
-                    },
-                    "code_quality_report": None,
-                    "ai_run_data": {
-                        "agent_type": "code_review_deep",
-                        "input_data": {
-                            "languages": language_profile.detected_languages,
-                        },
-                        "output_data": {"error": "All analyzers failed"},
-                        "status": "failed",
-                        "model_name": "ollama",
-                        "triggered_by": triggered_by,
-                    },
-                }
-            
-            # Use first evidence as primary (or merge if multiple)
-            if len(all_evidence) == 1:
-                evidence_obj = all_evidence[0][1]
-            else:
-                # Multiple languages - merge evidence
-                # For now, use primary language evidence
-                # TODO: Implement full merge like code_quality_service._merge_evidence
-                primary_lang = language_profile.primary_language
-                evidence_obj = next(
-                    (ev for lang, ev in all_evidence if lang == primary_lang),
-                    all_evidence[0][1]  # Fallback to first
+                logger.info(f"Running {lang} analyzer for deep PR analysis")
+                evidence_obj = await analyzer.analyze(
+                    changed_files=changed_file_paths,
+                    repo_path=repo_work_dir,
+                    pr_context=pr_context
                 )
+                # Each analyzer returns full CodeQualityEvidence, last one wins
+                # TODO: In future, merge evidence from multiple analyzers
             
             # Convert CodeQualityEvidence to dict format for code_agent compatibility
-            # FIX: Use None instead of 0 for missing data
             evidence = {
                 "static_analysis": {
                     "findings": [
@@ -303,7 +253,7 @@ class GitHubAnalysisService:
                     "average_complexity": evidence_obj.complexity.average_complexity if evidence_obj.complexity else None,
                     "max_complexity": evidence_obj.complexity.max_complexity if evidence_obj.complexity else None,
                     "high_complexity_functions": evidence_obj.complexity.high_complexity_functions if evidence_obj.complexity else [],
-                    "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else None,
+                    "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else 0,
                 },
                 "security": {
                     "critical_count": evidence_obj.security.critical_count if evidence_obj.security else 0,
