@@ -59,14 +59,14 @@ class ChangeContext(BaseModel):
     Required by the Risk Engine to calculate blast radius.
     """
 
-    changed_files: List[str] = []
-    added_files: List[str] = []
-    deleted_files: List[str] = []
-    renamed_files: List[Dict[str, str]] = []    # [{"from": "old.py", "to": "new.py"}]
-    hot_paths_touched: List[str] = []           # Files with historical incident history
-    db_migrations_changed: bool = False         # Signals schema change risk
-    config_files_changed: bool = False          # Signals environment-level risk
-    public_api_changed: bool = False            # Signals breaking-change risk
+    changed_files: List[str] = Field(default_factory=list)
+    added_files: List[str] = Field(default_factory=list)
+    deleted_files: List[str] = Field(default_factory=list)
+    renamed_files: List[Dict[str, str]] = Field(default_factory=list)
+    hot_paths_touched: List[str] = Field(default_factory=list)
+    db_migrations_changed: bool = False
+    config_files_changed: bool = False
+    public_api_changed: bool = False
 
 
 # ── Evidence Sub-Dimensions ───────────────────────────────────────────────────
@@ -74,7 +74,7 @@ class ChangeContext(BaseModel):
 class ComplexityEvidence(BaseModel):
     average_complexity: float = 0.0
     max_complexity: int = 0
-    high_complexity_functions: List[Dict[str, Any]] = []
+    high_complexity_functions: List[Dict[str, Any]] = Field(default_factory=list)
     lines_of_code: int = 0
     comment_ratio: float = 0.0
     avg_function_length: float = 0.0
@@ -85,7 +85,7 @@ class DuplicationEvidence(BaseModel):
     duplicate_blocks_count: int = 0
     duplicated_lines_count: int = 0
     duplication_percentage: float = 0.0
-    duplicated_files: List[Dict[str, Any]] = []
+    duplicated_files: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class TestingEvidence(BaseModel):
@@ -96,7 +96,7 @@ class TestingEvidence(BaseModel):
     skipped_tests: int = 0
     coverage_percentage: Optional[float] = None
     changed_code_coverage: Optional[float] = None   # Coverage on only the changed lines
-    untested_critical_paths: List[str] = []
+    untested_critical_paths: List[str] = Field(default_factory=list)
 
 
 class SecurityEvidence(BaseModel):
@@ -104,15 +104,15 @@ class SecurityEvidence(BaseModel):
     high_count: int = 0
     medium_count: int = 0
     low_count: int = 0
-    hardcoded_secrets: List[Dict[str, Any]] = []
-    dependency_vulnerabilities: List[Dict[str, Any]] = []
-    findings: List[Finding] = []
+    hardcoded_secrets: List[Dict[str, Any]] = Field(default_factory=list)
+    dependency_vulnerabilities: List[Dict[str, Any]] = Field(default_factory=list)
+    findings: List[Finding] = Field(default_factory=list)
 
 
 class ArchitectureEvidence(BaseModel):
-    layer_violations: List[Dict[str, Any]] = []
-    circular_dependencies: List[str] = []
-    forbidden_imports: List[str] = []
+    layer_violations: List[Dict[str, Any]] = Field(default_factory=list)
+    circular_dependencies: List[str] = Field(default_factory=list)
+    forbidden_imports: List[str] = Field(default_factory=list)
     coupling_score: float = 0.0     # 0 = low coupling (good), 1 = high coupling (bad)
 
 
@@ -128,7 +128,7 @@ class CICDEvidence(BaseModel):
     historical_failure_rate: float = 0.0        # % of last 30 builds that failed
     flaky_test_count: int = 0
     avg_pipeline_duration_minutes: float = 0.0
-    failed_checks: List[str] = []               # Names of failed CI check steps
+    failed_checks: List[str] = Field(default_factory=list)
 
 
 # ── Gap Fix #4: AnalysisQuality ───────────────────────────────────────────────
@@ -147,7 +147,7 @@ class AnalysisQuality(BaseModel):
 
     level: AnalysisLevelEnum = AnalysisLevelEnum.FULL
     confidence: float = 1.0                     # 0.0 – 1.0
-    degraded_dimensions: List[str] = []         # e.g. ["complexity", "testing"]
+    degraded_dimensions: List[str] = Field(default_factory=list)
     reason: Optional[str] = None                # Human-readable explanation
 
     def degrade(self, dimension: str, tool: str, penalty: float = 0.2) -> None:
@@ -161,57 +161,6 @@ class AnalysisQuality(BaseModel):
             self.reason = f"Tool '{tool}' not available on host"
         else:
             self.reason += f"; '{tool}' not available"
-
-    @staticmethod
-    def calculate_confidence(
-        tools_executed: List[str],
-        tools_skipped: List[str],
-        files_analyzed: int,
-        files_total: int,
-        has_test_data: bool,
-        has_coverage_data: bool,
-        has_security_scan: bool,
-    ) -> float:
-        """
-        Calculate confidence from actual evidence completeness.
-        
-        Confidence factors:
-        - Tool execution success rate (0-40%): How many expected tools ran?
-        - File analysis rate (0-30%): What % of files were successfully analyzed?
-        - Data completeness (0-30%): Do we have test/coverage/security data?
-        
-        Returns: float in [0.0, 1.0]
-        """
-        # Factor 1: Tool execution success (40% weight)
-        tools_total = len(tools_executed) + len(tools_skipped)
-        if tools_total > 0:
-            tool_success_rate = len(tools_executed) / tools_total
-        else:
-            tool_success_rate = 0.0  # No tools attempted = no confidence
-        
-        # Factor 2: File analysis rate (30% weight)
-        if files_total > 0:
-            file_analysis_rate = min(1.0, files_analyzed / files_total)
-        else:
-            file_analysis_rate = 0.5  # No files = moderate confidence
-        
-        # Factor 3: Data completeness (30% weight)
-        # Check presence of key data types
-        data_points_available = sum([
-            has_test_data,
-            has_coverage_data,
-            has_security_scan,
-        ])
-        data_completeness = data_points_available / 3.0
-        
-        # Weighted combination
-        confidence = (
-            tool_success_rate * 0.40 +
-            file_analysis_rate * 0.30 +
-            data_completeness * 0.30
-        )
-        
-        return round(max(0.0, min(1.0, confidence)), 2)
 
     def prompt_note(self) -> str:
         """Returns a calibration note to inject into Code Agent prompts."""
@@ -244,7 +193,7 @@ class CodeQualityEvidence(BaseModel):
 
     # Language profile
     primary_language: str
-    detected_languages: List[str] = []
+    detected_languages: List[str] = Field(default_factory=list)
 
     # Gap Fix #1 — Change context for blast radius calculation
     change_context: ChangeContext = Field(default_factory=ChangeContext)
@@ -255,7 +204,7 @@ class CodeQualityEvidence(BaseModel):
     lines_deleted: int = 0
 
     # Evidence dimensions
-    static_findings: List[Finding] = []
+    static_findings: List[Finding] = Field(default_factory=list)
     complexity: ComplexityEvidence = Field(default_factory=ComplexityEvidence)
     duplication: DuplicationEvidence = Field(default_factory=DuplicationEvidence)
     testing: TestingEvidence = Field(default_factory=TestingEvidence)
@@ -265,8 +214,8 @@ class CodeQualityEvidence(BaseModel):
     analysis_quality: AnalysisQuality = Field(default_factory=AnalysisQuality)  # Gap Fix #4
 
     # Execution metadata
-    tools_executed: List[str] = []
-    tools_skipped: List[str] = []
+    tools_executed: List[str] = Field(default_factory=list)
+    tools_skipped: List[str] = Field(default_factory=list)
     analysis_duration_ms: float = 0.0
 
     # Convenience helpers ──────────────────────────────────────────────────────

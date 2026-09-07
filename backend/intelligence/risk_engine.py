@@ -108,16 +108,18 @@ class RiskEngine:
         if files_changed is None:
             pr_data = await self.pr_repo.find_by_id(pr_id)
             if pr_data:
-                files_changed = pr_data.get("files_changed_count", 0)
-                commit_count = pr_data.get("commit_count", 1)
+                files_changed = pr_data.get("files_changed_count")  # Preserve None
+                commit_count = pr_data.get("commit_count")  # Preserve None
                 # Other fields would come from GitHub integration
         
-        # Provide defaults if still None
-        files_changed = files_changed or 0
-        lines_added = lines_added or 0
-        lines_deleted = lines_deleted or 0
-        changed_files = changed_files or []
-        commit_count = commit_count or 1
+        # For simple formula path: use 0 as fallback ONLY if still None
+        # This is OK because simple path doesn't distinguish missing from zero
+        # Real evidence path (analyze_evidence) handles None properly
+        files_changed = files_changed if files_changed is not None else 0
+        lines_added = lines_added if lines_added is not None else 0
+        lines_deleted = lines_deleted if lines_deleted is not None else 0
+        changed_files = changed_files if changed_files is not None else []
+        commit_count = commit_count if commit_count is not None else 1
         
         # Build evidence using SIMPLE formulas (not deep analysis)
         evidence = await self._build_simple_pr_evidence(
@@ -162,8 +164,7 @@ class RiskEngine:
         elif files_changed > PR_SIZE_SMALL_THRESHOLD:
             risk_score += PR_SIZE_SMALL_RISK
         
-        # Factor 2: Churn (max 20 points)
-        # Measures lines changed, not cyclomatic complexity
+        # Factor 2: Complexity (max 20 points)
         lines_total = lines_added + lines_deleted
         if lines_total > CHURN_HIGH_THRESHOLD:
             risk_score += CHURN_HIGH_RISK
@@ -233,13 +234,13 @@ class RiskEngine:
         
         # Use provided data or query from stories in the database
         if stories_data:
-            total_stories = stories_data.get("total_stories", 0)
-            completed_stories = stories_data.get("completed_stories", 0)
-            in_progress_stories = stories_data.get("in_progress_stories", 0)
-            blocked_stories = stories_data.get("blocked_stories", 0)
-            total_points = stories_data.get("total_points", 0)
-            completed_points = stories_data.get("completed_points", 0)
-            original_points = stories_data.get("original_points", total_points)
+            total_stories = stories_data.get("total_stories") or 0
+            completed_stories = stories_data.get("completed_stories") or 0
+            in_progress_stories = stories_data.get("in_progress_stories") or 0
+            blocked_stories = stories_data.get("blocked_stories") or 0
+            total_points = stories_data.get("total_points") or 0
+            completed_points = stories_data.get("completed_points") or 0
+            original_points = stories_data.get("original_points") or total_points
         else:
             # Query actual stories from the database
             all_stories = await self.story_repo.find_all({"sprint_id": sprint_id})
@@ -247,9 +248,9 @@ class RiskEngine:
             completed_stories = sum(1 for s in all_stories if s.get("status") == "completed")
             in_progress_stories = sum(1 for s in all_stories if s.get("status") == "in_progress")
             blocked_stories = sum(1 for s in all_stories if s.get("status") == "blocked")
-            total_points = sum(s.get("story_points", 0) for s in all_stories)
-            completed_points = sum(s.get("story_points", 0) for s in all_stories if s.get("status") == "completed")
-            original_points = sprint.get("original_points", total_points)
+            total_points = sum(s.get("story_points") or 0 for s in all_stories)
+            completed_points = sum(s.get("story_points") or 0 for s in all_stories if s.get("status") == "completed")
+            original_points = sprint.get("original_points") or total_points
         
         # Calculate elapsed days from sprint start_date
         start_date_str = sprint.get("start_date")
@@ -465,15 +466,18 @@ class RiskEngine:
     async def analyze_evidence(
         self,
         evidence: "CodeQualityEvidence",
+        baseline: "RepositoryBaseline | None" = None,
     ) -> dict:
         """
         Phase 4 — Compute multi-dimensional risk from a CodeQualityEvidence package.
 
-        Uses direct evidence-based calculation with configurable thresholds.
-        No historical baseline or Z-scores - purely deterministic from current evidence.
+        Uses RISK_DIMENSION_WEIGHTS and Z-score historical deviation.
+        Preserves all existing analyze_pull_request / analyze_sprint methods.
 
         Args:
             evidence: Normalized CodeQualityEvidence from any language analyzer
+            baseline: Optional RepositoryBaseline for Z-score calculation;
+                      falls back to default thresholds if None
 
         Returns:
             {
@@ -492,9 +496,8 @@ class RiskEngine:
         )
         
         # Extract weights from configuration
-        # Note: alpha_size_zscore renamed to alpha_size for clarity (no longer Z-score based)
         weights = {
-            "alpha_size": config.risk_weights.alpha_size_zscore,  # TODO: Rename in DB schema
+            "alpha_size_zscore": config.risk_weights.alpha_size_zscore,
             "beta_hotspot": config.risk_weights.beta_hotspot,
             "gamma_dependency": config.risk_weights.gamma_dependency,
             "delta_missing_tests": config.risk_weights.delta_missing_tests,
@@ -505,40 +508,24 @@ class RiskEngine:
         risk_factors: list[str] = []
         dimension_scores: dict = {}
 
-        # ── 1. PR Size / Churn (alpha) ────────────────────────────────────────
-        # Direct threshold-based calculation (no historical baseline)
-        # Thresholds based on industry research:
-        # - Small PR: < 200 lines (easy to review)
-        # - Medium PR: 200-500 lines (manageable)
-        # - Large PR: 500-1000 lines (difficult)
-        # - Very Large: > 1000 lines (high risk)
-        
-        lines_changed = evidence.lines_added + evidence.lines_deleted
-        files_changed = evidence.files_analyzed
-        
-        # Calculate size score based on lines and files
-        alpha_score = 0.0
-        
-        if lines_changed > 1000:
-            alpha_score = 100.0
-            risk_factors.append(f"Very large PR: {lines_changed} lines changed")
-        elif lines_changed > 500:
-            alpha_score = 70.0
-            risk_factors.append(f"Large PR: {lines_changed} lines changed")
-        elif lines_changed > 200:
-            alpha_score = 35.0
-            risk_factors.append(f"Medium PR: {lines_changed} lines changed")
+        # ── 1. Size Z-score (alpha) ───────────────────────────────────────────
+        z_size = 0.0
+        if baseline:
+            lines_changed = evidence.lines_added + evidence.lines_deleted
+            z_size = await baseline.compute_zscore(
+                evidence.repository_id, "lines_changed", lines_changed
+            )
         else:
-            alpha_score = 0.0  # Small PRs are low risk
-        
-        # Add file count factor
-        if files_changed > 20:
-            alpha_score = min(100.0, alpha_score + 30.0)
-            risk_factors.append(f"Many files changed: {files_changed} files")
-        elif files_changed > 10:
-            alpha_score = min(100.0, alpha_score + 15.0)
-        
-        dimension_scores["pr_size_risk"] = round(alpha_score, 1)
+            # Fallback: simple threshold-based score
+            lines_changed = evidence.lines_added + evidence.lines_deleted
+            z_size = min(3.0, lines_changed / 500.0)
+
+        alpha_score = min(100.0, max(0.0, z_size * 20))
+        dimension_scores["size_deviation"] = round(alpha_score, 1)
+        if z_size > 2.0:
+            risk_factors.append(
+                f"PR is {z_size:.1f}x larger than this repo's normal size"
+            )
 
         # ── 2. Hotspot weight (beta) ──────────────────────────────────────────
         hotspot_count = len(evidence.change_context.hot_paths_touched)
@@ -617,7 +604,7 @@ class RiskEngine:
 
         # ── Weighted final score ──────────────────────────────────────────────
         weighted = (
-            weights["alpha_size"]          * (alpha_score   / 100) +
+            weights["alpha_size_zscore"]   * (alpha_score   / 100) +
             weights["beta_hotspot"]        * (beta_score    / 100) +
             weights["gamma_dependency"]    * (gamma_score   / 100) +
             weights["delta_missing_tests"] * (delta_score   / 100) +

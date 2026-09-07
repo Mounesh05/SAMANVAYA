@@ -41,7 +41,7 @@ class RecommendationEngine:
         recommendations = []
         
         risk_level = risk_analysis.get("risk_level", "unknown")
-        risk_score = risk_analysis.get("risk_score", 0)
+        risk_score = risk_analysis.get("risk_score")  # Preserve None
         
         # 1. Risk-based recommendations
         if risk_level in ("high", "critical") or risk_score >= 70:
@@ -196,7 +196,7 @@ class RecommendationEngine:
         complexity_metrics = quality_report.get("complexity_metrics", {})
         
         # Security recommendations
-        critical_security = security_findings.get("critical_count", 0)
+        critical_security = security_findings.get("critical_count") or 0  # Count can be 0
         if critical_security > 0:
             rec_id = await self._create_recommendation(
                 entity_type="pull_request",
