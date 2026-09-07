@@ -162,7 +162,8 @@ class RiskEngine:
         elif files_changed > PR_SIZE_SMALL_THRESHOLD:
             risk_score += PR_SIZE_SMALL_RISK
         
-        # Factor 2: Complexity (max 20 points)
+        # Factor 2: Churn (max 20 points)
+        # Measures lines changed, not cyclomatic complexity
         lines_total = lines_added + lines_deleted
         if lines_total > CHURN_HIGH_THRESHOLD:
             risk_score += CHURN_HIGH_RISK
