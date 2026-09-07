@@ -120,6 +120,7 @@ class SprintMetrics:
             "risk_score": min(risk_score, 100),
             "risk_level": risk_level,
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -160,6 +161,7 @@ class SprintMetrics:
             "added_stories": added_stories,
             "risk_score": min(risk_score, 100),
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -200,4 +202,5 @@ class SprintMetrics:
             "team_avg_velocity": team_avg_velocity,
             "risk_score": min(risk_score, 100),
             "risk_factors": risk_factors,
+            "data_quality": "complete" if previous_sprint_velocity else "partial",
         }

@@ -53,6 +53,7 @@ class CodeMetrics:
             "total_lines_changed": total_lines_changed,
             "risk_score": min(risk_score, 100),
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -110,6 +111,7 @@ class CodeMetrics:
             "high_risk_areas": high_risk_areas,
             "risk_score": min(risk_score, 100),
             "risk_factors": risk_factors,
+            "data_quality": "complete" if changed_files else "insufficient",
         }
 
     @staticmethod
@@ -138,6 +140,7 @@ class CodeMetrics:
             "pr_age_hours": pr_age_hours,
             "risk_score": min(risk_score, 100),
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod

@@ -27,10 +27,11 @@ class QualityMetrics:
         if total_tests == 0:
             return {
                 "total_tests": 0,
-                "pass_rate": 0.0,
-                "risk_score": 50,
-                "risk_level": "MEDIUM",
-                "risk_factors": ["No tests found"],
+                "pass_rate": None,  # None = unknown, not 0%
+                "risk_score": None,  # Cannot calculate risk without data
+                "risk_level": "UNKNOWN",
+                "risk_factors": ["No test data available"],
+                "data_quality": "insufficient",
             }
         
         pass_rate = (tests_passed / total_tests) * 100
@@ -78,6 +79,7 @@ class QualityMetrics:
             "total_tests": total_tests,
             "tests_passed": tests_passed,
             "tests_failed": tests_failed,
+            "data_quality": "complete",
             "tests_skipped": tests_skipped,
             "pass_rate": round(pass_rate, 2),
             "risk_score": min(risk_score, 100),
@@ -136,6 +138,7 @@ class QualityMetrics:
             "risk_score": min(risk_score, 100),
             "risk_level": risk_level,
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -153,8 +156,10 @@ class QualityMetrics:
                 "previous_coverage": previous_coverage,
                 "current_coverage": current_coverage,
                 "coverage_change": None,
-                "risk_score": 10,
+                "risk_score": None,  # Cannot calculate without data
+                "risk_level": "UNKNOWN",
                 "risk_factors": ["Coverage data unavailable"],
+                "data_quality": "insufficient",
             }
         
         coverage_change = current_coverage - previous_coverage
@@ -188,6 +193,7 @@ class QualityMetrics:
             "coverage_change": round(coverage_change, 2),
             "risk_score": min(risk_score, 100),
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -229,4 +235,5 @@ class QualityMetrics:
             "risk_score": min(risk_score, 100),
             "risk_level": risk_level,
             "risk_factors": risk_factors,
+            "data_quality": "complete" if changed_modules else "insufficient",
         }

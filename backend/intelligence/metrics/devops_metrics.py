@@ -27,10 +27,11 @@ class DevOpsMetrics:
         if builds_total == 0:
             return {
                 "builds_total": 0,
-                "success_rate": 0.0,
-                "risk_score": 30,
-                "risk_level": "MEDIUM",
+                "success_rate": None,  # Unknown, not 0%
+                "risk_score": None,  # Cannot assess risk without data
+                "risk_level": "UNKNOWN",
                 "risk_factors": ["No build data available"],
+                "data_quality": "insufficient",
             }
         
         success_rate = (builds_passed / builds_total) * 100
@@ -70,6 +71,7 @@ class DevOpsMetrics:
             "risk_score": min(risk_score, 100),
             "risk_level": risk_level,
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
@@ -88,10 +90,11 @@ class DevOpsMetrics:
         if deployments_total == 0:
             return {
                 "deployments_total": 0,
-                "success_rate": 100.0,
-                "risk_score": 0,
-                "risk_level": "LOW",
-                "risk_factors": [],
+                "success_rate": None,  # Unknown deployment health
+                "risk_score": None,  # No baseline to assess
+                "risk_level": "UNKNOWN",
+                "risk_factors": ["No deployment history"],
+                "data_quality": "insufficient",
             }
         
         success_rate = (deployments_successful / deployments_total) * 100
@@ -133,6 +136,7 @@ class DevOpsMetrics:
             "risk_score": min(risk_score, 100),
             "risk_level": risk_level,
             "risk_factors": risk_factors,
+            "data_quality": "complete",
         }
 
     @staticmethod
