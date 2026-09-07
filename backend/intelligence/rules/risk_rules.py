@@ -3,29 +3,18 @@ Risk classification rules.
 Defines thresholds and rules for classifying risk levels.
 NO LLM - pure business logic.
 
-Gap Fix #2: RISK_DIMENSION_WEIGHTS and QUALITY_DIMENSION_WEIGHTS are the
-single source of truth for all scoring formulas. Imported by:
+These constants are the single source of truth for risk and quality scoring.
+Imported by:
   - intelligence/analyzers/registry.py  (re-exported)
-  - intelligence/risk_engine.py         (analyze_evidence)
-  - intelligence/quality_engine.py      (QualityEngine)
+  - intelligence/risk_engine.py         (direct thresholds)
+  - intelligence/quality_engine.py      (quality weights)
+  
+Note: Historical Z-score baseline system removed. Risk now based on direct
+thresholds (lines changed, files changed, test failures, etc.) without
+comparison to repository history.
 """
 
 from typing import List, Dict
-
-# ── Gap Fix #2: Risk Dimension Weight Table ───────────────────────────────────
-# R = BASE_RISK + alpha*Z_size + beta*hotspot + gamma*dep + delta*tests
-#               + epsilon*security + zeta*complexity
-# All weights sum to 100 so the final risk score stays within [0, 100].
-
-RISK_DIMENSION_WEIGHTS: Dict[str, float] = {
-    "alpha_size_zscore":   12.0,   # PR size Z-score vs. repo historical median
-    "beta_hotspot":        20.0,   # historical incident-prone files changed
-    "gamma_dependency":    15.0,   # new or updated third-party packages
-    "delta_missing_tests": 18.0,   # changed lines with no test coverage
-    "epsilon_security":    25.0,   # CVSS-weighted vulnerability score
-    "zeta_complexity":     10.0,   # cyclomatic spike above repo baseline
-}
-BASE_RISK: float = 10.0            # Every PR starts with 10 base risk points
 
 # ── Quality Dimension Weight Table ────────────────────────────────────────────
 # Q = 100 - (w_s*S + w_c*C + w_t*T + w_d*D + w_a*A)
@@ -40,7 +29,7 @@ QUALITY_DIMENSION_WEIGHTS: Dict[str, float] = {
 }
 
 # ── Simple Risk Engine Thresholds ────────────────────────────────────────────
-# Used by RiskEngine._build_simple_pr_evidence() and related methods.
+# Used by RiskEngine for direct threshold-based risk calculation.
 # These replace hardcoded magic numbers with named, documented constants.
 
 # PR size thresholds (files changed)

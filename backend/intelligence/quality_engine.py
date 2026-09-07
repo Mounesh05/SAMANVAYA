@@ -116,13 +116,19 @@ class QualityEngine:
     def _testing_penalty(self, evidence: CodeQualityEvidence) -> float:
         """
         Penalty based on test coverage gap below threshold.
-        No coverage data = maximum penalty.
+        
+        Returns 0.0 when coverage is None (unavailable) — this follows
+        the semantic rule: None = unavailable, not "bad quality".
+        
+        The caller should reduce confidence instead when coverage is unavailable.
         """
         testing = evidence.testing
         coverage = testing.coverage_percentage
 
         if coverage is None:
-            return 60.0  # No coverage data — significant penalty but not maximum
+            # No coverage data available — return 0 penalty
+            # Confidence reduction is handled by AnalysisQuality logic
+            return 0.0
 
         if coverage >= self.MIN_COVERAGE_THRESHOLD:
             return 0.0

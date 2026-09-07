@@ -239,6 +239,7 @@ class PythonAnalyzer(BaseAnalyzer):
                         pass
 
         # Coverage (if .coverage file exists from previous run)
+        coverage_available = False
         if self._tool_available("coverage"):
             cov_out = await _run(["coverage", "report", "--format=json"], cwd=repo_path)
             if cov_out:
@@ -246,8 +247,13 @@ class PythonAnalyzer(BaseAnalyzer):
                     cov_data = json.loads(cov_out)
                     te.coverage_percentage = round(cov_data.get("totals", {}).get("percent_covered", 0), 1)
                     evidence.tools_executed.append("coverage")
+                    coverage_available = True
                 except json.JSONDecodeError:
                     pass
+        
+        # Degrade confidence if coverage data unavailable
+        if not coverage_available:
+            self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
 
         return te
 

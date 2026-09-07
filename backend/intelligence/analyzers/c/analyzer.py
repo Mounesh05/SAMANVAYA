@@ -93,7 +93,7 @@ class CAnalyzer(BaseAnalyzer):
 
         evidence.complexity = complexity_ev
         evidence.duplication = analyze_duplication(files, repo_path)
-        evidence.testing = self._detect_tests(repo_path)
+        evidence.testing = self._detect_tests(repo_path, evidence)
 
         evidence.analysis_duration_ms = (time.monotonic() - start) * 1000
         return evidence
@@ -162,14 +162,24 @@ class CAnalyzer(BaseAnalyzer):
 
     # ── Test Detection ────────────────────────────────────────────────────────
 
-    def _detect_tests(self, repo_path: str) -> TestingEvidence:
+    def _detect_tests(self, repo_path: str, evidence: CodeQualityEvidence) -> TestingEvidence:
+        """
+        Detect C test framework (Check, Unity, CTest, CMocka).
+        
+        Note: Does not attempt to collect coverage data.
+        Degrades confidence since coverage is unavailable.
+        """
         root = Path(repo_path)
         for framework, indicator in [
             ("check", "check.h"), ("unity", "unity.h"),
             ("ctest", "CMakeLists.txt"), ("cmocka", "cmocka.h"),
         ]:
             if any(root.rglob(f"*{indicator}")):
+                # Coverage data not collected - reduce confidence
+                self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
                 return TestingEvidence(test_framework=framework)
+        # No test framework detected and no coverage - reduce confidence
+        self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
         return TestingEvidence()
 
     # ── Parsers ───────────────────────────────────────────────────────────────

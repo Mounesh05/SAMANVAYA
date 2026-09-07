@@ -371,13 +371,17 @@ class RiskEngine:
         
         Returns:
             Evidence package with deployment risk
+            
+        Note:
+            Returns risk_score=None (not 0) when data is insufficient.
+            None = unavailable, 0 = measured zero risk.
         """
         # Require actual data — do not use hardcoded defaults
         if not ci_data or not deployment_data:
             return {
                 "error": "ci_data and deployment_data are required for deployment analysis",
                 "deployment_id": deployment_id,
-                "risk_score": 0,
+                "risk_score": None,  # None = unavailable, not 0
                 "risk_level": "unknown",
                 "risk_factors": ["Insufficient data for analysis"],
                 "metrics": {},
@@ -402,7 +406,32 @@ class RiskEngine:
         deployments_failed: int,
         rollbacks: int,
     ) -> Dict[str, Any]:
-        """Build simple deployment evidence using formulas."""
+        """
+        Build simple deployment evidence using formulas.
+        
+        Returns risk_score=None when deployments_total=0 (no data).
+        None = unavailable, 0 = measured zero risk.
+        """
+        # Check for insufficient data
+        if deployments_total == 0:
+            return {
+                "deployment_id": deployment_id,
+                "risk_score": None,  # None = no data available
+                "risk_level": "unknown",
+                "risk_factors": ["No deployment history available"],
+                "metrics": {
+                    "builds_total": builds_total,
+                    "builds_passed": builds_passed,
+                    "builds_failed": builds_failed,
+                    "build_failure_rate": None,
+                    "deployments_total": 0,
+                    "deployments_successful": 0,
+                    "deployments_failed": 0,
+                    "deploy_failure_rate": None,
+                    "rollbacks": 0,
+                }
+            }
+        
         risk_score = 0
         risk_factors = []
         

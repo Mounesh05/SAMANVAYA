@@ -100,7 +100,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
 
         evidence.complexity = complexity_ev
         evidence.duplication = analyze_duplication(files, repo_path)
-        evidence.testing = self._detect_test_framework(repo_path)
+        evidence.testing = self._detect_test_framework(repo_path, evidence)
 
         evidence.analysis_duration_ms = (time.monotonic() - start) * 1000
         return evidence
@@ -167,7 +167,13 @@ class JavaScriptAnalyzer(BaseAnalyzer):
 
     # ── Test framework detection ──────────────────────────────────────────────
 
-    def _detect_test_framework(self, repo_path: str) -> TestingEvidence:
+    def _detect_test_framework(self, repo_path: str, evidence: CodeQualityEvidence) -> TestingEvidence:
+        """
+        Detect test framework from config files or package.json.
+        
+        Note: Does not attempt to collect coverage data.
+        Degrades confidence since coverage is unavailable.
+        """
         root = Path(repo_path)
         for name, framework in [
             ("jest.config.js", "jest"),
@@ -177,6 +183,8 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             ("karma.conf.js", "karma"),
         ]:
             if (root / name).exists():
+                # Coverage data not collected - reduce confidence
+                self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
                 return TestingEvidence(test_framework=framework)
         pkg = root / "package.json"
         if pkg.exists():
@@ -186,9 +194,14 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                 test_cmd = scripts.get("test", "")
                 for fw in ("jest", "vitest", "mocha", "jasmine"):
                     if fw in test_cmd:
+                        # Coverage data not collected - reduce confidence
+                        self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
                         return TestingEvidence(test_framework=fw)
             except (json.JSONDecodeError, OSError):
                 pass
+        
+        # No test framework detected and no coverage - reduce confidence
+        self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
         return TestingEvidence()
 
     # ── Parsers ───────────────────────────────────────────────────────────────

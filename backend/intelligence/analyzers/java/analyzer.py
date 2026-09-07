@@ -92,7 +92,7 @@ class JavaAnalyzer(BaseAnalyzer):
 
         evidence.complexity = complexity_ev
         evidence.duplication = analyze_duplication(files, repo_path)
-        evidence.testing = self._detect_tests(repo_path)
+        evidence.testing = self._detect_tests(repo_path, evidence)
 
         evidence.analysis_duration_ms = (time.monotonic() - start) * 1000
         return evidence
@@ -166,7 +166,13 @@ class JavaAnalyzer(BaseAnalyzer):
 
     # ── Test Detection ────────────────────────────────────────────────────────
 
-    def _detect_tests(self, repo_path: str) -> TestingEvidence:
+    def _detect_tests(self, repo_path: str, evidence: CodeQualityEvidence) -> TestingEvidence:
+        """
+        Detect test framework (JUnit or TestNG) and count test files.
+        
+        Note: Does not attempt to collect coverage data.
+        Degrades confidence since coverage is unavailable.
+        """
         root = Path(repo_path)
         # Detect JUnit vs TestNG
         test_src = root / "src" / "test"
@@ -181,10 +187,14 @@ class JavaAnalyzer(BaseAnalyzer):
                         break
                 except OSError:
                     pass
+            # Coverage data not collected - reduce confidence
+            self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
             return TestingEvidence(
                 test_framework=framework,
                 total_tests=len(java_test_files),
             )
+        # No tests detected and no coverage - reduce confidence
+        self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
         return TestingEvidence()
 
     # ── Parsers ───────────────────────────────────────────────────────────────
