@@ -254,7 +254,6 @@ app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code 
 
 # Risk Configuration Management (Production-scale configurable weights)
 app.include_router(risk_configurations.router, prefix="/api/risk-configurations", tags=["Risk Configuration"])
-app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code Quality"])
 
 # AI Evaluation (Requires Auth)
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["AI Evaluation"])
