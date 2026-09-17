@@ -118,6 +118,6 @@ class GitHubAPIService:
             List of repository data from GitHub API
         """
         if org:
-            return await self.client.list_org_repositories(org)
+            return await self.client.list_repositories(org)
         else:
-            return await self.client.list_user_repositories()
+            return await self.client.list_repositories()
