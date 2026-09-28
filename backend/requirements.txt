@@ -52,3 +52,4 @@ safety==3.2.8
 # C/C++ analysis
 # Note: cppcheck requires system installation (apt-get install cppcheck / brew install cppcheck)
 # The analyzers will gracefully fall back to AST mode if not installed
+rich=15.0.0
