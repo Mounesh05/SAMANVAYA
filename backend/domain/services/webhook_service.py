@@ -1,4 +1,4 @@
-﻿"""
+"""
 Webhook Service — processes incoming GitHub webhook events.
 Auto-syncs PRs, logs commits, and triggers AI code review.
 """
@@ -41,8 +41,8 @@ class WebhookService:
         """
         secret = settings.GITHUB_WEBHOOK_SECRET
         if not secret:
-            logger.warning("GITHUB_WEBHOOK_SECRET not configured — webhook signature verification disabled")
-            return True
+            logger.error("GITHUB_WEBHOOK_SECRET not configured — rejecting webhook (fail-closed)")
+            return False
         
         expected = "sha256=" + hmac.new(
             secret.encode("utf-8"),

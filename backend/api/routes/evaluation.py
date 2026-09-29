@@ -7,6 +7,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from core.dependencies import get_current_user, require_roles
+import asyncio
+import json
 import time
 import uuid
 
@@ -71,31 +73,23 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
             except Exception as e:
                 pr_analysis = {"error": f"Could not analyze PR: {str(e)}"}
         
-        # Step 3: Get evidence-based evaluation from engines (authoritative)
-        evidence_score = await _get_evidence_based_score(
-            repo_info=repo_info,
-            pr_analysis=pr_analysis,
-        )
-        
-        # Step 4: Run AI for explanations and recommendations (NOT for scoring)
-        ai_insights = await _run_ai_insights(
+        # Step 3: Ask AI to score each dimension using only the collected evidence.
+        ai_evaluation = await _run_ai_evaluation(
             github_username=request.github_username,
             repo_info=repo_info,
             pr_analysis=pr_analysis,
-            evidence_score=evidence_score,
             focus=request.evaluation_focus
         )
         
-        # Step 5: Calculate overall score (90% evidence / 10% human feedback)
-        # Evidence-based engines provide authoritative scores
-        # Human feedback is optional calibration, not the primary signal
+        # Step 4: Aggregate validated AI dimension scores. The weights total 90%;
+        # the optional human score is a separate 10% calibration signal.
+        evidence_score = _calculate_ai_evidence_score(ai_evaluation["dimensions"])
         if request.human_score is not None:
             overall_score = (evidence_score * 0.9 + request.human_score * 0.1)
         else:
-            overall_score = evidence_score  # Pure evidence-based when no human input
+            overall_score = evidence_score
         
-        # Step 6: Get recommendations from AI (no hardcoded fallbacks)
-        recommendations = ai_insights.get("recommendations", [])
+        recommendations = ai_evaluation["recommendations"]
         
         return EvaluationResult(
             evaluation_id=evaluation_id,
@@ -110,7 +104,11 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
             human_score=request.human_score,
             ai_analysis={
                 "evidence_score": evidence_score,
-                "insights": ai_insights,
+                "dimensions": ai_evaluation["dimensions"],
+                "analysis": ai_evaluation["analysis"],
+                "strengths": ai_evaluation["strengths"],
+                "improvements": ai_evaluation["improvements"],
+                "confidence": ai_evaluation["confidence"],
             },
             overall_score=round(overall_score, 2),
             recommendations=recommendations,
@@ -124,85 +122,44 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
         )
 
 
-async def _get_evidence_based_score(
-    repo_info: Dict[str, Any],
-    pr_analysis: Optional[Dict[str, Any]],
-) -> float:
-    """
-    Calculate evidence-based score from deterministic engines.
-    This is the AUTHORITATIVE score, not LLM-generated.
-    
-    Returns score 0-10 based on:
-    - Quality score from QualityEngine (if PR analyzed)
-    - Risk score from RiskEngine (if PR analyzed)
-    - Repository metrics (stars, activity, etc.)
-    
-    Note: LLMs explain this score, they don't generate it.
-    """
-    # If we have PR analysis with quality/risk scores, use those
-    if pr_analysis and isinstance(pr_analysis, dict):
-        quality_score = pr_analysis.get("quality_score")
-        risk_score = pr_analysis.get("risk_score")
-        
-        if quality_score is not None:
-            # Quality score is 0-100, convert to 0-10
-            # High quality = high score
-            q_normalized = quality_score / 10.0
-            
-            if risk_score is not None:
-                # Risk score is 0-100, convert to 0-10
-                # High risk = low score (inverse)
-                r_normalized = (100 - risk_score) / 10.0
-                # Weighted: 70% quality, 30% risk
-                return round(q_normalized * 0.7 + r_normalized * 0.3, 2)
-            else:
-                return round(q_normalized, 2)
-    
-    # Fallback: basic repository metrics
-    # This is a simplified heuristic when no PR analysis available
-    stars = repo_info.get("stargazers_count", 0)
-    forks = repo_info.get("forks_count", 0)
-    has_issues = repo_info.get("has_issues", False)
-    
-    # Basic scoring: more stars/forks = more trusted contributor
-    # Max 10 points, logarithmic scale
-    import math
-    if stars > 0:
-        star_score = min(10.0, math.log10(stars + 1) * 2)
-    else:
-        star_score = 5.0  # Neutral when no data
-    
-    return round(star_score, 2)
+AI_DIMENSION_WEIGHTS = {
+    "code_quality": 25,
+    "delivery": 20,
+    "collaboration": 15,
+    "reliability": 15,
+    "engineering_impact": 10,
+    "engineering_judgment": 5,
+}
 
 
-async def _run_ai_insights(
+def _calculate_ai_evidence_score(dimensions: Dict[str, Any]) -> float:
+    """Aggregate validated 0-10 AI dimension scores into a 0-10 score."""
+    weighted_points = sum(
+        float(dimensions[name]["score"]) * weight
+        for name, weight in AI_DIMENSION_WEIGHTS.items()
+    )
+    return round(weighted_points / 90, 2)
+
+
+async def _run_ai_evaluation(
     github_username: str,
     repo_info: Dict[str, Any],
     pr_analysis: Optional[Dict[str, Any]],
-    evidence_score: float,
     focus: str
 ) -> Dict[str, Any]:
     """
-    Run AI for insights and recommendations (NOT for scoring).
-    
-    The evidence_score is AUTHORITATIVE and comes from deterministic engines.
-    AI's job is to EXPLAIN the evidence and provide recommendations.
+    Score the developer from the supplied evidence and return structured reasoning.
     """
     try:
         from agents.llm_provider import get_ollama_llm, check_ollama_connection
-        
-        # Check if Ollama is available
+
         if not check_ollama_connection():
-            return {
-                "analysis": "AI insights unavailable — Ollama not connected",
-                "confidence": 0.0,
-                "recommendations": [],
-                "error": "Ollama not available"
-            }
-        
-        # Build insights prompt (EXPLANATION, not scoring)
+            raise RuntimeError("Ollama is not available")
+
         prompt = f"""
-Analyze the technical performance of GitHub user '{github_username}' based on evidence.
+Evaluate GitHub user '{github_username}' using only the evidence below.
+Do not invent activity, code changes, or outcomes. If evidence is missing, score
+that dimension conservatively and explain what is missing.
 
 Repository Context:
 - Repository: {repo_info.get('name', 'N/A')}
@@ -210,66 +167,59 @@ Repository Context:
 - Primary Language: {repo_info.get('language', 'N/A')}
 - Description: {repo_info.get('description', 'N/A')}
 
-Evidence-Based Score: {evidence_score}/10
-(This score comes from deterministic analysis engines - Quality and Risk assessment)
-
 Pull Request Analysis:
 {pr_analysis if pr_analysis else 'No specific PR analyzed'}
 
 Focus Area: {focus}
 
-Your task is to EXPLAIN the evidence and provide recommendations.
-DO NOT generate your own score - the {evidence_score}/10 is authoritative.
+Score each dimension from 0 to 10 based on the evidence:
+code_quality, delivery, collaboration, reliability, engineering_impact,
+engineering_judgment.
 
-Please provide:
-1. Analysis: Explain what the evidence score means for this developer's skills
-2. Strengths: Key technical strengths observed from the evidence
-3. Areas for Improvement: Specific areas to focus on based on evidence
-4. Recommendations: 3-5 actionable recommendations
-
-Format as JSON with keys: analysis, strengths, improvements, recommendations
-DO NOT include a "technical_score" field - scoring is done by deterministic engines.
+Return JSON only:
+{{
+  "dimensions": {{
+    "code_quality": {{"score": 0, "reasoning": "Evidence-based reasoning"}},
+    "delivery": {{"score": 0, "reasoning": "Evidence-based reasoning"}},
+    "collaboration": {{"score": 0, "reasoning": "Evidence-based reasoning"}},
+    "reliability": {{"score": 0, "reasoning": "Evidence-based reasoning"}},
+    "engineering_impact": {{"score": 0, "reasoning": "Evidence-based reasoning"}},
+    "engineering_judgment": {{"score": 0, "reasoning": "Evidence-based reasoning"}}
+  }},
+  "analysis": "Overall evidence-based assessment",
+  "strengths": ["Evidence-backed strength"],
+  "improvements": ["Evidence-backed improvement"],
+  "recommendations": ["Specific actionable recommendation"],
+  "confidence": 0.0
+}}
 """
 
-        # Get AI response
         llm = get_ollama_llm(temperature=0.3)
-        response = llm.invoke(prompt)
-        
-        # Parse AI response (basic parsing)
-        try:
-            import json
-            # Try to extract JSON from response
-            start_idx = response.find('{')
-            end_idx = response.rfind('}') + 1
-            if start_idx >= 0 and end_idx > start_idx:
-                ai_data = json.loads(response[start_idx:end_idx])
-            else:
-                raise ValueError("No JSON found")
-        except Exception:
-            # Fallback: return raw response
-            ai_data = {
-                "analysis": response[:500] + "..." if len(response) > 500 else response,
-                "strengths": [],
-                "improvements": [],
-                "recommendations": [],
-                "parse_error": "Could not extract structured JSON from AI response"
-            }
-        
-        # Remove any "technical_score" if LLM included it despite instructions
-        if "technical_score" in ai_data:
-            del ai_data["technical_score"]
-        
-        # Confidence based on whether we got a real structured response
-        ai_data["confidence"] = 0.8 if "analysis" in ai_data else 0.0
+        response = await asyncio.to_thread(llm.invoke, prompt)
+
+        start_idx = response.find("{")
+        end_idx = response.rfind("}") + 1
+        if start_idx < 0 or end_idx <= start_idx:
+            raise ValueError("AI response did not contain JSON")
+        ai_data = json.loads(response[start_idx:end_idx])
+        dimensions = ai_data.get("dimensions")
+        if not isinstance(dimensions, dict):
+            raise ValueError("AI response did not contain dimensions")
+        for name in AI_DIMENSION_WEIGHTS:
+            dimension = dimensions.get(name)
+            if not isinstance(dimension, dict):
+                raise ValueError(f"AI response missing dimension: {name}")
+            score = dimension.get("score")
+            if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= 10:
+                raise ValueError(f"AI score for {name} must be between 0 and 10")
+            if not isinstance(dimension.get("reasoning"), str) or not dimension["reasoning"].strip():
+                raise ValueError(f"AI reasoning missing for {name}")
+        if not isinstance(ai_data.get("recommendations"), list):
+            raise ValueError("AI response missing recommendations")
+        ai_data["confidence"] = max(0.0, min(1.0, float(ai_data.get("confidence", 0.0))))
         return ai_data
-        
     except Exception as e:
-        return {
-            "analysis": f"AI insights generation failed: {str(e)}",
-            "confidence": 0.0,
-            "recommendations": [],
-            "error": str(e)
-        }
+        raise RuntimeError(f"AI evaluation failed: {e}") from e
 
 
 @router.get("/health")

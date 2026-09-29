@@ -102,7 +102,7 @@ class EvidenceMerger:
         
         # Merge CI/CD (take worst case)
         merged_cicd = EvidenceMerger._merge_cicd(
-            [ev.cicd for ev in evidence_list]
+            [ev.ci_cd for ev in evidence_list]
         )
         
         # Merge analysis quality (take lowest confidence)
@@ -143,7 +143,7 @@ class EvidenceMerger:
             testing=merged_testing,
             duplication=merged_duplication,
             architecture=merged_architecture,
-            cicd=merged_cicd,
+            ci_cd=merged_cicd,
             analysis_quality=merged_quality,
             tools_executed=sorted(list(all_tools)),
             tools_skipped=sorted(list(all_skipped)),

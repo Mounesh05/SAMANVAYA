@@ -15,7 +15,7 @@ from domain.models.ai_run import AIRun
 from repositories.ai_run_repository import AIRunRepository
 from core.database import db
 
-router = APIRouter(prefix="/ai", tags=["AI Agents"])
+router = APIRouter(tags=["AI Agents"])
 
 
 class AgentRequest(BaseModel):
@@ -80,7 +80,8 @@ async def invoke_agent_endpoint(
             "confidence": None,
         }
 
-        result = invoke_agent(request.task_type, initial_state)
+        import asyncio
+        result = await asyncio.to_thread(invoke_agent, request.task_type, initial_state)
 
         execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 

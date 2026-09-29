@@ -1,4 +1,4 @@
-﻿"""
+"""
 Application configuration loaded from .env via pydantic-settings.
 All settings are typed. SECRET_KEY has no default — must be set.
 """
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     
     # ── Security ──────────────────────────────────────────────────
-    RATE_LIMIT_ENABLED: bool = False  # Enable in production
+    RATE_LIMIT_ENABLED: bool = True  # Rate limiting on by default
     MAX_REQUESTS_PER_MINUTE: int = 100
     MAX_LOGIN_ATTEMPTS: int = 5
 

@@ -13,9 +13,10 @@ UPDATED: Now uses WebhookEventProcessor for real-time intelligence pipeline.
 """
 
 import json
-from fastapi import APIRouter, HTTPException, Request, Header, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Request, Header, BackgroundTasks, Depends
 from domain.services.webhook_service import WebhookService
 from domain.services.webhook_event_processor import WebhookEventProcessor
+from core.dependencies import get_current_user
 import logging
 
 router = APIRouter()
@@ -87,8 +88,10 @@ async def github_webhook(
 
 
 @router.get("/github/health")
-async def webhook_health():
-    """Check webhook endpoint is reachable (useful for GitHub ping event)."""
+async def webhook_health(
+    current_user: dict = Depends(get_current_user),
+):
+    """Check webhook endpoint is reachable. Requires authentication."""
     from core.config import settings
     return {
         "status": "ready",
@@ -111,10 +114,12 @@ async def webhook_health():
 async def list_webhook_events(
     repository: str = None,
     status: str = None,
-    limit: int = 50
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     List webhook events (for debugging and monitoring).
+    Requires authentication — prevents unauthenticated event dump.
     
     Args:
         repository: Filter by repository (owner/repo)
@@ -140,7 +145,10 @@ async def list_webhook_events(
 
 
 @router.get("/events/{event_id}")
-async def get_webhook_event(event_id: str):
+async def get_webhook_event(
+    event_id: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Get detailed information about a specific webhook event."""
     from repositories.webhook_event_repository import WebhookEventRepository
     

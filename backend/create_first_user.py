@@ -18,11 +18,8 @@ Usage:
 import asyncio
 import sys
 from motor.motor_asyncio import AsyncIOMotorClient
-from passlib.context import CryptContext
+from core.security import hash_password
 from datetime import datetime, timezone
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # MongoDB connection (update if needed)
 MONGODB_URI = "mongodb://localhost:27017"
@@ -116,7 +113,7 @@ async def create_first_hr_user():
         "email": email,
         "role": "HR",
         "dept": "Human Resources",
-        "employee_password": pwd_context.hash(password),  # Fixed: use employee_password
+        "employee_password": hash_password(password),
         "github_username": None,
         "team_id": None,
         "is_active": True,

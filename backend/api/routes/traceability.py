@@ -6,19 +6,25 @@ Provides access to the evidence graph for:
 - Impact analysis (blast radius)
 - Root cause analysis
 - Hotspot detection
+
+All endpoints require JWT authentication.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 from domain.services.traceability_service import TraceabilityService
 from domain.models.entity_relationship import EntityType, RelationshipType
+from core.dependencies import get_current_user
 
 router = APIRouter()
 traceability_service = TraceabilityService()
 
 
 @router.get("/pr/{pr_id}/relationships")
-async def get_pr_relationships(pr_id: str):
+async def get_pr_relationships(
+    pr_id: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Get all entities related to a PR."""
     try:
         relationships = await traceability_service.get_pr_relationships(pr_id)
@@ -31,7 +37,11 @@ async def get_pr_relationships(pr_id: str):
 
 
 @router.get("/pr/{pr_id}/blast-radius")
-async def get_pr_blast_radius(pr_id: str, max_hops: int = 2):
+async def get_pr_blast_radius(
+    pr_id: str,
+    max_hops: int = 2,
+    current_user: dict = Depends(get_current_user),
+):
     """Calculate blast radius of a PR - what could break if merged."""
     try:
         blast_radius = await traceability_service.calculate_blast_radius(
@@ -44,7 +54,10 @@ async def get_pr_blast_radius(pr_id: str, max_hops: int = 2):
 
 
 @router.get("/task/{task_id}/prs")
-async def get_task_prs(task_id: str):
+async def get_task_prs(
+    task_id: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Get all PRs that implement a task."""
     try:
         prs = await traceability_service.get_task_related_prs(task_id)
@@ -61,7 +74,8 @@ async def get_task_prs(task_id: str):
 async def get_file_history(
     file_path: str,
     repository: str,
-    limit: int = 50
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user),
 ):
     """Get complete history of a file."""
     try:
@@ -83,7 +97,8 @@ async def create_relationship(
     target_id: str,
     relationship_type: str,
     metadata: Optional[dict] = None,
-    confidence: float = 1.0
+    confidence: float = 1.0,
+    current_user: dict = Depends(get_current_user),
 ):
     """Manually create a relationship between entities."""
     try:
@@ -99,7 +114,7 @@ async def create_relationship(
             relationship_type=relationship_type_enum,
             metadata=metadata,
             confidence=confidence,
-            created_by="manual-user"
+            created_by=current_user["employee_id"]
         )
         
         return {
@@ -113,7 +128,11 @@ async def create_relationship(
 
 
 @router.get("/entity/{entity_type}/{entity_id}/connections")
-async def get_entity_connections(entity_type: str, entity_id: str):
+async def get_entity_connections(
+    entity_type: str,
+    entity_id: str,
+    current_user: dict = Depends(get_current_user),
+):
     """Get all connections for any entity."""
     try:
         entity_type_enum = EntityType(entity_type)

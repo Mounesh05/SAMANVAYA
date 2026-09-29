@@ -134,7 +134,7 @@ export function AIEvaluationPage() {
                     Human Baseline: <strong>{evalResult.human_score}</strong>
                   </div>
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                    AI Technical Score: <strong>{evalResult.ai_analysis?.technical_score || '—'}</strong>
+                    Evidence Score: <strong>{evalResult.ai_analysis?.evidence_score ?? '—'} / 10</strong>
                   </div>
                 </div>
               </div>
@@ -149,6 +149,22 @@ export function AIEvaluationPage() {
                       <li key={idx}>{rec}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {evalResult.ai_analysis?.dimensions && (
+                <div>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                    AI Evidence Breakdown
+                  </h4>
+                  <div style={{ display: 'grid', gap: '0.4rem' }}>
+                    {Object.entries(evalResult.ai_analysis.dimensions).map(([name, dimension]) => (
+                      <div key={name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                        <span>{name.replaceAll('_', ' ')}</span>
+                        <strong>{dimension.score} / 10</strong>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

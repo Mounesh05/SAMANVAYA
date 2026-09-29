@@ -277,21 +277,25 @@ class WorkflowTester:
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(
-                    f"{BASE_URL}/api/ai/query",
+                    f"{BASE_URL}/api/ai/invoke",
                     headers={"Authorization": f"Bearer {self.token}"},
                     json={
-                        "query": "What is the risk level of this repository and why?",
-                        "context": {
+                        "task_type": "code_review",
+                        "evidence": {
                             "repository": f"{self.github_owner}/{self.github_repo}",
+                            "summary": "Repository code review and risk assessment",
+                        },
+                        "context": {
                             "project_id": self.project_id
-                        }
+                        },
+                        "save_run": False
                     }
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    answer = data.get("answer", "")[:100]  # First 100 chars
-                    self.log_test("AI Query", "PASS", f"Response: {answer}...")
+                    analysis = (data.get("analysis") or data.get("task_type") or "completed")[:100]
+                    self.log_test("AI Query", "PASS", f"Response: {analysis}...")
                     return True
                 else:
                     error = response.json().get("detail", "Unknown error")

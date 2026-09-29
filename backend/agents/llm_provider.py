@@ -40,7 +40,7 @@ def check_ollama_connection() -> bool:
     """
     try:
         base_url = settings.OLLAMA_BASE_URL.rstrip("/")
-        response = httpx.get(f"{base_url}/api/tags", timeout=5.0)
+        response = httpx.get(f"{base_url}/api/tags", timeout=1.5)
         return response.status_code == 200
     except Exception:
         return False

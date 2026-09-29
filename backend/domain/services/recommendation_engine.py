@@ -40,11 +40,12 @@ class RecommendationEngine:
         """
         recommendations = []
         
-        risk_level = risk_analysis.get("risk_level", "unknown")
+        risk_level = risk_analysis.get("risk_level", "unknown").lower()
         risk_score = risk_analysis.get("risk_score")  # Preserve None
         
         # 1. Risk-based recommendations
-        if risk_level in ("high", "critical") or risk_score >= 70:
+        # Guard against None risk_score — engine returns None when data is insufficient
+        if risk_level in ("high", "critical") or (risk_score is not None and risk_score >= 70):
             recommendations.extend(
                 await self._generate_high_risk_recommendations(
                     pr_id, pr_data, risk_analysis, project_id
@@ -79,7 +80,7 @@ class RecommendationEngine:
         """Generate recommendations for high-risk PRs."""
         recs = []
         
-        risk_level = risk_analysis.get("risk_level", "unknown")
+        risk_level = risk_analysis.get("risk_level", "unknown").lower()
         risk_factors = risk_analysis.get("risk_factors", [])
         
         # Rec 1: Request senior review
@@ -93,7 +94,7 @@ class RecommendationEngine:
             category=RecommendationCategory.PROCESS,
             priority=RecommendationPriority.HIGH if risk_level == "high" else RecommendationPriority.CRITICAL,
             reasoning=f"Risk analysis flagged {len(risk_factors)} risk factors",
-            target_roles=["tech_lead", "developer"],
+            target_roles=["LEAD", "DEVELOPER"],
             target_user_id=pr_data.get("author"),
             estimated_impact="high",
             estimated_effort="low",
@@ -114,7 +115,7 @@ class RecommendationEngine:
                 category=RecommendationCategory.TESTING,
                 priority=RecommendationPriority.HIGH,
                 reasoning="Code changes without tests increase deployment risk",
-                target_roles=["developer", "qa"],
+                target_roles=["DEVELOPER", "QA"],
                 target_user_id=pr_data.get("author"),
                 estimated_impact="high",
                 estimated_effort="medium",
@@ -152,7 +153,7 @@ class RecommendationEngine:
                 category=category,
                 priority=priority,
                 reasoning="AI analysis of code quality and patterns",
-                target_roles=["developer"],
+                target_roles=["DEVELOPER"],
                 target_user_id=pr_data.get("author"),
                 estimated_impact="medium",
                 estimated_effort="medium",
@@ -172,7 +173,7 @@ class RecommendationEngine:
                 category=RecommendationCategory.CODE_QUALITY,
                 priority=RecommendationPriority.CRITICAL,
                 reasoning="Flagged as critical by AI analysis",
-                target_roles=["developer", "tech_lead"],
+                target_roles=["DEVELOPER", "LEAD"],
                 target_user_id=pr_data.get("author"),
                 estimated_impact="high",
                 estimated_effort="medium",
@@ -208,7 +209,7 @@ class RecommendationEngine:
                 category=RecommendationCategory.SECURITY,
                 priority=RecommendationPriority.CRITICAL,
                 reasoning="Security vulnerabilities pose immediate risk",
-                target_roles=["developer", "security"],
+                target_roles=["DEVELOPER", "DEVOPS"],
                 target_user_id=pr_data.get("author"),
                 estimated_impact="critical",
                 estimated_effort="high",

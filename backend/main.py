@@ -1,15 +1,10 @@
-﻿"""
+"""
 Samanvaya FastAPI application entry point.
 All routers will be registered here with their URL prefixes.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from core.database import col, close_db
-from core.config import settings
-
-
 from contextlib import asynccontextmanager
 from core.database import col, close_db
 from core.config import settings
@@ -58,9 +53,13 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# ── Wire Rate Limiting ──
+from core.rate_limiting import setup_rate_limiting
+setup_rate_limiting(app)
 
 # ── Global Exception Handlers ──
 @app.exception_handler(Exception)

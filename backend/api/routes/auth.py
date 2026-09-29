@@ -3,11 +3,12 @@ Authentication API endpoints.
 Handles user registration and login.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, EmailStr
 from domain.models.user import UserCreate, UserOut, LoginRequest, LoginResponse
 from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
+from core.rate_limiting import limiter
 
 router = APIRouter()
 auth_service = AuthService()
@@ -20,7 +21,8 @@ class SimpleLoginRequest(BaseModel):
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
-async def register(user_data: UserCreate):
+@limiter.limit("3/minute")
+async def register(request: Request, user_data: UserCreate):
     """
     Register a new user/employee.
     
@@ -46,7 +48,8 @@ async def register(user_data: UserCreate):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(credentials: SimpleLoginRequest):
+@limiter.limit("5/minute")
+async def login(request: Request, credentials: SimpleLoginRequest):
     """
     Authenticate user with email and password.
     Returns JWT token and user information.
@@ -70,7 +73,8 @@ async def login(credentials: SimpleLoginRequest):
 
 
 @router.post("/login/full", response_model=LoginResponse)
-async def login_full(credentials: LoginRequest):
+@limiter.limit("5/minute")
+async def login_full(request: Request, credentials: LoginRequest):
     """
     Authenticate user with employee_id and both passwords.
     
@@ -108,12 +112,19 @@ async def refresh_token(user: dict = Depends(get_current_user)):
     """
     from core.security import create_access_token
     
-    # Create new token with same payload
+    # Preserve ALL claims from the original token so admin rights,
+    # team_id, project_ids, etc. are not silently dropped
     new_token = create_access_token({
+        "sub": user.get("sub", user.get("employee_id")),
         "employee_id": user["employee_id"],
-        "role": user["role"],
+        "role": user.get("role", user.get("organizational_role")),
+        "organizational_role": user.get("organizational_role", user.get("role")),
         "email": user["email"],
         "name": user["name"],
+        "system_access": user.get("system_access", "USER"),
+        "team_id": user.get("team_id"),
+        "team_lead_id": user.get("team_lead_id"),
+        "project_ids": user.get("project_ids", []),
     })
     
     return {"token": new_token}

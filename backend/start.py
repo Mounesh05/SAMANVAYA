@@ -34,7 +34,7 @@ async def check_dependencies():
         return False
     
     # Check SECRET_KEY
-    if not settings.SECRET_KEY or settings.SECRET_KEY == "change-me-to-a-random-32-byte-hex-string":
+    if not settings.SECRET_KEY or "change-me" in settings.SECRET_KEY.lower() or "CHANGE_ME" in settings.SECRET_KEY:
         print("❌ SECRET_KEY not configured!")
         print("   Set SECRET_KEY in .env file")
         return False

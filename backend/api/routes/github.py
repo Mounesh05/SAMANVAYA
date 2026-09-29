@@ -33,11 +33,12 @@ class RepoSyncRequest(BaseModel):
 
 
 @router.get("/health")
-async def github_integration_health():
+async def github_integration_health(
+    user: dict = Depends(get_current_user),
+):
     """
     Check GitHub integration health.
-    
-    Tests if GitHub API is accessible with configured token.
+    Requires authentication — prevents credential disclosure.
     """
     try:
         github_service = GitHubSyncService()
@@ -45,7 +46,6 @@ async def github_integration_health():
         
         return {
             "status": "operational",
-            "authenticated_as": user_info.get("login"),
             "rate_limit_remaining": user_info.get("rate_limit", {}).get("remaining"),
         }
     
@@ -61,10 +61,11 @@ async def github_integration_health():
 async def get_repository_info(
     owner: str = Query(...),
     repo: str = Query(...),
+    user: dict = Depends(get_current_user),
 ):
     """
     Get repository information from GitHub.
-    Public endpoint - no authentication required.
+    Requires authentication — uses server's GitHub token.
     
     Example: /github/repository-info?owner=facebook&repo=react
     """
@@ -84,13 +85,14 @@ async def get_repository_info(
 @router.get("/list-repositories")
 async def list_repositories(
     org: str = Query(None, description="Organization name (optional)"),
+    user: dict = Depends(get_current_user),
 ):
     """
     List GitHub repositories.
-    Public endpoint - no authentication required.
+    Requires authentication — uses server's GitHub token.
     
     If org is provided, lists org repositories.
-    Otherwise, lists authenticated user's repositories (requires GitHub token in backend config).
+    Otherwise, lists authenticated user's repositories.
     """
     try:
         github_service = GitHubSyncService()

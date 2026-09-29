@@ -6,7 +6,10 @@ code quality analysis across multiple programming languages.
 """
 
 import time
+import logging
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 from intelligence.evidence.models import (
     AnalysisLevelEnum,

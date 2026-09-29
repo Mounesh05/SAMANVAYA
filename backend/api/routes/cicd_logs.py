@@ -158,7 +158,8 @@ async def analyze_cicd_log(
                 "errors": [],
             }
             
-            ai_result = invoke_agent("cicd_analysis", ai_state)
+            import asyncio
+            ai_result = await asyncio.to_thread(invoke_agent, "cicd_analysis", ai_state)
             
             response_data.update({
                 "ai_analysis": ai_result.get("analysis"),
