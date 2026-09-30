@@ -34,6 +34,8 @@ class GitHubClient:
             self.headers["Authorization"] = f"Bearer {auth_token}"
         
         self.timeout = getattr(settings, 'GITHUB_TIMEOUT', 30)
+        if auth_token:
+            self.headers["Authorization"] = "Bearer " + auth_token
     
     async def _make_request(self, method: str, url: str, **kwargs) -> httpx.Response:
         """Make HTTP request with proper redirect handling."""
@@ -142,6 +144,35 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{owner}/{repo}/commits/{sha}"
         response = await self._make_request("GET", url)
+        return response.json()
+
+    async def get_commit(self, owner: str, repo: str, sha: str) -> Dict[str, Any]:
+        """Fetch a commit, including its changed files and statistics."""
+        return await self.get_commit_details(owner, repo, sha)
+
+    async def get_commits(
+        self,
+        owner: str,
+        repo: str,
+        author: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        per_page: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """List repository commits within an optional date range."""
+        url = f"{self.base_url}/repos/{owner}/{repo}/commits"
+        params: Dict[str, Any] = {
+            "per_page": min(max(per_page, 1), 100),
+        }
+        # GitHub's author filter accepts a username or author email only on
+        # some API versions; email matching is handled locally by the caller.
+        if author and "@" not in author:
+            params["author"] = author
+        if since:
+            params["since"] = since
+        if until:
+            params["until"] = until
+        response = await self._make_request("GET", url, params=params)
         return response.json()
     
     async def get_commit_check_runs(self, owner: str, repo: str, sha: str) -> Dict[str, Any]:

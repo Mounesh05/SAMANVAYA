@@ -18,6 +18,20 @@ class TaskRepository(BaseRepository):
         """Find all tasks assigned to a user."""
         return await self.find_all({"assignee_id": assignee_id})
 
+    async def find_by_assignee_and_date(self, assignee_id: str, start_date, end_date) -> list:
+        """Find tasks assigned to a developer that overlap an evaluation period."""
+        return await self.find_all({
+            "assignee_id": assignee_id,
+            "$or": [
+                {"completed_at": {"$gte": start_date, "$lte": end_date}},
+                {"completed_at": {"$exists": False}, "created_at": {"$lte": end_date}},
+            ],
+        })
+
+    async def find_by_sprint_and_assignee(self, sprint_id: str, assignee_id: str) -> list:
+        """Find tasks assigned to a developer in a sprint."""
+        return await self.find_all({"sprint_id": sprint_id, "assignee_id": assignee_id})
+
     async def find_by_story(self, story_id: str) -> list:
         """Find all tasks belonging to a story."""
         return await self.find_all({"story_id": story_id})

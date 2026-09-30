@@ -100,7 +100,7 @@ export function PerformancePage() {
     <div>
       <PageHeader
         title="Developer Performance & AI Evaluation"
-        subtitle="Authoritative performance scoring based on 90% AI Multi-Dimensional Analysis + 10% Human Role Feedback."
+        subtitle="Evidence-based contribution credit with AI explanations and human feedback."
         actions={
           isHRorCEO && (
             <Button
@@ -109,7 +109,7 @@ export function PerformancePage() {
               onClick={handleRunEvaluation}
               isLoading={evalMutation.isPending}
             >
-              Re-run AI Evaluation
+              Recalculate Contribution Credit
             </Button>
           )
         }
@@ -139,7 +139,7 @@ export function PerformancePage() {
       ) : error ? (
         <ErrorState
           title="No evaluation recorded yet"
-          message={`No performance evaluation found for ${selectedDevId}. Click 'Re-run AI Evaluation' to compute initial scores.`}
+          message={`No contribution credit found for ${selectedDevId}. Click 'Recalculate Contribution Credit' to compute an evidence-based score.`}
           onRetry={handleRunEvaluation}
         />
       ) : (
@@ -149,67 +149,81 @@ export function PerformancePage() {
             title={`${curr?.developer_name || selectedDevId} — Performance`}
             score={curr?.overall_score || 0}
             grade={curr?.grade || 'N/A'}
-            aiScore={aiEval?.overall_score || 0}
-            humanScore={
-              curr?.overall_score && aiEval?.overall_score
-                ? Number(((curr.overall_score - aiEval.overall_score * 0.7) / 0.3).toFixed(1))
-                : 0
-            }
-            confidence={aiEval?.confidence_score || 85}
+            aiScore={null}
+            humanScore={null}
+            confidence={curr?.contribution_credit?.confidence === 'high' ? 100 : curr?.contribution_credit?.confidence === 'medium' ? 70 : 40}
             period={curr?.period || '2026-Q3'}
           />
 
-          {/* 6 Dimension Breakdown & AI Strengths Grid */}
+          {/* AI explanation and deterministic contribution breakdown */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            <Card title="Contribution Credit" subtitle="Deterministic score from observed engineering evidence">
+              {curr?.contribution_credit ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <strong>{curr.contribution_credit.score.toFixed(1)} / 100</strong>
+                  <span>Confidence: {curr.contribution_credit.confidence}</span>
+                  {curr.contribution_credit.missing_evidence?.length > 0 && (
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      Missing evidence: {curr.contribution_credit.missing_evidence.join(', ')}
+                    </span>
+                  )}
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                    Advisory only. This score should not be used alone for compensation or promotion.
+                  </span>
+                </div>
+              ) : (
+                <span>No contribution credit has been calculated yet.</span>
+              )}
+            </Card>
             {/* Dimensions Card */}
-            <Card title="6-Dimensional AI Breakdown" subtitle="Detailed scoring across engineering domains">
+            <Card title="AI Explanation" subtitle="Advisory analysis of the observed evidence">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Code Quality (25 pts max)</span>
-                    <strong>{dimensions.code_quality?.toFixed(1) || '22.0'} / 25</strong>
+                    <strong>{dimensions.code_quality?.toFixed(1) || '0.0'} / 25</strong>
                   </div>
-                  <ProgressBar value={dimensions.code_quality || 22} max={25} color="primary" />
+                  <ProgressBar value={dimensions.code_quality || 0} max={25} color="primary" />
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Delivery Speed (20 pts max)</span>
-                    <strong>{dimensions.delivery_speed?.toFixed(1) || '18.0'} / 20</strong>
+                    <strong>{dimensions.delivery_speed?.toFixed(1) || '0.0'} / 20</strong>
                   </div>
-                  <ProgressBar value={dimensions.delivery_speed || 18} max={20} color="cyan" />
+                  <ProgressBar value={dimensions.delivery_speed || 0} max={20} color="cyan" />
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Collaboration (15 pts max)</span>
-                    <strong>{dimensions.collaboration?.toFixed(1) || '13.5'} / 15</strong>
+                    <strong>{dimensions.collaboration?.toFixed(1) || '0.0'} / 15</strong>
                   </div>
-                  <ProgressBar value={dimensions.collaboration || 13.5} max={15} color="purple" />
+                  <ProgressBar value={dimensions.collaboration || 0} max={15} color="purple" />
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Reliability (15 pts max)</span>
-                    <strong>{dimensions.reliability?.toFixed(1) || '13.0'} / 15</strong>
+                    <strong>{dimensions.reliability?.toFixed(1) || '0.0'} / 15</strong>
                   </div>
-                  <ProgressBar value={dimensions.reliability || 13} max={15} color="success" />
+                  <ProgressBar value={dimensions.reliability || 0} max={15} color="success" />
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Engineering Impact (10 pts max)</span>
-                    <strong>{dimensions.business_impact?.toFixed(1) || '8.5'} / 10</strong>
+                    <strong>{dimensions.business_impact?.toFixed(1) || '0.0'} / 10</strong>
                   </div>
-                  <ProgressBar value={dimensions.business_impact || 8.5} max={10} color="warning" />
+                  <ProgressBar value={dimensions.business_impact || 0} max={10} color="warning" />
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Technical Judgment (5 pts max)</span>
-                    <strong>{dimensions.technical_judgment?.toFixed(1) || '4.0'} / 5</strong>
+                    <strong>{dimensions.technical_judgment?.toFixed(1) || '0.0'} / 5</strong>
                   </div>
-                  <ProgressBar value={dimensions.technical_judgment || 4} max={5} color="primary" />
+                  <ProgressBar value={dimensions.technical_judgment || 0} max={5} color="primary" />
                 </div>
               </div>
             </Card>

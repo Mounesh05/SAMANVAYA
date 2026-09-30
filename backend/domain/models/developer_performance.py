@@ -1,7 +1,4 @@
-"""
-Developer Performance Models
-Pure AI-driven performance evaluation with role feedback
-"""
+"""Developer performance models and auditable contribution-credit records."""
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -100,6 +97,17 @@ class RoleEvaluation(BaseModel):
     contribution: float = Field(default=0, ge=0, le=10, description="Role contribution (0-10)")
 
 
+class ContributionCredit(BaseModel):
+    """Hybrid contribution signal with evidence, AI, and limitations."""
+    methodology_version: str
+    score: float = Field(..., ge=0, le=100)
+    confidence: str
+    components: Dict[str, Optional[float]] = Field(default_factory=dict)
+    evidence_counts: Dict[str, int] = Field(default_factory=dict)
+    missing_evidence: List[str] = Field(default_factory=list)
+    is_advisory_only: bool = True
+
+
 class DeveloperPerformance(BaseModel):
     """Complete developer performance evaluation"""
     id: Optional[str] = None
@@ -113,14 +121,18 @@ class DeveloperPerformance(BaseModel):
     period_end: datetime
     period_label: str = Field(..., description="e.g., 'Sprint-23', 'Q1-2024'")
     
-    # AI Evaluation (90%)
+    # AI explanation (advisory; not the authoritative credit)
     ai_evaluation: AIEvaluation
     
-    # Role Evaluation (10%)
+    # Optional human feedback
     role_evaluation: RoleEvaluation
     
     # Final Score
     final_score: float = Field(..., ge=0, le=100, description="Total performance score (0-100)")
+    contribution_credit: Optional[ContributionCredit] = None
+    credit_history: List[Dict[str, Any]] = Field(default_factory=list)
+    credit_status: str = Field(default="advisory", description="advisory, appealed, reviewed")
+    appeal: Optional[Dict[str, Any]] = None
     grade: str = Field(..., description="A+, A, B+, B, C+, C, D, F")
     
     # Trend Analysis

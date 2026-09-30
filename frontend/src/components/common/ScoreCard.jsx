@@ -62,7 +62,7 @@ export function ScoreCard({
           </div>
         </div>
 
-        {/* 90% AI + 10% Human breakdown */}
+        {/* Optional advisory breakdown */}
         {(aiScore !== null || humanScore !== null) && (
           <div
             style={{
@@ -77,13 +77,13 @@ export function ScoreCard({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>AI Evaluation (90%)</span>
+              <span style={{ color: 'var(--text-muted)' }}>AI Evaluation</span>
               <span style={{ fontWeight: '700', color: 'var(--cyan)' }}>
                 {aiScore !== null ? `${Number(aiScore).toFixed(1)}%` : '—'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Human Feedback (10%)</span>
+              <span style={{ color: 'var(--text-muted)' }}>Human Feedback</span>
               <span style={{ fontWeight: '700', color: 'var(--purple)' }}>
                 {humanScore !== null ? `${Number(humanScore).toFixed(1)}%` : '—'}
               </span>

@@ -22,6 +22,16 @@ class PRRepository(BaseRepository):
         """Find all PRs in a project."""
         return await self.find_all({"project_id": project_id})
 
+    async def find_by_date_range(self, repo_id: str, start_date, end_date) -> list:
+        """Find repository PRs created within an inclusive date range."""
+        return await self.find_all({
+            "repo_id": repo_id,
+            "created_at": {
+                "$gte": start_date.isoformat(),
+                "$lte": end_date.isoformat(),
+            },
+        })
+
     async def find_by_pr_number(self, repo_id: str, pr_number: int):
         """Find PR by repo and PR number."""
         return await self.find_one({"repo_id": repo_id, "pr_number": pr_number})

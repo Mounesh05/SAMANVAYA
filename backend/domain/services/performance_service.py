@@ -2,14 +2,15 @@
 Developer Performance Service
 Orchestrates the complete performance evaluation process:
 1. Data aggregation
-2. AI evaluation (90%)
-3. Role feedback collection (10%)
-4. Final score calculation
+2. Advisory AI explanation
+3. Optional role feedback collection
+4. Deterministic contribution-credit calculation
 5. Trend analysis
 """
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
+import logging
 from intelligence.developer_data_aggregator import DeveloperDataAggregator
 from agents.performance_agent import PerformanceEvaluationAgent
 from domain.models.developer_performance import (
@@ -24,6 +25,12 @@ from domain.models.developer_performance import (
     HRFeedback
 )
 from repositories.performance_repository import PerformanceRepository
+from intelligence.contribution_credit import (
+    calculate_contribution_credit,
+    combine_hybrid_credit,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class PerformanceService:
@@ -32,9 +39,10 @@ class PerformanceService:
     
     Orchestrates:
     - Data collection from multiple sources
-    - AI-driven evaluation (90% of score)
-    - Role feedback collection (10% of score)
-    - Final score calculation and grading
+    - Evidence aggregation
+    - Advisory AI explanation
+    - Deterministic contribution-credit calculation
+    - Optional human feedback and grading
     - Trend analysis
     """
     
@@ -57,9 +65,9 @@ class PerformanceService:
         
         This is the main entry point that:
         1. Collects all developer data
-        2. Sends to AI for evaluation (90%)
-        3. Collects role feedback (10%)
-        4. Calculates final score
+        2. Sends evidence to AI for an advisory explanation
+        3. Calculates deterministic contribution credit
+        4. Applies optional role feedback
         5. Stores and returns result
         
         Args:
@@ -75,7 +83,11 @@ class PerformanceService:
         """
         
         # Step 1: Collect all developer data
-        print(f"📊 Collecting data for {developer_name} ({request.period_label})...")
+        logger.info(
+            "Collecting performance data for %s (%s)",
+            developer_name,
+            request.period_label,
+        )
         developer_data = await self.data_aggregator.aggregate_developer_data(
             developer_id=request.developer_id,
             developer_email=developer_email,
@@ -86,25 +98,29 @@ class PerformanceService:
             repo_name=repo_name
         )
         
-        # Step 2: AI Evaluation (90% of score)
-        print(f"🤖 AI evaluating performance...")
+        # Step 2: AI explanation (advisory only)
+        logger.info("Evaluating performance with the advisory AI service")
         ai_evaluation = await self.evaluation_agent.evaluate_performance(
             developer_data=developer_data,
             developer_name=developer_name,
             period_label=request.period_label
         )
         
-        # Step 3: Role Evaluation (10% of score) - Initialize empty
-        # Role feedback is collected separately via API
+        # Step 3: Human feedback is collected separately via API.
         role_evaluation = RoleEvaluation(
             average_score=0,
             contribution=0
         )
         
-        # Step 4: Calculate final score
-        # For now, just AI score (role feedback added later)
-        final_score = ai_evaluation.score  # Out of 90
-        final_score_percentage = (final_score / 90) * 100  # Convert to 0-100
+        # Step 4: Calculate the authoritative contribution signal from evidence.
+        # AI remains advisory and explains observed work; it does not award credit.
+        objective_credit = calculate_contribution_credit(developer_data)
+        credit_data = combine_hybrid_credit(
+            objective_credit,
+            ai_score=ai_evaluation.score,
+            ai_available=not ai_evaluation.data_quality.get("ai_evaluation_failed", False),
+        )
+        final_score_percentage = credit_data["score"]
         
         # Step 5: Calculate confidence
         days_of_data = (request.period_end - request.period_start).days
@@ -147,6 +163,13 @@ class PerformanceService:
             period_label=request.period_label,
             ai_evaluation=ai_evaluation,
             role_evaluation=role_evaluation,
+            contribution_credit=credit_data,
+            credit_history=[{
+                "score": credit_data["score"],
+                "methodology_version": credit_data["methodology_version"],
+                "recorded_at": datetime.utcnow().isoformat(),
+                "reason": "evaluation_created",
+            }],
             final_score=final_score_percentage,
             grade=grade,
             previous_score=previous_score,
@@ -166,7 +189,11 @@ class PerformanceService:
         # Step 9: Store in database
         await self.performance_repo.create(performance.model_dump())
         
-        print(f"✅ Evaluation complete: {final_score_percentage:.1f}/100 ({grade})")
+        logger.info(
+            "Evaluation complete: %.1f/100 (%s)",
+            final_score_percentage,
+            grade,
+        )
         
         return performance
     
@@ -216,11 +243,39 @@ class PerformanceService:
         performance.role_evaluation.average_score = role_scores['average']
         performance.role_evaluation.contribution = role_scores['contribution']
         
-        # Recalculate final score
-        ai_score = performance.ai_evaluation.score  # Out of 90
-        role_contribution = role_scores['contribution']  # Out of 10
-        
-        performance.final_score = ((ai_score / 90) * 90) + ((role_contribution / 10) * 10)
+        previous_credit = (
+            performance.contribution_credit.model_dump()
+            if performance.contribution_credit
+            else None
+        )
+        objective_credit = (
+            performance.contribution_credit.model_dump()
+            if performance.contribution_credit
+            else {
+                "score": performance.final_score,
+                "components": {},
+                "missing_evidence": ["historical_evaluation"],
+                "evidence_counts": {},
+            }
+        )
+        human_score = role_scores["average"] if role_scores["role_count"] else None
+        updated_credit = combine_hybrid_credit(
+            objective_credit,
+            ai_score=performance.ai_evaluation.score,
+            human_score=human_score,
+            ai_available=not performance.ai_evaluation.data_quality.get(
+                "ai_evaluation_failed", False
+            ),
+        )
+        performance.contribution_credit = updated_credit
+        performance.final_score = updated_credit["score"]
+        if previous_credit:
+            performance.credit_history.append({
+                "score": previous_credit["score"],
+                "methodology_version": previous_credit.get("methodology_version"),
+                "recorded_at": datetime.utcnow().isoformat(),
+                "reason": f"before_{role}_feedback",
+            })
         performance.grade = self.evaluation_agent.determine_grade(performance.final_score)
         
         # Update in database

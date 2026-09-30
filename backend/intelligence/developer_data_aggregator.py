@@ -165,8 +165,18 @@ class DeveloperDataAggregator:
             commits_data = []
             total_lines_added = 0
             total_lines_deleted = 0
-            
+            author_token = (author_email or "").strip().lower()
+
             for commit in commits[:50]:  # Limit to recent 50 commits
+                commit_author = commit.get("commit", {}).get("author", {})
+                github_author = commit.get("author") or {}
+                identities = {
+                    str(commit_author.get("email", "")).lower(),
+                    str(commit_author.get("name", "")).lower(),
+                    str(github_author.get("login", "")).lower(),
+                }
+                if author_token and author_token not in identities:
+                    continue
                 sha = commit["sha"]
                 
                 # Get full commit details with diff
@@ -189,6 +199,9 @@ class DeveloperDataAggregator:
                     "sha": sha,
                     "message": commit["commit"]["message"],
                     "author": commit["commit"]["author"]["name"],
+                    "co_authors": self._extract_co_authors(
+                        commit["commit"]["message"]
+                    ),
                     "date": commit["commit"]["author"]["date"],
                     "files_changed": files_changed,
                     "stats": commit_detail["stats"],
@@ -203,6 +216,15 @@ class DeveloperDataAggregator:
         except Exception as e:
             print(f"Error collecting commits: {e}")
             return {"commits": [], "total_lines_added": 0, "total_lines_deleted": 0}
+
+    @staticmethod
+    def _extract_co_authors(message: str) -> List[str]:
+        """Extract Git's standard Co-authored-by trailers for attribution."""
+        co_authors = []
+        for line in (message or "").splitlines():
+            if line.lower().startswith("co-authored-by:"):
+                co_authors.append(line.split(":", 1)[1].strip())
+        return co_authors
     
     async def _collect_pull_requests(
         self,
@@ -290,10 +312,43 @@ class DeveloperDataAggregator:
         - Approval/changes requested
         """
         try:
-            # This would need custom GitHub API call to filter by reviewer
-            # For now, return empty - can be enhanced later
+            prs = await self.pr_repo.find_by_date_range(
+                f"{owner}/{repo}", start_date, end_date
+            )
+            reviewer_tokens = {
+                reviewer_email.lower(),
+                reviewer_email.split("@", 1)[0].lower(),
+            }
             reviews = []
-            
+
+            for pr in prs:
+                pr_number = pr.get("pr_number")
+                if not pr_number:
+                    continue
+                try:
+                    github_reviews = await self.github_client.get_pr_reviews(
+                        owner, repo, pr_number
+                    )
+                    for review in github_reviews:
+                        author = review.get("user") or {}
+                        identities = {
+                            str(author.get("login", "")).lower(),
+                            str(author.get("name", "")).lower(),
+                            str(author.get("email", "")).lower(),
+                        }
+                        if identities.isdisjoint(reviewer_tokens):
+                            continue
+                        reviews.append({
+                            "pr_number": pr_number,
+                            "review_id": review.get("id"),
+                            "state": review.get("state"),
+                            "submitted_at": review.get("submitted_at"),
+                            "body": review.get("body", ""),
+                            "reviewer": author.get("login") or author.get("name"),
+                        })
+                except Exception as exc:
+                    print(f"Unable to collect reviews for PR {pr_number}: {exc}")
+
             return {"reviews": reviews}
             
         except Exception as e:
@@ -356,16 +411,34 @@ class DeveloperDataAggregator:
         - Bugs fixed (resolved by this developer)
         """
         try:
-            # This would need bug tracking integration
-            # For now, return structure - can be enhanced later
+            tasks = await self.task_repo.find_by_assignee_and_date(
+                developer_id, start_date, end_date
+            )
+            bug_tasks = [
+                task for task in tasks
+                if str(task.get("type", "")).lower() == "bug"
+            ]
+            bugs_fixed = [
+                {
+                    "id": task.get("id"),
+                    "title": task.get("title"),
+                    "priority": task.get("priority", "medium"),
+                    "completed_at": task.get("completed_at"),
+                }
+                for task in bug_tasks
+                if str(task.get("status", "")).lower()
+                in {"done", "completed", "closed", "resolved"}
+            ]
+            # Causal attribution of introduced bugs requires an issue or
+            # incident link; never infer it from ordinary task activity.
             bugs_introduced = []
-            bugs_fixed = []
             
             return {
                 "bugs_introduced": bugs_introduced,
                 "bugs_fixed": bugs_fixed,
                 "bugs_introduced_count": len(bugs_introduced),
                 "bugs_fixed_count": len(bugs_fixed),
+                "bug_tracking_available": True,
             }
             
         except Exception as e:
@@ -375,6 +448,7 @@ class DeveloperDataAggregator:
                 "bugs_fixed": [],
                 "bugs_introduced_count": 0,
                 "bugs_fixed_count": 0,
+                "bug_tracking_available": False,
             }
     
     async def _collect_sprint_contributions(

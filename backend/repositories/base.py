@@ -50,6 +50,20 @@ class BaseRepository:
         """
         return [doc async for doc in self.col.find(query, {"_id": 0})]
 
+    async def find_by_date_range(
+        self,
+        field: str,
+        start_date: Any,
+        end_date: Any,
+    ) -> list:
+        """Find records whose date field falls within an inclusive range."""
+        return await self.find_all({
+            field: {
+                "$gte": start_date.isoformat() if hasattr(start_date, "isoformat") else start_date,
+                "$lte": end_date.isoformat() if hasattr(end_date, "isoformat") else end_date,
+            }
+        })
+
     async def insert(self, doc: dict) -> bool:
         """Insert a single document."""
         result = await self.col.insert_one(doc)

@@ -54,4 +54,4 @@ safety==3.2.8
 # The analyzers will gracefully fall back to AST mode if not installed
 rich==15.0.0
 
-# slowapi==0.1.9
+slowapi==0.1.9

@@ -18,6 +18,14 @@ class SprintRepository(BaseRepository):
         """Find all sprints in a project."""
         return await self.find_all({"project_id": project_id})
 
+    async def find_by_date_range(self, project_id: str, start_date, end_date) -> list:
+        """Find project sprints overlapping an inclusive date range."""
+        return await self.find_all({
+            "project_id": project_id,
+            "start_date": {"$lte": end_date.isoformat()},
+            "end_date": {"$gte": start_date.isoformat()},
+        })
+
     async def find_by_id(self, sprint_id: str):
         """Find sprint by ID."""
         return await self.find_one({"id": sprint_id})

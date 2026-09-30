@@ -5,6 +5,7 @@ Protected with RBAC permissions.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from domain.services.performance_service import PerformanceService
@@ -25,6 +26,47 @@ from core.permissions import Permission, get_user_permissions
 from core.audit import log_audit, AuditAction
 
 router = APIRouter()
+
+
+class CreditAppealRequest(BaseModel):
+    reason: str = Field(..., min_length=20, max_length=2000)
+    evidence: List[str] = Field(default_factory=list, max_length=20)
+
+
+@router.post("/credit/{performance_id}/appeal")
+async def appeal_credit(
+    performance_id: str,
+    body: CreditAppealRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Record a developer's appeal without overwriting the original score."""
+    from repositories.performance_repository import PerformanceRepository
+
+    repository = PerformanceRepository()
+    performance = await repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+
+    developer_id = performance.get("developer_id")
+    if developer_id != user.get("employee_id") and not user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Only the developer or an administrator can appeal")
+
+    appeal = {
+        "submitted_by": user.get("employee_id", user.get("id", "")),
+        "reason": body.reason,
+        "evidence": body.evidence,
+        "submitted_at": datetime.utcnow().isoformat(),
+        "status": "pending",
+    }
+    await repository.update(performance_id, {"appeal": appeal, "credit_status": "appealed"})
+    await log_audit(
+        action=AuditAction.CREDIT_APPEALED,
+        actor=user,
+        resource_type="performance",
+        resource_id=performance_id,
+        details={"evidence_count": len(body.evidence)},
+    )
+    return {"performance_id": performance_id, "credit_status": "appealed", "appeal": appeal}
 
 
 @router.post("/evaluate/bulk", status_code=202)
@@ -820,6 +862,11 @@ async def get_developer_dashboard(
             "period": current.period_label,
             "overall_score": current.final_score,
             "grade": current.grade,
+            "contribution_credit": (
+                current.contribution_credit.model_dump()
+                if current.contribution_credit
+                else None
+            ),
             "ai_evaluation": {
                 "overall_score": current.ai_evaluation.score,
                 "dimension_scores": {

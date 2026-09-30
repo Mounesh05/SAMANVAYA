@@ -29,6 +29,7 @@ def get_ollama_llm(
         model=model or settings.OLLAMA_MODEL,
         temperature=temperature,
         base_url=base_url or settings.OLLAMA_BASE_URL,
+        format="json",
         timeout=120,
     )
 

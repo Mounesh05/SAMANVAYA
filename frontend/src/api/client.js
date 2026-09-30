@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/useAuthStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -110,15 +111,10 @@ apiClient.interceptors.response.use(
         // Persist the new token
         localStorage.setItem('samanvaya_token', newToken);
 
-        // Update the Zustand store if available (non-blocking)
-        try {
-          const { useAuthStore } = await import('../store/useAuthStore');
-          const state = useAuthStore.getState();
-          if (state?.setAuth && state?.user) {
-            state.setAuth(newToken, state.user);
-          }
-        } catch {
-          // Store import failed — token is still saved in localStorage
+        // Keep the Zustand store in sync with the refreshed token.
+        const state = useAuthStore.getState();
+        if (state?.setAuth && state?.user) {
+          state.setAuth(newToken, state.user);
         }
 
         // Process queued requests with the new token
