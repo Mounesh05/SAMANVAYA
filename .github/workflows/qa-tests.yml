@@ -1,6 +1,7 @@
 name: QA test results
 
 on:
+  workflow_dispatch:
   push:
     branches: ["testing", "main"]
   pull_request:
