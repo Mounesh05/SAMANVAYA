@@ -58,28 +58,28 @@ export function DevOpsDashboardPage() {
       >
         <MetricCard
           title="Pipeline Health"
-          value="99.2%"
-          subtitle="Build & release pipelines"
+          value={summary.build_success_rate != null ? `${summary.build_success_rate}%` : '—'}
+          subtitle={`${summary.active_pipelines ?? '—'} active pipelines`}
           icon={<Activity size={20} />}
           color="success"
         />
         <MetricCard
           title="Deployments Today"
-          value="14"
-          subtitle="Automated canary & prod"
+          value={summary.deployments_today ?? '—'}
+          subtitle="Deployments reported today"
           icon={<Server size={20} />}
           color="cyan"
         />
         <MetricCard
           title="Active Incidents"
-          value={summary.active_incidents || 0}
+          value={summary.active_incidents ?? '—'}
           subtitle="Severity 1 & 2 incidents"
           icon={<AlertTriangle size={20} />}
           color={summary.active_incidents > 0 ? 'danger' : 'success'}
         />
         <MetricCard
           title="System Health"
-          value={summary.system_health || 'HEALTHY'}
+          value={summary.system_health ?? '—'}
           subtitle="Cluster & infra status"
           icon={<ShieldCheck size={20} />}
           color="primary"

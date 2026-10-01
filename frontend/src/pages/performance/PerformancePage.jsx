@@ -16,6 +16,10 @@ import { Play } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { ROLES } from '../../utils/constants';
 
+function getCurrentQuarterLabel(date = new Date()) {
+  return `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+}
+
 export function PerformancePage() {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
@@ -71,7 +75,7 @@ export function PerformancePage() {
     evalMutation.mutate({
       developer_id: selectedDevId,
       developer_name: employees.find((e) => e.employee_id === selectedDevId)?.name || 'Developer',
-      period: '2026-Q3',
+      period: getCurrentQuarterLabel(),
       period_type: 'quarter',
     });
   };
@@ -152,7 +156,7 @@ export function PerformancePage() {
             aiScore={null}
             humanScore={null}
             confidence={curr?.contribution_credit?.confidence === 'high' ? 100 : curr?.contribution_credit?.confidence === 'medium' ? 70 : 40}
-            period={curr?.period || '2026-Q3'}
+            period={curr?.period || curr?.period_label || 'No evaluation period'}
           />
 
           {/* AI explanation and deterministic contribution breakdown */}

@@ -30,6 +30,9 @@ export function QADashboardPage() {
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
   const summary = data?.summary || {};
+  const testPassRate = summary.total_test_cases > 0
+    ? `${((summary.passed_tests / summary.total_test_cases) * 100).toFixed(1)}%`
+    : '—';
 
   return (
     <div>
@@ -58,29 +61,29 @@ export function QADashboardPage() {
       >
         <MetricCard
           title="Test Pass Rate"
-          value="98.4%"
-          subtitle="1,420 test cases run"
+          value={testPassRate}
+          subtitle={`${summary.total_test_cases ?? '—'} test cases reported`}
           icon={<CheckCircle2 size={20} />}
           color="success"
         />
         <MetricCard
           title="Open Defects"
-          value={summary.open_bugs || 0}
-          subtitle={`${summary.critical_bugs || 0} critical defects`}
+          value={summary.open_bugs ?? '—'}
+          subtitle={`${summary.critical_bugs ?? '—'} critical defects`}
           icon={<Bug size={20} />}
           color={summary.critical_bugs > 0 ? 'danger' : 'primary'}
         />
         <MetricCard
           title="Regression Risk"
-          value={summary.regression_risk || 'LOW'}
+          value={summary.regression_risk ?? '—'}
           subtitle="Release stability score"
           icon={<ShieldCheck size={20} />}
           color="cyan"
         />
         <MetricCard
           title="Flaky Tests"
-          value="3"
-          subtitle="Tests needing triage"
+          value={summary.flaky_tests ?? '—'}
+          subtitle="Tests needing triage when reported"
           icon={<Flame size={20} />}
           color="warning"
         />

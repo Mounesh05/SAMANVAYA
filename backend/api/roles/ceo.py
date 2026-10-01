@@ -4,9 +4,11 @@ Shows: Organization health, delivery confidence, critical risks, portfolio view.
 """
 
 from fastapi import APIRouter, Depends, Query
+from core.database import col
 from core.dependencies import require_roles
 from repositories.project_repository import ProjectRepository
 from repositories.risk_repository import RiskRepository
+from repositories.sprint_repository import SprintRepository
 
 router = APIRouter()
 
@@ -22,19 +24,41 @@ async def ceo_dashboard(user: dict = Depends(require_roles("CEO"))):
         - Critical risks
         - Key metrics
     """
+    project_repo = ProjectRepository()
+    risk_repo = RiskRepository()
+    sprint_repo = SprintRepository()
+    projects = await project_repo.find_all({"status": "active"})
+    project_risks = [await risk_repo.find_open(project["id"]) for project in projects]
+    all_risks = [risk for risks in project_risks for risk in risks]
+    critical_risks = [
+        risk for risk in all_risks
+        if str(risk.get("risk_level", "")).upper() == "CRITICAL"
+    ]
+    healthy_projects = sum(1 for risks in project_risks if not risks)
+    at_risk_projects = sum(1 for risks in project_risks if risks)
+    incidents = await col("incidents").count_documents({"status": {"$in": ["open", "active"]}})
+    completion_values = []
+    for project in projects:
+        for sprint in await sprint_repo.find_by_project(project["id"]):
+            if sprint.get("status") == "active" and sprint.get("completion_pct") is not None:
+                completion_values.append(float(sprint["completion_pct"]))
+
     return {
         "role": "CEO",
         "name": user["name"],
         "organization_health": {
-            "total_projects": 0,
-            "healthy_projects": 0,
-            "at_risk_projects": 0,
-            "critical_projects": 0,
+            "total_projects": len(projects),
+            "healthy_projects": healthy_projects,
+            "at_risk_projects": at_risk_projects,
+            "critical_projects": len(critical_risks),
         },
-        "delivery_confidence": "78%",
-        "critical_risks": 0,
-        "active_incidents": 0,
-        "message": "CEO dashboard - organization-wide view"
+        "delivery_confidence": (
+            f"{round(sum(completion_values) / len(completion_values))}%"
+            if completion_values else None
+        ),
+        "critical_risks": len(critical_risks),
+        "active_incidents": incidents,
+        "insufficient_data": not projects,
     }
 
 

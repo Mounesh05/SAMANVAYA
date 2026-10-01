@@ -148,12 +148,12 @@ export function DeveloperDashboardPage() {
         {/* Score Card */}
         <ScoreCard
           title="Personal Engineering Score"
-          score={currPerf?.overall_score || 85.0}
-          grade={currPerf?.grade || 'A'}
-          aiScore={currPerf?.ai_evaluation?.overall_score || 86.5}
-          humanScore={80.0}
-          confidence={currPerf?.ai_evaluation?.confidence_score || 85}
-          period={currPerf?.period || 'Current Quarter'}
+          score={currPerf?.overall_score ?? currPerf?.final_score ?? 0}
+          grade={currPerf?.grade || 'N/A'}
+          aiScore={currPerf?.ai_evaluation?.overall_score ?? currPerf?.ai_evaluation?.score ?? null}
+          humanScore={currPerf?.role_evaluation?.average_score ?? null}
+          confidence={currPerf?.ai_evaluation?.confidence_score ?? null}
+          period={currPerf?.period || currPerf?.period_label || 'No evaluation period'}
         />
 
         {/* AI Recommendations Card */}
@@ -190,7 +190,8 @@ export function DeveloperDashboardPage() {
                 </div>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.2rem', lineHeight: '1.4' }}>
                   {currPerf?.ai_evaluation?.evaluation_summary ||
-                    'Strong code structure and commit hygiene. Consider adding edge-case unit tests to improve reliability.'}
+                    currPerf?.ai_evaluation?.reasoning ||
+                    'No AI evaluation is available yet.'}
                 </p>
               </div>
             </div>

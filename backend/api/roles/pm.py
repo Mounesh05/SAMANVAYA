@@ -28,20 +28,39 @@ async def pm_dashboard(user: dict = Depends(require_roles("PM"))):
     project_repo = ProjectRepository()
     sprint_repo = SprintRepository()
     risk_repo = RiskRepository()
-    
-    # Get all active projects (should filter by PM's org/portfolio in production)
-    # For now, we'll show sample data
+
+    projects = await project_repo.find_all({"status": "active"})
+    active_sprints = []
+    high_risk_count = 0
+    completion_values = []
+
+    for project in projects:
+        sprints = await sprint_repo.find_by_project(project["id"])
+        active_sprints.extend(sprint for sprint in sprints if sprint.get("status") == "active")
+        risks = await risk_repo.find_open(project["id"])
+        high_risk_count += sum(
+            1 for risk in risks if str(risk.get("risk_level", "")).upper() in {"HIGH", "CRITICAL"}
+        )
+        for sprint in sprints:
+            if sprint.get("status") == "active" and sprint.get("completion_pct") is not None:
+                completion_values.append(float(sprint["completion_pct"]))
+
+    delivery_confidence = (
+        f"{round(sum(completion_values) / len(completion_values))}%"
+        if completion_values else None
+    )
     
     return {
         "role": "PM",
         "name": user["name"],
         "summary": {
-            "active_projects": 0,
-            "active_sprints": 0,
-            "high_risks": 0,
-            "delivery_confidence": "MEDIUM",
+            "active_projects": len(projects),
+            "active_sprints": len(active_sprints),
+            "high_risks": high_risk_count,
+            "delivery_confidence": delivery_confidence,
         },
-        "message": "PM dashboard - connect to projects via org_id filter"
+        "projects": projects,
+        "insufficient_data": not projects,
     }
 
 
@@ -100,8 +119,19 @@ async def project_health(
 @router.get("/risks")
 async def pm_risks(user: dict = Depends(require_roles("PM"))):
     """Get all high-priority risks across projects."""
-    # This would aggregate risks across PM's projects
+    project_repo = ProjectRepository()
+    risk_repo = RiskRepository()
+    projects = await project_repo.find_all({"status": "active"})
+    risks = []
+    for project in projects:
+        project_risks = await risk_repo.find_open(project["id"])
+        risks.extend(
+            risk for risk in project_risks
+            if str(risk.get("risk_level", "")).upper() in {"HIGH", "CRITICAL"}
+        )
     return {
-        "message": "PM risks endpoint - aggregate across projects",
+        "risks": risks,
+        "total": len(risks),
         "pm": user["name"],
+        "insufficient_data": not risks,
     }

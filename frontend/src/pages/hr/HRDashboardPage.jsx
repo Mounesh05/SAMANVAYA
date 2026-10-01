@@ -89,24 +89,24 @@ export function HRDashboardPage() {
         />
         <MetricCard
           title="Engineering Teams"
-          value="4"
-          subtitle="Structured teams"
+          value={summary.team_count ?? '—'}
+          subtitle="Teams currently reported by the API"
           icon={<Building2 size={20} />}
           color="cyan"
           onClick={() => navigate('/teams')}
         />
         <MetricCard
           title="Performance Average"
-          value="84.6%"
-          subtitle="Organization wide average"
+          value={summary.performance_average ?? '—'}
+          subtitle="Organization-wide average when evaluations exist"
           icon={<Award size={20} />}
           color="purple"
           onClick={() => navigate('/performance')}
         />
         <MetricCard
           title="Talent Growth Index"
-          value="+6.2%"
-          subtitle="Quarter-over-quarter trend"
+          value={summary.talent_growth_index ?? '—'}
+          subtitle="Quarter-over-quarter trend when available"
           icon={<TrendingUp size={20} />}
           color="success"
         />

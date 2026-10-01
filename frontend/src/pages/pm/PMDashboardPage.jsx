@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '../../api/projects.api';
+import { rolesApi } from '../../api/roles.api';
 import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { MetricCard } from '../../components/common/MetricCard';
@@ -26,6 +27,10 @@ export function PMDashboardPage() {
   const { data: projects = [], isLoading, error, refetch } = useQuery({
     queryKey: ['projects', 'list'],
     queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+  });
+  const { data: dashboardData } = useQuery({
+    queryKey: ['role-dashboard', 'pm'],
+    queryFn: () => rolesApi.getPMDashboard(),
   });
 
   if (isLoading) return <LoadingState message="Loading Project Manager dashboard..." />;
@@ -91,14 +96,14 @@ export function PMDashboardPage() {
         />
         <MetricCard
           title="Delivery Confidence"
-          value="82%"
-          subtitle="Plan vs Reality aligned"
+          value={dashboardData?.summary?.delivery_confidence ?? '—'}
+          subtitle="Plan vs Reality when reported"
           icon={<TrendingUp size={20} />}
           color="success"
         />
         <MetricCard
           title="Sprints in Progress"
-          value="4"
+          value={dashboardData?.summary?.active_sprints ?? '—'}
           subtitle="Active delivery cycles"
           icon={<Layers size={20} />}
           color="cyan"
@@ -106,7 +111,7 @@ export function PMDashboardPage() {
         />
         <MetricCard
           title="Flagged Risks"
-          value="2"
+          value={dashboardData?.summary?.high_risks ?? '—'}
           subtitle="Behind schedule / blocked"
           icon={<AlertTriangle size={20} />}
           color="warning"

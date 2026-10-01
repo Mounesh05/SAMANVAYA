@@ -19,7 +19,7 @@ export function TestsPage() {
   });
 
   const testSuites = testData?.test_suites || [];
-  const passRate = testData?.overall_pass_rate || 0;
+  const passRate = testData?.overall_pass_rate ?? null;
 
   const columns = [
     {
@@ -107,9 +107,9 @@ export function TestsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <MetricCard
           title="Overall Pass Rate"
-          value={`${passRate.toFixed(1)}%`}
+          value={passRate == null ? '—' : `${passRate.toFixed(1)}%`}
           icon={<TrendingUp size={20} />}
-          color={passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
+          color={passRate == null ? 'primary' : passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
         />
         <MetricCard
           title="Test Suites"
@@ -136,14 +136,14 @@ export function TestsPage() {
         <div style={{ padding: '1rem 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Overall Pass Rate</span>
-            <span style={{ fontSize: '0.875rem', fontWeight: '700', color: passRate >= 90 ? 'var(--success)' : 'var(--warning)' }}>
-              {passRate.toFixed(1)}%
+            <span style={{ fontSize: '0.875rem', fontWeight: '700', color: passRate == null ? 'var(--text-muted)' : passRate >= 90 ? 'var(--success)' : 'var(--warning)' }}>
+              {passRate == null ? '—' : `${passRate.toFixed(1)}%`}
             </span>
           </div>
           <ProgressBar
-            value={passRate}
+            value={passRate ?? 0}
             max={100}
-            color={passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
+            color={passRate == null ? 'primary' : passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
             height="12px"
           />
         </div>

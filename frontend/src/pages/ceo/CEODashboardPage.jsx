@@ -8,6 +8,7 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
 import {
   TrendingUp,
   FolderGit2,
@@ -26,9 +27,20 @@ export function CEODashboardPage() {
     queryKey: ['role-dashboard', 'ceo'],
     queryFn: () => rolesApi.getCEODashboard(),
   });
+  const { data: executionHealth } = useQuery({
+    queryKey: ['ceo-execution-health', DEFAULT_ORG_ID],
+    queryFn: () => rolesApi.getExecutionHealth(DEFAULT_ORG_ID),
+  });
 
   if (isLoading) return <LoadingState message="Loading Executive CEO dashboard..." />;
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
+
+  const organizationHealth = data?.organization_health || {};
+  const projects = executionHealth?.projects || [];
+  const activeProjectCount = executionHealth?.total_projects ?? organizationHealth.total_projects ?? 0;
+  const healthyProjectCount = projects.filter(
+    (project) => project.critical_risks === 0 && project.open_risks === 0
+  ).length;
 
   return (
     <div>
@@ -57,15 +69,15 @@ export function CEODashboardPage() {
       >
         <MetricCard
           title="Delivery Confidence"
-          value={data?.delivery_confidence || '82%'}
+          value={data?.delivery_confidence ?? '—'}
           subtitle="Portfolio roadmap alignment"
           icon={<TrendingUp size={20} />}
           color="success"
         />
         <MetricCard
           title="Active Projects"
-          value="6"
-          subtitle="All strategic initiatives"
+          value={activeProjectCount}
+          subtitle="Active projects reported by the API"
           icon={<FolderGit2 size={20} />}
           color="primary"
           onClick={() => navigate('/projects')}
@@ -79,8 +91,8 @@ export function CEODashboardPage() {
         />
         <MetricCard
           title="Engineering Health"
-          value="88.2%"
-          subtitle="Weighted quality index"
+          value={healthyProjectCount}
+          subtitle="Projects with no reported risks"
           icon={<Award size={20} />}
           color="purple"
           onClick={() => navigate('/code-quality')}
@@ -118,8 +130,7 @@ export function CEODashboardPage() {
                   Delivery Pace & Quality Balance
                 </div>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem', lineHeight: '1.5' }}>
-                  Delivery cadence across active engineering teams is maintaining strong velocity. Code quality metrics
-                  reflect low regression risk across current sprint deliverables.
+                  {data?.message || 'No executive insight is available for the current organization data.'}
                 </p>
               </div>
             </div>

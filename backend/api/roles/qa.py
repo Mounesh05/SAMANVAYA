@@ -5,6 +5,39 @@ Shows: Test health, bug reports, regression risks, release readiness.
 
 from fastapi import APIRouter, Depends
 from core.dependencies import require_roles
+from core.database import col
+from repositories.task_repository import TaskRepository
+
+
+async def _qa_snapshot():
+    task_repo = TaskRepository()
+    bugs = await task_repo.find_all({"type": {"$regex": "^bug$", "$options": "i"}})
+    test_runs = await col("test_runs").find({}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    total_tests = sum(int(run.get("tests_run", 0) or 0) for run in test_runs)
+    passed_tests = sum(int(run.get("tests_passed", 0) or 0) for run in test_runs)
+    failed_tests = sum(int(run.get("tests_failed", 0) or 0) for run in test_runs)
+    open_bugs = [
+        bug for bug in bugs
+        if str(bug.get("status", "")).lower() not in {"done", "completed", "closed", "resolved"}
+    ]
+    critical_bugs = [
+        bug for bug in open_bugs
+        if str(bug.get("priority", bug.get("severity", ""))).lower() == "critical"
+    ]
+    regression_risk = None
+    if total_tests or open_bugs:
+        failure_rate = failed_tests / total_tests if total_tests else 0
+        regression_risk = "HIGH" if critical_bugs or failure_rate >= 0.1 else "MEDIUM" if open_bugs else "LOW"
+    return {
+        "bugs": bugs,
+        "test_runs": test_runs,
+        "total_tests": total_tests,
+        "passed_tests": passed_tests,
+        "failed_tests": failed_tests,
+        "open_bugs": open_bugs,
+        "critical_bugs": critical_bugs,
+        "regression_risk": regression_risk,
+    }
 
 router = APIRouter()
 
@@ -20,36 +53,44 @@ async def qa_dashboard(user: dict = Depends(require_roles("QA"))):
         - Regression risk
         - Release readiness
     """
+    snapshot = await _qa_snapshot()
     return {
         "role": "QA",
         "name": user["name"],
         "summary": {
-            "total_test_cases": 0,
-            "passed_tests": 0,
-            "failed_tests": 0,
-            "open_bugs": 0,
-            "critical_bugs": 0,
-            "regression_risk": "LOW",
+            "total_test_cases": snapshot["total_tests"],
+            "passed_tests": snapshot["passed_tests"],
+            "failed_tests": snapshot["failed_tests"],
+            "open_bugs": len(snapshot["open_bugs"]),
+            "critical_bugs": len(snapshot["critical_bugs"]),
+            "regression_risk": snapshot["regression_risk"],
         },
-        "message": "QA dashboard - test and quality metrics"
+        "insufficient_data": not snapshot["test_runs"] and not snapshot["bugs"],
     }
 
 
 @router.get("/test-health")
 async def test_health(user: dict = Depends(require_roles("QA"))):
     """Get test execution health metrics."""
+    snapshot = await _qa_snapshot()
     return {
-        "test_suites": [],
-        "overall_pass_rate": 0.0,
-        "message": "Test health endpoint - integrate with test runners"
+        "test_suites": snapshot["test_runs"],
+        "overall_pass_rate": (
+            round(snapshot["passed_tests"] / snapshot["total_tests"] * 100, 2)
+            if snapshot["total_tests"] else None
+        ),
+        "insufficient_data": not snapshot["test_runs"],
     }
 
 
 @router.get("/bugs")
 async def bug_reports(user: dict = Depends(require_roles("QA"))):
     """Get all bug reports."""
+    snapshot = await _qa_snapshot()
     return {
-        "bugs": [],
-        "total": 0,
-        "message": "Bug tracking endpoint"
+        "bugs": snapshot["bugs"],
+        "total": len(snapshot["bugs"]),
+        "open": len(snapshot["open_bugs"]),
+        "critical": len(snapshot["critical_bugs"]),
+        "insufficient_data": not snapshot["bugs"],
     }
