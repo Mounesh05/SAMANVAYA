@@ -8,6 +8,16 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 
+def _required_environment(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise ValueError(
+            f"Missing required CI environment variable: {name}. "
+            "Add it as a GitHub Actions repository secret."
+        )
+    return value
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--junit", required=True)
@@ -23,8 +33,11 @@ def main() -> int:
     errors = sum(int(float(s.get("errors", 0))) for s in suites)
     skipped = sum(int(float(s.get("skipped", 0))) for s in suites)
     tests_failed = failures + errors
+    api_url = _required_environment("SAMANVAYA_API_URL").rstrip("/")
+    project_id = _required_environment("SAMANVAYA_PROJECT_ID")
+    token = _required_environment("SAMANVAYA_TEST_RESULTS_TOKEN")
     payload = {
-        "project_id": os.environ["SAMANVAYA_PROJECT_ID"],
+        "project_id": project_id,
         "repository": os.environ["GITHUB_REPOSITORY"],
         "branch": os.environ.get("GITHUB_REF_NAME", ""),
         "commit_sha": os.environ["GITHUB_SHA"],
@@ -37,11 +50,11 @@ def main() -> int:
         "status": "passed" if tests_failed == 0 else "failed",
     }
     request = urllib.request.Request(
-        os.environ["SAMANVAYA_API_URL"].rstrip("/") + "/api/qa/test-runs",
+        api_url + "/api/qa/test-runs",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "X-Test-Results-Token": os.environ["SAMANVAYA_TEST_RESULTS_TOKEN"],
+            "X-Test-Results-Token": token,
         },
         method="POST",
     )
