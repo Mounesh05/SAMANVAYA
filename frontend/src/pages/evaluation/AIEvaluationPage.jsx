@@ -11,11 +11,11 @@ import { formatScore } from '../../utils/formatters';
 
 export function AIEvaluationPage() {
   const [formData, setFormData] = useState({
-    github_username: 'octocat',
-    repo_owner: 'facebook',
-    repo_name: 'react',
+    github_username: '',
+    repo_owner: '',
+    repo_name: '',
     pr_number: '',
-    human_score: 8.0,
+    human_score: '',
     evaluation_focus: 'code_quality',
   });
 
@@ -53,7 +53,7 @@ export function AIEvaluationPage() {
               label="Developer GitHub Username"
               value={formData.github_username}
               onChange={(e) => setFormData({ ...formData, github_username: e.target.value })}
-              placeholder="e.g. torvalds"
+              placeholder="e.g. contributor-name"
               required
             />
 
@@ -62,14 +62,14 @@ export function AIEvaluationPage() {
                 label="Repo Owner"
                 value={formData.repo_owner}
                 onChange={(e) => setFormData({ ...formData, repo_owner: e.target.value })}
-                placeholder="e.g. facebook"
+                placeholder="e.g. organization"
                 required
               />
               <Input
                 label="Repo Name"
                 value={formData.repo_name}
                 onChange={(e) => setFormData({ ...formData, repo_name: e.target.value })}
-                placeholder="e.g. react"
+                placeholder="e.g. repository-name"
                 required
               />
             </div>
@@ -80,7 +80,7 @@ export function AIEvaluationPage() {
                 type="number"
                 value={formData.pr_number}
                 onChange={(e) => setFormData({ ...formData, pr_number: e.target.value })}
-                placeholder="e.g. 25840"
+                placeholder="e.g. 42"
               />
               <Input
                 label="Human Baseline Score (1-10)"

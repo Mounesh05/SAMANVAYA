@@ -12,10 +12,10 @@ import { GitPullRequest, RefreshCw, CheckCircle, ShieldCheck, Sparkles, AlertCir
 
 export function GitHubSyncPage() {
   const [prForm, setPrForm] = useState({
-    owner: 'facebook',
-    repo: 'react',
-    pr_number: '25840',
-    project_id: 'PRJ-CORE',
+    owner: '',
+    repo: '',
+    pr_number: '',
+    project_id: '',
     use_ai: true,
   });
 
@@ -86,9 +86,9 @@ export function GitHubSyncPage() {
                 style={{ marginBottom: '1.75rem' }}
               >
                 <form onSubmit={handleProvision} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
-                  <Input label="Repository Owner" value={qaForm.owner} onChange={(e) => setQaForm({ ...qaForm, owner: e.target.value })} placeholder="GitHub owner" required />
-                  <Input label="Repository Name" value={qaForm.repo} onChange={(e) => setQaForm({ ...qaForm, repo: e.target.value })} placeholder="Repository" required />
-                  <Input label="Samanvaya Project ID" value={qaForm.project_id} onChange={(e) => setQaForm({ ...qaForm, project_id: e.target.value })} placeholder="e.g. PRJ-SAMANVAYA" required />
+                  <Input label="Repository Owner" value={qaForm.owner} onChange={(e) => setQaForm({ ...qaForm, owner: e.target.value })} placeholder="Organization or user" required />
+                  <Input label="Repository Name" value={qaForm.repo} onChange={(e) => setQaForm({ ...qaForm, repo: e.target.value })} placeholder="Repository name" required />
+                  <Input label="Project ID" value={qaForm.project_id} onChange={(e) => setQaForm({ ...qaForm, project_id: e.target.value })} placeholder="e.g. PRJ-001" required />
                   <Button type="submit" variant="primary" isLoading={provisionMutation.isPending} leftIcon={<ShieldCheck size={16} />}>
                     Configure QA Automatically
                   </Button>
@@ -130,14 +130,14 @@ export function GitHubSyncPage() {
                 label="Repository Owner"
                 value={prForm.owner}
                 onChange={(e) => setPrForm({ ...prForm, owner: e.target.value })}
-                placeholder="e.g. facebook"
+                placeholder="e.g. organization"
                 required
               />
               <Input
                 label="Repository Name"
                 value={prForm.repo}
                 onChange={(e) => setPrForm({ ...prForm, repo: e.target.value })}
-                placeholder="e.g. react"
+                placeholder="e.g. repository-name"
                 required
               />
             </div>
@@ -148,14 +148,14 @@ export function GitHubSyncPage() {
                 type="number"
                 value={prForm.pr_number}
                 onChange={(e) => setPrForm({ ...prForm, pr_number: e.target.value })}
-                placeholder="e.g. 25840"
+                placeholder="e.g. 42"
                 required
               />
               <Input
                 label="Target Project ID"
                 value={prForm.project_id}
                 onChange={(e) => setPrForm({ ...prForm, project_id: e.target.value })}
-                placeholder="e.g. PRJ-CORE"
+                placeholder="e.g. PRJ-001"
                 required
               />
             </div>

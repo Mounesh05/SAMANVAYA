@@ -232,14 +232,14 @@ export function BugsPage() {
             label="Bug Title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g. Login button not responding on mobile"
+            placeholder="Summarize the observed issue"
             required
           />
           <Input
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Detailed description of the bug"
+            placeholder="Describe the issue, expected behavior, and actual behavior"
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <Select
@@ -267,7 +267,7 @@ export function BugsPage() {
             label="Steps to Reproduce"
             value={formData.steps_to_reproduce}
             onChange={(e) => setFormData({ ...formData, steps_to_reproduce: e.target.value })}
-            placeholder="1. Go to login page&#10;2. Click login button&#10;3. Observe error"
+            placeholder="List the steps required to reproduce the issue"
           />
         </form>
       </Modal>

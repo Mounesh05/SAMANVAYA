@@ -140,7 +140,7 @@ export function ProjectsPage() {
             label="Project Name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g. Mobile App Redesign"
+            placeholder="Enter the project name"
             required
           />
 
@@ -148,7 +148,7 @@ export function ProjectsPage() {
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Objectives and scope"
+            placeholder="Describe the project objectives and scope"
           />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -156,14 +156,14 @@ export function ProjectsPage() {
               label="Assigned Team"
               value={formData.team_id}
               onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
-              placeholder="Select Team"
+              placeholder="Choose a team"
               options={teams.map((t) => ({ value: t.team_id, label: t.name }))}
             />
             <Input
               label="Main Module"
               value={formData.main_module}
               onChange={(e) => setFormData({ ...formData, main_module: e.target.value })}
-              placeholder="e.g. mobile-app"
+              placeholder="e.g. customer-portal"
             />
           </div>
 

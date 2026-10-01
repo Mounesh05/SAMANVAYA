@@ -290,7 +290,7 @@ export function TasksPage() {
             label="Task Title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g. Write unit tests for OAuth flow"
+            placeholder="Describe the task"
             required
           />
 
@@ -306,7 +306,7 @@ export function TasksPage() {
               label="Assignee"
               value={formData.assignee_id}
               onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-              placeholder="Unassigned"
+              placeholder="No assignee selected"
               options={employees.map((e) => ({
                 value: e.employee_id,
                 label: `${e.name} (${e.employee_id})`,

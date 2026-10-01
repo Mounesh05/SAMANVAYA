@@ -225,14 +225,14 @@ export function StoriesPage() {
             label="Story Title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g. As a user, I want to reset my password"
+            placeholder="Describe the user story"
             required
           />
           <Input
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Acceptance criteria and details"
+            placeholder="Enter acceptance criteria and supporting details"
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <Select
@@ -253,7 +253,7 @@ export function StoriesPage() {
               label="Assignee"
               value={formData.assignee_id}
               onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-              placeholder="Unassigned"
+              placeholder="No assignee selected"
               options={employees.map((e) => ({ value: e.employee_id, label: e.name }))}
             />
             <Input
@@ -261,7 +261,7 @@ export function StoriesPage() {
               type="number"
               value={formData.points}
               onChange={(e) => setFormData({ ...formData, points: e.target.value })}
-              placeholder="e.g. 5"
+              placeholder="Enter the story estimate"
             />
             <Select
               label="Priority"

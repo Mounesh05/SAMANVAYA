@@ -237,14 +237,14 @@ export function IncidentsPage() {
             label="Incident Title"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g. API response time degraded"
+            placeholder="Summarize the incident"
             required
           />
           <Input
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Impact and symptoms observed"
+            placeholder="Describe the impact and observed symptoms"
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <Select
@@ -260,7 +260,7 @@ export function IncidentsPage() {
               label="Affected Service"
               value={formData.service}
               onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-              placeholder="e.g. api-gateway"
+              placeholder="Enter the affected service or component"
             />
           </div>
         </form>

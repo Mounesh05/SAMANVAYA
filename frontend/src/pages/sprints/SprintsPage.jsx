@@ -266,7 +266,7 @@ export function SprintsPage() {
             label="Sprint Name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g. Sprint 14"
+            placeholder="Enter the sprint name"
             required
           />
           <Select
@@ -280,7 +280,7 @@ export function SprintsPage() {
             label="Sprint Goal"
             value={formData.goal}
             onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-            placeholder="e.g. Implement authentication and authorization"
+            placeholder="Describe the sprint objective"
             required
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

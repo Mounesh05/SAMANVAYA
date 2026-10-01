@@ -172,27 +172,27 @@ export function TeamsPage() {
             label="Team ID"
             value={formData.team_id}
             onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
-            placeholder="e.g. TEAM001 or BACKEND-TEAM"
+            placeholder="Enter a unique team ID"
             required
           />
           <Input
             label="Team Name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g. Core Services & Platform"
+            placeholder="Enter the team name"
             required
           />
           <Input
             label="Description"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Focus area and technical responsibilities"
+            placeholder="Describe the team's focus and responsibilities"
           />
           <Select
             label="Assign Team Lead"
             value={formData.team_lead_id}
             onChange={(e) => setFormData({ ...formData, team_lead_id: e.target.value })}
-            placeholder="Select a Team Lead"
+            placeholder="Choose a team lead"
             options={employees.map((e) => ({
               value: e.employee_id,
               label: `${e.name} (${e.role}) - ${e.employee_id}`,

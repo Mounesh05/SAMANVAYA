@@ -252,14 +252,14 @@ export function PullRequestsPage() {
             label="Repository Owner"
             value={syncData.owner}
             onChange={(e) => setSyncData({ ...syncData, owner: e.target.value })}
-            placeholder="e.g. mounesh05"
+            placeholder="e.g. contributor-name"
             required
           />
           <Input
             label="Repository Name"
             value={syncData.repo}
             onChange={(e) => setSyncData({ ...syncData, repo: e.target.value })}
-            placeholder="e.g. samanvaya"
+            placeholder="e.g. repository-name"
             required
           />
           <Input
@@ -267,7 +267,7 @@ export function PullRequestsPage() {
             type="number"
             value={syncData.pr_number}
             onChange={(e) => setSyncData({ ...syncData, pr_number: e.target.value })}
-            placeholder="e.g. 42"
+            placeholder="e.g. 123"
             required
           />
         </form>

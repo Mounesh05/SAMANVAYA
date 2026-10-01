@@ -223,7 +223,7 @@ export function CodeQualityPage() {
             label="Repository or Project ID"
             value={formData.repository_id}
             onChange={(e) => setFormData({ ...formData, repository_id: e.target.value })}
-            placeholder="e.g. Mounesh05/SAMANVAYA"
+            placeholder="e.g. organization/repository"
             required
           />
           <p style={{ marginTop: '-0.65rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -236,7 +236,7 @@ export function CodeQualityPage() {
               type="number"
               value={formData.pr_number}
               onChange={(e) => setFormData({ ...formData, pr_number: e.target.value })}
-              placeholder="e.g. 184"
+              placeholder="e.g. 42"
             />
             <Select
               label="Analysis Level"

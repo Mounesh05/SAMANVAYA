@@ -219,7 +219,7 @@ export function LoginPage() {
                 <Input
                   label="Email Address"
                   type="email"
-                  placeholder="name@company.com"
+                  placeholder="Enter your work email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   leftIcon={<Mail size={16} />}
@@ -239,7 +239,7 @@ export function LoginPage() {
               <>
                 <Input
                   label="Employee ID"
-                  placeholder="e.g. E001 or DEV001"
+                  placeholder="Enter your employee ID"
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
                   leftIcon={<UserCheck size={16} />}
@@ -248,7 +248,7 @@ export function LoginPage() {
                 <Input
                   label="Organisation Password"
                   type="password"
-                  placeholder="Org password"
+                  placeholder="Enter your organization password"
                   value={orgPassword}
                   onChange={(e) => setOrgPassword(e.target.value)}
                   leftIcon={<Shield size={16} />}
@@ -257,7 +257,7 @@ export function LoginPage() {
                 <Input
                   label="Employee Password"
                   type="password"
-                  placeholder="Employee password"
+                  placeholder="Enter your employee password"
                   value={empPassword}
                   onChange={(e) => setEmpPassword(e.target.value)}
                   leftIcon={<KeyRound size={16} />}

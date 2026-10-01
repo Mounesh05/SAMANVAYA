@@ -250,7 +250,7 @@ export function EmployeesPage() {
               label="Employee ID"
               value={formData.employee_id}
               onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-              placeholder="e.g. E001"
+              placeholder="e.g. EMP001"
               disabled={!!editEmployee}
               required
             />
@@ -258,7 +258,7 @@ export function EmployeesPage() {
               label="Full Name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="John Doe"
+              placeholder="Full name"
               required
             />
           </div>
@@ -269,7 +269,7 @@ export function EmployeesPage() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="name@company.com"
+              placeholder="name@organization.com"
               required
             />
             {!editEmployee && (
@@ -278,7 +278,7 @@ export function EmployeesPage() {
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Initial password"
+                placeholder="Temporary password"
                 required
               />
             )}
@@ -313,7 +313,7 @@ export function EmployeesPage() {
               label="GitHub Username"
               value={formData.github_username}
               onChange={(e) => setFormData({ ...formData, github_username: e.target.value })}
-              placeholder="e.g. octocat"
+              placeholder="GitHub username"
             />
           </div>
         </form>
