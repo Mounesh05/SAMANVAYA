@@ -29,7 +29,7 @@ export const performanceApi = {
 
   // Trigger single evaluation (CEO/Admin)
   evaluateDeveloper: async (data) => {
-    return apiClient.post('/performance/evaluate', data);
+    return apiClient.post('/performance/evaluate', data, { timeout: 120000 });
   },
 
   // Trigger bulk evaluation (Admin)

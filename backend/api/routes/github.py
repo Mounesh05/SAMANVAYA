@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from core.dependencies import get_current_user, require_permission, require_roles
 from core.permissions import Permission
 from domain.services.github_sync_service import GitHubSyncService
+from domain.services.qa_workflow_provisioning_service import QAWorkflowProvisioningService
 from pydantic import BaseModel
 import httpx
 
@@ -30,6 +31,14 @@ class RepoSyncRequest(BaseModel):
     project_id: str
     state: str = "open"
     limit: int = 10
+
+
+class QAWorkflowProvisionRequest(BaseModel):
+    """Repository to configure for automatic Samanvaya QA reporting."""
+    owner: str
+    repo: str
+    project_id: str
+    branch: str | None = None
 
 
 @router.get("/health")
@@ -108,6 +117,42 @@ async def list_repositories(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list repositories: {str(e)}"
+        )
+
+
+@router.post("/provision-qa-workflow")
+async def provision_qa_workflow(
+    request: QAWorkflowProvisionRequest,
+    user: dict = Depends(require_roles("LEAD", "PM", "HR")),
+):
+    """Install the managed QA workflow and encrypted Actions secrets."""
+    try:
+        result = await QAWorkflowProvisioningService().provision(
+            owner=request.owner,
+            repo=request.repo,
+            project_id=request.project_id,
+            branch=request.branch,
+        )
+        return result
+    except httpx.HTTPStatusError as error:
+        detail = error.response.text
+        if error.response.status_code == 403:
+            detail = (
+                "GitHub rejected Actions secret access. Update the GitHub token for "
+                "this repository with Contents: Read and write, Actions: Read and write, "
+                "and Workflows: Read and write "
+                f"permissions. GitHub response: {error.response.text}"
+            )
+        raise HTTPException(
+            status_code=error.response.status_code,
+            detail=f"GitHub API error while provisioning QA workflow: {detail}",
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=503, detail=str(error))
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to provision QA workflow: {error}",
         )
 
 

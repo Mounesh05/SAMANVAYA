@@ -30,10 +30,12 @@ export function PullRequestsPage() {
   const role = user?.role?.toUpperCase();
   const isLead = role === ROLES.LEAD;
   const isDeveloper = role === ROLES.DEVELOPER;
+  const canLoadPersonalPRs = isLead || isDeveloper;
 
   const { data: prData, isLoading, error, refetch } = useQuery({
     queryKey: ['pull-requests', role],
     queryFn: () => isLead ? rolesApi.getReviewQueue() : rolesApi.getMyPRs(),
+    enabled: canLoadPersonalPRs,
     retry: 1,
   });
 
@@ -50,7 +52,7 @@ export function PullRequestsPage() {
     },
   });
 
-  const prs = isLead
+  const prs = !canLoadPersonalPRs ? [] : isLead
     ? (prData?.pending_review || [])
     : (prData?.pull_requests || []);
 

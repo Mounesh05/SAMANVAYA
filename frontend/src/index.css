@@ -240,6 +240,11 @@ a:hover {
   to { transform: rotate(360deg); }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -256,6 +261,89 @@ a:hover {
 
 .animate-spin-slow {
   animation: spinSlow 12s linear infinite;
+}
+
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Responsive application shell */
+.app-main {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .app-main {
+    padding: 1.25rem !important;
+  }
+
+  .app-topbar {
+    padding: 0 1rem !important;
+  }
+
+  .app-topbar nav {
+    max-width: 34vw;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .app-topbar nav span:not(:last-child),
+  .app-topbar nav svg:not(:last-child) {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    width: 260px !important;
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+    transition: transform var(--transition-base);
+  }
+
+  .app-sidebar.app-sidebar-collapsed {
+    width: 260px !important;
+    transform: translateX(-100%);
+  }
+
+  .app-shell-content {
+    width: 100%;
+  }
+
+  .app-main {
+    padding: 1rem !important;
+  }
+
+  .app-topbar {
+    height: 62px !important;
+  }
+
+  .app-topbar > div:last-child {
+    gap: 0.4rem !important;
+  }
+
+  .app-topbar > div:last-child > button:first-child {
+    display: none !important;
+  }
+
+  .app-topbar > div:last-child > button:nth-child(2) {
+    display: none !important;
+  }
+
+  .app-topbar nav {
+    max-width: 42vw;
+  }
+
+  .page-header {
+    margin-bottom: 1.25rem !important;
+  }
+
+  .page-header h1 {
+    font-size: 1.35rem !important;
+  }
 }
 
 /* Grid & Flex layouts utility classes */

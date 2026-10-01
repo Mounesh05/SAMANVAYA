@@ -4,9 +4,12 @@ Handles authenticated requests to GitHub REST API.
 """
 
 import httpx
+import base64
+import json
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from core.config import settings
+from nacl.public import PublicKey, SealedBox
 
 
 class GitHubClient:
@@ -233,6 +236,66 @@ class GitHubClient:
         """
         url = f"{self.base_url}/repos/{owner}/{repo}"
         response = await self._make_request("GET", url)
+        return response.json()
+
+    async def get_actions_public_key(self, owner: str, repo: str) -> Dict[str, Any]:
+        """Fetch the public key GitHub requires for Actions secret encryption."""
+        url = f"{self.base_url}/repos/{owner}/{repo}/actions/secrets/public-key"
+        response = await self._make_request("GET", url)
+        return response.json()
+
+    async def set_actions_secret(
+        self, owner: str, repo: str, name: str, value: str, public_key: Dict[str, Any]
+    ) -> None:
+        """Create or update an encrypted repository Actions secret."""
+        sealed_box = SealedBox(PublicKey(base64.b64decode(public_key["key"])))
+        encrypted_value = base64.b64encode(
+            sealed_box.encrypt(value.encode("utf-8"))
+        ).decode("ascii")
+        url = f"{self.base_url}/repos/{owner}/{repo}/actions/secrets/{name}"
+        response = await self._make_request(
+            "PUT",
+            url,
+            json={"encrypted_value": encrypted_value, "key_id": public_key["key_id"]},
+        )
+        if response.status_code not in (201, 204):
+            response.raise_for_status()
+
+    async def get_file(
+        self, owner: str, repo: str, path: str, ref: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Return a repository file, or None when it does not exist."""
+        url = f"{self.base_url}/repos/{owner}/{repo}/contents/{path}"
+        try:
+            params = {"ref": ref} if ref else None
+            response = await self._make_request("GET", url, params=params)
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 404:
+                return None
+            raise
+        return response.json()
+
+    async def upsert_file(
+        self,
+        owner: str,
+        repo: str,
+        path: str,
+        content: str,
+        message: str,
+        branch: Optional[str] = None,
+        sha: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create or update a repository file through the Contents API."""
+        url = f"{self.base_url}/repos/{owner}/{repo}/contents/{path}"
+        payload: Dict[str, Any] = {
+            "message": message,
+            "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
+        }
+        if branch:
+            payload["branch"] = branch
+        if sha:
+            payload["sha"] = sha
+        response = await self._make_request("PUT", url, json=payload)
         return response.json()
     
     async def list_repositories(self, org: Optional[str] = None) -> List[Dict[str, Any]]:

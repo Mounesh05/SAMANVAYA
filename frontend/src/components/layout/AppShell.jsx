@@ -5,14 +5,15 @@ import { TopBar } from './TopBar';
 
 export function AppShell() {
   return (
-    <div style={{ display: 'flex', width: '100%', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+    <div className="app-shell" style={{ display: 'flex', width: '100%', minHeight: '100vh', backgroundColor: 'var(--bg-primary)' }}>
       {/* Dynamic Role-Aware Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div className="app-shell-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopBar />
         <main
+          className="app-main"
           style={{
             flex: 1,
             padding: '1.75rem',

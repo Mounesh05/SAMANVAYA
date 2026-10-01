@@ -242,6 +242,7 @@ export function Sidebar() {
 
   return (
     <aside
+      className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}
       style={{
         width: sidebarCollapsed ? '76px' : '260px',
         height: '100vh',

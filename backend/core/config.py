@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     GITHUB_TIMEOUT: int = 15
     GITHUB_WEBHOOK_SECRET: str = ""  # Set to your webhook secret from GitHub
     QA_TEST_RESULTS_TOKEN: str = ""  # Token used by CI to submit test results
+    SAMANVAYA_PUBLIC_API_URL: str = ""  # Public HTTPS URL used by provisioned CI workflows
     
     # ── Logging ───────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL

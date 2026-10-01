@@ -181,10 +181,14 @@ async def list_employees(
         user.get('is_admin', False)
     )
     
-    if Permission.VIEW_ORGANIZATION_DATA not in user_permissions:
+    if not (
+        Permission.VIEW_ORGANIZATION_DATA in user_permissions
+        or Permission.VIEW_PROJECT_DATA in user_permissions
+        or Permission.VIEW_TEAM_DATA in user_permissions
+    ):
         raise HTTPException(
             status_code=403,
-            detail="Insufficient permissions. Only HR, CEO, or ADMIN can list all employees."
+            detail="Insufficient permissions to view project team members."
         )
     
     try:

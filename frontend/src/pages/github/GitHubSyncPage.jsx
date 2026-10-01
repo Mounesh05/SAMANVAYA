@@ -20,6 +20,7 @@ export function GitHubSyncPage() {
   });
 
   const [syncResult, setSyncResult] = useState(null);
+  const [qaForm, setQaForm] = useState({ owner: '', repo: '', project_id: '' });
 
   // Health check query
   const { data: health, isLoading: isHealthLoading } = useQuery({
@@ -41,6 +42,15 @@ export function GitHubSyncPage() {
   const handleSync = (e) => {
     e.preventDefault();
     syncMutation.mutate(prForm);
+  };
+
+  const provisionMutation = useMutation({
+    mutationFn: (data) => githubApi.provisionQaWorkflow(data),
+  });
+
+  const handleProvision = (e) => {
+    e.preventDefault();
+    provisionMutation.mutate(qaForm);
   };
 
   return (
@@ -69,6 +79,31 @@ export function GitHubSyncPage() {
               >
                 <GitPullRequest size={20} />
               </div>
+
+              <Card
+                title="Automatic QA Setup"
+                subtitle="Install Samanvaya's GitHub Actions test workflow and configure encrypted repository secrets."
+                style={{ marginBottom: '1.75rem' }}
+              >
+                <form onSubmit={handleProvision} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
+                  <Input label="Repository Owner" value={qaForm.owner} onChange={(e) => setQaForm({ ...qaForm, owner: e.target.value })} placeholder="GitHub owner" required />
+                  <Input label="Repository Name" value={qaForm.repo} onChange={(e) => setQaForm({ ...qaForm, repo: e.target.value })} placeholder="Repository" required />
+                  <Input label="Samanvaya Project ID" value={qaForm.project_id} onChange={(e) => setQaForm({ ...qaForm, project_id: e.target.value })} placeholder="e.g. PRJ-SAMANVAYA" required />
+                  <Button type="submit" variant="primary" isLoading={provisionMutation.isPending} leftIcon={<ShieldCheck size={16} />}>
+                    Configure QA Automatically
+                  </Button>
+                </form>
+                {provisionMutation.isSuccess && (
+                  <div style={{ marginTop: '1rem', color: 'var(--success)', fontSize: '0.875rem' }}>
+                    GitHub Actions QA workflow installed successfully.
+                  </div>
+                )}
+                {provisionMutation.isError && (
+                  <div style={{ marginTop: '1rem', color: 'var(--danger)', fontSize: '0.875rem' }}>
+                    QA setup failed: {provisionMutation.error?.response?.data?.detail || provisionMutation.error?.message}
+                  </div>
+                )}
+              </Card>
               <div>
                 <div style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                   GitHub API Gateway: {health?.status === 'operational' ? 'Operational' : 'Ready'}

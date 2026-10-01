@@ -5,7 +5,7 @@ document.documentElement.setAttribute('data-theme', initialTheme);
 
 export const useThemeStore = create((set) => ({
   theme: initialTheme,
-  sidebarCollapsed: false,
+  sidebarCollapsed: window.innerWidth <= 700,
 
   toggleTheme: () => {
     set((state) => {

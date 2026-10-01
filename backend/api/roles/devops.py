@@ -70,14 +70,14 @@ async def devops_dashboard(user: dict = Depends(require_roles("DEVOPS"))):
 
 
 @router.get("/pipelines")
-async def pipelines(user: dict = Depends(require_roles("DEVOPS"))):
+async def pipelines(user: dict = Depends(require_roles("DEVOPS", "QA", "LEAD"))):
     """Get CI/CD pipeline status."""
     snapshot = await _devops_snapshot()
     return {"pipelines": snapshot["pipelines"], "total": len(snapshot["pipelines"]), "insufficient_data": not snapshot["pipelines"]}
 
 
 @router.get("/deployments")
-async def deployments(user: dict = Depends(require_roles("DEVOPS"))):
+async def deployments(user: dict = Depends(require_roles("DEVOPS", "LEAD"))):
     """Get deployment history and status."""
     snapshot = await _devops_snapshot()
     return {"deployments": snapshot["deployments"], "total": len(snapshot["deployments"]), "insufficient_data": not snapshot["deployments"]}

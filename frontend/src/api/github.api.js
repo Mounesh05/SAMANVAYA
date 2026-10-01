@@ -20,4 +20,8 @@ export const githubApi = {
   syncRepositoryPRs: async (data) => {
     return apiClient.post('/github/sync-repository-prs', data);
   },
+
+  provisionQaWorkflow: async (data) => {
+    return apiClient.post('/github/provision-qa-workflow', data);
+  },
 };

@@ -183,6 +183,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     OrganizationalRole.CEO: {
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_ALL_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_ORGANIZATION_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,

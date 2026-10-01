@@ -159,10 +159,14 @@ async def list_teams(
         user.get('is_admin', False)
     )
     
-    if Permission.VIEW_ORGANIZATION_DATA not in user_permissions:
+    if not (
+        Permission.VIEW_ORGANIZATION_DATA in user_permissions
+        or Permission.VIEW_PROJECT_DATA in user_permissions
+        or Permission.VIEW_TEAM_DATA in user_permissions
+    ):
         raise HTTPException(
             status_code=403,
-            detail="Insufficient permissions to list teams"
+            detail="Insufficient permissions to list project teams"
         )
     
     try:

@@ -39,6 +39,29 @@ async def _qa_snapshot():
         "regression_risk": regression_risk,
     }
 
+
+def _test_suite_view(run: dict) -> dict:
+    """Normalize CI ingestion fields for the QA dashboard table."""
+    tests_run = int(run.get("tests_run", 0) or 0)
+    tests_passed = int(run.get("tests_passed", 0) or 0)
+    tests_failed = int(run.get("tests_failed", 0) or 0)
+    tests_skipped = int(run.get("tests_skipped", 0) or 0)
+    return {
+        "name": run.get("test_suite") or run.get("name") or "Unnamed suite",
+        "status": run.get("status", "pending"),
+        "total": tests_run,
+        "passed": tests_passed,
+        "failed": tests_failed,
+        "skipped": tests_skipped,
+        "duration": run.get("duration_seconds"),
+        "pass_rate": round(tests_passed / tests_run * 100, 2) if tests_run else 0,
+        "repository": run.get("repository"),
+        "branch": run.get("branch"),
+        "commit_sha": run.get("commit_sha"),
+        "project_id": run.get("project_id"),
+    }
+
+
 router = APIRouter()
 
 
@@ -73,12 +96,19 @@ async def qa_dashboard(user: dict = Depends(require_roles("QA"))):
 async def test_health(user: dict = Depends(require_roles("QA"))):
     """Get test execution health metrics."""
     snapshot = await _qa_snapshot()
+    suites = [_test_suite_view(run) for run in snapshot["test_runs"]]
+    no_test_failures = sum(
+        1 for suite in suites
+        if suite["status"] == "failed" and suite["total"] == 0
+    )
     return {
-        "test_suites": snapshot["test_runs"],
+        "test_suites": suites,
         "overall_pass_rate": (
             round(snapshot["passed_tests"] / snapshot["total_tests"] * 100, 2)
             if snapshot["total_tests"] else None
         ),
+        "no_test_failures": no_test_failures,
+        "has_blocking_failures": any(suite["status"] == "failed" for suite in suites),
         "insufficient_data": not snapshot["test_runs"],
     }
 

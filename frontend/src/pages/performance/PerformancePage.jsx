@@ -12,9 +12,11 @@ import { Select } from '../../components/common/Select';
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { Play } from 'lucide-react';
+import { EmptyState } from '../../components/common/EmptyState';
+import { Play, Sparkles } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { ROLES } from '../../utils/constants';
+import { useToast } from '../../components/common/Toast';
 
 function getCurrentQuarterLabel(date = new Date()) {
   return `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
@@ -24,6 +26,7 @@ export function PerformancePage() {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
   const isHRorCEO = role === ROLES.HR || role === ROLES.CEO;
+  const toast = useToast();
 
   const [selectedDevId, setSelectedDevId] = useState(user?.employee_id);
   const queryClient = useQueryClient();
@@ -63,6 +66,13 @@ export function PerformancePage() {
     mutationFn: (data) => performanceApi.evaluateDeveloper(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['developer-performance'] });
+      toast.success('Contribution credit calculated successfully.');
+    },
+    onError: (mutationError) => {
+      const message = mutationError?.response?.data?.detail
+        || mutationError?.message
+        || 'The evaluation could not be completed.';
+      toast.error(message);
     },
   });
 
@@ -113,7 +123,7 @@ export function PerformancePage() {
               onClick={handleRunEvaluation}
               isLoading={evalMutation.isPending}
             >
-              Recalculate Contribution Credit
+              {evalMutation.isPending ? 'Calculating contribution credit...' : 'Recalculate Contribution Credit'}
             </Button>
           )
         }
@@ -141,10 +151,12 @@ export function PerformancePage() {
       {isLoading ? (
         <LoadingState message="Loading performance evaluation data..." />
       ) : error ? (
-        <ErrorState
+        <EmptyState
           title="No evaluation recorded yet"
-          message={`No contribution credit found for ${selectedDevId}. Click 'Recalculate Contribution Credit' to compute an evidence-based score.`}
-          onRetry={handleRunEvaluation}
+          description={`No contribution credit is available for ${selectedDevId} yet. Run an evaluation to calculate an evidence-based score.`}
+          icon={<Sparkles size={28} />}
+          actionLabel={isHRorCEO ? 'Calculate contribution credit' : null}
+          onAction={isHRorCEO ? handleRunEvaluation : null}
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>

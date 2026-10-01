@@ -37,6 +37,7 @@ export function TopBar() {
   return (
     <>
       <header
+        className="app-topbar"
         style={{
           height: '70px',
           backgroundColor: 'var(--bg-glass)',

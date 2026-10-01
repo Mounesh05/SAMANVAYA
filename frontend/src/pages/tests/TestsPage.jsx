@@ -20,6 +20,8 @@ export function TestsPage() {
 
   const testSuites = testData?.test_suites || [];
   const passRate = testData?.overall_pass_rate ?? null;
+  const noTestFailures = testData?.no_test_failures || 0;
+  const hasBlockingFailures = testData?.has_blocking_failures || false;
 
   const columns = [
     {
@@ -106,10 +108,10 @@ export function TestsPage() {
       {/* Summary Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <MetricCard
-          title="Overall Pass Rate"
+          title="Executed Test Pass Rate"
           value={passRate == null ? '—' : `${passRate.toFixed(1)}%`}
           icon={<TrendingUp size={20} />}
-          color={passRate == null ? 'primary' : passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
+          color={hasBlockingFailures ? 'warning' : passRate == null ? 'primary' : passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
         />
         <MetricCard
           title="Test Suites"
@@ -129,13 +131,25 @@ export function TestsPage() {
           icon={<XCircle size={20} />}
           color="danger"
         />
+        <MetricCard
+          title="Runs Without Tests"
+          value={noTestFailures}
+          icon={<XCircle size={20} />}
+          color={noTestFailures ? 'danger' : 'success'}
+        />
       </div>
 
       {/* Pass Rate Overview */}
-      <Card title="Test Execution Health" subtitle="Pass rate across all test suites" style={{ marginBottom: '1.5rem' }}>
+      <Card
+        title="Test Execution Health"
+        subtitle={hasBlockingFailures
+          ? 'Executed test pass rate is shown separately; one or more CI runs still require attention.'
+          : 'Pass rate across tests that executed successfully.'}
+        style={{ marginBottom: '1.5rem' }}
+      >
         <div style={{ padding: '1rem 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Overall Pass Rate</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Executed Test Pass Rate</span>
             <span style={{ fontSize: '0.875rem', fontWeight: '700', color: passRate == null ? 'var(--text-muted)' : passRate >= 90 ? 'var(--success)' : 'var(--warning)' }}>
               {passRate == null ? '—' : `${passRate.toFixed(1)}%`}
             </span>
@@ -146,6 +160,21 @@ export function TestsPage() {
             color={passRate == null ? 'primary' : passRate >= 90 ? 'success' : passRate >= 70 ? 'warning' : 'danger'}
             height="12px"
           />
+          {hasBlockingFailures && (
+            <div style={{
+              marginTop: '0.85rem',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--danger-light)',
+              border: '1px solid var(--danger-border)',
+              color: 'var(--text-secondary)',
+              fontSize: '0.8125rem',
+            }}>
+              {noTestFailures > 0
+                ? `${noTestFailures} CI run${noTestFailures === 1 ? '' : 's'} failed without executing tests. Add a test suite before treating this repository as healthy.`
+                : 'One or more test suites failed and require attention.'}
+            </div>
+          )}
         </div>
       </Card>
 

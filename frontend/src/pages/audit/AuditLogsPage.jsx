@@ -46,7 +46,9 @@ export function AuditLogsPage() {
     retry: 1,
   });
 
-  const activities = activityData?.activities || activityData?.items || activityData || [];
+  const activities = Array.isArray(activityData)
+    ? activityData
+    : activityData?.events || activityData?.activities || activityData?.items || [];
 
   const filteredActivities = activities.filter((activity) => {
     const matchesSearch = !search ||
