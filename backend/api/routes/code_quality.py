@@ -72,16 +72,26 @@ async def start_analysis(
     Returns run_id immediately — poll /runs/{run_id} for results.
     Requires TRIGGER_CODE_ANALYSIS permission (QA, DEVOPS roles by default).
     """
+    repository_id = body.repository_id.strip()
+    changed_files = [path.strip() for path in body.changed_files if path.strip()]
+    if not repository_id:
+        raise HTTPException(status_code=422, detail="A real repository or project ID is required")
+    if not changed_files:
+        raise HTTPException(status_code=422, detail="At least one real changed file is required")
+    normalized_body = body.model_copy(
+        update={"repository_id": repository_id, "changed_files": changed_files}
+    )
+
     run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
     now = datetime.now(timezone.utc).isoformat()
 
     # Detect language immediately (fast — no tools needed)
-    profile = lang_detector.detect_from_files(body.changed_files)
+    profile = lang_detector.detect_from_files(changed_files)
 
     # Create the run record in PENDING state
     run_doc = {
         "run_id": run_id,
-        "repository_id": body.repository_id,
+        "repository_id": repository_id,
         "pr_number": body.pr_number,
         "language": profile.primary_language,
         "detected_languages": profile.detected_languages,
@@ -110,7 +120,7 @@ async def start_analysis(
     background_tasks.add_task(
         _run_analysis,
         run_id=run_id,
-        body=body,
+        body=normalized_body,
         profile=profile,
     )
 

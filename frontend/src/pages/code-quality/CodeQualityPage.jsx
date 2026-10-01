@@ -20,13 +20,13 @@ import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
 
 export function CodeQualityPage() {
-  const [selectedRepo, setSelectedRepo] = useState('samanvaya-core');
+  const selectedRepo = '';
   const [isAnalyzeModalOpen, setIsAnalyzeModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    repository_id: 'samanvaya-core',
+    repository_id: '',
     pr_number: '',
     analysis_level: 'standard',
-    changed_files: 'src/auth/login.py\nsrc/core/security.py',
+    changed_files: '',
     use_ai: true,
   });
 
@@ -41,6 +41,7 @@ export function CodeQualityPage() {
   } = useQuery({
     queryKey: ['code-quality', 'history', selectedRepo],
     queryFn: () => codeQualityApi.getHistory(selectedRepo, 20),
+    enabled: Boolean(selectedRepo),
   });
 
   const analyzeMutation = useMutation({
@@ -64,6 +65,7 @@ export function CodeQualityPage() {
 
   const handleStartAnalysis = (e) => {
     e.preventDefault();
+    if (!formData.repository_id.trim() || !formData.changed_files.trim()) return;
     analyzeMutation.mutate(formData);
   };
 
@@ -211,19 +213,22 @@ export function CodeQualityPage() {
               onClick={handleStartAnalysis}
               isLoading={analyzeMutation.isPending}
             >
-              Run Analysis
+              {formData.repository_id.trim() && formData.changed_files.trim() ? 'Run Analysis' : 'Enter repository and changed files'}
             </Button>
           </>
         }
       >
         <form onSubmit={handleStartAnalysis} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <Input
-            label="Repository ID"
+            label="Repository or Project ID"
             value={formData.repository_id}
             onChange={(e) => setFormData({ ...formData, repository_id: e.target.value })}
-            placeholder="e.g. samanvaya-core"
+            placeholder="e.g. Mounesh05/SAMANVAYA"
             required
           />
+          <p style={{ marginTop: '-0.65rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Use the connected repository or project identifier. Do not use a sample name.
+          </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <Input
@@ -253,6 +258,7 @@ export function CodeQualityPage() {
               rows={4}
               value={formData.changed_files}
               onChange={(e) => setFormData({ ...formData, changed_files: e.target.value })}
+              placeholder="Paste real changed repository paths, one per line"
               style={{
                 width: '100%',
                 padding: '0.65rem 0.85rem',
