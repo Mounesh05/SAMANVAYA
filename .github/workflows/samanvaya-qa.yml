@@ -50,8 +50,13 @@ jobs:
           import xml.etree.ElementTree as ET
           import urllib.request
           root = ET.parse("test-results.xml").getroot()
-          tests = int(root.attrib.get("tests", 0))
-          failures = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
+          suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
+          tests = sum(int(float(s.attrib.get("tests", 0))) for s in suites)
+          failures = sum(
+              int(float(s.attrib.get("failures", 0))) +
+              int(float(s.attrib.get("errors", 0)))
+              for s in suites
+          )
           exit_code = int(os.environ.get("TEST_EXIT_CODE", "1"))
           payload = {
               "project_id": os.environ["SAMANVAYA_PROJECT_ID"],
