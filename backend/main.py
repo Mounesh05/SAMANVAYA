@@ -221,7 +221,7 @@ async def health_check():
 # ━━ Register API Routers ━━
 from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai,
-    cicd_logs, performance, employees, teams, evaluation,
+    cicd_logs, qa_test_runs, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
     recommendations, traceability, risk_configurations,
 )
@@ -239,6 +239,7 @@ app.include_router(intelligence.router, prefix="/api/intelligence", tags=["Intel
 app.include_router(github.router, prefix="/api/github", tags=["GitHub Integration"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])
 app.include_router(cicd_logs.router, prefix="/api/cicd-logs", tags=["CI/CD Logs"])
+app.include_router(qa_test_runs.router, prefix="/api/qa", tags=["QA Test Results"])
 app.include_router(performance.router, prefix="/api/performance", tags=["Developer Performance"])
 
 # ━━ New Features ━━
@@ -277,5 +278,4 @@ app.include_router(ceo.router, prefix="/api/role/ceo", tags=["Role: CEO"])
 app.include_router(hr.router, prefix="/api/role/hr", tags=["Role: HR"])
 app.include_router(qa.router, prefix="/api/role/qa", tags=["Role: QA"])
 app.include_router(devops.router, prefix="/api/role/devops", tags=["Role: DevOps"])
-
 

@@ -1,0 +1,33 @@
+name: QA test results
+
+on:
+  push:
+    branches: ["testing", "main"]
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest -q --junitxml=../test-results-backend.xml
+        continue-on-error: true
+      - name: Upload test results to Samanvaya
+        if: always() && github.event_name != 'pull_request'
+        env:
+          SAMANVAYA_API_URL: ${{ secrets.SAMANVAYA_API_URL }}
+          SAMANVAYA_PROJECT_ID: ${{ secrets.SAMANVAYA_PROJECT_ID }}
+          SAMANVAYA_TEST_RESULTS_TOKEN: ${{ secrets.SAMANVAYA_TEST_RESULTS_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          SAMANVAYA_TEST_SUITE: backend
+        run: python ci/upload_junit_results.py --junit test-results-backend.xml

@@ -1,6 +1,7 @@
 import pytest
 
 from api.roles import devops, qa
+from api.routes import qa_test_runs
 
 
 class FakeCursor:
@@ -23,6 +24,9 @@ class FakeCollection:
 
     def find(self, *_args):
         return FakeCursor(self.documents)
+
+    async def replace_one(self, *_args, **_kwargs):
+        return None
 
 
 class FakeTaskRepository:
@@ -78,3 +82,50 @@ async def test_devops_snapshot_uses_workflow_and_deployment_events(monkeypatch):
     assert len(snapshot["deployments"]) == 1
     assert snapshot["successful"] == 1
     assert snapshot["failed"] == 1
+
+
+@pytest.mark.anyio
+async def test_test_run_submission_is_idempotent_and_persists(monkeypatch):
+    stored = {}
+
+    class Collection:
+        async def replace_one(self, query, document, upsert):
+            stored.update(document)
+            assert query["id"] == document["id"]
+            assert upsert is True
+
+    monkeypatch.setattr(qa_test_runs.settings, "QA_TEST_RESULTS_TOKEN", "ci-secret")
+    monkeypatch.setattr(qa_test_runs, "col", lambda _name: Collection())
+
+    response = await qa_test_runs.submit_test_run(
+        qa_test_runs.TestRunSubmission(
+            project_id="PROJ-1",
+            repository="Mounesh05/SAMANVAYA",
+            branch="testing",
+            commit_sha="abcdef1234567",
+            test_suite="backend",
+            tests_run=10,
+            tests_passed=8,
+            tests_failed=2,
+            status="failed",
+        ),
+        "ci-secret",
+    )
+
+    assert response["status"] == "accepted"
+    assert stored["tests_failed"] == 2
+
+
+def test_test_run_submission_rejects_inconsistent_counts():
+    with pytest.raises(ValueError):
+        qa_test_runs.TestRunSubmission(
+            project_id="PROJ-1",
+            repository="repo",
+            branch="testing",
+            commit_sha="abcdef1234567",
+            test_suite="backend",
+            tests_run=1,
+            tests_passed=1,
+            tests_failed=1,
+            status="failed",
+        )
