@@ -68,6 +68,18 @@ export function CodeQualityPage() {
   };
 
   const runs = historyData?.history || [];
+  const statusLabel = (status) => ({
+    pending: 'Queued',
+    running: 'Analyzing',
+    completed: 'Completed',
+    failed: 'Failed',
+  }[status] || 'Unknown');
+  const statusColor = (status) => ({
+    pending: 'var(--warning)',
+    running: 'var(--cyan)',
+    completed: 'var(--success)',
+    failed: 'var(--danger)',
+  }[status] || 'var(--text-muted)');
 
   const columns = [
     { key: 'run_id', header: 'Run ID', render: (r) => <span className="font-mono">{r.run_id}</span> },
@@ -76,9 +88,15 @@ export function CodeQualityPage() {
       key: 'quality_score',
       header: 'Quality Score',
       render: (r) => (
-        <span style={{ fontWeight: '800', color: getGradeColor(r.quality_grade || 'A') }}>
-          {r.quality_score !== null ? `${r.quality_score}/100` : '—'}
-        </span>
+        r.quality_score != null ? (
+          <span style={{ fontWeight: '800', color: getGradeColor(r.quality_grade || 'A') }}>
+            {r.quality_score}/100
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+            {r.status === 'failed' ? 'Unavailable' : 'Not ready'}
+          </span>
+        )
       ),
     },
     {
@@ -86,14 +104,22 @@ export function CodeQualityPage() {
       header: 'Risk',
       render: (r) => <RiskBadge level={r.risk_level || 'LOW'} score={r.risk_score} />,
     },
-    { key: 'status', header: 'Status', render: (r) => <span style={{ textTransform: 'capitalize' }}>{r.status}</span> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (r) => (
+        <span style={{ color: statusColor(r.status), fontWeight: '700', fontSize: '0.8125rem' }}>
+          {statusLabel(r.status)}
+        </span>
+      ),
+    },
     { key: 'created_at', header: 'Date', render: (r) => formatDate(r.created_at) },
     {
       key: 'action',
       header: 'Action',
       render: (r) => (
         <Button variant="secondary" size="sm" onClick={() => navigate(`/code-quality/runs/${r.run_id}`)}>
-          Inspect Findings <ArrowRight size={14} />
+          {r.status === 'completed' ? 'Inspect Findings' : 'View Run'} <ArrowRight size={14} />
         </Button>
       ),
     },

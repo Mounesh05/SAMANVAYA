@@ -45,8 +45,15 @@ export function RunDetailPage() {
   if (runError) return <ErrorState message={runError.message} onRetry={() => window.location.reload()} />;
 
   const findings = findingsData?.findings || [];
-  const qualityGrade = run?.quality_grade || 'A';
+  const isCompleted = run?.status === 'completed';
+  const qualityGrade = isCompleted ? (run?.quality_grade || '—') : '—';
   const gradeColor = getGradeColor(qualityGrade);
+  const statusLabel = {
+    pending: 'Queued',
+    running: 'Analyzing',
+    completed: 'Completed',
+    failed: 'Failed',
+  }[run?.status] || 'Unknown';
 
   const findingColumns = [
     {
@@ -102,7 +109,11 @@ export function RunDetailPage() {
       <PageHeader
         title={`Analysis Run: ${run?.run_id}`}
         subtitle={`Repository: ${run?.repository_id} ${run?.pr_number ? `• PR #${run.pr_number}` : ''}`}
-        badge={<RiskBadge level={run?.risk_level || 'LOW'} score={run?.risk_score} size="md" />}
+        badge={
+          <span style={{ color: isCompleted ? 'var(--success)' : 'var(--warning)', fontWeight: '700' }}>
+            {statusLabel}
+          </span>
+        }
       />
 
       {/* Overview Score Cards */}
@@ -118,11 +129,11 @@ export function RunDetailPage() {
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Quality Score</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
             <span style={{ fontSize: '2.25rem', fontWeight: '900', color: gradeColor }}>
-              {run?.quality_score !== null ? run.quality_score : '—'}
+              {run?.quality_score != null ? run.quality_score : '—'}
             </span>
             <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 100</span>
             <span style={{ fontSize: '1rem', fontWeight: '700', color: gradeColor, marginLeft: '0.35rem' }}>
-              ({qualityGrade})
+              {isCompleted && `(${qualityGrade})`}
             </span>
           </div>
         </Card>
@@ -130,21 +141,27 @@ export function RunDetailPage() {
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Risk Assessment</span>
           <div style={{ marginTop: '0.5rem' }}>
-            <RiskBadge level={run?.risk_level || 'LOW'} score={run?.risk_score} size="md" />
+            {isCompleted ? (
+              <RiskBadge level={run?.risk_level || 'LOW'} score={run?.risk_score} size="md" />
+            ) : (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                Available after analysis completes
+              </span>
+            )}
           </div>
         </Card>
 
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Detected Language</span>
           <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '0.35rem', textTransform: 'capitalize' }}>
-            {run?.language || 'Multi-language'}
+            {isCompleted ? (run?.language || 'Multi-language') : 'Pending analysis'}
           </div>
         </Card>
 
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Total Findings</span>
           <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
-            {findingsData?.total || 0} issues
+            {isCompleted ? `${findingsData?.total || 0} issues` : 'Not available yet'}
           </div>
         </Card>
       </div>
