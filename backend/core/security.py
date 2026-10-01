@@ -76,7 +76,7 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
     Validate password strength for production use.
     
     Requirements:
-    - Minimum 8 characters
+    - Minimum 12 characters
     - At least one uppercase letter
     - At least one lowercase letter  
     - At least one digit
@@ -88,8 +88,8 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters long"
+    if len(password) < 12:
+        return False, "Password must be at least 12 characters long"
     
     if not any(c.isupper() for c in password):
         return False, "Password must contain at least one uppercase letter"
@@ -104,6 +104,9 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
     if not any(c in special_chars for c in password):
         return False, f"Password must contain at least one special character ({special_chars})"
     
+    if is_password_compromised(password):
+        return False, "Password is too common; choose a less predictable password"
+
     return True, ""
 
 
@@ -128,4 +131,3 @@ def is_password_compromised(password: str) -> bool:
     }
     
     return password.lower() in common_passwords
-

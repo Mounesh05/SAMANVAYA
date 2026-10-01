@@ -29,7 +29,8 @@ export function EmployeesPage() {
     email: '',
     role: 'DEVELOPER',
     dept: 'Engineering',
-    password: '',
+    organisation_password: '',
+    employee_password: '',
     team_id: '',
     github_username: '',
   });
@@ -79,7 +80,8 @@ export function EmployeesPage() {
       email: '',
       role: 'DEVELOPER',
       dept: 'Engineering',
-      password: '',
+      organisation_password: '',
+      employee_password: '',
       team_id: '',
       github_username: '',
     });
@@ -112,7 +114,8 @@ export function EmployeesPage() {
       email: emp.email,
       role: emp.role,
       dept: emp.dept,
-      password: '',
+      organisation_password: '',
+      employee_password: '',
       team_id: emp.team_id || '',
       github_username: emp.github_username || '',
     });
@@ -274,11 +277,21 @@ export function EmployeesPage() {
             />
             {!editEmployee && (
               <Input
-                label="Password"
+                label="Organization password"
                 type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Temporary password"
+                value={formData.organisation_password}
+                onChange={(e) => setFormData({ ...formData, organisation_password: e.target.value })}
+                placeholder="At least 12 characters"
+                required
+              />
+            )}
+            {!editEmployee && (
+              <Input
+                label="Employee password"
+                type="password"
+                value={formData.employee_password}
+                onChange={(e) => setFormData({ ...formData, employee_password: e.target.value })}
+                placeholder="Different from organization password"
                 required
               />
             )}

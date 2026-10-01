@@ -6,11 +6,11 @@ HR and Admin functionality for managing employees.
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from typing import List, Optional
 from datetime import datetime, timezone
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 from repositories.user_repository import UserRepository
 from core.dependencies import get_current_user, require_admin
 from core.permissions import Permission, get_user_permissions
-from core.security import hash_password
+from core.security import hash_password, validate_password_strength
 from core.audit import log_audit, AuditAction
 
 router = APIRouter()
@@ -23,10 +23,38 @@ class EmployeeCreate(BaseModel):
     email: EmailStr
     role: str  # CEO|HR|PM|LEAD|DEVELOPER|DEVOPS|QA
     dept: str
-    password: str  # Will be hashed
+    # `password` remains accepted for older API clients. New clients should
+    # provide separate credentials so the two authentication factors differ.
+    password: Optional[str] = None
+    organisation_password: Optional[str] = None
+    employee_password: Optional[str] = None
     github_username: Optional[str] = None
     team_id: Optional[str] = None
     is_admin: bool = False
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        organisation_password = self.organisation_password or self.password
+        employee_password = self.employee_password or self.password
+        if not organisation_password or not employee_password:
+            raise ValueError(
+                "Organisation and employee passwords are required"
+            )
+        for label, value in (
+            ("Organisation", organisation_password),
+            ("Employee", employee_password),
+        ):
+            valid, message = validate_password_strength(value)
+            if not valid:
+                raise ValueError(f"{label} password: {message}")
+        if self.organisation_password and self.employee_password:
+            if self.organisation_password == self.employee_password:
+                raise ValueError(
+                    "Organisation and employee passwords must be different"
+                )
+        self.organisation_password = organisation_password
+        self.employee_password = employee_password
+        return self
 
 
 class EmployeeUpdate(BaseModel):
@@ -109,9 +137,6 @@ async def create_employee(
                 detail="Only admins can create admin accounts"
             )
         
-        # Hash password
-        password_hash = hash_password(employee.password)
-        
         # Create employee document
         employee_doc = {
             "employee_id": employee.employee_id,
@@ -119,8 +144,8 @@ async def create_employee(
             "email": employee.email,
             "role": employee.role.upper(),
             "dept": employee.dept,
-            "organisation_password": password_hash,
-            "employee_password": password_hash,
+            "organisation_password": hash_password(employee.organisation_password),
+            "employee_password": hash_password(employee.employee_password),
             "github_username": employee.github_username,
             "team_id": employee.team_id,
             "is_active": True,

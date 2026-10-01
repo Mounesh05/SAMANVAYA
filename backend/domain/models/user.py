@@ -3,8 +3,9 @@ User/Employee domain models.
 Users represent employees with roles in the organization.
 """
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 from typing import Optional
+from core.security import validate_password_strength
 
 
 class UserCreate(BaseModel):
@@ -20,6 +21,21 @@ class UserCreate(BaseModel):
     github_username: Optional[str] = None
     team_id: Optional[str] = None
     avatar: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        if self.organisation_password == self.employee_password:
+            raise ValueError(
+                "Organisation and employee passwords must be different"
+            )
+        for label, value in (
+            ("Organisation", self.organisation_password),
+            ("Employee", self.employee_password),
+        ):
+            valid, message = validate_password_strength(value)
+            if not valid:
+                raise ValueError(f"{label} password: {message}")
+        return self
 
 
 class UserOut(BaseModel):
