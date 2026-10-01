@@ -1,4 +1,5 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const Input = forwardRef(function Input(
   {
@@ -16,6 +17,9 @@ export const Input = forwardRef(function Input(
   ref
 ) {
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const isPassword = type === 'password';
+  const inputType = isPassword && isPasswordVisible ? 'text' : type;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%' }}>
@@ -58,12 +62,12 @@ export const Input = forwardRef(function Input(
         <input
           ref={ref}
           id={inputId}
-          type={type}
+          type={inputType}
           style={{
             width: '100%',
             padding: '0.55rem 0.85rem',
             paddingLeft: leftIcon ? '2.4rem' : '0.85rem',
-            paddingRight: rightIcon ? '2.4rem' : '0.85rem',
+            paddingRight: isPassword || rightIcon ? '2.75rem' : '0.85rem',
             fontSize: '0.875rem',
             backgroundColor: 'var(--bg-input)',
             color: 'var(--text-primary)',
@@ -76,7 +80,29 @@ export const Input = forwardRef(function Input(
           {...props}
         />
 
-        {rightIcon && (
+        {isPassword ? (
+          <button
+            type="button"
+            onClick={() => setIsPasswordVisible((visible) => !visible)}
+            aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+            title={isPasswordVisible ? 'Hide password' : 'Show password'}
+            style={{
+              position: 'absolute',
+              right: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.25rem',
+              color: 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+            }}
+          >
+            {isPasswordVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        ) : rightIcon && (
           <div
             style={{
               position: 'absolute',
