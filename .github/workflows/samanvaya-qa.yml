@@ -30,6 +30,8 @@ jobs:
           else
             echo "No Python test directory found"
             printf '<testsuite tests="0" failures="0"></testsuite>' > test-results.xml
+            echo "TEST_EXIT_CODE=1" >> "$GITHUB_ENV"
+            exit 1
           fi
           echo "TEST_EXIT_CODE=$?" >> "$GITHUB_ENV"
       - name: Upload results to Samanvaya
@@ -50,6 +52,7 @@ jobs:
           root = ET.parse("test-results.xml").getroot()
           tests = int(root.attrib.get("tests", 0))
           failures = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
+          exit_code = int(os.environ.get("TEST_EXIT_CODE", "1"))
           payload = {
               "project_id": os.environ["SAMANVAYA_PROJECT_ID"],
               "repository": os.environ["GITHUB_REPOSITORY"],
@@ -59,7 +62,7 @@ jobs:
               "tests_run": tests,
               "tests_passed": max(tests - failures, 0),
               "tests_failed": failures,
-              "status": "passed" if failures == 0 else "failed",
+              "status": "passed" if exit_code == 0 and failures == 0 else "failed",
           }
           request = urllib.request.Request(
               os.environ["SAMANVAYA_API_URL"].rstrip("/") + "/api/qa/test-runs",
