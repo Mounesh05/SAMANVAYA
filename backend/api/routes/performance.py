@@ -329,6 +329,13 @@ async def evaluate_developer_performance(
             evaluated_by=evaluated_by
         )
         
+        # Check if AI evaluation failed
+        if performance.ai_evaluation.data_quality.get("ai_evaluation_failed", False):
+            raise HTTPException(
+                status_code=503,
+                detail="AI evaluation service unavailable. The evaluation was saved but AI insights are missing. Please retry when Ollama is running."
+            )
+        
         # Audit log
         await log_audit(
             action=AuditAction.EVALUATION_TRIGGERED,

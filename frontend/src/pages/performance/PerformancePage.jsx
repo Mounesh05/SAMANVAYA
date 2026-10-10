@@ -72,7 +72,13 @@ export function PerformancePage() {
       const message = mutationError?.response?.data?.detail
         || mutationError?.message
         || 'The evaluation could not be completed.';
-      toast.error(message);
+      
+      // Check if it's an AI service unavailable error
+      if (message.includes('503') || message.includes('unavailable') || message.includes('Ollama')) {
+        toast.error('AI evaluation service is unavailable. Please start Ollama and try again.');
+      } else {
+        toast.error(message);
+      }
     },
   });
 
@@ -152,8 +158,12 @@ export function PerformancePage() {
         <LoadingState message="Loading performance evaluation data..." />
       ) : error ? (
         <EmptyState
-          title="No evaluation recorded yet"
-          description={`No contribution credit is available for ${selectedDevId} yet. Run an evaluation to calculate an evidence-based score.`}
+          title={error.message?.includes('503') || error.message?.includes('unavailable') 
+            ? "AI Service Unavailable" 
+            : "No evaluation recorded yet"}
+          description={error.message?.includes('503') || error.message?.includes('unavailable')
+            ? "The AI evaluation service (Ollama) is not running. Start Ollama and retry the evaluation."
+            : `No contribution credit is available for ${selectedDevId} yet. Run an evaluation to calculate an evidence-based score.`}
           icon={<Sparkles size={28} />}
           actionLabel={isHRorCEO ? 'Calculate contribution credit' : null}
           onAction={isHRorCEO ? handleRunEvaluation : null}

@@ -4,7 +4,7 @@ Requires authentication for all endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 from core.dependencies import get_current_user, require_roles
 import asyncio
@@ -20,8 +20,8 @@ class SimpleEvalRequest(BaseModel):
     github_username: str                    # e.g., "torvalds"
     repo_owner: str                        # e.g., "microsoft" 
     repo_name: str                         # e.g., "vscode"
-    pr_number: Optional[int] = None        # e.g., 200000 (optional)
-    human_score: Optional[float] = None    # Optional human feedback (1-10)
+    pr_number: Optional[int] = Field(default=None, ge=1)
+    human_score: Optional[float] = Field(default=None, ge=1, le=10)
     evaluation_focus: str = "code_quality" # Focus area
 
 
@@ -44,6 +44,16 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
     
     Required roles: CEO, HR, or LEAD per RBAC spec.
     """
+    # Validate required fields
+    if not request.github_username or not request.github_username.strip():
+        raise HTTPException(status_code=400, detail="GitHub username is required")
+    if not request.repo_owner or not request.repo_owner.strip():
+        raise HTTPException(status_code=400, detail="Repository owner is required")
+    if not request.repo_name or not request.repo_name.strip():
+        raise HTTPException(status_code=400, detail="Repository name is required")
+    if request.human_score is not None and (request.human_score < 1 or request.human_score > 10):
+        raise HTTPException(status_code=400, detail="Human baseline score must be between 1 and 10")
+    
     try:
         evaluation_id = f"EVAL-{uuid.uuid4().hex[:8].upper()}"
         
@@ -115,11 +125,25 @@ async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends
             timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
         )
     
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Evaluation failed: {str(e)}"
-        )
+        error_msg = str(e)
+        if '404' in error_msg or 'Not Found' in error_msg:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Repository not found: {request.repo_owner}/{request.repo_name}. Please check the repository owner and name."
+            )
+        elif 'Ollama' in error_msg or 'connection' in error_msg.lower():
+            raise HTTPException(
+                status_code=503,
+                detail="AI service unavailable. Please ensure Ollama is running."
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Evaluation failed: {error_msg}"
+            )
 
 
 AI_DIMENSION_WEIGHTS = {

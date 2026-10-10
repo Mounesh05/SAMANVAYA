@@ -6,10 +6,12 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { LoadingState } from '../../components/common/LoadingState';
+import { useToast } from '../../components/common/Toast';
 import { Cpu, Sparkles, CheckCircle2, Award } from 'lucide-react';
 import { formatScore } from '../../utils/formatters';
 
 export function AIEvaluationPage() {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     github_username: '',
     repo_owner: '',
@@ -30,11 +32,35 @@ export function AIEvaluationPage() {
       }),
     onSuccess: (res) => {
       setEvalResult(res);
+      toast.success('AI evaluation completed successfully!');
+    },
+    onError: (error) => {
+      const message = error?.message || 'Evaluation failed';
+      toast.error(message);
     },
   });
 
   const handleEvaluate = (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.github_username.trim()) {
+      toast.error('GitHub username is required');
+      return;
+    }
+    if (!formData.repo_owner.trim()) {
+      toast.error('Repository owner is required');
+      return;
+    }
+    if (!formData.repo_name.trim()) {
+      toast.error('Repository name is required');
+      return;
+    }
+    if (!formData.human_score || formData.human_score < 1 || formData.human_score > 10) {
+      toast.error('Human baseline score must be between 1 and 10');
+      return;
+    }
+    
     evalMutation.mutate(formData);
   };
 
@@ -78,6 +104,8 @@ export function AIEvaluationPage() {
               <Input
                 label="PR Number (Optional)"
                 type="number"
+                min="1"
+                step="1"
                 value={formData.pr_number}
                 onChange={(e) => setFormData({ ...formData, pr_number: e.target.value })}
                 placeholder="e.g. 42"
