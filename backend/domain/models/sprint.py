@@ -3,8 +3,10 @@ Sprint domain models.
 Sprints represent time-boxed iterations with goals and stories.
 """
 
-from pydantic import BaseModel
+from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, model_validator
 
 
 class SprintCreate(BaseModel):
@@ -15,6 +17,26 @@ class SprintCreate(BaseModel):
     goal: Optional[str] = None
     start_date: str
     end_date: str
+
+    @model_validator(mode="after")
+    def validate_date_range(self) -> "SprintCreate":
+        """Ensure a sprint ends on or after its start date."""
+        try:
+            start = datetime.fromisoformat(
+                self.start_date.replace("Z", "+00:00")
+            ).date()
+            end = datetime.fromisoformat(
+                self.end_date.replace("Z", "+00:00")
+            ).date()
+        except ValueError as exc:
+            raise ValueError(
+                "Sprint dates must be valid ISO dates or datetimes"
+            ) from exc
+
+        if end < start:
+            raise ValueError("Sprint end date must be on or after its start date")
+
+        return self
 
 
 class Sprint(SprintCreate):

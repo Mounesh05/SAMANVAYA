@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.database import col
 from core.dependencies import get_current_user, require_permission
@@ -39,7 +39,7 @@ CONFIGS_COLLECTION = "project_configs"
 
 class AnalyzeRequest(BaseModel):
     repository_id: str
-    pr_number: Optional[int] = None
+    pr_number: Optional[int] = Field(default=None, ge=1)
     changed_files: List[str] = []
     pr_context: Dict[str, Any] = {}
     analysis_level: str = "standard"   # "quick" | "standard" | "deep"

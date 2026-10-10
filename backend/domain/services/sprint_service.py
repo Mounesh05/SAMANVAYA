@@ -7,6 +7,7 @@ from typing import Optional
 import uuid
 from repositories.sprint_repository import SprintRepository
 from repositories.story_repository import StoryRepository
+from repositories.task_repository import TaskRepository
 from domain.models.sprint import SprintCreate, Sprint
 
 
@@ -16,6 +17,7 @@ class SprintService:
     def __init__(self):
         self.sprint_repo = SprintRepository()
         self.story_repo = StoryRepository()
+        self.task_repo = TaskRepository()
 
     async def create_sprint(self, sprint_data: SprintCreate) -> Sprint:
         """
@@ -72,15 +74,26 @@ class SprintService:
 
         # Get all stories in this sprint
         stories = await self.story_repo.find_by_sprint(sprint_id)
+        tasks = await self.task_repo.find_by_sprint(sprint_id)
 
-        total_stories = len(stories)
-        total_points = sum(s.get("points", 0) for s in stories)
+        # Tasks without a story are sprint work items in their own right.
+        standalone_tasks = [task for task in tasks if not task.get("story_id")]
+        work_items = [*stories, *standalone_tasks]
 
-        completed_stories = [s for s in stories if s.get("status") == "done"]
-        completed_points = sum(s.get("points", 0) for s in completed_stories)
+        total_stories = len(work_items)
+        total_points = sum(
+            item.get("points", item.get("story_points", 1))
+            for item in work_items
+        )
 
-        in_progress = [s for s in stories if s.get("status") == "in_progress"]
-        blocked = [s for s in stories if s.get("status") == "blocked"]
+        completed_stories = [item for item in work_items if item.get("status") == "done"]
+        completed_points = sum(
+            item.get("points", item.get("story_points", 1))
+            for item in completed_stories
+        )
+
+        in_progress = [item for item in work_items if item.get("status") == "in_progress"]
+        blocked = [item for item in work_items if item.get("status") == "blocked"]
         
         completion_pct = (
             (completed_points / total_points * 100) if total_points > 0 else 0

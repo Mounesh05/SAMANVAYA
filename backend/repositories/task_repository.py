@@ -14,6 +14,10 @@ class TaskRepository(BaseRepository):
         """Find all tasks in a project."""
         return await self.find_all({"project_id": project_id})
 
+    async def find_by_sprint(self, sprint_id: str) -> list:
+        """Find all tasks in a sprint."""
+        return await self.find_all({"sprint_id": sprint_id})
+
     async def find_by_assignee(self, assignee_id: str) -> list:
         """Find all tasks assigned to a user."""
         return await self.find_all({"assignee_id": assignee_id})
