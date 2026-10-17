@@ -236,6 +236,8 @@ samanvaya-repo-*/
 
 # AI model caches (if any)
 models/
+# ...but never ignore the application's own domain models
+!backend/domain/models/
 model_cache/
 
 # Uploaded files (if storing locally)

@@ -9,7 +9,10 @@ from domain.models.user import UserCreate, UserOut, LoginRequest, LoginResponse
 from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
 from core.rate_limiting import limiter
+from core.config import settings
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 auth_service = AuthService()
 
@@ -24,26 +27,33 @@ class SimpleLoginRequest(BaseModel):
 @limiter.limit("3/minute")
 async def register(request: Request, user_data: UserCreate):
     """
-    Register a new user/employee.
-    
-    Restricted roles: CEO and HR cannot self-register.
-    Only DEVELOPER, LEAD, PM, QA, DEVOPS can register.
-    HR/CEO accounts must be created by HR via the employees endpoint.
+    Public self-registration (disabled unless ALLOW_SELF_REGISTRATION=true).
+
+    Even when enabled, only the DEVELOPER role can self-register and team
+    assignment is ignored. All other roles are created by HR/admin through
+    POST /api/employees.
     """
-    # Block privileged role self-registration
-    restricted_roles = {"CEO", "HR"}
-    if user_data.role.upper() in restricted_roles:
+    if not settings.ALLOW_SELF_REGISTRATION:
         raise HTTPException(
             status_code=403,
-            detail=f"Role '{user_data.role}' cannot self-register. Contact HR to create this account."
+            detail="Self-registration is disabled. Ask HR to create your account.",
         )
-    
+
+    role = (user_data.role or "").strip().upper()
+    if role != "DEVELOPER":
+        raise HTTPException(
+            status_code=403,
+            detail="Only the DEVELOPER role can self-register. Contact HR for other roles.",
+        )
+    user_data = user_data.model_copy(update={"role": role, "team_id": None})
+
     try:
         user = await auth_service.register_user(user_data)
         return user
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except Exception:
+        logger.exception("Registration failed")
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
@@ -105,28 +115,18 @@ async def logout(user: dict = Depends(get_current_user)):
 
 
 @router.post("/refresh")
-async def refresh_token(user: dict = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def refresh_token(request: Request, user: dict = Depends(get_current_user)):
     """
     Refresh access token.
-    Returns a new JWT token for the authenticated user.
+
+    Claims are rebuilt from the current database record, not copied from the
+    old token. Deactivated or deleted accounts are rejected, and role/team
+    changes take effect on refresh.
     """
-    from core.security import create_access_token
-    
-    # Preserve ALL claims from the original token so admin rights,
-    # team_id, project_ids, etc. are not silently dropped
-    new_token = create_access_token({
-        "sub": user.get("sub", user.get("employee_id")),
-        "employee_id": user["employee_id"],
-        "role": user.get("role", user.get("organizational_role")),
-        "organizational_role": user.get("organizational_role", user.get("role")),
-        "email": user["email"],
-        "name": user["name"],
-        "system_access": user.get("system_access", "USER"),
-        "team_id": user.get("team_id"),
-        "team_lead_id": user.get("team_lead_id"),
-        "project_ids": user.get("project_ids", []),
-    })
-    
+    new_token = await auth_service.refresh_session(user.get("employee_id", ""))
+    if not new_token:
+        raise HTTPException(status_code=401, detail="Account is inactive or no longer exists")
     return {"token": new_token}
 
 

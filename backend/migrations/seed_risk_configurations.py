@@ -18,7 +18,7 @@ from pathlib import Path
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.database import col, get_db_client, close_db
+from core.database import col, get_client, close_db
 from domain.models.risk_configuration import (
     RiskConfiguration,
     RiskDimensionWeights,
@@ -198,7 +198,7 @@ async def main():
     
     try:
         # Connect to database
-        await get_db_client()
+        await get_client().admin.command("ping")  # fail fast if MongoDB is unreachable
         print("✓ Connected to MongoDB\n")
         
         # Seed global default

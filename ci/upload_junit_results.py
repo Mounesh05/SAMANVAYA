@@ -18,10 +18,30 @@ def _required_environment(name: str) -> str:
     return value
 
 
+def _optional_environment(name: str) -> str | None:
+    """Get environment variable or return None if missing/empty."""
+    return os.environ.get(name, "").strip() or None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--junit", required=True)
     args = parser.parse_args()
+
+    # Check for required secrets - gracefully handle absence
+    api_url = _optional_environment("SAMANVAYA_API_URL")
+    project_id = _optional_environment("SAMANVAYA_PROJECT_ID")
+    token = _optional_environment("SAMANVAYA_TEST_RESULTS_TOKEN")
+    
+    if not all([api_url, project_id, token]):
+        print("=" * 70)
+        print("Samanvaya secrets not configured. Skipping test result upload.")
+        print("To enable automated test result upload, configure these repository secrets:")
+        print("  - SAMANVAYA_API_URL")
+        print("  - SAMANVAYA_PROJECT_ID")
+        print("  - SAMANVAYA_TEST_RESULTS_TOKEN")
+        print("=" * 70)
+        return 0  # Exit gracefully without failing workflow
 
     root = ET.parse(args.junit).getroot()
     suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
@@ -33,9 +53,9 @@ def main() -> int:
     errors = sum(int(float(s.get("errors", 0))) for s in suites)
     skipped = sum(int(float(s.get("skipped", 0))) for s in suites)
     tests_failed = failures + errors
-    api_url = _required_environment("SAMANVAYA_API_URL").rstrip("/")
-    project_id = _required_environment("SAMANVAYA_PROJECT_ID")
-    token = _required_environment("SAMANVAYA_TEST_RESULTS_TOKEN")
+    api_url = api_url.rstrip("/")
+    project_id = project_id
+    token = token
     payload = {
         "project_id": project_id,
         "repository": os.environ["GITHUB_REPOSITORY"],

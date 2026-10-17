@@ -11,29 +11,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      # Language runtime setup
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install test dependencies
+      
+      - uses: actions/setup-node@v4
+        if: hashFiles('package.json', 'frontend/package.json') != ''
+        with:
+          node-version: "20"
+      
+      # Install dependencies
+      - name: Install dependencies
         run: |
+          # Python dependencies
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+          
+          # Node.js dependencies (if package.json exists)
+          if [ -f package.json ]; then
+            npm ci || npm install
+          fi
+          if [ -f frontend/package.json ]; then
+            cd frontend && (npm ci || npm install) && cd ..
+          fi
+      
+      # Run tests with multi-language detection
       - name: Run tests
         shell: bash
-        run: |
-          set +e
-          if [ -d backend/tests ]; then
-            pytest backend/tests -q --junitxml=test-results.xml
-          elif [ -d tests ]; then
-            pytest tests -q --junitxml=test-results.xml
-          else
-            echo "No Python test directory found"
-            printf '<testsuite tests="0" failures="0"></testsuite>' > test-results.xml
-            echo "TEST_EXIT_CODE=1" >> "$GITHUB_ENV"
-            exit 1
-          fi
-          echo "TEST_EXIT_CODE=$?" >> "$GITHUB_ENV"
+        run: bash ci/run_tests.sh
+      
+      # Upload results to Samanvaya
       - name: Upload results to Samanvaya
         if: always() && github.event_name != 'pull_request'
         env:
@@ -43,45 +53,14 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
-          SAMANVAYA_TEST_SUITE: github-actions
         run: |
-          python - <<'PY'
-          import os
-          import xml.etree.ElementTree as ET
-          import urllib.request
-          root = ET.parse("test-results.xml").getroot()
-          suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
-          tests = sum(int(float(s.attrib.get("tests", 0))) for s in suites)
-          failures = sum(
-              int(float(s.attrib.get("failures", 0))) +
-              int(float(s.attrib.get("errors", 0)))
-              for s in suites
-          )
-          exit_code = int(os.environ.get("TEST_EXIT_CODE", "1"))
-          payload = {
-              "project_id": os.environ["SAMANVAYA_PROJECT_ID"],
-              "repository": os.environ["GITHUB_REPOSITORY"],
-              "branch": os.environ["GITHUB_REF_NAME"],
-              "commit_sha": os.environ["GITHUB_SHA"],
-              "test_suite": os.environ["SAMANVAYA_TEST_SUITE"],
-              "tests_run": tests,
-              "tests_passed": max(tests - failures, 0),
-              "tests_failed": failures,
-              "status": "passed" if exit_code == 0 and failures == 0 else "failed",
-          }
-          request = urllib.request.Request(
-              os.environ["SAMANVAYA_API_URL"].rstrip("/") + "/api/qa/test-runs",
-              data=__import__("json").dumps(payload).encode(),
-              headers={
-                  "Content-Type": "application/json",
-                  "X-Test-Results-Token": os.environ["SAMANVAYA_TEST_RESULTS_TOKEN"],
-              },
-              method="POST",
-          )
-          with urllib.request.urlopen(request) as response:
-              if response.status >= 300:
-                  raise RuntimeError(f"Samanvaya rejected test results: {response.status}")
-          PY
+          if [ -n "$TEST_RESULTS_FILE" ] && [ -f "$TEST_RESULTS_FILE" ]; then
+            SAMANVAYA_TEST_SUITE="${SAMANVAYA_TEST_SUITE}" python ci/upload_junit_results.py --junit "$TEST_RESULTS_FILE"
+          else
+            echo "No test results file to upload"
+          fi
+      
+      # Fail workflow if tests failed
       - name: Fail workflow when tests fail
         if: always()
         run: exit "${TEST_EXIT_CODE:-0}"

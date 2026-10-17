@@ -73,6 +73,57 @@ class AuthService:
             team_id=user_data.team_id,
         )
 
+    # ── Shared helpers ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _token_payload(user: dict) -> dict:
+        """JWT claims built from the CURRENT database record."""
+        role = (user.get("role") or "DEVELOPER").strip().upper()
+        return {
+            "sub": user.get("employee_id", ""),
+            "employee_id": user.get("employee_id", ""),
+            "email": user.get("email", ""),
+            "name": user.get("name", "Unknown"),
+            "organizational_role": role,
+            "system_access": "ADMIN" if user.get("is_admin", False) else "USER",
+            "team_id": user.get("team_id"),
+            "team_lead_id": user.get("team_lead_id"),
+            "project_ids": user.get("project_ids", []),
+        }
+
+    @staticmethod
+    def _user_out(user: dict) -> UserOut:
+        return UserOut(
+            employee_id=user.get("employee_id", ""),
+            name=user.get("name", "Unknown"),
+            email=user.get("email", ""),
+            role=user.get("role", "DEVELOPER"),
+            dept=user.get("dept", "Engineering"),
+            avatar=user.get("avatar"),
+            is_active=user.get("is_active", True),
+            github_username=user.get("github_username"),
+            team_id=user.get("team_id"),
+        )
+
+    def _login_response(self, user: dict) -> LoginResponse:
+        token = create_access_token(self._token_payload(user))
+        return LoginResponse(token=token, user=self._user_out(user))
+
+    async def refresh_session(self, employee_id: str) -> Optional[str]:
+        """
+        Issue a fresh access token from the current database record.
+
+        Returns None if the user no longer exists or was deactivated, so a
+        revoked account cannot keep extending its session, and role/team
+        changes take effect on the next refresh.
+        """
+        user = await self.user_repo.find_by_employee_id(employee_id)
+        if not user or not user.get("is_active", True):
+            return None
+        return create_access_token(self._token_payload(user))
+
+    # ── Authentication ────────────────────────────────────────────────────────
+
     async def authenticate_user(
         self, employee_id: str, organisation_password: str, employee_password: str
     ) -> Optional[LoginResponse]:
@@ -106,33 +157,7 @@ class AuthService:
         if not (org_pwd_valid and emp_pwd_valid):
             return None
 
-        # Create JWT token
-        token_payload = {
-            "sub": user.get("employee_id", ""),
-            "employee_id": user.get("employee_id", ""),
-            "email": user.get("email", ""),
-            "name": user.get("name", "Unknown"),
-            "organizational_role": user.get("role", "DEVELOPER").upper(),
-            "system_access": "ADMIN" if user.get("is_admin", False) else "USER",
-            "team_id": user.get("team_id"),
-            "project_ids": user.get("project_ids", []),
-        }
-        access_token = create_access_token(token_payload)
-
-        # Return response
-        user_out = UserOut(
-            employee_id=user.get("employee_id", ""),
-            name=user.get("name", "Unknown"),
-            email=user.get("email", ""),
-            role=user.get("role", "DEVELOPER"),
-            dept=user.get("dept", "Engineering"),
-            avatar=user.get("avatar"),
-            is_active=user.get("is_active", True),
-            github_username=user.get("github_username"),
-            team_id=user.get("team_id"),
-        )
-
-        return LoginResponse(token=access_token, user=user_out)
+        return self._login_response(user)
 
     async def authenticate_user_by_email(
         self, email: str, password: str
@@ -162,34 +187,7 @@ class AuthService:
         if not pwd_valid:
             return None
 
-        # Create JWT token with frontend-required fields
-        token_payload = {
-            "sub": user.get("employee_id", ""),
-            "employee_id": user.get("employee_id", ""),
-            "email": user.get("email", ""),
-            "name": user.get("name", "Unknown"),
-            "organizational_role": user.get("role", "DEVELOPER").upper(),
-            "system_access": "ADMIN" if user.get("is_admin", False) else "USER",
-            "team_id": user.get("team_id"),
-            "team_lead_id": user.get("team_lead_id"),
-            "project_ids": user.get("project_ids", []),
-        }
-        access_token = create_access_token(token_payload)
-
-        # Return response - ALL fields use .get() with defaults
-        user_out = UserOut(
-            employee_id=user.get("employee_id", ""),
-            name=user.get("name", "Unknown"),
-            email=user.get("email", ""),
-            role=user.get("role", "DEVELOPER"),
-            dept=user.get("dept", "Engineering"),
-            avatar=user.get("avatar"),
-            is_active=user.get("is_active", True),
-            github_username=user.get("github_username"),
-            team_id=user.get("team_id"),
-        )
-
-        return LoginResponse(token=access_token, user=user_out)
+        return self._login_response(user)
 
     async def get_user_by_employee_id(self, employee_id: str) -> Optional[UserOut]:
         """Get user by employee ID (without passwords)."""

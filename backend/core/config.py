@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True  # Rate limiting on by default
     MAX_REQUESTS_PER_MINUTE: int = 100
     MAX_LOGIN_ATTEMPTS: int = 5
+    # Public POST /api/auth/register (DEVELOPER role only). Off by default;
+    # HR/admin create accounts via POST /api/employees instead.
+    ALLOW_SELF_REGISTRATION: bool = False
 
     # ── AI / Ollama ───────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://localhost:11434"
