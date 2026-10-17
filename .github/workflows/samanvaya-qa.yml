@@ -21,8 +21,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -35,7 +35,7 @@ jobs:
         run: pytest -q --junitxml=../test-results-backend.xml
       - name: Upload JUnit artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-junit-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results-backend.xml
@@ -62,8 +62,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -79,6 +79,6 @@ jobs:
     name: Validate Docker Compose configuration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate Compose file
         run: docker compose --env-file .env.example config --quiet
