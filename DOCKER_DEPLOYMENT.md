@@ -39,7 +39,7 @@
 - Leave `VITE_API_URL` empty for the recommended same-origin Nginx setup. For a separate API host, set it to an absolute URL **including `/api`**, such as `https://api.example.com/api`, and rebuild the frontend.
 - For local Vite development, `VITE_DEV_API_TARGET` defaults to `http://localhost:8000`; override it if FastAPI is running elsewhere.
 - The root `.env` is used by Compose. `backend/.env.example` is a reference for running the backend directly outside Compose.
-- GitHub test-result reporting is optional. Configure `SAMANVAYA_API_URL`, `SAMANVAYA_PROJECT_ID`, and `SAMANVAYA_TEST_RESULTS_TOKEN` as repository secrets to enable uploads from push runs. Pull-request runs do not upload secrets to external services.
+- GitHub test-result reporting is optional. Configure `SAMANVAYA_API_URL`, `SAMANVAYA_PROJECT_ID`, and `SAMANVAYA_TEST_RESULTS_TOKEN` as repository secrets to enable uploads from push runs. `SAMANVAYA_API_URL` must point to a **publicly reachable, running FastAPI deployment**, not a GitHub URL or a frontend-only host. Use the API origin such as `https://samanvaya.example.com`; the uploader normalizes common suffixes (`/api`, `/api/qa`, or `/api/qa/test-runs`) and posts to `POST /api/qa/test-runs`. If the app only runs on your own computer, a GitHub-hosted runner cannot reach `localhost` on your machine; leave these reporting secrets unset until an accessible endpoint is configured or securely expose the API. Pull-request runs do not upload secrets to external services.
 
 ## Validate / stop
 
