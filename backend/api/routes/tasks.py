@@ -9,6 +9,12 @@ from domain.services.task_service import TaskService
 from domain.services.workflow_service import WorkflowService
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
+from core.authorization import (
+    verify_task_access,
+    verify_project_access,
+    verify_story_access,
+    verify_can_view_user_tasks,
+)
 
 router = APIRouter()
 task_service = TaskService()
@@ -36,7 +42,10 @@ async def get_task(
     task_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Get task by ID."""
+    """Get task by ID. User must have access to the task's project."""
+    # Verify user has access to this task's project
+    await verify_task_access(user, task_id)
+    
     task = await task_service.get_task(task_id)
     
     if not task:
@@ -50,7 +59,10 @@ async def list_project_tasks(
     project_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """List all tasks in a project."""
+    """List all tasks in a project. User must have access to the project."""
+    # Verify user has access to this project
+    await verify_project_access(user, project_id)
+    
     tasks = await task_service.get_project_tasks(project_id)
     return tasks
 
@@ -60,7 +72,10 @@ async def list_assignee_tasks(
     assignee_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """List all tasks assigned to a user."""
+    """List all tasks assigned to a user. Users can only see their own tasks unless they're PM/CEO."""
+    # Verify user can view this assignee's tasks
+    await verify_can_view_user_tasks(user, assignee_id)
+    
     tasks = await task_service.get_assignee_tasks(assignee_id)
     return tasks
 
@@ -70,7 +85,10 @@ async def list_story_tasks(
     story_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """List all tasks for a story."""
+    """List all tasks for a story. User must have access to the story's project."""
+    # Verify user has access to this story's project
+    await verify_story_access(user, story_id)
+    
     tasks = await task_service.get_story_tasks(story_id)
     return tasks
 
@@ -84,7 +102,11 @@ async def update_task_status(
     """
     Update task status (no workflow enforcement — use /transition for enforced moves).
     Requires MOVE_TASK permission (LEAD, PM roles by default).
+    User must have access to the task's project.
     """
+    # Verify user has write access to this task
+    await verify_task_access(user, task_id, require_write=True)
+    
     success = await task_service.update_task_status(task_id, status)
     if not success:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -101,7 +123,11 @@ async def transition_task(
     Move a task to a new status via the workflow engine.
     Enforces valid transitions — returns 400 if the move is not allowed.
     Requires TRANSITION_TASK permission (LEAD, PM roles by default).
+    User must have access to the task's project.
     """
+    # Verify user has write access to this task
+    await verify_task_access(user, task_id, require_write=True)
+    
     user_id = user.get("employee_id", user.get("id", ""))
     user_name = user.get("name", "Unknown")
     try:
@@ -123,6 +149,9 @@ async def get_available_transitions(
     user: dict = Depends(get_current_user),
 ):
     """Get the list of valid status transitions for a task from its current status."""
+    # Verify user has access to this task
+    await verify_task_access(user, task_id)
+    
     task = await task_service.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -139,5 +168,8 @@ async def get_task_history(
     user: dict = Depends(get_current_user),
 ):
     """Get the full transition history for a task."""
+    # Verify user has access to this task
+    await verify_task_access(user, task_id)
+    
     history = await workflow_service.get_transition_history(task_id, "task")
     return {"task_id": task_id, "history": history}
