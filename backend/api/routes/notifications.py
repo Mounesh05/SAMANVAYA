@@ -44,9 +44,18 @@ async def mark_read(
     user: dict = Depends(get_current_user),
 ):
     """Mark a single notification as read."""
-    success = await notification_service.mark_read(notification_id)
+    user_id = user.get("employee_id", user.get("id", ""))
+    success = await notification_service.mark_read(notification_id, user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Notification not found")
+        # Fetch notification to determine if it's 404 or 403
+        notification = await notification_service.repo.find_by_id(notification_id)
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        # Notification exists but user doesn't own it
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to mark this notification as read"
+        )
     return {"message": "Marked as read", "notification_id": notification_id}
 
 

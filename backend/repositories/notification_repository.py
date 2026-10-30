@@ -2,6 +2,7 @@
 Notification repository — MongoDB operations for notifications collection.
 """
 
+from typing import Optional
 from core.database import col
 from repositories.base import BaseRepository
 
@@ -37,6 +38,10 @@ class NotificationRepository(BaseRepository):
     async def count_unread(self, user_id: str) -> int:
         """Count unread notifications."""
         return await self.count({"user_id": user_id, "read": False})
+    
+    async def find_by_id(self, notification_id: str) -> Optional[dict]:
+        """Find a notification by its ID."""
+        return await self.find_one({"id": notification_id})
     
     async def mark_read(self, notification_id: str) -> bool:
         """Mark a single notification as read."""

@@ -303,8 +303,25 @@ class EnhancedNotificationService:
         """Get count of unread notifications."""
         return await self.repo.count_unread(user_id)
     
-    async def mark_read(self, notification_id: str) -> bool:
-        """Mark a notification as read."""
+    async def mark_read(self, notification_id: str, user_id: Optional[str] = None) -> bool:
+        """
+        Mark a notification as read.
+        
+        Args:
+            notification_id: ID of the notification to mark as read
+            user_id: Optional user ID for ownership verification
+        
+        Returns:
+            True if marked as read, False if not found or ownership mismatch
+        """
+        if user_id:
+            # Verify ownership
+            notification = await self.repo.find_by_id(notification_id)
+            if not notification:
+                return False
+            if notification.get("user_id") != user_id:
+                return False
+        
         return await self.repo.mark_read(notification_id)
     
     async def mark_all_read(self, user_id: str) -> int:
