@@ -108,8 +108,36 @@ async def login_full(request: Request, credentials: LoginRequest):
 @router.post("/logout")
 async def logout(user: dict = Depends(get_current_user)):
     """
-    Logout user (token invalidation handled by frontend).
-    Backend can log the logout event here if needed.
+    Logout user (token invalidation handled client-side).
+    
+    IMPORTANT: This is currently a no-op endpoint. JWT tokens are stateless
+    and cannot be revoked server-side without additional infrastructure.
+    
+    Current Implementation:
+    - Token invalidation is handled by the frontend by removing the token
+      from browser storage
+    - The backend does not maintain a session or token registry
+    
+    Security Implications:
+    - A stolen JWT remains valid until expiry, even after logout
+    - Tokens cannot be revoked immediately (e.g., for compromised accounts)
+    - Users who logout remain authenticated for the token lifetime
+    
+    Recommended Architecture:
+    - Implement a token blacklist using a 'revoked_tokens' MongoDB collection
+      or Redis cache with TTL matching token expiry
+    - On logout, add the token's JTI claim to the blacklist
+    - Modify get_current_user dependency to check blacklist before accepting
+      any token
+    - For high-security requirements, consider short-lived access tokens
+      (15 minutes) with refresh tokens
+    
+    Current Mitigation:
+    - Tokens expire after a short period (configured in JWT_EXPIRY)
+    - Keep token lifetime minimal to reduce exposure window
+    - Consider token refresh mechanism for legitimate long-lived sessions
+    
+    Backend can log the logout event here if audit trail is needed.
     """
     return {"message": "Logged out successfully"}
 
