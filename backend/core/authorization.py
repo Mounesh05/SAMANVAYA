@@ -293,3 +293,42 @@ async def verify_can_view_user_tasks(user: dict, target_user_id: str) -> None:
         status_code=403,
         detail="You can only view your own tasks"
     )
+
+
+async def get_accessible_project_ids(user: dict) -> list[str]:
+    """
+    Get list of project IDs that the user can access.
+    
+    Access rules:
+    - CEO: All projects in database
+    - PM: All projects in their organization (currently all projects)
+    - LEAD: All projects for their team
+    - Others: Only projects they're assigned to
+    
+    Args:
+        user: Current user from JWT token
+    
+    Returns:
+        List of project IDs the user can access
+    """
+    # CEO has global access - fetch all projects
+    if has_global_access(user):
+        all_projects = await _project_repo.find_all({})
+        return [p.get("id", p.get("_id", "")) for p in all_projects]
+    
+    # PM can access all projects in their org
+    # In current single-org deployment, PM sees all projects
+    role = user.get("role", user.get("organizational_role", "")).upper()
+    if has_org_access(user):
+        all_projects = await _project_repo.find_all({})
+        return [p.get("id", p.get("_id", "")) for p in all_projects]
+    
+    # LEAD can access all projects for their team
+    if role == "LEAD":
+        user_team_id = user.get("team_id")
+        if user_team_id:
+            team_projects = await _project_repo.find_all({"team_id": user_team_id})
+            return [p.get("id", p.get("_id", "")) for p in team_projects]
+    
+    # Others: return only assigned projects
+    return user.get("project_ids", [])

@@ -29,7 +29,11 @@ async def create_task(
     """
     Create a new task.
     Requires CREATE_TASK permission (LEAD, PM roles by default).
+    User must have write access to the target project.
     """
+    # Verify user has write access to the target project
+    await verify_project_access(user, task_data.project_id, require_write=True)
+    
     try:
         task = await task_service.create_task(task_data)
         return task

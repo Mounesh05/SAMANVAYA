@@ -7,9 +7,16 @@ from domain.models.story import StoryCreate, Story
 from domain.services.story_service import StoryService
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
+from core.authorization import (
+    verify_story_access,
+    verify_project_access,
+    verify_can_view_user_tasks,
+)
+from repositories.sprint_repository import SprintRepository
 
 router = APIRouter()
 story_service = StoryService()
+sprint_repo = SprintRepository()
 
 
 @router.post("/", response_model=Story, status_code=201)
@@ -20,7 +27,11 @@ async def create_story(
     """
     Create a new user story.
     Requires CREATE_STORY permission (DEVELOPER, LEAD, PM roles by default).
+    User must have write access to the target project.
     """
+    # Verify user has write access to the target project
+    await verify_project_access(user, story_data.project_id, require_write=True)
+    
     try:
         story = await story_service.create_story(story_data)
         return story
@@ -33,7 +44,10 @@ async def get_story(
     story_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """Get story by ID."""
+    """Get story by ID. User must have access to the story's project."""
+    # Verify user has access to this story's project
+    await verify_story_access(user, story_id)
+    
     story = await story_service.get_story(story_id)
     
     if not story:
@@ -47,7 +61,15 @@ async def list_sprint_stories(
     sprint_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """List all stories in a sprint."""
+    """List all stories in a sprint. User must have access to the sprint's project."""
+    # Fetch sprint to get project_id
+    sprint = await sprint_repo.find_by_id(sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    
+    # Verify user has access to the sprint's project
+    await verify_project_access(user, sprint.get("project_id"))
+    
     stories = await story_service.get_sprint_stories(sprint_id)
     return stories
 
@@ -57,7 +79,10 @@ async def list_assignee_stories(
     assignee_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """List all stories assigned to a developer."""
+    """List all stories assigned to a developer. Users can only see their own stories unless they're PM/CEO."""
+    # Verify user can view this assignee's stories
+    await verify_can_view_user_tasks(user, assignee_id)
+    
     stories = await story_service.get_assignee_stories(assignee_id)
     return stories
 

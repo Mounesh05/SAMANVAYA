@@ -9,14 +9,16 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends
 
 from core.dependencies import get_current_user
-from core.authorization import verify_task_access, verify_story_access
+from core.authorization import verify_task_access, verify_story_access, verify_project_access
 from domain.models.comment import CommentCreate, CommentUpdate, Comment
 from repositories.comment_repository import CommentRepository
 from repositories.activity_repository import ActivityRepository
+from repositories.pr_repository import PRRepository
 
 router = APIRouter()
 comment_repo = CommentRepository()
 activity_repo = ActivityRepository()
+pr_repo = PRRepository()
 
 
 @router.post("/", response_model=Comment, status_code=201)
@@ -34,9 +36,13 @@ async def add_comment(
     elif body.parent_type == "story":
         await verify_story_access(user, body.parent_id)
     elif body.parent_type == "pr":
-        # PR access check would go here when PR authorization is implemented
-        # For now, allow commenting on PRs (could be GitHub-based access)
-        pass
+        # Verify PR exists and user has access to its project
+        pr = await pr_repo.find_by_id(body.parent_id)
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        project_id = pr.get("project_id")
+        if project_id:
+            await verify_project_access(user, project_id)
     else:
         raise HTTPException(
             status_code=400,
@@ -93,7 +99,14 @@ async def list_comments(
         await verify_task_access(user, parent_id)
     elif parent_type == "story":
         await verify_story_access(user, parent_id)
-    # PR access check skipped for now
+    elif parent_type == "pr":
+        # Verify PR exists and user has access to its project
+        pr = await pr_repo.find_by_id(parent_id)
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        project_id = pr.get("project_id")
+        if project_id:
+            await verify_project_access(user, project_id)
     
     return await comment_repo.find_by_parent(parent_type, parent_id)
 
@@ -122,7 +135,14 @@ async def edit_comment(
         await verify_task_access(user, comment["parent_id"])
     elif comment["parent_type"] == "story":
         await verify_story_access(user, comment["parent_id"])
-    # PR check skipped
+    elif comment["parent_type"] == "pr":
+        # Verify PR exists and user has access to its project
+        pr = await pr_repo.find_by_id(comment["parent_id"])
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        project_id = pr.get("project_id")
+        if project_id:
+            await verify_project_access(user, project_id)
 
     now = datetime.now(timezone.utc).isoformat()
     await comment_repo.update(
@@ -155,6 +175,13 @@ async def delete_comment(
         await verify_task_access(user, comment["parent_id"])
     elif comment["parent_type"] == "story":
         await verify_story_access(user, comment["parent_id"])
-    # PR check skipped
+    elif comment["parent_type"] == "pr":
+        # Verify PR exists and user has access to its project
+        pr = await pr_repo.find_by_id(comment["parent_id"])
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        project_id = pr.get("project_id")
+        if project_id:
+            await verify_project_access(user, project_id)
 
     await comment_repo.delete({"id": comment_id})

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
 from core.dependencies import get_current_user
+from core.authorization import get_accessible_project_ids, has_org_access
 from domain.models.ai_run import AIRun
 from repositories.ai_run_repository import AIRunRepository
 from core.database import db
@@ -129,7 +130,7 @@ async def list_ai_runs(
     agent_type: str | None = None,
     current_user: dict = Depends(get_current_user),
 ):
-    """List recent AI agent runs with optional filtering."""
+    """List recent AI agent runs with optional filtering. Only returns runs for accessible projects."""
     ai_run_repo = AIRunRepository()
 
     filters = {}
@@ -137,7 +138,29 @@ async def list_ai_runs(
         filters["agent_type"] = agent_type
 
     runs = await ai_run_repo.list(limit=limit, filters=filters)
-    return runs
+    
+    # Filter runs by accessible projects
+    # AI runs store project_id in context if available
+    accessible_project_ids = await get_accessible_project_ids(current_user)
+    
+    filtered_runs = []
+    for run in runs:
+        # If user has org-wide access, include all runs
+        if has_org_access(current_user):
+            filtered_runs.append(run)
+            continue
+            
+        # Check if run has a project_id in context
+        run_dict = run if isinstance(run, dict) else run.dict() if hasattr(run, 'dict') else {}
+        input_data = run_dict.get("input_data", {})
+        context = input_data.get("context", {}) if isinstance(input_data, dict) else {}
+        project_id = context.get("project_id") if isinstance(context, dict) else None
+        
+        # Include run if it has no project_id (ad-hoc) or if user has access
+        if not project_id or project_id in accessible_project_ids:
+            filtered_runs.append(run)
+    
+    return filtered_runs
 
 
 @router.get("/runs/{run_id}", response_model=AIRun)
@@ -145,11 +168,23 @@ async def get_ai_run(
     run_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Get specific AI run by ID."""
+    """Get specific AI run by ID. User must have access to the run's project if applicable."""
     ai_run_repo = AIRunRepository()
     run = await ai_run_repo.get_by_id(run_id)
 
     if not run:
         raise HTTPException(status_code=404, detail="AI run not found")
+
+    # Check project access if run has a project_id
+    if not has_org_access(current_user):
+        run_dict = run if isinstance(run, dict) else run.dict() if hasattr(run, 'dict') else {}
+        input_data = run_dict.get("input_data", {})
+        context = input_data.get("context", {}) if isinstance(input_data, dict) else {}
+        project_id = context.get("project_id") if isinstance(context, dict) else None
+        
+        if project_id:
+            accessible_project_ids = await get_accessible_project_ids(current_user)
+            if project_id not in accessible_project_ids:
+                raise HTTPException(status_code=403, detail="You don't have access to this AI run")
 
     return run

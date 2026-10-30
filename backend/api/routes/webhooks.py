@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Request, Header, BackgroundTasks, 
 from domain.services.webhook_service import WebhookService
 from domain.services.webhook_event_processor import WebhookEventProcessor
 from core.dependencies import get_current_user
+from core.authorization import has_org_access
 import logging
 
 router = APIRouter()
@@ -119,13 +120,24 @@ async def list_webhook_events(
 ):
     """
     List webhook events (for debugging and monitoring).
-    Requires authentication — prevents unauthenticated event dump.
+    Requires authentication and org-wide access (CEO/PM only).
+    
+    Note: Event filtering by project requires repository→project mapping.
+    Currently restricted to org admins as a secure default.
     
     Args:
         repository: Filter by repository (owner/repo)
         status: Filter by status (pending, processing, completed, failed)
         limit: Max events to return
     """
+    # Only CEO/PM can list webhook events (org-wide access required)
+    # TODO: Add project-level filtering when repository→project mapping is available
+    if not has_org_access(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook event listing requires organization-wide access (CEO/PM role)"
+        )
+    
     from repositories.webhook_event_repository import WebhookEventRepository
     
     repo = WebhookEventRepository()
@@ -149,7 +161,18 @@ async def get_webhook_event(
     event_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Get detailed information about a specific webhook event."""
+    """
+    Get detailed information about a specific webhook event.
+    Requires org-wide access (CEO/PM only).
+    """
+    # Only CEO/PM can view webhook events (org-wide access required)
+    # TODO: Add project-level access check when repository→project mapping is available
+    if not has_org_access(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook event access requires organization-wide access (CEO/PM role)"
+        )
+    
     from repositories.webhook_event_repository import WebhookEventRepository
     
     repo = WebhookEventRepository()

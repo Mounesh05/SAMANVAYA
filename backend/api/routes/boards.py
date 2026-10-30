@@ -6,6 +6,7 @@ Returns sprint/project items grouped into status columns.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from core.dependencies import get_current_user, require_roles
+from core.authorization import verify_project_access
 from repositories.task_repository import TaskRepository
 from repositories.story_repository import StoryRepository
 from repositories.sprint_repository import SprintRepository
@@ -59,10 +60,14 @@ async def get_sprint_board(
     """
     Get Kanban board for a sprint.
     Returns stories and tasks grouped by status columns.
+    User must have access to the sprint's project.
     """
     sprint = await sprint_repo.find_one({"id": sprint_id})
     if not sprint:
         raise HTTPException(status_code=404, detail="Sprint not found")
+
+    # Verify user has access to the sprint's project
+    await verify_project_access(user, sprint.get("project_id"))
 
     stories = await story_repo.find_all({"sprint_id": sprint_id})
     tasks = await task_repo.find_all({"sprint_id": sprint_id})
@@ -89,7 +94,11 @@ async def get_project_board(
     """
     Get Kanban board for an entire project.
     Returns all tasks grouped by status columns.
+    User must have access to the project.
     """
+    # Verify user has access to this project
+    await verify_project_access(user, project_id)
+    
     tasks = await task_repo.find_all({"project_id": project_id})
     stories = await story_repo.find_all({"project_id": project_id})
 

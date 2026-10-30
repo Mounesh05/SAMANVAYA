@@ -6,6 +6,7 @@ Allows manual PR sync and repository management.
 from fastapi import APIRouter, HTTPException, Depends, Query
 from core.dependencies import get_current_user, require_permission, require_roles
 from core.permissions import Permission
+from core.authorization import verify_project_access
 from domain.services.github_sync_service import GitHubSyncService
 from domain.services.qa_workflow_provisioning_service import QAWorkflowProvisioningService
 from pydantic import BaseModel
@@ -125,7 +126,13 @@ async def provision_qa_workflow(
     request: QAWorkflowProvisionRequest,
     user: dict = Depends(require_roles("LEAD", "PM", "HR")),
 ):
-    """Install the managed QA workflow and encrypted Actions secrets."""
+    """
+    Install the managed QA workflow and encrypted Actions secrets.
+    User must have write access to the target project.
+    """
+    # Verify user has write access to the target project
+    await verify_project_access(user, request.project_id, require_write=True)
+    
     try:
         result = await QAWorkflowProvisioningService().provision(
             owner=request.owner,

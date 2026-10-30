@@ -88,7 +88,6 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
-        Permission.VIEW_ORGANIZATION_DATA,
         # CRUD permissions
         Permission.CREATE_BUG,
         Permission.CREATE_STORY,
