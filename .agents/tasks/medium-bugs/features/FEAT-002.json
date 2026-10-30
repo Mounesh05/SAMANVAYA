@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Fix security and authorization issues: notification mark-as-read endpoint lacks user ownership verification (DATA-01), and logout endpoint is a no-op without proper JWT revocation strategy (AUTH-01). These fixes improve authentication and authorization security.",
+  "status": "completed",
+  "steps": [
+    "Add user ownership verification to backend/api/routes/notifications.py mark_read() endpoint: before marking read, fetch notification and verify user_id matches current user's employee_id, return 403 if mismatch",
+    "Modify backend/domain/services/enhanced_notification_service.py mark_read() method to accept user_id parameter, fetch notification, verify ownership, return False for ownership mismatch",
+    "Add find_by_id() method to backend/repositories/notification_repository.py if not present: async def find_by_id(self, notification_id: str) -> Optional[dict]: return await self.find_one({'id': notification_id})",
+    "Update backend/api/routes/auth.py logout endpoint (line 79) documentation: replace TODO with detailed docstring explaining current client-side implementation, JWT stateless limitation, security implications, recommendation for token blacklist with revoked_tokens collection or Redis, and mitigation via short token expiry",
+    "Run notification-related tests: cd backend && python -m pytest tests/ -v -k notification",
+    "Run auth tests: cd backend && python -m pytest tests/ -v -k auth"
+  ],
+  "acceptance_criteria": [
+    "PATCH /api/notifications/{notification_id}/read returns 403 when user tries to mark another user's notification",
+    "PATCH /api/notifications/{notification_id}/read succeeds only for notifications belonging to authenticated user",
+    "Logout endpoint has comprehensive documentation explaining JWT limitation and architectural recommendations",
+    "All notification tests pass",
+    "All auth tests pass"
+  ],
+  "verification": [
+    "Run 'cd m:/Samanvaya/backend && python -m pytest tests/ -v -k notification'",
+    "Run 'cd m:/Samanvaya/backend && python -m pytest tests/ -v -k auth'",
+    "Manual test: authenticate as user A, attempt to mark user B's notification as read via API, expect 403 Forbidden",
+    "Review auth.py logout endpoint documentation for clarity and completeness"
+  ],
+  "blocked_reason": null,
+  "findings": "Successfully implemented ownership verification for notification mark-read endpoint. Added find_by_id() method to NotificationRepository, updated mark_read() in EnhancedNotificationService to accept optional user_id parameter for ownership verification, and modified the API endpoint to return 403 Forbidden when users attempt to mark notifications they don't own. Also added comprehensive documentation to the logout endpoint explaining the JWT stateless limitation, security implications, and recommended architecture for token revocation using a blacklist. All 153 tests pass including 67 authorization tests."
+}
