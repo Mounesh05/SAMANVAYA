@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix CI/CD issues: frontend test detection in CI script and document branch protection requirements for testing and main branches. These are independent of other bugs and handle the build/release process improvements.",
+  "status": "completed",
+  "steps": [
+    "Update ci/run_tests.sh detect_vitest() function (lines 55-63) to check for frontend/vitest.config.js and frontend/vitest.config.ts in addition to root-level configs",
+    "Verify the updated detect_vitest() correctly identifies frontend config and run_vitest_tests() navigates to the frontend directory",
+    "Create .github/BRANCH_PROTECTION.md with complete branch protection settings: both testing and main branches need (1) require PR reviews with 1 approval, (2) require status checks (tests from samanvaya-qa.yml), (3) require branches up to date, (4) no force pushes, (5) no deletions. Include step-by-step instructions.",
+    "Test the CI script: run 'bash ci/run_tests.sh' from repository root and verify it detects and executes both backend (pytest) and frontend (vitest) tests"
+  ],
+  "acceptance_criteria": [
+    "CI script ci/run_tests.sh successfully detects frontend/vitest.config.js",
+    "CI script runs frontend tests from the frontend directory",
+    "Running 'bash ci/run_tests.sh' executes both backend and frontend test suites",
+    "Document .github/BRANCH_PROTECTION.md exists with clear instructions for GitHub repository settings",
+    "Document includes all required settings: PR reviews, status checks, branch update requirement, force push prevention"
+  ],
+  "verification": [
+    "Run 'bash ci/run_tests.sh' from m:/Samanvaya root",
+    "Confirm output shows 'Vitest detected' message",
+    "Confirm both Python tests and frontend vitest tests execute",
+    "Review .github/BRANCH_PROTECTION.md for completeness"
+  ],
+  "blocked_reason": null,
+  "findings": "CI script successfully detects frontend/vitest.config.js and runs frontend tests from the frontend directory. Both backend (pytest) and frontend (vitest) tests execute correctly. Branch protection documentation created with complete settings for both testing and main branches."
+}
