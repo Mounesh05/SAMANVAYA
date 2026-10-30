@@ -1,0 +1,194 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Write bug condition exploration test": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221598860
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221611114
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792222042914
+      }
+    ],
+    "2. Write preservation property tests (BEFORE implementing fix)": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599026
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792222096704
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792222990487
+      }
+    ],
+    "3.1 Enhance upload script with graceful secret handling": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599147
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792223008937
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792223312677
+      }
+    ],
+    "3.2 Create multi-language test detection script (ci/run_tests.sh)": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599237
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792223322877
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792224078529
+      }
+    ],
+    "3.3 Update samanvaya-qa.yml workflow": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599285
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792224087543
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792224270673
+      }
+    ],
+    "3.4 Update provisioning service to deploy enhanced workflow": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599365
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792224281292
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792224658911
+      }
+    ],
+    "3.5 Delete duplicate qa-tests.yml workflow": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599414
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792224679357
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792225709641
+      }
+    ],
+    "3.6 Verify bug condition exploration test now passes": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599474
+      },
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792225715839
+      },
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226126725
+      }
+    ],
+    "3.7 Verify preservation tests still pass": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599524
+      },
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226134589
+      }
+    ],
+    "4. Integration testing": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599571
+      },
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226142602
+      },
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226261518
+      }
+    ],
+    "5. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "38044644-fc72-4ad5-8917-52f2d6613062",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792221599615
+      },
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226268567
+      },
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226281840
+      }
+    ],
+    "3. Fix for Multi-Language QA Workflow Support": [
+      {
+        "executionId": "bfccf614-e5f7-4dcd-8702-f0585a191971",
+        "chatSessionId": "sess_0b9e9af8-93da-478f-885c-60af8b1e8bf4",
+        "timestamp": 1792226134662
+      }
+    ]
+  }
+}
