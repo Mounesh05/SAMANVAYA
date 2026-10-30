@@ -53,6 +53,9 @@ detect_vitest() {
     if [ -f "vitest.config.js" ] || [ -f "vitest.config.ts" ]; then
         return 0
     fi
+    if [ -f "frontend/vitest.config.js" ] || [ -f "frontend/vitest.config.ts" ]; then
+        return 0
+    fi
     if [ -f "package.json" ] && grep -q '"vitest"' package.json 2>/dev/null; then
         return 0
     fi
