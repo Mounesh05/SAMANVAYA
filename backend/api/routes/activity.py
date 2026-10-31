@@ -84,8 +84,13 @@ async def get_item_history(
         pr = await PRRepository().find_by_id(item_id)
         if not pr:
             raise HTTPException(status_code=404, detail="PR not found")
-        if pr.get("project_id"):
-            await verify_project_access(user, pr["project_id"])
+        project_id = pr.get("project_id")
+        if not project_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot access PR without project association"
+            )
+        await verify_project_access(user, project_id)
     else:
         raise HTTPException(status_code=400, detail="Unsupported item type")
     

@@ -55,6 +55,17 @@ async def get_pr_blast_radius(
     current_user: dict = Depends(get_current_user),
 ):
     """Calculate blast radius of a PR - what could break if merged."""
+    # Authorization: verify user has access to the PR's project
+    from repositories.pr_repository import PRRepository
+    pr_repo = PRRepository()
+    pr = await pr_repo.find_by_id(pr_id)
+    if not pr:
+        raise HTTPException(status_code=404, detail="PR not found")
+    
+    project_id = pr.get("project_id")
+    if project_id:
+        await verify_project_access(current_user, project_id)
+    
     try:
         blast_radius = await traceability_service.calculate_blast_radius(
             pr_id=pr_id,
@@ -93,6 +104,14 @@ async def get_file_history(
     current_user: dict = Depends(get_current_user),
 ):
     """Get complete history of a file."""
+    # Authorization: verify user has org access to view repository file history
+    # File history reveals repository structure and commit patterns
+    if not has_org_access(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions to view file history"
+        )
+    
     try:
         history = await traceability_service.get_file_history(
             file_path=file_path,
@@ -171,6 +190,16 @@ async def get_entity_connections(
     """Get all connections for any entity."""
     try:
         entity_type_enum = EntityType(entity_type)
+        
+        # Authorization: verify user has access to the entity
+        if entity_type_enum == EntityType.TASK:
+            await verify_task_access(current_user, entity_id)
+        elif entity_type_enum == EntityType.PR:
+            from repositories.pr_repository import PRRepository
+            pr = await PRRepository().find_by_id(entity_id)
+            if pr and pr.get("project_id"):
+                await verify_project_access(current_user, pr["project_id"])
+        # For other entity types, continue without authorization for now
         
         from repositories.entity_relationship_repository import EntityRelationshipRepository
         rel_repo = EntityRelationshipRepository()
