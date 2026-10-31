@@ -15,7 +15,6 @@ from domain.services.recommendation_engine import RecommendationEngine
 from core.dependencies import get_current_user
 from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
 import logging
-from main import request_id_var
 
 router = APIRouter()
 engine = RecommendationEngine()
