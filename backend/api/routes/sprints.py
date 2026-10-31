@@ -24,11 +24,14 @@ async def create_sprint(
     Create a new sprint.
     Requires CREATE_SPRINT permission (PM role by default).
     """
+    # Authorization: verify user has write access to the project
+    await verify_project_access(user, sprint_data.project_id, require_write=True)
+    
     try:
         sprint = await sprint_service.create_sprint(sprint_data)
         return sprint
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create sprint: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{sprint_id}", response_model=Sprint)
