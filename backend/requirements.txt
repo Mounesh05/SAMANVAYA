@@ -1,14 +1,20 @@
 # === Core FastAPI Dependencies ===
-fastapi==0.115.0
+# Updated to latest for Starlette security fix compatibility
+fastapi==0.162.0
 uvicorn[standard]==0.30.6
-python-multipart==0.0.12
+# FIXED: PYSEC-2026-1851, PYSEC-2026-1852, PYSEC-2026-3036-3040 (0.0.12 → 0.0.31)
+python-multipart==0.0.31
 
 # === Database ===
-motor==3.6.0
-pymongo==4.9.2
+# FIXED: PYSEC-2026-4294-4297, CVE-2026-106435 (4.9.2 → 4.18.3)
+# Updated motor to 3.7.1 for pymongo 4.18.3 compatibility
+motor==3.7.1
+pymongo==4.18.3
 
 # === Authentication & Security ===
-python-jose[cryptography]==3.3.0
+# FIXED: PYSEC-2024-232, PYSEC-2024-233 (3.3.0 → 3.4.0)
+# UNFIXABLE: PYSEC-2025-185, PYSEC-2026-4298 (no fix available, timing attacks)
+python-jose[cryptography]==3.4.0
 bcrypt==4.1.2
 
 # === Data Validation ===
@@ -17,13 +23,23 @@ pydantic-settings==2.5.2
 email-validator==2.3.0
 
 # === AI/LLM (Ollama Integration) ===
+# WARNING: langchain packages have security fixes in newer major versions
+# Keeping current versions due to potential breaking changes in 1.x releases
+# UNFIXABLE IN 0.3.x: langchain-core has PYSEC-2026-2193, PYSEC-2026-2562 (0.3.86 → requires 1.2.11+)
+# UNFIXABLE IN 0.3.x: langgraph has PYSEC-2026-83, PYSEC-2026-2194 (0.2.38 → requires 1.0.10+)
+# UNFIXABLE IN 2.x: langgraph-checkpoint has PYSEC-2026-1527, PYSEC-2026-2573, PYSEC-2026-2574 (2.1.2 → requires 4.1.1+)
+# UNFIXABLE IN 0.1.x: langgraph-sdk has PYSEC-2026-2194, PYSEC-2026-2575, PYSEC-2026-4240 (0.1.74 → requires 0.4.4+)
+# Risk assessment: These are SSRF and arbitrary file read vulnerabilities
+# Mitigation: Samanvaya does not pass user-controlled file paths to langchain prompt loading
+# Action required: Upgrade to langchain 1.x in a future PR with full regression testing
 langchain-ollama==0.3.10
 langchain-core==0.3.86
 ollama==0.6.2
 
 # === HTTP Client ===
 httpx==0.27.2
-PyNaCl==1.5.0
+# FIXED: PYSEC-2026-1448, PYSEC-2026-3002 (1.5.0 → 1.6.2)
+PyNaCl==1.6.2
 
 # === Configuration ===
 python-dotenv==1.2.2
@@ -31,9 +47,32 @@ python-dotenv==1.2.2
 # === Type Support ===
 typing-extensions==4.16.0
 
+# === Transitive Dependency Security Fixes ===
+# These are dependencies of other packages, pinned to secure versions
+# FIXED: PYSEC-2026-4320 (certifi 2026.7.22 → 2026.10.18)
+certifi>=2026.10.18
+# FIXED: CVE-2026-114605 (dnspython 2.8.0 → 2.9.0)
+dnspython>=2.9.0
+# UNFIXABLE: pyasn1 0.6.4 has CVE-2026-119194-119197, fix is 0.6.5
+# BUT python-jose 3.4.0 requires pyasn1<0.5.0, creating a conflict
+# Risk: BER/DER decoding vulnerabilities in ASN.1 parsing
+# Mitigation: python-jose uses pyasn1 for JWT parsing, but Samanvaya validates JWT structure
+# Action required: Replace python-jose with PyJWT in a future PR
+# FIXED: PYSEC-2026-4175-4177 (urllib3 2.7.0 → 2.8.0)
+urllib3>=2.8.0
+# FIXED: PYSEC-2026-248, PYSEC-2026-249, PYSEC-2026-161, PYSEC-2026-1941, PYSEC-2026-1943, PYSEC-2026-2280, PYSEC-2026-2281 (starlette 0.38.6 → 1.3.1)
+starlette>=1.3.1
+
+# VULNERABILITY: ecdsa==0.19.2 has CVE-2024-23342 (PYSEC-2026-1325) - Minerva timing attack on P-256
+# No fix available - python-ecdsa project considers side-channel attacks out of scope
+# Accepted risk: python-jose uses ecdsa, timing attack requires local access and timing measurements
+# Monitor for updates
+
 # === Testing ===
-pytest==8.3.3
-pytest-asyncio==0.24.0
+# FIXED: PYSEC-2026-1845 (8.3.3 → 9.0.3)
+pytest==9.0.3
+# Updated to 1.4.1 for pytest 9.x compatibility
+pytest-asyncio==1.4.1
 pytest-cov>=5.0.0
 pytest-mock>=3.14.0
 mongomock>=4.3.0
