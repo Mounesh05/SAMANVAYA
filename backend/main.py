@@ -32,6 +32,10 @@ async def lifespan(app: FastAPI):
     try:
         from intelligence.baselines.repository_baseline import RepositoryBaseline
         await RepositoryBaseline().ensure_index()
+        
+        from domain.services.hitl_workflow_service import hitl_service
+        await hitl_service._ensure_indexes()
+        
         logger.info("✓ Database indexes created/verified")
     except Exception as e:
         logger.warning(f"Failed to create database indexes: {e}")
