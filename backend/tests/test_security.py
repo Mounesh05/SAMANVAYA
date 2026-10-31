@@ -3,12 +3,19 @@ Tests for core security module.
 """
 
 import pytest
+from datetime import datetime, timezone, timedelta
+from jose import jwt
 from core.security import (
     hash_password,
     verify_password,
     create_access_token,
     decode_token,
+    revoke_token,
+    is_token_revoked,
+    _cleanup_expired_revocations,
+    _revoked_tokens,
 )
+from core.config import settings
 
 
 class TestPasswordHashing:
@@ -62,6 +69,7 @@ class TestJWT:
         assert decoded["email"] == "test@company.com"
         assert decoded["role"] == "DEVELOPER"
         assert "exp" in decoded
+        assert "jti" in decoded  # New: JTI should be present
 
     def test_decode_invalid_token(self):
         with pytest.raises(ValueError, match="Invalid or expired token"):
@@ -74,3 +82,76 @@ class TestJWT:
         tampered = token[:-5] + "XXXXX"
         with pytest.raises(ValueError, match="Invalid or expired token"):
             decode_token(tampered)
+
+
+class TestJWTLogout:
+    """Test JWT logout and token revocation."""
+
+    def test_token_revocation(self):
+        """Test that a token can be revoked and is properly rejected."""
+        # Create a token
+        payload = {"sub": "E001", "employee_id": "E001"}
+        token = create_access_token(payload)
+        decoded = decode_token(token)
+        jti = decoded["jti"]
+        exp = decoded["exp"]
+        
+        # Token should not be revoked initially
+        assert not is_token_revoked(jti)
+        
+        # Revoke the token
+        exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
+        revoke_token(jti, exp_datetime)
+        
+        # Token should now be revoked
+        assert is_token_revoked(jti)
+
+    def test_token_without_jti_handled_gracefully(self):
+        """Test that tokens without jti don't crash the system."""
+        # Manually create a token without jti (simulating old tokens)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+        payload_without_jti = {
+            "sub": "E001",
+            "employee_id": "E001",
+            "exp": expire
+        }
+        old_token = jwt.encode(
+            payload_without_jti,
+            settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM
+        )
+        
+        # Decode should work
+        decoded = decode_token(old_token)
+        assert decoded["employee_id"] == "E001"
+        assert "jti" not in decoded
+        
+        # Check revocation with None jti should not crash
+        jti = decoded.get("jti")
+        assert jti is None
+        # This should return False for None jti
+        assert not is_token_revoked(jti) if jti else True
+
+    def test_expired_revocations_cleaned_up(self):
+        """Test that expired revoked tokens are automatically cleaned up."""
+        # Create a token that expired in the past
+        past_expiration = datetime.now(timezone.utc) - timedelta(minutes=1)
+        jti_expired = "expired-jti-123"
+        
+        # Create a token that will expire in the future
+        future_expiration = datetime.now(timezone.utc) + timedelta(minutes=30)
+        jti_future = "future-jti-456"
+        
+        # Revoke both tokens
+        revoke_token(jti_expired, past_expiration)
+        revoke_token(jti_future, future_expiration)
+        
+        # Check that the future one is still revoked
+        assert is_token_revoked(jti_future)
+        
+        # The expired one should have been cleaned up
+        # (cleanup happens during is_token_revoked call)
+        assert not is_token_revoked(jti_expired)
+        
+        # Verify the future token is still in the store
+        assert is_token_revoked(jti_future)

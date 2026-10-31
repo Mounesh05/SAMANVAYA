@@ -3,18 +3,22 @@ Authentication API endpoints.
 Handles user registration and login.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Header
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 from domain.models.user import UserCreate, UserOut, LoginRequest, LoginResponse
 from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
+from core.security import decode_token, revoke_token
 from core.rate_limiting import limiter
 from core.config import settings
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 auth_service = AuthService()
+oauth2_scheme = HTTPBearer()
 
 
 class SimpleLoginRequest(BaseModel):
@@ -106,40 +110,43 @@ async def login_full(request: Request, credentials: LoginRequest):
 
 
 @router.post("/logout")
-async def logout(user: dict = Depends(get_current_user)):
+async def logout(
+    authorization: str = Header(...),
+    user: dict = Depends(get_current_user)
+):
     """
-    Logout user (token invalidation handled client-side).
+    Logout by revoking the current access token.
     
-    IMPORTANT: This is currently a no-op endpoint. JWT tokens are stateless
-    and cannot be revoked server-side without additional infrastructure.
+    This revokes the JWT token server-side by adding its JTI to a revocation list.
+    The token will be rejected on all subsequent requests until it expires naturally.
     
-    Current Implementation:
-    - Token invalidation is handled by the frontend by removing the token
-      from browser storage
-    - The backend does not maintain a session or token registry
-    
-    Security Implications:
-    - A stolen JWT remains valid until expiry, even after logout
-    - Tokens cannot be revoked immediately (e.g., for compromised accounts)
-    - Users who logout remain authenticated for the token lifetime
-    
-    Recommended Architecture:
-    - Implement a token blacklist using a 'revoked_tokens' MongoDB collection
-      or Redis cache with TTL matching token expiry
-    - On logout, add the token's JTI claim to the blacklist
-    - Modify get_current_user dependency to check blacklist before accepting
-      any token
-    - For high-security requirements, consider short-lived access tokens
-      (15 minutes) with refresh tokens
-    
-    Current Mitigation:
-    - Tokens expire after a short period (configured in JWT_EXPIRY)
-    - Keep token lifetime minimal to reduce exposure window
-    - Consider token refresh mechanism for legitimate long-lived sessions
-    
-    Backend can log the logout event here if audit trail is needed.
+    Note: For production multi-instance deployments, the revocation list must be
+    moved to Redis to share state across instances.
     """
-    return {"message": "Logged out successfully"}
+    try:
+        token = authorization.removeprefix("Bearer ").strip()
+        payload = decode_token(token)
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        
+        if jti and exp:
+            exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
+            revoke_token(jti, exp_datetime)
+            return {"message": "Successfully logged out"}
+        else:
+            # Token without jti (shouldn't happen with new tokens, but handle gracefully)
+            return {"message": "Logged out successfully"}
+    except ValueError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+    except Exception as e:
+        logger.exception("Logout failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Logout failed: {str(e)}"
+        )
 
 
 @router.post("/refresh")

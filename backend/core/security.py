@@ -6,7 +6,15 @@ All auth primitives live here â€” nowhere else.
 from datetime import datetime, timezone, timedelta
 from jose import JWTError, jwt
 import bcrypt
+import uuid
+from threading import Lock
 from .config import settings
+
+
+# TODO: For production multi-instance deployments, replace in-memory storage
+# with Redis to share revocation list across instances.
+_revoked_tokens: dict[str, datetime] = {}
+_revoked_tokens_lock = Lock()
 
 
 def hash_password(plain: str) -> str:
@@ -43,8 +51,9 @@ def create_access_token(payload: dict) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
+    jti = str(uuid.uuid4())
     return jwt.encode(
-        {**payload, "exp": expire},
+        {**payload, "exp": expire, "jti": jti},
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
@@ -131,3 +140,42 @@ def is_password_compromised(password: str) -> bool:
     }
     
     return password.lower() in common_passwords
+
+
+def revoke_token(jti: str, exp_timestamp: datetime) -> None:
+    """
+    Revoke a token by adding its JTI to the revocation list.
+    
+    Args:
+        jti: JWT ID (unique identifier for the token)
+        exp_timestamp: Token expiration timestamp
+    """
+    with _revoked_tokens_lock:
+        _revoked_tokens[jti] = exp_timestamp
+        _cleanup_expired_revocations()
+
+
+def is_token_revoked(jti: str) -> bool:
+    """
+    Check if a token has been revoked.
+    
+    Args:
+        jti: JWT ID to check
+    
+    Returns:
+        True if token is revoked
+    """
+    with _revoked_tokens_lock:
+        _cleanup_expired_revocations()
+        return jti in _revoked_tokens
+
+
+def _cleanup_expired_revocations() -> None:
+    """
+    Remove expired tokens from the revocation list.
+    Called automatically during revocation checks to prevent memory leaks.
+    """
+    now = datetime.now(timezone.utc)
+    expired = [j for j, exp in _revoked_tokens.items() if exp < now]
+    for j in expired:
+        del _revoked_tokens[j]

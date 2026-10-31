@@ -7,7 +7,7 @@ Permission-restricted routes use Depends(require_permission(...)).
 
 from fastapi import Depends, HTTPException, Header
 from typing import Optional
-from .security import decode_token
+from .security import decode_token, is_token_revoked
 from .permissions import Permission, get_user_permissions
 
 
@@ -40,6 +40,15 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
     try:
         token = authorization.removeprefix("Bearer ").strip()
         payload = decode_token(token)
+        
+        # Check if token has been revoked
+        jti = payload.get('jti')
+        if jti and is_token_revoked(jti):
+            raise HTTPException(
+                status_code=401,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         
         # Add is_admin flag from system_access field
         payload['is_admin'] = payload.get('system_access') == 'ADMIN'
