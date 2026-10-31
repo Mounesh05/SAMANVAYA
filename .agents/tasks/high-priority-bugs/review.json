@@ -1,0 +1,26 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "issue": "Expired approval cleanup behavior change",
+      "description": "BUG-1 changed cleanup from in-memory mutation to a MongoDB update_many query, which means cleanup_expired() now issues a database write for every expired approval. If this runs on a schedule with many expired approvals, consider adding a limit or batch size.",
+      "confidence": "confirmed"
+    },
+    {
+      "issue": "Inline repository instantiation in recommendations",
+      "description": "BUG-3 instantiates RecommendationRepository() inside the accept/reject endpoints to fetch the recommendation for authorization. The rest of the codebase uses the RecommendationEngine service. Either pass the repository through dependency injection or call engine.get_recommendation(id) if the engine exposes it.",
+      "confidence": "confirmed"
+    },
+    {
+      "issue": "Error message sanitization bundled with authorization fixes",
+      "description": "Commits for BUG-4 and BUG-5 include unrelated changes that replace detailed error messages with 'Internal server error'. These should have been separate commits (not blocking, but breaks single-responsibility).",
+      "confidence": "confirmed"
+    },
+    {
+      "issue": "MongoDB collection helper usage in BUG-1",
+      "description": "The migration uses col('approvals') from core.database correctly, matching the documented pattern, but the indexes are created in _ensure_indexes() which is defined but never called. The indexes won't be created unless this method is invoked during service initialization.",
+      "confidence": "confirmed"
+    }
+  ],
+  "reviewDoc": "m:/Samanvaya/.agents/tasks/high-priority-bugs/review.md"
+}

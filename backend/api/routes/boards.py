@@ -6,7 +6,7 @@ Returns sprint/project items grouped into status columns.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from core.dependencies import get_current_user, require_roles
-from core.authorization import verify_project_access
+from core.authorization import verify_project_access, verify_task_access, verify_story_access
 from repositories.task_repository import TaskRepository
 from repositories.story_repository import StoryRepository
 from repositories.sprint_repository import SprintRepository
@@ -123,7 +123,18 @@ async def move_item(
     """
     Move a task or story to a new status column.
     Enforced through the workflow engine — invalid transitions are rejected.
+    User must have access to the item being moved.
     """
+    # Verify user has access to the item before moving it
+    if body.item_type == "task":
+        await verify_task_access(user, body.item_id)
+    elif body.item_type == "story":
+        await verify_story_access(user, body.item_id)
+    else:
+        raise HTTPException(
+            status_code=400, detail="item_type must be 'task' or 'story'"
+        )
+    
     user_id = user.get("employee_id", user.get("id", ""))
     user_name = user.get("name", "Unknown")
 

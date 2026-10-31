@@ -23,6 +23,7 @@ from domain.models.developer_performance import (
 from core.config import settings
 from core.dependencies import get_current_user, require_admin
 from core.permissions import Permission, get_user_permissions
+from core.authorization import verify_team_access, verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
 from core.audit import log_audit, AuditAction
 
 router = APIRouter()
@@ -385,10 +386,10 @@ async def get_developer_performance(
         if developer_id == user.get('employee_id'):
             if Permission.VIEW_OWN_PERFORMANCE not in user_permissions:
                 raise HTTPException(status_code=403, detail="Cannot view own performance")
-        # Check if viewing team data
+        # Check if viewing team data (LEAD must be same team)
         elif Permission.VIEW_TEAM_PERFORMANCE in user_permissions:
-            # TODO: Verify they're in the same team
-            pass
+            # Verify user has access to the developer's data (same team for LEAD)
+            await verify_can_view_user_tasks(user, developer_id)
         # Check if has organization-wide view
         elif Permission.VIEW_ORGANIZATION_PERFORMANCE not in user_permissions:
             raise HTTPException(

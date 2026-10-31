@@ -93,7 +93,10 @@ async def update_story_status(
     status: str = Query(..., regex="^(todo|in_progress|review|done)$"),
     user: dict = Depends(get_current_user),
 ):
-    """Update story status."""
+    """Update story status. User must have access to the story's project."""
+    # Verify user has access to this story before updating
+    await verify_story_access(user, story_id)
+    
     success = await story_service.update_story_status(story_id, status)
     
     if not success:
