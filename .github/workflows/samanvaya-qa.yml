@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: hashFiles('package.json', 'frontend/package.json') != ''
         with:
-          node-version: "20"
+          node-version: "22"
       
       # Install dependencies
       - name: Install dependencies
