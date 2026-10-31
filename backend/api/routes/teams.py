@@ -84,6 +84,7 @@ async def create_team(
         
         # If team lead specified, verify they exist
         team_lead_name = None
+        user_repo = None
         if team.team_lead_id:
             user_repo = UserRepository()
             lead = await user_repo.find_by_employee_id(team.team_lead_id)
@@ -93,14 +94,8 @@ async def create_team(
                     detail=f"Team lead {team.team_lead_id} not found"
                 )
             team_lead_name = lead.get("name", "Unknown")
-            
-            # Update the team lead's record
-            await user_repo.update_one(
-                {"employee_id": team.team_lead_id},
-                {"$set": {"team_id": team.team_id}}
-            )
         
-        # Create team document
+        # Create team document FIRST to ensure team exists before user references it
         team_doc = {
             "team_id": team.team_id,
             "name": team.name,
@@ -113,6 +108,22 @@ async def create_team(
         }
         
         await teams_col.insert_one(team_doc)
+        
+        # Now update the team lead's record with valid team_id reference
+        if team.team_lead_id and user_repo:
+            try:
+                await user_repo.update_one(
+                    {"employee_id": team.team_lead_id},
+                    {"$set": {"team_id": team.team_id}}
+                )
+            except Exception as e:
+                # Team exists and is valid, user just not yet assigned as lead (recoverable state)
+                # Log warning but don't fail the request
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Team {team.team_id} created successfully but failed to update team lead {team.team_lead_id}: {str(e)}"
+                )
         
         # Audit log
         await log_audit(
