@@ -89,15 +89,19 @@ async def verify_project_access(
     Verify user has access to a project.
     
     Access rules:
-    - CEO: Access all projects
-    - PM: Access all projects in their organization
-    - LEAD: Access all projects for their team
+    - CEO: Access all projects (read and write)
+    - PM: Access all projects in their organization (read and write)
+    - LEAD: Access all projects for their team (read and write)
     - Others: Access only if project_id in user['project_ids']
     
     Args:
         user: Current user from JWT token
         project_id: Project ID to check access for
-        require_write: If True, checks write permissions (currently same as read)
+        require_write: If True, blocks non-LEAD developers from write operations.
+                      CEO/PM/LEAD roles have implicit write access to their scope.
+                      Note: The authorization model does not track granular write
+                      permissions; this flag enforces the baseline policy that only
+                      LEADs and above can modify projects.
     
     Raises:
         HTTPException 404: If project not found

@@ -66,7 +66,15 @@ async def create_approval(
     request: CreateApprovalRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """Create new approval request."""
+    """Create new approval request. Only PM/LEAD/CEO can create approval requests."""
+    # Authorization: only PM/LEAD/CEO can request approvals
+    user_role = current_user.get('role', '').upper()
+    if user_role not in ('PM', 'LEAD', 'CEO') and not has_org_access(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Only PM, LEAD, or CEO can create approval requests"
+        )
+    
     approval = await hitl_service.request_approval(
         action=request.action,
         description=request.description,

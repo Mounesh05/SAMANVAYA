@@ -21,6 +21,72 @@ router = APIRouter()
 traceability_service = TraceabilityService()
 
 
+async def _verify_pr_access(pr_id: str, current_user: dict) -> str:
+    """
+    Verify user has access to a PR and validate PR-to-project mapping.
+    
+    Returns the PR's project_id if access is granted.
+    Raises HTTPException if PR not found or access denied.
+    """
+    from repositories.pr_repository import PRRepository
+    from repositories.project_repository import ProjectRepository
+    
+    pr_repo = PRRepository()
+    pr = await pr_repo.find_by_id(pr_id)
+    if not pr:
+        raise HTTPException(status_code=404, detail="PR not found")
+    
+    project_id = pr.get("project_id")
+    if not project_id:
+        # PR has no project_id - this is allowed for unlinked PRs
+        # Require org access for unlinked PRs
+        if not has_org_access(current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="PR is not linked to a project"
+            )
+        return None
+    
+    # Validate that the project exists and the PR belongs to it
+    # by checking that the PR's repository matches the project's code_repo_url
+    project_repo = ProjectRepository()
+    project = await project_repo.find_by_id(project_id)
+    if not project:
+        # Project_id in PR is invalid - this is a data integrity issue
+        # Require org access
+        if not has_org_access(current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="PR's project reference is invalid"
+            )
+        return None
+    
+    # Verify the PR's repository matches the project's repository
+    pr_repo_url = pr.get("repository", "")
+    project_repo_url = project.get("code_repo_url", "")
+    
+    # Basic validation: check if repository names match
+    # (More sophisticated validation could be added here)
+    if pr_repo_url and project_repo_url:
+        # Extract repo name from URLs (e.g., "owner/repo" from full URL)
+        pr_repo_name = pr_repo_url.split("/")[-2:] if "/" in pr_repo_url else [pr_repo_url]
+        project_repo_name = project_repo_url.split("/")[-2:] if "/" in project_repo_url else [project_repo_url]
+        
+        if pr_repo_name != project_repo_name:
+            # Repository mismatch - data integrity issue
+            # Require org access to view mismatched data
+            if not has_org_access(current_user):
+                raise HTTPException(
+                    status_code=403,
+                    detail="PR repository does not match project repository"
+                )
+            return project_id
+    
+    # Verification passed - check project access
+    await verify_project_access(current_user, project_id)
+    return project_id
+
+
 @router.get("/pr/{pr_id}/relationships")
 async def get_pr_relationships(
     pr_id: str,
@@ -28,15 +94,7 @@ async def get_pr_relationships(
 ):
     """Get all entities related to a PR."""
     # Authorization: verify user has access to the PR's project
-    from repositories.pr_repository import PRRepository
-    pr_repo = PRRepository()
-    pr = await pr_repo.find_by_id(pr_id)
-    if not pr:
-        raise HTTPException(status_code=404, detail="PR not found")
-    
-    project_id = pr.get("project_id")
-    if project_id:
-        await verify_project_access(current_user, project_id)
+    await _verify_pr_access(pr_id, current_user)
     
     try:
         relationships = await traceability_service.get_pr_relationships(pr_id)
@@ -56,15 +114,7 @@ async def get_pr_blast_radius(
 ):
     """Calculate blast radius of a PR - what could break if merged."""
     # Authorization: verify user has access to the PR's project
-    from repositories.pr_repository import PRRepository
-    pr_repo = PRRepository()
-    pr = await pr_repo.find_by_id(pr_id)
-    if not pr:
-        raise HTTPException(status_code=404, detail="PR not found")
-    
-    project_id = pr.get("project_id")
-    if project_id:
-        await verify_project_access(current_user, project_id)
+    await _verify_pr_access(pr_id, current_user)
     
     try:
         blast_radius = await traceability_service.calculate_blast_radius(
@@ -104,13 +154,29 @@ async def get_file_history(
     current_user: dict = Depends(get_current_user),
 ):
     """Get complete history of a file."""
-    # Authorization: verify user has org access to view repository file history
-    # File history reveals repository structure and commit patterns
-    if not has_org_access(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="Insufficient permissions to view file history"
-        )
+    # Authorization: verify user has access to the repository's project
+    # Map repository to project and verify project access
+    from repositories.project_repository import ProjectRepository
+    project_repo = ProjectRepository()
+    projects = await project_repo.find_all({})
+    
+    project_id = None
+    for project in projects:
+        repo_url = project.get("code_repo_url", "")
+        if repository in repo_url or repo_url.endswith(repository):
+            project_id = project["id"]
+            break
+    
+    if not project_id:
+        # Repository not linked to any project - require org access
+        if not has_org_access(current_user):
+            raise HTTPException(
+                status_code=403,
+                detail="Repository not found or insufficient permissions"
+            )
+    else:
+        # Verify user has access to the project
+        await verify_project_access(current_user, project_id)
     
     try:
         history = await traceability_service.get_file_history(
@@ -146,19 +212,13 @@ async def create_relationship(
         if source_type_enum == EntityType.TASK:
             await verify_task_access(current_user, source_id)
         elif source_type_enum == EntityType.PR:
-            from repositories.pr_repository import PRRepository
-            pr = await PRRepository().find_by_id(source_id)
-            if pr and pr.get("project_id"):
-                await verify_project_access(current_user, pr["project_id"])
+            await _verify_pr_access(source_id, current_user)
         
         # Verify access to target entity
         if target_type_enum == EntityType.TASK:
             await verify_task_access(current_user, target_id)
         elif target_type_enum == EntityType.PR:
-            from repositories.pr_repository import PRRepository
-            pr = await PRRepository().find_by_id(target_id)
-            if pr and pr.get("project_id"):
-                await verify_project_access(current_user, pr["project_id"])
+            await _verify_pr_access(target_id, current_user)
         
         rel_id = await traceability_service.create_relationship(
             source_type=source_type_enum,
@@ -195,11 +255,15 @@ async def get_entity_connections(
         if entity_type_enum == EntityType.TASK:
             await verify_task_access(current_user, entity_id)
         elif entity_type_enum == EntityType.PR:
-            from repositories.pr_repository import PRRepository
-            pr = await PRRepository().find_by_id(entity_id)
-            if pr and pr.get("project_id"):
-                await verify_project_access(current_user, pr["project_id"])
-        # For other entity types, continue without authorization for now
+            await _verify_pr_access(entity_id, current_user)
+        else:
+            # For other entity types (FILE, COMMIT, DEPLOYMENT, etc.),
+            # require org access as we don't have project-scoped authorization
+            if not has_org_access(current_user):
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Insufficient permissions to view {entity_type} connections"
+                )
         
         from repositories.entity_relationship_repository import EntityRelationshipRepository
         rel_repo = EntityRelationshipRepository()

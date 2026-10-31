@@ -85,11 +85,29 @@ async def get_entity_recommendations(
     elif entity_type == "project":
         await verify_project_access(current_user, entity_id)
     elif entity_type == "pr":
-        # For PRs, verify access to the project
+        # For PRs, verify access to the project with validation
         from repositories.pr_repository import PRRepository
+        from repositories.project_repository import ProjectRepository
+        
         pr = await PRRepository().find_by_id(entity_id)
-        if pr and pr.get("project_id"):
-            await verify_project_access(current_user, pr["project_id"])
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        
+        project_id = pr.get("project_id")
+        if project_id:
+            # Validate PR-to-project mapping
+            project = await ProjectRepository().find_by_id(project_id)
+            if project:
+                # Verify project access
+                await verify_project_access(current_user, project_id)
+            else:
+                # Invalid project_id - require org access
+                if not has_org_access(current_user):
+                    raise HTTPException(status_code=403, detail="PR's project reference is invalid")
+        else:
+            # PR not linked to project - require org access
+            if not has_org_access(current_user):
+                raise HTTPException(status_code=403, detail="PR is not linked to a project")
     
     try:
         recs = await engine.get_recommendations_for_entity(entity_type, entity_id, status)
