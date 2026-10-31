@@ -12,6 +12,11 @@ from repositories.user_repository import UserRepository
 from core.dependencies import get_current_user, require_admin, require_permission
 from core.permissions import Permission, get_user_permissions
 from core.audit import log_audit, AuditAction
+from core.authorization import verify_team_access
+import logging
+from main import request_id_var
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -149,7 +154,7 @@ async def create_team(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create team: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/", response_model=List[TeamResponse])
@@ -219,7 +224,7 @@ async def list_teams(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list teams: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{team_id}", response_model=TeamResponse)
@@ -234,6 +239,8 @@ async def get_team(
     - Own team: Requires VIEW_TEAM_DATA (LEAD)
     - Any team: Requires VIEW_ORGANIZATION_DATA (HR, CEO, ADMIN)
     """
+    # Authorization: verify user has access to this team
+    await verify_team_access(user, team_id)
     # Check permission
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
@@ -286,7 +293,7 @@ async def get_team(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get team: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{team_id}/members", response_model=List[TeamMemberResponse])
@@ -301,20 +308,8 @@ async def get_team_members(
     - Own team: Requires VIEW_TEAM_DATA (LEAD)
     - Any team: Requires VIEW_ORGANIZATION_DATA (HR, CEO, ADMIN)
     """
-    # Check permission
-    user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
-        user.get('is_admin', False)
-    )
-    
-    is_own_team = team_id == user.get('team_id')
-    
-    if not is_own_team and Permission.VIEW_ORGANIZATION_DATA not in user_permissions:
-        if Permission.VIEW_TEAM_DATA not in user_permissions:
-            raise HTTPException(
-                status_code=403,
-                detail="Insufficient permissions to view team members"
-            )
+    # Authorization: verify user has access to this team
+    await verify_team_access(user, team_id)
     
     try:
         teams_col = col("teams")
@@ -347,7 +342,7 @@ async def get_team_members(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get team members: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{team_id}", response_model=TeamResponse)
@@ -481,7 +476,7 @@ async def update_team(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update team: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{team_id}/members/{employee_id}")
@@ -544,7 +539,7 @@ async def add_team_member(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add team member: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{team_id}/members/{employee_id}")
@@ -604,7 +599,7 @@ async def remove_team_member(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to remove team member: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{team_id}/assign-lead")
@@ -696,4 +691,4 @@ async def assign_team_lead(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to assign team lead: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

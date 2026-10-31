@@ -181,7 +181,7 @@ async def create_employee(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create employee: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/", response_model=List[EmployeeResponse])
@@ -230,6 +230,10 @@ async def list_employees(
         if is_active is not None:
             filter_query["is_active"] = is_active
         
+        # Authorization: LEAD can only see their own team
+        if user.get("role", "").upper() == "LEAD":
+            filter_query["team_id"] = user["team_id"]
+        
         # Get employees
         employees = await repo.find_all(filter_query)
         
@@ -252,7 +256,7 @@ async def list_employees(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list employees: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
@@ -309,7 +313,7 @@ async def get_employee(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get employee: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
@@ -416,7 +420,7 @@ async def update_employee(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update employee: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{employee_id}")
@@ -468,7 +472,7 @@ async def delete_employee(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete employee: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{employee_id}/assign-team")
@@ -520,4 +524,4 @@ async def assign_employee_to_team(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to assign team: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
