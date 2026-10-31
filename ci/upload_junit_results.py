@@ -43,12 +43,20 @@ def main() -> int:
         print("=" * 70)
         return 0  # Exit gracefully without failing workflow
 
+    # Get test execution exit code
+    test_exit_code = int(os.environ.get("CI_TEST_EXIT_CODE", "0"))
+
     root = ET.parse(args.junit).getroot()
     suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
     if not suites:
         raise ValueError("JUnit file contains no testsuite elements")
 
     tests_run = sum(int(float(s.get("tests", 0))) for s in suites)
+    
+    # Validate that we have actual tests
+    if tests_run <= 0:
+        raise ValueError("JUnit report contains zero tests - refusing to report empty results")
+    
     failures = sum(int(float(s.get("failures", 0))) for s in suites)
     errors = sum(int(float(s.get("errors", 0))) for s in suites)
     skipped = sum(int(float(s.get("skipped", 0))) for s in suites)
@@ -67,7 +75,11 @@ def main() -> int:
         "tests_failed": tests_failed,
         "tests_skipped": skipped,
         "duration_seconds": sum(float(s.get("time", 0) or 0) for s in suites),
-        "status": "passed" if tests_failed == 0 else "failed",
+        "status": (
+            "passed"
+            if test_exit_code == 0 and tests_run > 0 and tests_failed == 0
+            else "failed"
+        ),
     }
     request = urllib.request.Request(
         api_url + "/api/qa/test-runs",

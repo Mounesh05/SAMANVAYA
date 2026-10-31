@@ -11,6 +11,8 @@ set -u  # Exit on undefined variables
 OVERALL_EXIT_CODE=0
 TESTS_RUN=0
 DETECTED_SUITES=""
+MANIFEST_FILE="test-results-manifest.tsv"
+: > "$MANIFEST_FILE"
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -108,6 +110,9 @@ run_python_tests() {
     
     log_info "Python tests completed with exit code: $exit_code"
     
+    # Add to manifest
+    echo -e "python\ttest-results-python.xml\t$exit_code" >> "$MANIFEST_FILE"
+    
     # Export to GitHub Actions environment
     echo "SAMANVAYA_TEST_SUITE=python" >> "$GITHUB_ENV"
     echo "TEST_RESULTS_FILE=test-results-python.xml" >> "$GITHUB_ENV"
@@ -171,6 +176,9 @@ run_vitest_tests() {
     
     log_info "Vitest tests completed with exit code: $exit_code"
     
+    # Add to manifest
+    echo -e "javascript\ttest-results-frontend.xml\t$exit_code" >> "$MANIFEST_FILE"
+    
     # Export to GitHub Actions environment
     echo "SAMANVAYA_TEST_SUITE=javascript" >> "$GITHUB_ENV"
     echo "TEST_RESULTS_FILE=test-results-frontend.xml" >> "$GITHUB_ENV"
@@ -205,6 +213,9 @@ run_jest_tests() {
     
     log_info "Jest tests completed with exit code: $exit_code"
     
+    # Add to manifest
+    echo -e "javascript\ttest-results-frontend.xml\t$exit_code" >> "$MANIFEST_FILE"
+    
     # Export to GitHub Actions environment
     echo "SAMANVAYA_TEST_SUITE=javascript" >> "$GITHUB_ENV"
     echo "TEST_RESULTS_FILE=test-results-frontend.xml" >> "$GITHUB_ENV"
@@ -233,11 +244,26 @@ run_maven_tests() {
     # Locate and copy JUnit XML results
     if [ -d "target/surefire-reports" ]; then
         log_info "Copying Maven test results..."
-        # Combine all TEST-*.xml files into one
-        find target/surefire-reports -name "TEST-*.xml" -exec cat {} \; > test-results-java.xml
+        # Keep each TEST-*.xml file separate instead of concatenating
+        local counter=1
+        for xml_file in target/surefire-reports/TEST-*.xml; do
+            if [ -f "$xml_file" ]; then
+                local output_file="test-results-java-${counter}.xml"
+                cp "$xml_file" "$output_file"
+                echo -e "java-suite-${counter}\t${output_file}\t${exit_code}" >> "$MANIFEST_FILE"
+                counter=$((counter + 1))
+            fi
+        done
+        
+        if [ $counter -eq 1 ]; then
+            log_error "No TEST-*.xml files found in target/surefire-reports"
+            printf '<testsuite tests="0" failures="1"><testcase name="no-results"><failure>Test results not found</failure></testcase></testsuite>' > test-results-java.xml
+            echo -e "java\ttest-results-java.xml\t${exit_code}" >> "$MANIFEST_FILE"
+        fi
     else
         log_error "Maven test results not found in target/surefire-reports"
         printf '<testsuite tests="0" failures="1"><testcase name="no-results"><failure>Test results not found</failure></testcase></testsuite>' > test-results-java.xml
+        echo -e "java\ttest-results-java.xml\t${exit_code}" >> "$MANIFEST_FILE"
     fi
     
     log_info "Maven tests completed with exit code: $exit_code"
@@ -266,10 +292,26 @@ run_gradle_tests() {
     # Locate and copy JUnit XML results
     if [ -d "build/test-results/test" ]; then
         log_info "Copying Gradle test results..."
-        find build/test-results/test -name "*.xml" -exec cat {} \; > test-results-java.xml
+        # Keep each XML file separate instead of concatenating
+        local counter=1
+        for xml_file in build/test-results/test/*.xml; do
+            if [ -f "$xml_file" ]; then
+                local output_file="test-results-java-${counter}.xml"
+                cp "$xml_file" "$output_file"
+                echo -e "java-suite-${counter}\t${output_file}\t${exit_code}" >> "$MANIFEST_FILE"
+                counter=$((counter + 1))
+            fi
+        done
+        
+        if [ $counter -eq 1 ]; then
+            log_error "No XML files found in build/test-results/test"
+            printf '<testsuite tests="0" failures="1"><testcase name="no-results"><failure>Test results not found</failure></testcase></testsuite>' > test-results-java.xml
+            echo -e "java\ttest-results-java.xml\t${exit_code}" >> "$MANIFEST_FILE"
+        fi
     else
         log_error "Gradle test results not found in build/test-results/test"
         printf '<testsuite tests="0" failures="1"><testcase name="no-results"><failure>Test results not found</failure></testcase></testsuite>' > test-results-java.xml
+        echo -e "java\ttest-results-java.xml\t${exit_code}" >> "$MANIFEST_FILE"
     fi
     
     log_info "Gradle tests completed with exit code: $exit_code"

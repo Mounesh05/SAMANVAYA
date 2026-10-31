@@ -37,14 +37,6 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
-          
-          # Node.js dependencies (if package.json exists)
-          if [ -f package.json ]; then
-            npm ci || npm install
-          fi
-          if [ -f frontend/package.json ]; then
-            cd frontend && (npm ci || npm install) && cd ..
-          fi
       
       # Run tests with multi-language detection
       - name: Run tests
@@ -54,9 +46,10 @@ jobs:
       # Static analysis
       - name: Lint with Ruff
         if: always()
+        continue-on-error: true
         run: |
           if [ -d backend ]; then
-            cd backend && ruff check . || echo "Ruff linting found issues"
+            cd backend && ruff check .
           fi
       
       - name: Type check with Mypy
@@ -64,14 +57,15 @@ jobs:
         continue-on-error: true
         run: |
           if [ -d backend ]; then
-            cd backend && mypy . || echo "Type check found issues"
+            cd backend && mypy .
           fi
       
       - name: Security scan with Bandit
         if: always()
+        continue-on-error: true
         run: |
           if [ -d backend ]; then
-            cd backend && bandit -r . -ll || echo "Security scan found issues"
+            cd backend && bandit -r . -ll
           fi
       
       - name: Dependency security audit
@@ -79,12 +73,13 @@ jobs:
         continue-on-error: true
         run: |
           if [ -f backend/requirements.txt ]; then
-            pip-audit || echo "Dependency audit found vulnerabilities"
+            pip-audit
           fi
       
       # Upload results to Samanvaya
       - name: Upload results to Samanvaya
         if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
         env:
           SAMANVAYA_API_URL: ${{ secrets.SAMANVAYA_API_URL }}
           SAMANVAYA_PROJECT_ID: ${{ secrets.SAMANVAYA_PROJECT_ID }}
@@ -93,11 +88,22 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          if [ -n "$TEST_RESULTS_FILE" ] && [ -f "$TEST_RESULTS_FILE" ]; then
-            SAMANVAYA_TEST_SUITE="${SAMANVAYA_TEST_SUITE}" python ci/upload_junit_results.py --junit "$TEST_RESULTS_FILE"
-          else
-            echo "No test results file to upload"
+          if [ ! -f test-results-manifest.tsv ]; then
+            echo "No test results manifest found"
+            exit 0
           fi
+          
+          echo "Uploading test results from manifest..."
+          while IFS=$'\t' read -r suite report exit_code; do
+            if [ -f "$report" ]; then
+              echo "Uploading $suite results from $report (exit code: $exit_code)"
+              SAMANVAYA_TEST_SUITE="$suite" \
+              CI_TEST_EXIT_CODE="$exit_code" \
+              python ci/upload_junit_results.py --junit "$report" || echo "Upload failed for $suite"
+            else
+              echo "Warning: Report file $report not found for suite $suite"
+            fi
+          done < test-results-manifest.tsv
       
       # Fail workflow if tests failed
       - name: Fail workflow when tests fail
