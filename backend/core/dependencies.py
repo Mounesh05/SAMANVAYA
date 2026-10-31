@@ -43,7 +43,7 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         
         # Check if token has been revoked
         jti = payload.get('jti')
-        if jti and is_token_revoked(jti):
+        if jti is not None and is_token_revoked(jti):
             raise HTTPException(
                 status_code=401,
                 detail="Token has been revoked",

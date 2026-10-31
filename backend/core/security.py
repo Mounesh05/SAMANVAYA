@@ -166,16 +166,27 @@ def is_token_revoked(jti: str) -> bool:
         True if token is revoked
     """
     with _revoked_tokens_lock:
+        # Check membership before cleanup to avoid timing window where
+        # a token expiring during cleanup could incorrectly pass validation
+        is_revoked = jti in _revoked_tokens
         _cleanup_expired_revocations()
-        return jti in _revoked_tokens
+        return is_revoked
 
 
 def _cleanup_expired_revocations() -> None:
     """
     Remove expired tokens from the revocation list.
     Called automatically during revocation checks to prevent memory leaks.
+    
+    Note: This runs under lock on every revocation check. For high-traffic
+    deployments with large revocation lists, consider moving to periodic
+    background cleanup or Redis with automatic TTL expiration.
     """
     now = datetime.now(timezone.utc)
-    expired = [j for j, exp in _revoked_tokens.items() if exp < now]
-    for j in expired:
-        del _revoked_tokens[j]
+    # Create list snapshot to safely iterate while dict may be modified
+    expired_items = list(_revoked_tokens.items())
+    for jti, exp in expired_items:
+        if exp < now:
+            # Recheck existence in case another thread already removed it
+            if jti in _revoked_tokens:
+                del _revoked_tokens[jti]

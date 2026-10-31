@@ -126,11 +126,10 @@ class TestJWTLogout:
         assert decoded["employee_id"] == "E001"
         assert "jti" not in decoded
         
-        # Check revocation with None jti should not crash
+        # get_current_user should handle tokens without jti gracefully
+        # (the revocation check is skipped for None jti)
         jti = decoded.get("jti")
         assert jti is None
-        # This should return False for None jti
-        assert not is_token_revoked(jti) if jti else True
 
     def test_expired_revocations_cleaned_up(self):
         """Test that expired revoked tokens are automatically cleaned up."""
@@ -155,3 +154,31 @@ class TestJWTLogout:
         
         # Verify the future token is still in the store
         assert is_token_revoked(jti_future)
+
+    def test_revoked_token_rejected_by_get_current_user(self):
+        """Test that get_current_user rejects revoked tokens with proper error."""
+        from core.dependencies import get_current_user
+        
+        # Create a valid token
+        payload = {"sub": "E001", "employee_id": "E001", "role": "DEVELOPER"}
+        token = create_access_token(payload)
+        decoded = decode_token(token)
+        jti = decoded["jti"]
+        exp_datetime = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
+        
+        # Token should work before revocation
+        # Call get_current_user with the token - it should succeed
+        import asyncio
+        result = asyncio.run(get_current_user(authorization=f"Bearer {token}"))
+        assert result["employee_id"] == "E001"
+        
+        # Now revoke the token
+        revoke_token(jti, exp_datetime)
+        
+        # Attempt to use the revoked token - should raise HTTPException with 401
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(get_current_user(authorization=f"Bearer {token}"))
+        
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Token has been revoked"
