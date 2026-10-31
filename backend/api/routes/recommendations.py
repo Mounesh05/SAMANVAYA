@@ -13,9 +13,13 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 from domain.services.recommendation_engine import RecommendationEngine
 from core.dependencies import get_current_user
+from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
+import logging
+from main import request_id_var
 
 router = APIRouter()
 engine = RecommendationEngine()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/user/{user_id}")
@@ -26,6 +30,9 @@ async def get_user_recommendations(
 ):
     """Get all recommendations for a specific user."""
     try:
+        # Authorization: verify current user can view target user's recommendations
+        await verify_can_view_user_tasks(current_user, user_id)
+        
         recs = await engine.get_recommendations_for_user(user_id, status)
         return {
             "user_id": user_id,
@@ -47,6 +54,11 @@ async def get_role_recommendations(
     """Get all recommendations for a specific role."""
     try:
         recs = await engine.get_recommendations_for_role(role, project_id, status)
+        
+        # Authorization: filter by accessible projects
+        accessible = await get_accessible_project_ids(current_user)
+        recs = [r for r in recs if r.get("project_id") in accessible]
+        
         return {
             "role": role,
             "project_id": project_id,
@@ -88,6 +100,17 @@ async def accept_recommendation(
     """Accept a recommendation and optionally add implementation notes."""
     try:
         user_id = current_user["employee_id"]
+        
+        # Authorization: verify user can accept this recommendation
+        from repositories.recommendation_repository import RecommendationRepository
+        repo = RecommendationRepository()
+        rec = await repo.find_by_id(recommendation_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        
+        if rec.get("user_id") != user_id and not has_org_access(current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
         success = await engine.accept_recommendation(recommendation_id, user_id, notes)
         if not success:
             raise HTTPException(status_code=404, detail="Recommendation not found")
@@ -112,6 +135,17 @@ async def reject_recommendation(
     """Reject a recommendation with optional reason."""
     try:
         user_id = current_user["employee_id"]
+        
+        # Authorization: verify user can reject this recommendation
+        from repositories.recommendation_repository import RecommendationRepository
+        repo = RecommendationRepository()
+        rec = await repo.find_by_id(recommendation_id)
+        if not rec:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        
+        if rec.get("user_id") != user_id and not has_org_access(current_user):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
         success = await engine.reject_recommendation(recommendation_id, user_id, reason)
         if not success:
             raise HTTPException(status_code=404, detail="Recommendation not found")
