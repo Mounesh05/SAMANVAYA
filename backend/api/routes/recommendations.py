@@ -102,9 +102,7 @@ async def accept_recommendation(
         user_id = current_user["employee_id"]
         
         # Authorization: verify user can accept this recommendation
-        from repositories.recommendation_repository import RecommendationRepository
-        repo = RecommendationRepository()
-        rec = await repo.find_by_id(recommendation_id)
+        rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         
@@ -137,9 +135,7 @@ async def reject_recommendation(
         user_id = current_user["employee_id"]
         
         # Authorization: verify user can reject this recommendation
-        from repositories.recommendation_repository import RecommendationRepository
-        repo = RecommendationRepository()
-        rec = await repo.find_by_id(recommendation_id)
+        rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         
@@ -193,10 +189,7 @@ async def get_recommendation(
 ):
     """Get a specific recommendation by ID."""
     try:
-        from repositories.recommendation_repository import RecommendationRepository
-        repo = RecommendationRepository()
-        
-        rec = await repo.find_by_id(recommendation_id)
+        rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         
