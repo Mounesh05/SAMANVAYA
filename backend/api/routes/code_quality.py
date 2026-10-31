@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from core.database import col
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
+from core.authorization import get_accessible_project_ids
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
 from intelligence.analyzers.language_detector import LanguageDetector
@@ -140,6 +141,12 @@ async def get_run(run_id: str, user: dict = Depends(get_current_user)):
     run = await collection.find_one({"run_id": run_id}, {"_id": 0})
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
+    
+    # Authorization: verify user has access to the run's repository
+    accessible = await get_accessible_project_ids(user)
+    if run.get("repository_id") not in accessible:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     return run
 
 
@@ -153,6 +160,17 @@ async def get_run_findings(
     user: dict = Depends(get_current_user),
 ):
     """Get paginated findings for a completed analysis run."""
+    # First verify user has access to this run
+    runs_collection = col(RUNS_COLLECTION)
+    run = await runs_collection.find_one({"run_id": run_id}, {"repository_id": 1})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    
+    # Authorization: verify user has access to the run's repository
+    accessible = await get_accessible_project_ids(user)
+    if run.get("repository_id") not in accessible:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     query: dict = {"run_id": run_id}
     if severity:
         query["severity"] = severity
@@ -177,6 +195,11 @@ async def get_latest_run(
     user: dict = Depends(get_current_user),
 ):
     """Get the most recent completed analysis run for a repository."""
+    # Authorization: verify user has access to this repository
+    accessible = await get_accessible_project_ids(user)
+    if repository_id not in accessible:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     collection = col(RUNS_COLLECTION)
     run = await collection.find_one(
         {"repository_id": repository_id, "status": "completed"},
@@ -195,6 +218,11 @@ async def get_run_history(
     user: dict = Depends(get_current_user),
 ):
     """Get historical quality/risk trend for a repository."""
+    # Authorization: verify user has access to this repository
+    accessible = await get_accessible_project_ids(user)
+    if repository_id not in accessible:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     collection = col(RUNS_COLLECTION)
     runs = (
         await collection.find(
