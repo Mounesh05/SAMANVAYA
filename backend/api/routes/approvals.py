@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from domain.services.hitl_workflow_service import hitl_service, ApprovalPriority
 from core.dependencies import get_current_user
+from core.authorization import has_org_access
 
 router = APIRouter()
 
@@ -51,6 +52,12 @@ async def get_approval(
     approval = await hitl_service.get_approval_status(approval_id)
     if not approval:
         raise HTTPException(status_code=404, detail="Approval not found")
+    
+    # Authorization: user must be an approver or have org access
+    user_id = current_user["employee_id"]
+    if user_id not in approval["approvers"] and not has_org_access(current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     return approval
 
 

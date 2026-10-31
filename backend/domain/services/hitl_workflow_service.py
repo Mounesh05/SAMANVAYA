@@ -9,6 +9,7 @@ from enum import Enum
 from datetime import datetime, timezone
 import uuid
 import logging
+from core.database import col
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +87,14 @@ class HITLWorkflowService:
     """
     
     def __init__(self):
-        self.pending_approvals: Dict[str, ApprovalRequest] = {}
+        self.collection = col("approvals")
         from domain.services.enhanced_notification_service import EnhancedNotificationService
         self.notification_service = EnhancedNotificationService()
+    
+    async def _ensure_indexes(self):
+        """Ensure MongoDB indexes are created."""
+        await self.collection.create_index([("id", 1)], unique=True)
+        await self.collection.create_index([("status", 1), ("approvers", 1)])
     
     async def request_approval(
         self,
@@ -125,7 +131,7 @@ class HITLWorkflowService:
             approvers=approvers
         )
         
-        self.pending_approvals[approval.id] = approval
+        await self.collection.insert_one(approval.to_dict())
         
         # Notify approvers
         await self._notify_approvers(approval)
@@ -151,26 +157,37 @@ class HITLWorkflowService:
         Returns:
             True if approved, False if not found or not authorized
         """
-        approval = self.pending_approvals.get(approval_id)
+        approval_doc = await self.collection.find_one_and_update(
+            {"id": approval_id, "approvers": approver_id},
+            {
+                "$set": {
+                    "status": ApprovalStatus.APPROVED.value,
+                    "approved_by": approver_id,
+                    "approved_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
         
-        if not approval:
-            logger.warning(f"Approval {approval_id} not found")
+        if not approval_doc:
+            logger.warning(f"Approval {approval_id} not found or user {approver_id} not authorized")
             return False
         
-        if approver_id not in approval.approvers:
-            logger.warning(f"User {approver_id} not authorized to approve {approval_id}")
+        if approval_doc.get("status") != ApprovalStatus.PENDING.value:
+            logger.warning(f"Approval {approval_id} already {approval_doc.get('status')}")
             return False
-        
-        if approval.status != ApprovalStatus.PENDING:
-            logger.warning(f"Approval {approval_id} already {approval.status}")
-            return False
-        
-        # Approve
-        approval.status = ApprovalStatus.APPROVED
-        approval.approved_by = approver_id
-        approval.approved_at = datetime.now(timezone.utc)
         
         # Notify agent that approval granted
+        approval = ApprovalRequest(
+            action=approval_doc["action"],
+            description=approval_doc["description"],
+            agent_name=approval_doc["agent_name"],
+            context=approval_doc["context"],
+            impact_level=approval_doc["impact_level"],
+            priority=ApprovalPriority(approval_doc["priority"]),
+            approvers=approval_doc["approvers"]
+        )
+        approval.id = approval_doc["id"]
+        approval.status = ApprovalStatus.APPROVED
         await self._notify_agent_approved(approval)
         
         logger.info(f"Approval {approval_id} approved by {approver_id}")
@@ -194,24 +211,37 @@ class HITLWorkflowService:
         Returns:
             True if rejected, False if not found or not authorized
         """
-        approval = self.pending_approvals.get(approval_id)
+        approval_doc = await self.collection.find_one_and_update(
+            {"id": approval_id, "approvers": rejector_id},
+            {
+                "$set": {
+                    "status": ApprovalStatus.REJECTED.value,
+                    "approved_by": rejector_id,
+                    "approved_at": datetime.now(timezone.utc).isoformat(),
+                    "rejection_reason": reason
+                }
+            }
+        )
         
-        if not approval:
+        if not approval_doc:
             return False
         
-        if rejector_id not in approval.approvers:
+        if approval_doc.get("status") != ApprovalStatus.PENDING.value:
             return False
-        
-        if approval.status != ApprovalStatus.PENDING:
-            return False
-        
-        # Reject
-        approval.status = ApprovalStatus.REJECTED
-        approval.approved_by = rejector_id  # Record who rejected
-        approval.approved_at = datetime.now(timezone.utc)
-        approval.rejection_reason = reason
         
         # Notify agent that request rejected
+        approval = ApprovalRequest(
+            action=approval_doc["action"],
+            description=approval_doc["description"],
+            agent_name=approval_doc["agent_name"],
+            context=approval_doc["context"],
+            impact_level=approval_doc["impact_level"],
+            priority=ApprovalPriority(approval_doc["priority"]),
+            approvers=approval_doc["approvers"]
+        )
+        approval.id = approval_doc["id"]
+        approval.status = ApprovalStatus.REJECTED
+        approval.rejection_reason = reason
         await self._notify_agent_rejected(approval)
         
         logger.info(f"Approval {approval_id} rejected by {rejector_id}: {reason}")
@@ -220,16 +250,15 @@ class HITLWorkflowService:
     
     async def get_pending_for_user(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all pending approvals for a user."""
-        return [
-            approval.to_dict()
-            for approval in self.pending_approvals.values()
-            if user_id in approval.approvers and approval.status == ApprovalStatus.PENDING
-        ]
+        cursor = self.collection.find(
+            {"approvers": user_id, "status": "pending"},
+            {"_id": 0}
+        )
+        return await cursor.to_list(length=None)
     
     async def get_approval_status(self, approval_id: str) -> Optional[Dict[str, Any]]:
         """Get status of approval request."""
-        approval = self.pending_approvals.get(approval_id)
-        return approval.to_dict() if approval else None
+        return await self.collection.find_one({"id": approval_id}, {"_id": 0})
     
     async def cleanup_expired(self) -> int:
         """
@@ -238,14 +267,19 @@ class HITLWorkflowService:
         Returns:
             Number of approvals expired
         """
-        now = datetime.now(timezone.utc)
-        expired_count = 0
+        now = datetime.now(timezone.utc).isoformat()
         
-        for approval in self.pending_approvals.values():
-            if approval.status == ApprovalStatus.PENDING and now > approval.expires_at:
-                approval.status = ApprovalStatus.EXPIRED
-                expired_count += 1
-                logger.info(f"Approval {approval.id} expired")
+        result = await self.collection.update_many(
+            {
+                "status": ApprovalStatus.PENDING.value,
+                "expires_at": {"$lt": now}
+            },
+            {"$set": {"status": ApprovalStatus.EXPIRED.value}}
+        )
+        
+        expired_count = result.modified_count
+        if expired_count > 0:
+            logger.info(f"Expired {expired_count} approvals")
         
         return expired_count
     
