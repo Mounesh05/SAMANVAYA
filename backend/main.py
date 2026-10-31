@@ -151,16 +151,42 @@ async def add_security_headers(request: Request, call_next):
 # ── Request Size Limit Middleware ──
 @app.middleware("http")
 async def limit_request_size(request: Request, call_next):
-    """Limit request body size to prevent DoS attacks."""
+    """Limit request body size to prevent DoS attacks via Content-Length or chunked encoding."""
+    max_size = 10_000_000  # 10MB
+    
+    # Fast path: check Content-Length header if present
     content_length = request.headers.get('content-length')
     if content_length:
         content_length = int(content_length)
-        max_size = 10_000_000  # 10MB
         if content_length > max_size:
             return JSONResponse(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 content={"detail": f"Request body too large. Maximum size is {max_size} bytes."}
             )
+    
+    # For chunked/streamed requests without Content-Length, count bytes during streaming
+    received_bytes = 0
+    original_receive = request.receive
+    
+    async def counting_receive():
+        nonlocal received_bytes
+        message = await original_receive()
+        
+        if message["type"] == "http.request":
+            body_chunk = message.get("body", b"")
+            received_bytes += len(body_chunk)
+            
+            if received_bytes > max_size:
+                # Raise exception that will be caught by exception handlers
+                raise StarletteHTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"Request body too large. Maximum size is {max_size} bytes."
+                )
+        
+        return message
+    
+    # Replace receive with counting version
+    request._receive = counting_receive
     
     return await call_next(request)
 
