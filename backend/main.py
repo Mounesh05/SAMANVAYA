@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import uuid
 
 # Configure logging
 logging.basicConfig(
@@ -62,27 +63,21 @@ app.add_middleware(
 from core.rate_limiting import setup_rate_limiting
 setup_rate_limiting(app)
 
+# ── Request ID Middleware ──
+@app.middleware('http')
+async def add_request_id(request: Request, call_next):
+    request.state.request_id = str(uuid.uuid4())
+    return await call_next(request)
+
 # ── Global Exception Handlers ──
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """Catch all unhandled exceptions to prevent information leakage."""
-    logger.error(
-        f"Unhandled exception: {exc}",
-        exc_info=True,
-        extra={"path": request.url.path, "method": request.method}
+async def generic_exception_handler(request: Request, exc: Exception):
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    logger.error(f'Request {request_id} failed: {exc}', exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={'detail': f'Internal server error. Request ID: {request_id}'}
     )
-    
-    # Don't expose internal errors in production
-    if settings.is_production():
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Internal server error. Please contact support."}
-        )
-    else:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": str(exc), "type": type(exc).__name__}
-        )
 
 
 @app.exception_handler(StarletteHTTPException)

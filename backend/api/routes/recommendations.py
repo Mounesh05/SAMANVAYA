@@ -41,7 +41,7 @@ async def get_user_recommendations(
             "count": len(recs)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/role/{role}")
@@ -67,7 +67,7 @@ async def get_role_recommendations(
             "count": len(recs)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/entity/{entity_type}/{entity_id}")
@@ -88,7 +88,7 @@ async def get_entity_recommendations(
             "count": len(recs)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{recommendation_id}/accept")
@@ -123,7 +123,7 @@ async def accept_recommendation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{recommendation_id}/reject")
@@ -158,7 +158,7 @@ async def reject_recommendation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{recommendation_id}/implement")
@@ -183,7 +183,7 @@ async def mark_recommendation_implemented(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{recommendation_id}")
@@ -204,4 +204,4 @@ async def get_recommendation(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

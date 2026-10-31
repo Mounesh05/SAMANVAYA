@@ -38,7 +38,7 @@ async def create_task(
         task = await task_service.create_task(task_data)
         return task
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{task_id}", response_model=Task)

@@ -36,7 +36,7 @@ async def create_story(
         story = await story_service.create_story(story_data)
         return story
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create story: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{story_id}", response_model=Story)

@@ -230,7 +230,7 @@ async def bulk_evaluate_developers(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Bulk evaluation failed: {str(e)}"
+            detail="Internal server error"
         )
 
 
@@ -348,7 +348,7 @@ async def evaluate_developer_performance(
         return performance
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/developer/{developer_id}", response_model=DeveloperPerformance)
@@ -411,7 +411,7 @@ async def get_developer_performance(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/developer/{developer_id}/trend")
@@ -485,7 +485,7 @@ async def get_performance_trend(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 
@@ -536,7 +536,7 @@ async def add_pm_feedback(
         }
         return await service.add_role_feedback(performance_id, "pm", feedback)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/feedback/{performance_id}/lead", response_model=DeveloperPerformance)
@@ -569,7 +569,7 @@ async def add_lead_feedback(
         }
         return await service.add_role_feedback(performance_id, "lead", feedback)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/feedback/{performance_id}/qa", response_model=DeveloperPerformance)
@@ -602,7 +602,7 @@ async def add_qa_feedback(
         }
         return await service.add_role_feedback(performance_id, "qa", feedback)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/feedback/{performance_id}/devops", response_model=DeveloperPerformance)
@@ -635,7 +635,7 @@ async def add_devops_feedback(
         }
         return await service.add_role_feedback(performance_id, "devops", feedback)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/feedback/{performance_id}/ceo", response_model=DeveloperPerformance)
@@ -668,7 +668,7 @@ async def add_ceo_feedback(
         }
         return await service.add_role_feedback(performance_id, "ceo", feedback)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/feedback/{performance_id}/hr", response_model=DeveloperPerformance)
@@ -701,7 +701,7 @@ async def add_hr_feedback(
         }
         return await service.add_role_feedback(performance_id, "hr", feedback)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/team/{project_id}/{period_label}")
@@ -821,7 +821,7 @@ async def get_team_performance(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/dashboard/{developer_id}")
@@ -918,4 +918,4 @@ async def get_developer_dashboard(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Dashboard error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

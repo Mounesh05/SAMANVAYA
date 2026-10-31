@@ -33,7 +33,7 @@ async def create_project(
         )
         return project
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create project: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{project_id}", response_model=Project)

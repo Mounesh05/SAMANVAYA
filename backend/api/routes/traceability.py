@@ -33,7 +33,7 @@ async def get_pr_relationships(
             "relationships": relationships
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/pr/{pr_id}/blast-radius")
@@ -50,7 +50,7 @@ async def get_pr_blast_radius(
         )
         return blast_radius.dict()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/task/{task_id}/prs")
@@ -67,7 +67,7 @@ async def get_task_prs(
             "count": len(prs)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/file/history")
@@ -86,7 +86,7 @@ async def get_file_history(
         )
         return history
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/relationships")
@@ -124,7 +124,7 @@ async def create_relationship(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid enum value: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/entity/{entity_type}/{entity_id}/connections")
@@ -154,4 +154,4 @@ async def get_entity_connections(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid entity type: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

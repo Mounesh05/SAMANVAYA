@@ -56,7 +56,7 @@ async def analyze_pr(
         )
         return evidence
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/analyze-sprint/{sprint_id}")
@@ -90,7 +90,7 @@ async def analyze_sprint(
         )
         return evidence
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/analyze-deployment/{deployment_id}")
@@ -127,7 +127,7 @@ async def analyze_deployment(
         )
         return evidence
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/health")
