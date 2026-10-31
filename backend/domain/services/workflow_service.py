@@ -59,6 +59,31 @@ class WorkflowService:
         """
         Execute a validated status transition on a task.
         
+        **TRANSACTION LIMITATION (DB-02):**
+        This method performs 3 sequential database writes without transaction support:
+        1. Update task status in tasks collection
+        2. Insert transition record in transitions collection
+        3. Insert activity record in activities collection
+        
+        If any write after the first succeeds partially, the system can be left in an
+        inconsistent state (e.g., status updated but no audit trail, or audit trail
+        without activity log).
+        
+        **Proper Fix:**
+        Requires repository layer to support MongoDB sessions. With session support,
+        wrap all three operations in a transaction:
+        ```python
+        async with session.start_transaction():
+            await self.task_repo.update({"id": task_id}, {"status": new_status}, session=session)
+            await self.transition_col.insert_one(transition.model_dump(), session=session)
+            await self.activity_repo.insert(activity_doc, session=session)
+        ```
+        
+        **Prerequisites:**
+        - MongoDB deployed as replica set (required for multi-document transactions)
+        - Repository layer extended to accept optional session parameter
+        - Session lifecycle management in service layer or route handlers
+        
         Raises ValueError if transition is invalid.
         Returns the updated task.
         """
@@ -75,8 +100,15 @@ class WorkflowService:
                 f"Allowed: {allowed}"
             )
         
+        # TODO: Wrap in transaction when repository layer supports sessions (DB-02)
         # Update status
-        await self.task_repo.update({"id": task_id}, {"status": new_status})
+        try:
+            await self.task_repo.update({"id": task_id}, {"status": new_status})
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to update task {task_id} status to {new_status}: {str(e)}")
+            raise
         
         # Record transition
         now = datetime.now(timezone.utc).isoformat()
@@ -91,25 +123,39 @@ class WorkflowService:
             reason=reason,
             created_at=now,
         )
-        await self.transition_col.insert_one(transition.model_dump())
+        try:
+            await self.transition_col.insert_one(transition.model_dump())
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to record transition for task {task_id}: {str(e)}")
+            # Status already updated - inconsistent state
+            raise
         
         # Record activity
-        await self.activity_repo.insert({
-            "id": f"ACT-{uuid.uuid4().hex[:8].upper()}",
-            "event_type": "status_changed",
-            "project_id": task.get("project_id"),
-            "item_type": "task",
-            "item_id": task_id,
-            "actor_id": user_id,
-            "actor_name": user_name,
-            "summary": f"{user_name} moved task {task_id} from {current_status} to {new_status}",
-            "details": {
-                "from_status": current_status,
-                "to_status": new_status,
-                "reason": reason,
-            },
-            "created_at": now,
-        })
+        try:
+            await self.activity_repo.insert({
+                "id": f"ACT-{uuid.uuid4().hex[:8].upper()}",
+                "event_type": "status_changed",
+                "project_id": task.get("project_id"),
+                "item_type": "task",
+                "item_id": task_id,
+                "actor_id": user_id,
+                "actor_name": user_name,
+                "summary": f"{user_name} moved task {task_id} from {current_status} to {new_status}",
+                "details": {
+                    "from_status": current_status,
+                    "to_status": new_status,
+                    "reason": reason,
+                },
+                "created_at": now,
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to record activity for task {task_id}: {str(e)}")
+            # Status and transition already recorded - inconsistent state
+            raise
         
         return {**task, "status": new_status}
     
@@ -123,6 +169,31 @@ class WorkflowService:
     ) -> dict:
         """
         Execute a validated status transition on a story.
+        
+        **TRANSACTION LIMITATION (DB-02):**
+        This method performs 3 sequential database writes without transaction support:
+        1. Update story status in stories collection
+        2. Insert transition record in transitions collection
+        3. Insert activity record in activities collection
+        
+        If any write after the first succeeds partially, the system can be left in an
+        inconsistent state (e.g., status updated but no audit trail, or audit trail
+        without activity log).
+        
+        **Proper Fix:**
+        Requires repository layer to support MongoDB sessions. With session support,
+        wrap all three operations in a transaction:
+        ```python
+        async with session.start_transaction():
+            await self.story_repo.update({"id": story_id}, {"status": new_status}, session=session)
+            await self.transition_col.insert_one(transition.model_dump(), session=session)
+            await self.activity_repo.insert(activity_doc, session=session)
+        ```
+        
+        **Prerequisites:**
+        - MongoDB deployed as replica set (required for multi-document transactions)
+        - Repository layer extended to accept optional session parameter
+        - Session lifecycle management in service layer or route handlers
         
         Raises ValueError if transition is invalid.
         Returns the updated story.
@@ -140,8 +211,15 @@ class WorkflowService:
                 f"Allowed: {allowed}"
             )
         
+        # TODO: Wrap in transaction when repository layer supports sessions (DB-02)
         # Update status
-        await self.story_repo.update({"id": story_id}, {"status": new_status})
+        try:
+            await self.story_repo.update({"id": story_id}, {"status": new_status})
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to update story {story_id} status to {new_status}: {str(e)}")
+            raise
         
         # Record transition
         now = datetime.now(timezone.utc).isoformat()
@@ -156,25 +234,39 @@ class WorkflowService:
             reason=reason,
             created_at=now,
         )
-        await self.transition_col.insert_one(transition.model_dump())
+        try:
+            await self.transition_col.insert_one(transition.model_dump())
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to record transition for story {story_id}: {str(e)}")
+            # Status already updated - inconsistent state
+            raise
         
         # Record activity
-        await self.activity_repo.insert({
-            "id": f"ACT-{uuid.uuid4().hex[:8].upper()}",
-            "event_type": "status_changed",
-            "project_id": story.get("project_id"),
-            "item_type": "story",
-            "item_id": story_id,
-            "actor_id": user_id,
-            "actor_name": user_name,
-            "summary": f"{user_name} moved story {story_id} from {current_status} to {new_status}",
-            "details": {
-                "from_status": current_status,
-                "to_status": new_status,
-                "reason": reason,
-            },
-            "created_at": now,
-        })
+        try:
+            await self.activity_repo.insert({
+                "id": f"ACT-{uuid.uuid4().hex[:8].upper()}",
+                "event_type": "status_changed",
+                "project_id": story.get("project_id"),
+                "item_type": "story",
+                "item_id": story_id,
+                "actor_id": user_id,
+                "actor_name": user_name,
+                "summary": f"{user_name} moved story {story_id} from {current_status} to {new_status}",
+                "details": {
+                    "from_status": current_status,
+                    "to_status": new_status,
+                    "reason": reason,
+                },
+                "created_at": now,
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to record activity for story {story_id}: {str(e)}")
+            # Status and transition already recorded - inconsistent state
+            raise
         
         return {**story, "status": new_status}
     
