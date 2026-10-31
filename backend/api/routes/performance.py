@@ -449,14 +449,8 @@ async def get_performance_trend(
         }
         ```
     """
-    # Scope enforcement: DEVELOPER can only view own trend
-    user_role = user.get('role', '').upper()
-    user_id = user.get('employee_id', '')
-    if user_role == 'DEVELOPER' and developer_id != user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="Developers can only view their own performance trend"
-        )
+    # Authorization: verify user can view this developer's performance
+    await verify_can_view_user_tasks(user, developer_id)
 
     try:
         service = PerformanceService()
@@ -526,8 +520,16 @@ async def add_pm_feedback(
             detail="Only PM role can submit PM feedback"
         )
     
+    # Authorization: verify user can view the target developer's performance
+    service = PerformanceService()
+    performance = await service.repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+    
+    developer_id = performance.get("developer_id")
+    await verify_can_view_user_tasks(user, developer_id)
+    
     try:
-        service = PerformanceService()
         feedback = {
             "criterion_1": requirement_understanding,
             "criterion_2": delivery_reliability,
@@ -559,8 +561,17 @@ async def add_lead_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_LEAD_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only Lead role can submit Lead feedback")
+    
+    # Authorization: verify user can view the target developer's performance
+    service = PerformanceService()
+    performance = await service.repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+    
+    developer_id = performance.get("developer_id")
+    await verify_can_view_user_tasks(user, developer_id)
+    
     try:
-        service = PerformanceService()
         feedback = {
             "criterion_1": technical_skill,
             "criterion_2": code_quality,
@@ -592,8 +603,17 @@ async def add_qa_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_QA_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only QA role can submit QA feedback")
+    
+    # Authorization: verify user can view the target developer's performance
+    service = PerformanceService()
+    performance = await service.repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+    
+    developer_id = performance.get("developer_id")
+    await verify_can_view_user_tasks(user, developer_id)
+    
     try:
-        service = PerformanceService()
         feedback = {
             "criterion_1": quality_focus,
             "criterion_2": test_coverage,
@@ -625,8 +645,17 @@ async def add_devops_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_DEVOPS_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only DevOps role can submit DevOps feedback")
+    
+    # Authorization: verify user can view the target developer's performance
+    service = PerformanceService()
+    performance = await service.repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+    
+    developer_id = performance.get("developer_id")
+    await verify_can_view_user_tasks(user, developer_id)
+    
     try:
-        service = PerformanceService()
         feedback = {
             "criterion_1": deployment_quality,
             "criterion_2": ci_cd_compliance,
@@ -658,8 +687,17 @@ async def add_ceo_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_CEO_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only CEO role can submit CEO feedback")
+    
+    # Authorization: verify user can view the target developer's performance
+    service = PerformanceService()
+    performance = await service.repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+    
+    developer_id = performance.get("developer_id")
+    await verify_can_view_user_tasks(user, developer_id)
+    
     try:
-        service = PerformanceService()
         feedback = {
             "criterion_1": business_impact,
             "criterion_2": innovation,
@@ -691,8 +729,17 @@ async def add_hr_feedback(
     user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
     if Permission.SUBMIT_HR_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only HR role can submit HR feedback")
+    
+    # Authorization: verify user can view the target developer's performance
+    service = PerformanceService()
+    performance = await service.repository.get_by_id(performance_id)
+    if not performance:
+        raise HTTPException(status_code=404, detail="Performance evaluation not found")
+    
+    developer_id = performance.get("developer_id")
+    await verify_can_view_user_tasks(user, developer_id)
+    
     try:
-        service = PerformanceService()
         feedback = {
             "criterion_1": collaboration,
             "criterion_2": professionalism,
@@ -720,7 +767,7 @@ async def get_team_performance(
     
     Perfect for team dashboards and comparative analysis.
     """
-    # Scope enforcement: DEVELOPER cannot view team performance
+    # Authorization: verify user has appropriate access
     user_role = user.get('role', '').upper()
     if user_role == 'DEVELOPER':
         raise HTTPException(
@@ -737,6 +784,9 @@ async def get_team_performance(
             from repositories.performance_repository import PerformanceRepository
             repo = PerformanceRepository()
             
+            # Authorization: filter by accessible projects for non-admin users
+            accessible_projects = await get_accessible_project_ids(user)
+            
             # Get all unique developers and their latest evaluation
             developers_data = []
             
@@ -751,6 +801,11 @@ async def get_team_performance(
             
             async for doc in repo.collection.aggregate(pipeline):
                 latest = doc['latest']
+                
+                # Filter by accessible projects for non-admin users
+                if not has_org_access(user):
+                    if latest.get('project_id') not in accessible_projects:
+                        continue
                 
                 # Map trend to frontend format
                 trend_map = {

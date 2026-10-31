@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from core.database import col
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
-from core.authorization import get_accessible_project_ids
+from core.authorization import get_accessible_project_ids, verify_project_access
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
 from intelligence.analyzers.language_detector import LanguageDetector
@@ -245,6 +245,9 @@ async def save_project_config(
     user: dict = Depends(get_current_user),
 ):
     """Save per-project code quality configuration."""
+    # Authorization: verify user has write access to this project
+    await verify_project_access(user, project_id, require_write=True)
+    
     config.project_id = project_id
     collection = col(CONFIGS_COLLECTION)
     await collection.replace_one(
@@ -261,6 +264,9 @@ async def get_project_config(
     user: dict = Depends(get_current_user),
 ):
     """Get per-project code quality configuration."""
+    # Authorization: verify user has access to this project
+    await verify_project_access(user, project_id)
+    
     collection = col(CONFIGS_COLLECTION)
     doc = await collection.find_one({"project_id": project_id}, {"_id": 0})
     if not doc:

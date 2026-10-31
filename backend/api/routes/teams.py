@@ -219,6 +219,12 @@ async def list_teams(
                 created_at=team_doc.get("created_at")
             ))
         
+        # Authorization: LEAD role can only view their own team
+        user_role = user.get('role', '').upper()
+        if user_role == 'LEAD':
+            user_team_id = user.get('team_id')
+            teams = [t for t in teams if t.team_id == user_team_id]
+        
         return teams
         
     except HTTPException:

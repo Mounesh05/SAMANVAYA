@@ -78,8 +78,16 @@ async def get_item_history(
         if not sprint:
             raise HTTPException(status_code=404, detail="Sprint not found")
         await verify_project_access(user, sprint.get("project_id"))
-    # For other types (PR, etc.), currently no specific verification
-    # TODO: Add PR and other resource type verification when available
+    elif item_type == "pr":
+        # Verify PR access via project
+        from repositories.pr_repository import PRRepository
+        pr = await PRRepository().find_by_id(item_id)
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        if pr.get("project_id"):
+            await verify_project_access(user, pr["project_id"])
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported item type")
     
     events = await activity_repo.get_item_history(item_type, item_id)
     return {

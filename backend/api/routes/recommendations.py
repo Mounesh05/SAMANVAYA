@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 from domain.services.recommendation_engine import RecommendationEngine
 from core.dependencies import get_current_user
-from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
+from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access, verify_task_access, verify_story_access, verify_project_access
 import logging
 
 router = APIRouter()
@@ -77,6 +77,20 @@ async def get_entity_recommendations(
     current_user: dict = Depends(get_current_user),
 ):
     """Get all recommendations for a specific entity (PR, task, etc.)."""
+    # Authorization: verify user has access to this entity
+    if entity_type == "task":
+        await verify_task_access(current_user, entity_id)
+    elif entity_type == "story":
+        await verify_story_access(current_user, entity_id)
+    elif entity_type == "project":
+        await verify_project_access(current_user, entity_id)
+    elif entity_type == "pr":
+        # For PRs, verify access to the project
+        from repositories.pr_repository import PRRepository
+        pr = await PRRepository().find_by_id(entity_id)
+        if pr and pr.get("project_id"):
+            await verify_project_access(current_user, pr["project_id"])
+    
     try:
         recs = await engine.get_recommendations_for_entity(entity_type, entity_id, status)
         return {
@@ -163,8 +177,16 @@ async def mark_recommendation_implemented(
     current_user: dict = Depends(get_current_user),
 ):
     """Mark a recommendation as implemented, optionally linking to a PR."""
+    # Authorization: verify user can implement this recommendation
+    rec = await engine.repo.find_by_id(recommendation_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    
+    user_id = current_user["employee_id"]
+    if rec.get("user_id") != user_id and not has_org_access(current_user):
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     try:
-        user_id = current_user["employee_id"]
         success = await engine.mark_implemented(recommendation_id, user_id, pr_id)
         if not success:
             raise HTTPException(status_code=404, detail="Recommendation not found")
@@ -191,6 +213,14 @@ async def get_recommendation(
         rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
+        
+        # Authorization: verify user has access to this recommendation
+        rec_user_id = rec.get("user_id")
+        if rec_user_id:
+            await verify_can_view_user_tasks(current_user, rec_user_id)
+        elif rec.get("project_id"):
+            # If recommendation is project-scoped, verify project access
+            await verify_project_access(current_user, rec["project_id"])
         
         return rec
     except HTTPException:

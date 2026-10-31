@@ -116,6 +116,9 @@ async def verify_project_access(
     if has_org_access(user):
         # In current single-org deployment, PM sees all projects
         # When multi-tenancy is added, check: project["org_id"] == user["org_id"]
+        if require_write:
+            # CEOs and PMs always have write access
+            return
         return
     
     # LEAD can access all projects for their team
@@ -124,11 +127,22 @@ async def verify_project_access(
         user_team_id = user.get("team_id")
         project_team_id = project.get("team_id")
         if user_team_id and project_team_id == user_team_id:
+            if require_write:
+                # LEADs have write access to their team's projects
+                return
             return
     
     # Others: check if project is in their assigned projects
     user_project_ids = user.get("project_ids", [])
     if project_id in user_project_ids:
+        if require_write:
+            # LEAD role has write access to assigned projects
+            # Non-lead roles don't have write access
+            if role != "LEAD":
+                raise HTTPException(
+                    status_code=403,
+                    detail="You don't have write access to this project"
+                )
         return
     
     # Access denied

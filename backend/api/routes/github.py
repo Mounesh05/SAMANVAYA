@@ -186,6 +186,9 @@ async def sync_pull_request(
     }
     ```
     """
+    # Authorization: verify user has write access to the target project
+    await verify_project_access(user, request.project_id, require_write=True)
+    
     try:
         github_service = GitHubSyncService()
         
@@ -253,6 +256,9 @@ async def sync_repository_prs(
     }
     ```
     """
+    # Authorization: verify user has write access to the target project
+    await verify_project_access(user, request.project_id, require_write=True)
+    
     try:
         github_service = GitHubSyncService()
         

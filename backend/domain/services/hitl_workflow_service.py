@@ -158,7 +158,7 @@ class HITLWorkflowService:
             True if approved, False if not found or not authorized
         """
         approval_doc = await self.collection.find_one_and_update(
-            {"id": approval_id, "approvers": approver_id},
+            {"id": approval_id, "approvers": approver_id, "status": ApprovalStatus.PENDING.value},
             {
                 "$set": {
                     "status": ApprovalStatus.APPROVED.value,
@@ -170,10 +170,6 @@ class HITLWorkflowService:
         
         if not approval_doc:
             logger.warning(f"Approval {approval_id} not found or user {approver_id} not authorized")
-            return False
-        
-        if approval_doc.get("status") != ApprovalStatus.PENDING.value:
-            logger.warning(f"Approval {approval_id} already {approval_doc.get('status')}")
             return False
         
         # Notify agent that approval granted
@@ -212,7 +208,7 @@ class HITLWorkflowService:
             True if rejected, False if not found or not authorized
         """
         approval_doc = await self.collection.find_one_and_update(
-            {"id": approval_id, "approvers": rejector_id},
+            {"id": approval_id, "approvers": rejector_id, "status": ApprovalStatus.PENDING.value},
             {
                 "$set": {
                     "status": ApprovalStatus.REJECTED.value,
@@ -224,9 +220,6 @@ class HITLWorkflowService:
         )
         
         if not approval_doc:
-            return False
-        
-        if approval_doc.get("status") != ApprovalStatus.PENDING.value:
             return False
         
         # Notify agent that request rejected

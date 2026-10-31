@@ -15,6 +15,7 @@ from typing import Optional
 from domain.services.traceability_service import TraceabilityService
 from domain.models.entity_relationship import EntityType, RelationshipType
 from core.dependencies import get_current_user
+from core.authorization import verify_task_access, verify_project_access, has_org_access
 
 router = APIRouter()
 traceability_service = TraceabilityService()
@@ -26,6 +27,17 @@ async def get_pr_relationships(
     current_user: dict = Depends(get_current_user),
 ):
     """Get all entities related to a PR."""
+    # Authorization: verify user has access to the PR's project
+    from repositories.pr_repository import PRRepository
+    pr_repo = PRRepository()
+    pr = await pr_repo.find_by_id(pr_id)
+    if not pr:
+        raise HTTPException(status_code=404, detail="PR not found")
+    
+    project_id = pr.get("project_id")
+    if project_id:
+        await verify_project_access(current_user, project_id)
+    
     try:
         relationships = await traceability_service.get_pr_relationships(pr_id)
         return {
@@ -59,6 +71,9 @@ async def get_task_prs(
     current_user: dict = Depends(get_current_user),
 ):
     """Get all PRs that implement a task."""
+    # Authorization: verify user has access to the task
+    await verify_task_access(current_user, task_id)
+    
     try:
         prs = await traceability_service.get_task_related_prs(task_id)
         return {
@@ -101,10 +116,30 @@ async def create_relationship(
     current_user: dict = Depends(get_current_user),
 ):
     """Manually create a relationship between entities."""
+    # Authorization: verify user has access to create relationships
+    # Verify access to both source and target entities
     try:
         source_type_enum = EntityType(source_type)
         target_type_enum = EntityType(target_type)
         relationship_type_enum = RelationshipType(relationship_type)
+        
+        # Verify access to source entity
+        if source_type_enum == EntityType.TASK:
+            await verify_task_access(current_user, source_id)
+        elif source_type_enum == EntityType.PR:
+            from repositories.pr_repository import PRRepository
+            pr = await PRRepository().find_by_id(source_id)
+            if pr and pr.get("project_id"):
+                await verify_project_access(current_user, pr["project_id"])
+        
+        # Verify access to target entity
+        if target_type_enum == EntityType.TASK:
+            await verify_task_access(current_user, target_id)
+        elif target_type_enum == EntityType.PR:
+            from repositories.pr_repository import PRRepository
+            pr = await PRRepository().find_by_id(target_id)
+            if pr and pr.get("project_id"):
+                await verify_project_access(current_user, pr["project_id"])
         
         rel_id = await traceability_service.create_relationship(
             source_type=source_type_enum,
