@@ -14,7 +14,6 @@ from core.permissions import Permission, get_user_permissions
 from core.audit import log_audit, AuditAction
 from core.authorization import verify_team_access
 import logging
-from main import request_id_var
 
 logger = logging.getLogger(__name__)
 
