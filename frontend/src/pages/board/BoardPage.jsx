@@ -20,15 +20,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { boardApi } from '../../api/board.api';
 import { projectsApi } from '../../api/projects.api';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Card } from '../../components/common/Card';
 import { Select } from '../../components/common/Select';
-import { StatusBadge } from '../../components/common/StatusBadge';
-import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { Button } from '../../components/common/Button';
-import { Plus, GripVertical, AlertCircle } from 'lucide-react';
-import { TASK_STATUS, STATUS_LABELS, DEFAULT_ORG_ID, ROLES } from '../../utils/constants';
+import { GripVertical, AlertCircle } from 'lucide-react';
+import { DEFAULT_ORG_ID, ROLES } from '../../utils/constants';
 
 // Sortable Task Card Component
 function SortableCard({ item, onClick }) {
@@ -95,7 +91,7 @@ function SortableCard({ item, onClick }) {
 }
 
 // Kanban Column Component
-function KanbanColumn({ id, title, count, items = [], onItemClick }) {
+function KanbanColumn({ title, count, items = [], onItemClick }) {
   return (
     <div
       style={{

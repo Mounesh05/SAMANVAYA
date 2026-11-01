@@ -7,8 +7,8 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
-import { ErrorState } from '../../components/common/ErrorState';
-import { GitPullRequest, RefreshCw, CheckCircle, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
+
+import { GitPullRequest, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 
 export function GitHubSyncPage() {
   const [prForm, setPrForm] = useState({
@@ -23,7 +23,7 @@ export function GitHubSyncPage() {
   const [qaForm, setQaForm] = useState({ owner: '', repo: '', project_id: '' });
 
   // Health check query
-  const { data: health, isLoading: isHealthLoading } = useQuery({
+  const { data: health } = useQuery({
     queryKey: ['github', 'health'],
     queryFn: () => githubApi.checkHealth(),
   });

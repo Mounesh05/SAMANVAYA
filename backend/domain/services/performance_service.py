@@ -9,7 +9,7 @@ Orchestrates the complete performance evaluation process:
 """
 
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from intelligence.developer_data_aggregator import DeveloperDataAggregator
 from agents.performance_agent import PerformanceEvaluationAgent

@@ -6,24 +6,17 @@ Protected with RBAC permissions.
 
 from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional, List
+from typing import Optional, List
 from datetime import datetime
 from domain.services.performance_service import PerformanceService
 from domain.models.developer_performance import (
     DeveloperPerformance,
-    DeveloperPerformanceCreate,
-    DeveloperPerformanceTrend,
-    PMFeedback,
-    LeadFeedback,
-    QAFeedback,
-    DevOpsFeedback,
-    CEOFeedback,
-    HRFeedback
+    DeveloperPerformanceCreate
 )
 from core.config import settings
-from core.dependencies import get_current_user, require_admin
+from core.dependencies import get_current_user
 from core.permissions import Permission, get_user_permissions
-from core.authorization import verify_team_access, verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
+from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
 from core.audit import log_audit, AuditAction
 
 router = APIRouter()
@@ -228,7 +221,7 @@ async def bulk_evaluate_developers(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500,
             detail="Internal server error"
@@ -348,7 +341,7 @@ async def evaluate_developer_performance(
         
         return performance
         
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -411,7 +404,7 @@ async def get_developer_performance(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -479,7 +472,7 @@ async def get_performance_trend(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -538,7 +531,7 @@ async def add_pm_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "pm", feedback)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -580,7 +573,7 @@ async def add_lead_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "lead", feedback)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -622,7 +615,7 @@ async def add_qa_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "qa", feedback)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -664,7 +657,7 @@ async def add_devops_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "devops", feedback)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -706,7 +699,7 @@ async def add_ceo_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "ceo", feedback)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -748,7 +741,7 @@ async def add_hr_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "hr", feedback)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -830,9 +823,6 @@ async def get_team_performance(
                 )
             
             # Calculate team stats
-            total_score = sum(d['overall_score'] for d in developers_data)
-            average_score = total_score / len(developers_data) if developers_data else 0
-            
             return developers_data
         
         # Original behavior for specific project/period
@@ -876,7 +866,7 @@ async def get_team_performance(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -973,5 +963,5 @@ async def get_developer_dashboard(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")

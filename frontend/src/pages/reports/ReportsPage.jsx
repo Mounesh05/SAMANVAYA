@@ -3,7 +3,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { FileBarChart, Download, TrendingUp, Layers, Award, ShieldCheck } from 'lucide-react';
+import { Download, TrendingUp, Layers, Award, ShieldCheck } from 'lucide-react';
 import { ROLES } from '../../utils/constants';
 
 export function ReportsPage() {
@@ -43,7 +43,7 @@ export function ReportsPage() {
 
   const reports = useMemo(() => {
     return allReports.filter((r) => r.roles.includes(role));
-  }, [role]);
+  }, [allReports, role]);
 
   const handleExportCSV = (reportName) => {
     const csvContent = 'data:text/csv;charset=utf-8,Metric,Value,Date\nVelocity,42,2026-08-30\nPass Rate,98.4%,2026-08-30\nQuality Score,88,2026-08-30';

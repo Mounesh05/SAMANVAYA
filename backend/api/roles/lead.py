@@ -6,8 +6,6 @@ Shows: Team health, sprint progress, PR queue, blockers.
 from fastapi import APIRouter, Depends
 from core.dependencies import require_roles
 from repositories.user_repository import UserRepository
-from repositories.sprint_repository import SprintRepository
-from repositories.story_repository import StoryRepository
 from repositories.pr_repository import PRRepository
 from repositories.task_repository import TaskRepository
 
@@ -32,8 +30,6 @@ async def lead_dashboard(user: dict = Depends(require_roles("LEAD"))):
         return {"error": "User not assigned to a team"}
     
     user_repo = UserRepository()
-    sprint_repo = SprintRepository()
-    story_repo = StoryRepository()
     pr_repo = PRRepository()
     task_repo = TaskRepository()
     

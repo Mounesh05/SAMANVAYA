@@ -41,7 +41,7 @@ async def create_first_hr_user():
         
         # Test connection
         await client.server_info()
-        print(f"✅ Connected to MongoDB")
+        print("✅ Connected to MongoDB")
         print(f"   Database: {DATABASE_NAME}\n")
     except Exception as e:
         print(f"❌ Failed to connect to MongoDB: {e}")
@@ -54,8 +54,8 @@ async def create_first_hr_user():
         print("⚠️  HR user already exists!")
         print(f"   Employee ID: {existing_hr['employee_id']}")
         print(f"   Email: {existing_hr['email']}")
-        print(f"\n   Use this account to create other users.")
-        print(f"   Or delete it from MongoDB and run this script again.\n")
+        print("\n   Use this account to create other users.")
+        print("   Or delete it from MongoDB and run this script again.\n")
         return
     
     # Get user input - NO DEFAULTS (Production Mode)
@@ -98,8 +98,8 @@ async def create_first_hr_user():
     print(f"  Name: {name}")
     print(f"  Email: {email}")
     print(f"  Password: {password}")
-    print(f"  Role: HR")
-    print(f"  Admin: Yes")
+    print("  Role: HR")
+    print("  Admin: Yes")
     
     confirm = input("\nProceed? (y/n): ").strip().lower()
     if confirm != 'y':
@@ -132,11 +132,11 @@ async def create_first_hr_user():
         print(f"Email: {email}")
         print(f"Password: {password}")
         print(f"MongoDB ID: {result.inserted_id}")
-        print(f"\n⚠️  IMPORTANT:")
-        print(f"1. Save these credentials in a secure password manager")
-        print(f"2. Delete this terminal output after saving credentials")
-        print(f"3. Use this account to create other users via API or UI")
-        print(f"4. Do NOT share these credentials\n")
+        print("\n⚠️  IMPORTANT:")
+        print("1. Save these credentials in a secure password manager")
+        print("2. Delete this terminal output after saving credentials")
+        print("3. Use this account to create other users via API or UI")
+        print("4. Do NOT share these credentials\n")
         print("="*60 + "\n")
         
     except Exception as e:

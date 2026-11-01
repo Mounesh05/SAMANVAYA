@@ -5,7 +5,7 @@ Gap Fix #6: formalizes the per-project settings mentioned in the blueprint
 but never modelled. Stored in the `project_configs` MongoDB collection.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 

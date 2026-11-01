@@ -3,7 +3,6 @@ CI/CD Log Analysis API Routes
 Endpoints for analyzing build, test, and deployment logs with AI
 """
 
-from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from pydantic import BaseModel, Field
 
@@ -12,7 +11,6 @@ from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
 from core.dependencies import get_current_user, require_roles
 from repositories.ai_run_repository import AIRunRepository
-from core.database import db
 
 router = APIRouter(tags=["CI/CD Logs"])
 

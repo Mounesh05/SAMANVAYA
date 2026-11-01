@@ -8,7 +8,7 @@ Adapters for multiple CI/CD platforms:
 - CircleCI
 """
 
-from typing import Dict, Any, List, Optional, Protocol
+from typing import Dict, Any, List, Protocol
 from datetime import datetime, timezone
 from enum import Enum
 import logging

@@ -18,7 +18,6 @@ import {
   AlertTriangle,
   Layers,
   Plus,
-  ArrowRight,
 } from 'lucide-react';
 
 export function PMDashboardPage() {

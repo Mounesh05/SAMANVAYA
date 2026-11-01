@@ -35,7 +35,7 @@ async def create_story(
     try:
         story = await story_service.create_story(story_data)
         return story
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

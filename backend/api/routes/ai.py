@@ -14,7 +14,6 @@ from core.dependencies import get_current_user
 from core.authorization import get_accessible_project_ids, has_org_access
 from domain.models.ai_run import AIRun
 from repositories.ai_run_repository import AIRunRepository
-from core.database import db
 
 router = APIRouter(tags=["AI Agents"])
 

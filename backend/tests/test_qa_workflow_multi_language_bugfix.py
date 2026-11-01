@@ -13,9 +13,7 @@ The test explores four bug conditions:
 4. Only one QA workflow should exist (no duplicates)
 """
 
-import os
 import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List
 import pytest
@@ -804,7 +802,7 @@ def test_preservation_python_only_project_property(
             expected_command = "pytest tests -q --junitxml=test-results.xml"
         
         # Create test files
-        (test_dir / "test_sample.py").write_text(f"""
+        (test_dir / "test_sample.py").write_text("""
 def test_sample():
     assert True
 """)

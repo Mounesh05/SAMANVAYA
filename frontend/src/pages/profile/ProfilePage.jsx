@@ -4,7 +4,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
-import { User, Mail, Shield, Building2, GitPullRequest, KeyRound, LogOut } from 'lucide-react';
+import { Mail, Shield, Building2, GitPullRequest, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function ProfilePage() {

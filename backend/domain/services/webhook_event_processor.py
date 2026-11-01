@@ -491,10 +491,6 @@ class WebhookEventProcessor:
     
     async def _handle_issues_event(self, event: WebhookEvent) -> Dict[str, Any]:
         """Handle issues events (bug reports)."""
-        payload = event.payload
-        action = event.event_action
-        issue = payload.get("issue", {})
-        
         # Track bug creation/updates
         # TODO: Phase 2.1 - Link bugs to PRs/code changes
         
@@ -520,9 +516,6 @@ class WebhookEventProcessor:
         
         Critical for operational risk tracking.
         """
-        payload = event.payload
-        deployment = payload.get("deployment", {})
-        
         # Track deployment attempts
         # TODO: Phase 2.1 - Link deployments to PRs
         # TODO: Phase 2.3 - Integrate with CI/CD platforms
@@ -695,7 +688,7 @@ class WebhookEventProcessor:
             notification = await self.notification_service.notify(
                 user_id=pr_author,
                 notification_type="pr_risk_feedback",
-                title=f"âš ï¸ Risk detected in your PR",
+                title="âš ï¸ Risk detected in your PR",
                 body=f"Recommendation: {rec_text}",
                 link=f"/pr/{pr_data['id']}"
             )
@@ -735,5 +728,4 @@ class WebhookEventProcessor:
             notification_ids.append(notification["id"])
         
         return notification_ids
-
 

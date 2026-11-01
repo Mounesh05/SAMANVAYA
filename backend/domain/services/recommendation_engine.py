@@ -194,7 +194,6 @@ class RecommendationEngine:
         recs = []
         
         security_findings = quality_report.get("security_findings", {})
-        complexity_metrics = quality_report.get("complexity_metrics", {})
         
         # Security recommendations
         critical_security = security_findings.get("critical_count") or 0  # Count can be 0
@@ -369,4 +368,3 @@ class RecommendationEngine:
             await self.repo.link_to_pr(recommendation_id, pr_id)
         
         return updated
-

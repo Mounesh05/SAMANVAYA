@@ -12,7 +12,6 @@ Authorization hierarchy (highest to lowest access):
 """
 
 from fastapi import HTTPException
-from typing import Optional
 from repositories.task_repository import TaskRepository
 from repositories.project_repository import ProjectRepository
 from repositories.story_repository import StoryRepository

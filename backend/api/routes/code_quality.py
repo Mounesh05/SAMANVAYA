@@ -26,7 +26,7 @@ from core.authorization import get_accessible_project_ids, verify_project_access
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
 from intelligence.analyzers.language_detector import LanguageDetector
-from intelligence.analyzers.registry import get_analyzer, list_supported_languages
+from intelligence.analyzers.registry import list_supported_languages
 
 router = APIRouter()
 cq_service = CodeQualityService()
@@ -288,7 +288,6 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
     Heavy analysis executed in the background.
     Updates the run document with results when complete.
     """
-    import time
     collection = col(RUNS_COLLECTION)
     findings_col = col(FINDINGS_COLLECTION)
 

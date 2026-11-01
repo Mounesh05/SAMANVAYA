@@ -20,7 +20,6 @@ class EntityRelationshipRepository:
     
     def _ensure_indexes(self):
         """Create indexes for graph queries."""
-        import asyncio
         # These will be created when first accessed
         self._indexes_to_create = [
             ("source_type", "source_id"),
@@ -37,7 +36,7 @@ class EntityRelationshipRepository:
     
     async def insert(self, relationship: Dict[str, Any]) -> str:
         """Insert a new relationship."""
-        result = await self.collection.insert_one(relationship)
+        await self.collection.insert_one(relationship)
         return relationship["id"]
     
     async def find_by_id(self, relationship_id: str) -> Optional[Dict[str, Any]]:
@@ -288,4 +287,3 @@ class EntityRelationshipRepository:
             }}
         )
         return result.modified_count > 0
-

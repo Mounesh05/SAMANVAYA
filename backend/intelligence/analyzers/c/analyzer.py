@@ -5,11 +5,9 @@ Separate from C++ — C analysis focuses on memory safety, pointer issues, C89/C
 """
 
 import asyncio
-import json
 import re
-import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from intelligence.analyzers.base import BaseAnalyzer
 from intelligence.analyzers.common.complexity import analyze_complexity

@@ -5,10 +5,8 @@ Tool chain: ruff → mypy → radon → pip-audit → ast fallback
 
 import asyncio
 import json
-import subprocess
-import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from intelligence.analyzers.base import BaseAnalyzer
 from intelligence.analyzers.common.complexity import analyze_complexity

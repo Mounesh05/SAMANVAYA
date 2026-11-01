@@ -6,7 +6,6 @@ Performs health checks and starts uvicorn server.
 
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # Ensure UTF-8 output in Windows consoles

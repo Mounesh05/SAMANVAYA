@@ -6,7 +6,7 @@ They are role-specific and prioritized by impact.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from datetime import datetime, timezone
 from enum import Enum
 

@@ -4,9 +4,8 @@ Exposes Layer 5 (Intelligence Engine) capabilities for testing and use.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import require_roles
 from intelligence.risk_engine import RiskEngine
-from typing import Optional
 
 router = APIRouter()
 risk_engine = RiskEngine()
@@ -55,7 +54,7 @@ async def analyze_pr(
             current_coverage=data.get("current_coverage"),
         )
         return evidence
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -89,7 +88,7 @@ async def analyze_sprint(
             stories_data=data if data else None,
         )
         return evidence
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -126,7 +125,7 @@ async def analyze_deployment(
             deployment_data=data.get("deployment_data"),
         )
         return evidence
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Query
 from core.dependencies import require_roles
 from repositories.project_repository import ProjectRepository
 from repositories.sprint_repository import SprintRepository
-from repositories.story_repository import StoryRepository
 from repositories.risk_repository import RiskRepository
 from domain.services.sprint_service import SprintService
 
@@ -91,7 +90,6 @@ async def project_health(
     This is the PM's main view of project execution.
     """
     sprint_repo = SprintRepository()
-    story_repo = StoryRepository()
     risk_repo = RiskRepository()
     sprint_service = SprintService()
     

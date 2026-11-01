@@ -13,12 +13,12 @@ This is the core of Phase 1.2.
 
 import uuid
 import re
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
 from domain.models.entity_relationship import (
     EntityType, RelationshipType, EntityRelationship,
-    EntityNode, BlastRadius, HotspotFile, TraceabilityPath
+    EntityNode, BlastRadius, HotspotFile
 )
 from repositories.entity_relationship_repository import EntityRelationshipRepository
 from repositories.pr_repository import PRRepository

@@ -12,7 +12,7 @@ import logging
 import time
 import tempfile
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from intelligence.risk_engine import RiskEngine
 from domain.models.code_quality_report import CodeQualityReport, QualityBreakdown

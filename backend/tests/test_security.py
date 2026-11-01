@@ -12,8 +12,6 @@ from core.security import (
     decode_token,
     revoke_token,
     is_token_revoked,
-    _cleanup_expired_revocations,
-    _revoked_tokens,
 )
 from core.config import settings
 

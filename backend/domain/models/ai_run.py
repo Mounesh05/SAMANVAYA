@@ -4,7 +4,7 @@ AI Runs represent agent executions with evidence, analysis, and recommendations.
 """
 
 from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict
 from datetime import datetime
 
 

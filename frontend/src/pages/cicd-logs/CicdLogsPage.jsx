@@ -7,7 +7,7 @@ import { Button } from '../../components/common/Button';
 import { Select } from '../../components/common/Select';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
-import { Terminal, Sparkles, AlertTriangle, ShieldCheck, CheckCircle2, Flame } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 
 export function CicdLogsPage() {
   const [logType, setLogType] = useState('build');

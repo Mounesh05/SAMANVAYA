@@ -32,7 +32,7 @@ async def create_project(
             project_data, created_by=user["employee_id"]
         )
         return project
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

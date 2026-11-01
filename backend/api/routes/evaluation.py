@@ -6,7 +6,7 @@ Requires authentication for all endpoints.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import require_roles
 import asyncio
 import json
 import time

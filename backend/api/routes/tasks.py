@@ -37,7 +37,7 @@ async def create_task(
     try:
         task = await task_service.create_task(task_data)
         return task
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

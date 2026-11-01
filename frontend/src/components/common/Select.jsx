@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 
 export const Select = forwardRef(function Select(
   {
@@ -14,7 +14,8 @@ export const Select = forwardRef(function Select(
   },
   ref
 ) {
-  const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const selectId = id || generatedId;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%' }}>

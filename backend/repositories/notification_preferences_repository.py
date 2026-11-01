@@ -16,7 +16,7 @@ class NotificationPreferencesRepository:
     
     async def upsert(self, user_id: str, preferences: Dict[str, Any]) -> bool:
         """Create or update preferences."""
-        result = await self.collection.update_one(
+        await self.collection.update_one(
             {"user_id": user_id},
             {"$set": preferences},
             upsert=True

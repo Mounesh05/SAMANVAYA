@@ -12,7 +12,7 @@ import { SearchInput } from '../../components/common/SearchInput';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { UserPlus, Edit, Trash2, Users, Shield } from 'lucide-react';
+import { UserPlus, Edit, Trash2 } from 'lucide-react';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
 
 export function EmployeesPage() {

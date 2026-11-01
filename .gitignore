@@ -1,15 +1,32 @@
-# ============================================================================
-# Samanvaya - Clean .gitignore
-# ============================================================================
+# Samanvaya repository-wide ignore rules
+# Keep source files, configuration templates, and reproducible build inputs tracked.
 
+# ------------------------------------------------------------------------------
 # Python
+# ------------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+*$py.class
 *.so
 .Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.direnv/
+
+# Packaging and distribution
 build/
-develop-eggs/
 dist/
+*.egg-info/
+*.egg
+*.whl
+pip-wheel-metadata/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -17,106 +34,164 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
 share/python-wheels/
-*.egg-info/
-.installed.cfg/
-*.egg
+.installed.cfg
 MANIFEST
-*.manifest
-*.spec
-pip-log.txt
-pip-delete-this-directory.txt
-htmlcov/
+
+# Python tooling and test output
+.pytest_cache/
 .tox/
 .nox/
 .coverage
 .coverage.*
-.cache
-nosetests.xml
 coverage.xml
-*.cover
+htmlcov/
 .hypothesis/
-.cover/
-*.py,cover
-*.mo
-*.pot
-*.log
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+.pylint.d/
+.pybuilder/
+.cache/
+.ipynb_checkpoints/
+*.sage.py
+profile_default/
+ipython_config.py
+
+# Python local configuration and runtime data
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 instance/
-.webassets-cache
-.scrapy
-docs/_build/
-.pybuilder/
-target/
-.ipynb_checkpoints
-profile_default/
-ipython_config.py
+.webassets-cache/
+.scrapy/
+celerybeat-schedule
+celerybeat.pid
+
+# Python dependency-manager state
 .python-version
 Pipfile.lock
 poetry.lock
+pdm.lock
 .pdm.toml
 __pypackages__/
-celerybeat-schedule
-celerybeat.pid
-*.sage.py
 
-# Node.js / JavaScript
+# ------------------------------------------------------------------------------
+# Node.js and frontend tooling
+# ------------------------------------------------------------------------------
 node_modules/
+.npm/
+.pnpm-store/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
-report.*.json
-pids
+pnpm-debug.log*
+lerna-debug.log*
 *.pid
 *.seed
 *.pid.lock
-lib-cov
-coverage
-*.lcov
-.nyc_output
-.grunt
-bower_components
-.lock-wscript
-build/Release
-jspm_packages/
-*.tsbuildinfo
-.npm
-.eslintcache
-.stylelintcache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd
-.node_repl_history
-*.tgz
-.yarn-integrity
-.parcel-cache
-.next
-.nuxt
-.cache
-public
-.vuepress/dist
-.temp
-.docusaurus
-.serverless/
-.fusebox/
-.dynamodb/
-.tern-port
-.vscode-test
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
+pids/
 
-# IDEs and Editors
-.vscode/
-*.code-workspace
+# Frontend build and bundler output
+dist/
+dist-ssr/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+.vite/
+.parcel-cache/
+.cache/
+.temp/
+.tmp/
+.docusaurus/
+.vuepress/dist/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+*.lcov
+report.*.json
+npm-audit.json
+
+# Package-manager metadata and caches
+.eslintcache
+.eslintcache/
+.stylelintcache
+.yarn/
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/versions/
+.pnp.*
+.yarn-integrity
+*.tgz
+
+# ------------------------------------------------------------------------------
+# Environment variables and secrets
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+secrets/
+credentials/
+
+# ------------------------------------------------------------------------------
+# Databases, local data, logs, and temporary files
+# ------------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# Local application data
+data/db/
+mongodb/
+uploads/
+media/
+model_cache/
+/models/
+
+# ------------------------------------------------------------------------------
+# Operating systems and editors
+# ------------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Icon
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
+
 .idea/
 *.iml
 *.iws
@@ -126,124 +201,25 @@ public
 .settings/
 *.sublime-project
 *.sublime-workspace
-*~
-.tags
-.netrwhist
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.DocumentRevisions-V100
-.fseventsd
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-.apdisk
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.stackdump
-desktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
+*.code-workspace
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.vscode-test/
 
-# Project Specific
-.env
-.env.local
-.env.*.local
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Secrets and Environment Variables
-!.env.example
-*.key
-*.pem
-*.crt
-secrets/
-credentials/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-*.db-journal
-
-# Logs and Temporary Files
-logs/
-temp/
-tmp/
-*.tmp
-*.temp
-*.bak
-*.backup
-*.swp
-*.swo
-
-# Build and Distribution
-build/
-dist/
-*.whl
-
-# Cache directories
-.cache/
-.ruff_cache/
-.pylint.d/
-.mypy_cache/
-
-# MongoDB data (if running locally)
-data/db/
-mongodb/
-
-# Temporary code analysis files
+# ------------------------------------------------------------------------------
+# Repository-local generated analysis artifacts
+# ------------------------------------------------------------------------------
 verify_*.py
 check_*.py
 analyze_*.py
-
-# Generated reports and summaries
 *_REPORT.md
 *_SUMMARY.txt
 *_ANALYSIS.md
 IMPLEMENTATION_*.txt
 PHASE_*.txt
 DEPLOYMENT_*.md
-
-# Temporary repositories for analysis
 temp_repo/
 samanvaya-repo-*/
-
-# AI model caches (if any)
-models/
-# ...but never ignore the application's own domain models
-!backend/domain/models/
-model_cache/
-
-# Uploaded files (if storing locally)
-uploads/
-media/
-
-# ============================================================================
-# END
-# ============================================================================

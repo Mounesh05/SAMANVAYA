@@ -508,7 +508,7 @@ class DeveloperDataAggregator:
         output = []
         
         output.append("=" * 60)
-        output.append(f"DEVELOPER PERFORMANCE DATA")
+        output.append("DEVELOPER PERFORMANCE DATA")
         output.append("=" * 60)
         output.append(f"Developer ID: {evidence['developer_id']}")
         output.append(f"Period: {evidence['period']['start']} to {evidence['period']['end']}")

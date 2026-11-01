@@ -5,7 +5,7 @@ Agents that can use tools to investigate, retrieve evidence, and take actions.
 Built on LangChain for structured tool calling.
 """
 
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Callable
 from enum import Enum
 import logging
 

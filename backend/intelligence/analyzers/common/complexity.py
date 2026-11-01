@@ -8,10 +8,9 @@ Never raises on missing tools — degrades gracefully.
 
 import asyncio
 import json
-import subprocess
 import ast
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 import shutil
 
 from intelligence.evidence.models import ComplexityEvidence

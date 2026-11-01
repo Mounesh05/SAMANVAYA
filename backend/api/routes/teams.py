@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 from core.database import col
 from repositories.user_repository import UserRepository
-from core.dependencies import get_current_user, require_admin, require_permission
+from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission, get_user_permissions
 from core.audit import log_audit, AuditAction
 from core.authorization import verify_team_access
@@ -152,7 +152,7 @@ async def create_team(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -228,7 +228,7 @@ async def list_teams(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -297,7 +297,7 @@ async def get_team(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -346,7 +346,7 @@ async def get_team_members(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -480,7 +480,7 @@ async def update_team(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -543,7 +543,7 @@ async def add_team_member(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -603,7 +603,7 @@ async def remove_team_member(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -695,5 +695,5 @@ async def assign_team_lead(
         
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")

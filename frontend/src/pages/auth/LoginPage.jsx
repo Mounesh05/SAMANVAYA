@@ -5,8 +5,7 @@ import { authApi } from '../../api/auth.api';
 import { Card } from '../../components/common/Card';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
-import { Shield, Sparkles, AlertCircle, KeyRound, Mail, UserCheck } from 'lucide-react';
-import { ROLES } from '../../utils/constants';
+import { Shield, AlertCircle, KeyRound, Mail, UserCheck } from 'lucide-react';
 
 export function LoginPage() {
   const [activeTab, setActiveTab] = useState('simple'); // 'simple' | 'full'

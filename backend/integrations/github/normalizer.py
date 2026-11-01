@@ -4,7 +4,7 @@ Converts raw GitHub API responses to Samanvaya domain models.
 """
 
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import uuid
 
 

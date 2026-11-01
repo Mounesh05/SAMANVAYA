@@ -29,7 +29,6 @@ from intelligence.evidence.models import (
     CICDEvidence,
     AnalysisQuality,
     AnalysisLevelEnum,
-    Finding,
 )
 
 logger = logging.getLogger(__name__)

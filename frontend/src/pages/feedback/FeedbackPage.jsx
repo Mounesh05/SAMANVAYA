@@ -8,7 +8,7 @@ import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Select } from '../../components/common/Select';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
-import { MessageSquareQuote, CheckCircle2, Star, Send } from 'lucide-react';
+import { CheckCircle2, Star, Send } from 'lucide-react';
 
 export function FeedbackPage() {
   const { user } = useAuthStore();

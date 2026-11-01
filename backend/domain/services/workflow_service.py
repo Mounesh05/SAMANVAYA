@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from domain.models.workflow import (
-    WORKFLOWS, StatusTransition, ALL_TASK_STATUSES, ALL_STORY_STATUSES
+    WORKFLOWS, StatusTransition
 )
 from repositories.task_repository import TaskRepository
 from repositories.story_repository import StoryRepository

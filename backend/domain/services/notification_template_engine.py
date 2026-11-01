@@ -4,7 +4,7 @@ Notification Template System - Phase 1.4
 Provides rich, role-aware notification templates with customization.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from enum import Enum
 
 
@@ -187,7 +187,7 @@ class NotificationTemplateEngine:
         try:
             title = role_template["title"].format(**context)
             body = role_template["body"].format(**context)
-        except KeyError as e:
+        except KeyError:
             # Missing context variable, use placeholder
             title = role_template["title"]
             body = role_template["body"]

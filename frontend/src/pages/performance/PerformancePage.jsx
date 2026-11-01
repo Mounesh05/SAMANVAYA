@@ -11,7 +11,7 @@ import { Button } from '../../components/common/Button';
 import { Select } from '../../components/common/Select';
 import { ProgressBar } from '../../components/common/ProgressBar';
 import { LoadingState } from '../../components/common/LoadingState';
-import { ErrorState } from '../../components/common/ErrorState';
+
 import { EmptyState } from '../../components/common/EmptyState';
 import { Play, Sparkles } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
@@ -54,7 +54,6 @@ export function PerformancePage() {
     data: dashboardData,
     isLoading,
     error,
-    refetch,
   } = useQuery({
     queryKey: ['developer-performance', selectedDevId],
     queryFn: () => performanceApi.getDeveloperDashboard(selectedDevId),

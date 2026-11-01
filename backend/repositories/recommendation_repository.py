@@ -14,7 +14,7 @@ class RecommendationRepository:
     
     async def insert(self, recommendation: Dict[str, Any]) -> str:
         """Insert a new recommendation."""
-        result = await self.collection.insert_one(recommendation)
+        await self.collection.insert_one(recommendation)
         return recommendation["id"]
     
     async def find_by_id(self, recommendation_id: str) -> Optional[Dict[str, Any]]:

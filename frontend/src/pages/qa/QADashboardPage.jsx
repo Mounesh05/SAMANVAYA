@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   CheckCircle2,
   Bug,
-  AlertTriangle,
   MessageSquareQuote,
   Flame,
   ArrowRight,

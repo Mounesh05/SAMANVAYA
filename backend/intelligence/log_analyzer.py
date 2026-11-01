@@ -7,7 +7,7 @@ This prepares evidence for the CI/CD Agent (Layer 6) to interpret.
 """
 
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime, timezone
 
 

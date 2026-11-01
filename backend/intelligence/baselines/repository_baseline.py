@@ -13,7 +13,7 @@ Collection: `repository_baselines`
 
 import math
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict
 
 from core.database import col
 

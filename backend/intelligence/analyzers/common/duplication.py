@@ -10,7 +10,7 @@ Produces DuplicationEvidence consumed by QualityEngine.
 import hashlib
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 from intelligence.evidence.models import DuplicationEvidence
 

@@ -9,8 +9,6 @@ import {
   ChevronRight,
   User,
   Shield,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';

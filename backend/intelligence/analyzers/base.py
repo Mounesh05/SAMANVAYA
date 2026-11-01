@@ -10,9 +10,9 @@ Key design decisions:
 
 import shutil
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List
 
-from intelligence.evidence.models import AnalysisLevelEnum, CodeQualityEvidence
+from intelligence.evidence.models import CodeQualityEvidence
 
 
 class BaseAnalyzer(ABC):

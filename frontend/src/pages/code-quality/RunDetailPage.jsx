@@ -10,7 +10,7 @@ import { RiskBadge } from '../../components/common/RiskBadge';
 import { Select } from '../../components/common/Select';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { ArrowLeft, ShieldCheck, AlertTriangle, FileCode, CheckCircle, Terminal } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 
 export function RunDetailPage() {

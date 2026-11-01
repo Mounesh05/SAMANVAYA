@@ -8,7 +8,7 @@ import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { Users, Building2, UserCheck, ArrowLeft, MessageSquareQuote, Award } from 'lucide-react';
+import { Users, UserCheck, ArrowLeft, MessageSquareQuote, Award } from 'lucide-react';
 import { ROLE_LABELS } from '../../utils/constants';
 
 export function TeamDetailPage() {

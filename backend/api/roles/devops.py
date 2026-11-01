@@ -6,7 +6,6 @@ Shows: Pipeline health, deployment status, infrastructure, incidents.
 from fastapi import APIRouter, Depends
 from core.dependencies import require_roles
 from core.database import col
-from datetime import datetime, timezone
 
 
 async def _devops_snapshot():

@@ -5,9 +5,7 @@ Handles authenticated requests to GitHub REST API.
 
 import httpx
 import base64
-import json
 from typing import Dict, Any, Optional, List
-from datetime import datetime
 from core.config import settings
 from nacl.public import PublicKey, SealedBox
 

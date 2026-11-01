@@ -8,11 +8,9 @@ import hashlib
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from core.config import settings
 from domain.services.enhanced_notification_service import EnhancedNotificationService
-from domain.services.notification_template_engine import NotificationTemplate
 from repositories.activity_repository import ActivityRepository
 from repositories.pr_repository import PRRepository
 

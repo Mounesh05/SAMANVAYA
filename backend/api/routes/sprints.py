@@ -30,7 +30,7 @@ async def create_sprint(
     try:
         sprint = await sprint_service.create_sprint(sprint_data)
         return sprint
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

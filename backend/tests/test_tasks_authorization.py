@@ -8,7 +8,6 @@ ensuring users can only access tasks in their assigned projects.
 import pytest
 from unittest.mock import AsyncMock, patch
 from fastapi import HTTPException
-from api.routes.tasks import router
 from domain.services.task_service import TaskService
 from domain.services.workflow_service import WorkflowService
 

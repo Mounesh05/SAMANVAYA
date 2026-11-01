@@ -39,7 +39,7 @@ async def get_user_recommendations(
             "recommendations": recs,
             "count": len(recs)
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -65,7 +65,7 @@ async def get_role_recommendations(
             "recommendations": recs,
             "count": len(recs)
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -118,7 +118,7 @@ async def get_entity_recommendations(
             "recommendations": recs,
             "count": len(recs)
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -151,7 +151,7 @@ async def accept_recommendation(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -184,7 +184,7 @@ async def reject_recommendation(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -217,7 +217,7 @@ async def mark_recommendation_implemented(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -243,5 +243,5 @@ async def get_recommendation(
         return rec
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")

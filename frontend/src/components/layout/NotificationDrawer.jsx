@@ -1,16 +1,15 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '../../api/notifications.api';
-import { X, CheckCheck, Bell, ExternalLink, Clock } from 'lucide-react';
+import { X, CheckCheck, Bell, Clock } from 'lucide-react';
 import { timeAgo } from '../../utils/dates';
 import { LoadingState } from '../common/LoadingState';
 import { EmptyState } from '../common/EmptyState';
-import { Button } from '../common/Button';
 
 export function NotificationDrawer({ isOpen, onClose }) {
   const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['notifications', 'list'],
     queryFn: () => notificationsApi.list(50),
     enabled: isOpen,

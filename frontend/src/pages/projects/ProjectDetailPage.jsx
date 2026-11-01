@@ -10,15 +10,12 @@ import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
 import { Tabs } from '../../components/common/Tabs';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import {
   FolderGit2,
   Layers,
   ListTodo,
-  ShieldCheck,
-  Activity,
   ArrowLeft,
   Plus,
   KanbanSquare,

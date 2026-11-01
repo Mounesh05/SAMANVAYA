@@ -10,7 +10,7 @@ Runs on every file type regardless of language.
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 from intelligence.evidence.models import Finding, SeverityEnum
 

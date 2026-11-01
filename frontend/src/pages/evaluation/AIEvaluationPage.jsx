@@ -7,8 +7,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { LoadingState } from '../../components/common/LoadingState';
 import { useToast } from '../../components/common/Toast';
-import { Cpu, Sparkles, CheckCircle2, Award } from 'lucide-react';
-import { formatScore } from '../../utils/formatters';
+import { Cpu } from 'lucide-react';
 
 export function AIEvaluationPage() {
   const toast = useToast();

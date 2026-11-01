@@ -15,7 +15,6 @@ import {
   ShieldAlert,
   Award,
   Sparkles,
-  ArrowRight,
   FileBarChart,
   Activity,
 } from 'lucide-react';

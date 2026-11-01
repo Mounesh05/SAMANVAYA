@@ -5,7 +5,7 @@ All endpoints require JWT authentication.
 Users can only access their own notification preferences.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from domain.models.notification_preferences import NotificationPreferences
 from repositories.notification_preferences_repository import NotificationPreferencesRepository
 from core.dependencies import get_current_user

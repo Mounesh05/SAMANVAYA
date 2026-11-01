@@ -2,12 +2,10 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rolesApi } from '../../api/roles.api';
-import { useAuthStore } from '../../store/useAuthStore';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { MetricCard } from '../../components/common/MetricCard';
 import { Card } from '../../components/common/Card';
 import { Table } from '../../components/common/Table';
-import { StatusBadge } from '../../components/common/StatusBadge';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
@@ -16,14 +14,11 @@ import {
   Users,
   GitPullRequest,
   AlertTriangle,
-  Layers,
   MessageSquareQuote,
   ShieldAlert,
-  ArrowRight,
 } from 'lucide-react';
 
 export function LeadDashboardPage() {
-  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   const { data, isLoading, error, refetch } = useQuery({

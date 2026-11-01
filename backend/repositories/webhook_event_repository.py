@@ -14,7 +14,7 @@ class WebhookEventRepository:
     
     async def insert(self, event: Dict[str, Any]) -> str:
         """Insert a new webhook event."""
-        result = await self.collection.insert_one(event)
+        await self.collection.insert_one(event)
         return event["id"]
     
     async def find_by_id(self, event_id: str) -> Optional[Dict[str, Any]]:

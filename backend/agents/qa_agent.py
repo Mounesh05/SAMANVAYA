@@ -20,7 +20,6 @@ def qa_analysis_node(state: AgentState) -> Dict[str, Any]:
         Updated state with QA analysis and recommendations
     """
     evidence = state.get("evidence", {})
-    context = state.get("context", {})
     
     prompt = f"""You are a QA engineer analyzing test coverage and quality.
 

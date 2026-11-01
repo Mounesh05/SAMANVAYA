@@ -118,7 +118,7 @@ Files: {len(commit.get('files_changed', []))}
 """
         
         # Add PR details with conversations
-        prompt += f"""
+        prompt += """
 === PULL REQUESTS ===
 """
         for i, pr in enumerate(prs[:5], 1):
@@ -135,7 +135,7 @@ Description: {pr.get('description', 'No description')[:300]}
                 prompt += f"Reviews: {len(pr['reviews'])} reviews received\n"
         
         # Add task details
-        prompt += f"""
+        prompt += """
 === TASKS & DELIVERABLES ===
 """
         for i, task in enumerate(tasks[:10], 1):
@@ -148,7 +148,7 @@ Description: {task.get('description', '')[:200]}
 """
         
         # Now ask AI to evaluate
-        prompt += f"""
+        prompt += """
 
 === YOUR EVALUATION TASK ===
 
@@ -195,37 +195,37 @@ Evaluate:
    • Do they consider trade-offs?
 
 OUTPUT FORMAT (JSON only):
-{{
-  "code_quality": {{
+{
+  "code_quality": {
     "score": <0-25>,
     "reasoning": "<specific observations from code>"
-  }},
-  "delivery": {{
+  },
+  "delivery": {
     "score": <0-20>,
     "reasoning": "<specific observations from tasks>"
-  }},
-  "collaboration": {{
+  },
+  "collaboration": {
     "score": <0-15>,
     "reasoning": "<specific observations from PRs>"
-  }},
-  "reliability": {{
+  },
+  "reliability": {
     "score": <0-15>,
     "reasoning": "<specific observations from tests/bugs>"
-  }},
-  "engineering_impact": {{
+  },
+  "engineering_impact": {
     "score": <0-10>,
     "reasoning": "<business value assessment>"
-  }},
-  "engineering_judgment": {{
+  },
+  "engineering_judgment": {
     "score": <0-5>,
     "reasoning": "<pattern analysis>"
-  }},
+  },
   "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
   "weaknesses": ["<weakness 1>", "<weakness 2>"],
   "recommendations": ["<specific action 1>", "<specific action 2>", "<specific action 3>"],
   "overall_reasoning": "<2-3 sentence summary>",
   "confidence": "<low|medium|high>"
-}}
+}
 
 Be specific in your reasoning. Quote actual code examples when possible.
 Be fair but honest. Don't inflate scores.

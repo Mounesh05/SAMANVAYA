@@ -102,7 +102,7 @@ async def get_pr_relationships(
             "pr_id": pr_id,
             "relationships": relationships
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -122,7 +122,7 @@ async def get_pr_blast_radius(
             max_hops=max_hops
         )
         return blast_radius.dict()
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -142,7 +142,7 @@ async def get_task_prs(
             "prs": [pr.dict() for pr in prs],
             "count": len(prs)
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -185,7 +185,7 @@ async def get_file_history(
             limit=limit
         )
         return history
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -237,7 +237,7 @@ async def create_relationship(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid enum value: {str(e)}")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -281,5 +281,5 @@ async def get_entity_connections(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid entity type: {str(e)}")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")

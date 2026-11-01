@@ -17,11 +17,9 @@ import { ErrorState } from '../../components/common/ErrorState';
 import {
   ListTodo,
   CheckCircle2,
-  Clock,
   GitPullRequest,
   Sparkles,
   ArrowRight,
-  ShieldCheck,
   AlertTriangle,
   KanbanSquare,
 } from 'lucide-react';
@@ -45,7 +43,6 @@ export function DeveloperDashboardPage() {
   // Developer Performance data
   const {
     data: perfData,
-    isLoading: isPerfLoading,
   } = useQuery({
     queryKey: ['developer-performance', employeeId],
     queryFn: () => performanceApi.getDeveloperDashboard(employeeId),
