@@ -20,6 +20,12 @@ class TaskCreate(BaseModel):
     due_date: Optional[str] = None
 
 
+class TaskSprintUpdate(BaseModel):
+    """Request model for assigning a task to a sprint."""
+
+    sprint_id: Optional[str] = None
+
+
 class Task(TaskCreate):
     """Complete task model with status."""
     

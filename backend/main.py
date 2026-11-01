@@ -246,7 +246,7 @@ async def health_check():
 
 # ━━ Register API Routers ━━
 from api.routes import (
-    auth, projects, sprints, intelligence, stories, tasks, github, ai,
+    auth, projects, sprints, intelligence, stories, tasks, github, ai, setup,
     cicd_logs, qa_test_runs, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
     recommendations, traceability, risk_configurations,
@@ -255,6 +255,7 @@ from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
 # Core feature routes
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(setup.router, prefix="/api/setup", tags=["Local Setup"])
 app.include_router(employees.router, prefix="/api/employees", tags=["Employee Management"])
 app.include_router(teams.router, prefix="/api/teams", tags=["Team Management"])
 app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])

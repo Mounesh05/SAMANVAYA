@@ -16,6 +16,10 @@ export const authApi = {
     return apiClient.post('/auth/register', userData);
   },
 
+  initializeDemoAdmin: async (setupData) => {
+    return apiClient.post('/setup/initialize', setupData);
+  },
+
   // Current authenticated user profile
   getMe: async () => {
     return apiClient.get('/auth/me');

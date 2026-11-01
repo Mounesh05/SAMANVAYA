@@ -187,6 +187,22 @@ class TestListProjects:
             # Should see nothing
             assert len(result) == 0
 
+    async def test_developer_sees_projects_for_their_team(self):
+        """Developer sees active projects assigned to their team."""
+        user = create_user(role="DEVELOPER", team_id="TEAM-A")
+
+        with patch.object(ProjectService, "get_active_projects") as mock_get:
+            mock_get.return_value = [
+                {"id": "PRJ-A", "team_id": "TEAM-A"},
+                {"id": "PRJ-B", "team_id": "TEAM-B"},
+            ]
+
+            from api.routes.projects import list_projects
+
+            result = await list_projects("ORG-1", user=user)
+
+            assert [project["id"] for project in result] == ["PRJ-A"]
+
 
 # ── GET /projects/team/{team_id} Tests ────────────────────────────────────
 

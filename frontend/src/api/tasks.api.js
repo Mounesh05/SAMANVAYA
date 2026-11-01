@@ -25,6 +25,10 @@ export const tasksApi = {
     return apiClient.patch(`/tasks/${taskId}/status`, null, { params: { status } });
   },
 
+  updateSprint: async (taskId, sprintId) => {
+    return apiClient.patch(`/tasks/${taskId}/sprint`, { sprint_id: sprintId || null });
+  },
+
   transition: async (taskId, status, reason = null) => {
     return apiClient.patch(`/tasks/${taskId}/transition`, { status, reason });
   },

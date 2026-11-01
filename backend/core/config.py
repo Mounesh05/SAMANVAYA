@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # Public POST /api/auth/register (DEVELOPER role only). Off by default;
     # HR/admin create accounts via POST /api/employees instead.
     ALLOW_SELF_REGISTRATION: bool = False
+    DEMO_SETUP_SECRET: str = ""
 
     # ── AI / Ollama ───────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://localhost:11434"

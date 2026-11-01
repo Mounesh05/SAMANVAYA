@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { githubApi } from '../../api/github.api';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -21,6 +21,60 @@ export function GitHubSyncPage() {
 
   const [syncResult, setSyncResult] = useState(null);
   const [qaForm, setQaForm] = useState({ owner: '', repo: '', project_id: '' });
+  const [projectConfigForm, setProjectConfigForm] = useState({
+    project_id: 'PRJ-CF0346FA',
+    repository_owner: 'Mounesh05',
+    repository_name: 'campusconnect-demo',
+    repository_url: 'https://github.com/Mounesh05/campusconnect-demo',
+    default_branch: 'main',
+    employee_id: 'DEMO-MOUNESH',
+    github_username: 'Mounesh05',
+    branch: 'feature/mounesh-events',
+  });
+
+  const projectConfigQuery = useQuery({
+    queryKey: ['github', 'project-config', projectConfigForm.project_id],
+    queryFn: () => githubApi.getProjectConfig(projectConfigForm.project_id),
+    enabled: !!projectConfigForm.project_id,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (projectConfigQuery.data) {
+      const mapping = projectConfigQuery.data.developer_mappings?.[0] || {};
+      setProjectConfigForm((current) => ({
+        ...current,
+        ...projectConfigQuery.data,
+        employee_id: mapping.employee_id || current.employee_id,
+        github_username: mapping.github_username || current.github_username,
+        branch: mapping.branch || current.branch,
+      }));
+    }
+  }, [projectConfigQuery.data]);
+
+  const projectConfigMutation = useMutation({
+    mutationFn: (form) =>
+      githubApi.saveProjectConfig(form.project_id, {
+        project_id: form.project_id,
+        repository_owner: form.repository_owner,
+        repository_name: form.repository_name,
+        repository_url: form.repository_url,
+        default_branch: form.default_branch,
+        developer_mappings: [{
+          employee_id: form.employee_id,
+          github_username: form.github_username,
+          branch: form.branch,
+        }],
+      }),
+    onSuccess: (data) => {
+      projectConfigQuery.refetch();
+      setProjectConfigForm((current) => ({
+        ...current,
+        ...data,
+        ...(data.developer_mappings?.[0] || {}),
+      }));
+    },
+  });
 
   // Health check query
   const { data: health } = useQuery({
@@ -122,6 +176,52 @@ export function GitHubSyncPage() {
       </div>
 
       {/* Sync PR Form & Result */}
+      <Card
+        title="Project Repository Configuration"
+        subtitle="Validate and persist the repository and verified developer branch mapping."
+        style={{ marginBottom: '1.5rem' }}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            projectConfigMutation.mutate(projectConfigForm);
+          }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}
+        >
+          {[
+            ['project_id', 'Project ID'],
+            ['repository_owner', 'Repository Owner'],
+            ['repository_name', 'Repository Name'],
+            ['repository_url', 'Repository URL'],
+            ['default_branch', 'Default Branch'],
+            ['employee_id', 'Employee ID'],
+            ['github_username', 'GitHub Username'],
+            ['branch', 'Developer Branch'],
+          ].map(([field, label]) => (
+            <Input
+              key={field}
+              label={label}
+              value={projectConfigForm[field]}
+              onChange={(e) => setProjectConfigForm({ ...projectConfigForm, [field]: e.target.value })}
+              required
+            />
+          ))}
+          <Button type="submit" variant="primary" isLoading={projectConfigMutation.isPending}>
+            Validate & Save Configuration
+          </Button>
+        </form>
+        {projectConfigMutation.isSuccess && (
+          <div style={{ marginTop: '1rem', color: 'var(--success)', fontSize: '0.875rem' }}>
+            Repository and branch mapping saved.
+          </div>
+        )}
+        {projectConfigMutation.isError && (
+          <div style={{ marginTop: '1rem', color: 'var(--danger)', fontSize: '0.875rem' }}>
+            Configuration failed: {projectConfigMutation.error?.response?.data?.detail || projectConfigMutation.error?.message}
+          </div>
+        )}
+      </Card>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
         <Card title="Synchronize Single PR" subtitle="Fetch PR metadata and analyze risk">
           <form onSubmit={handleSync} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

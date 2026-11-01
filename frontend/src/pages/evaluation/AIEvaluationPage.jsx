@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { evaluationApi } from '../../api/evaluation.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
@@ -12,6 +12,7 @@ import { Cpu } from 'lucide-react';
 export function AIEvaluationPage() {
   const toast = useToast();
   const [formData, setFormData] = useState({
+    employee_id: '',
     github_username: '',
     repo_owner: '',
     repo_name: '',
@@ -21,13 +22,23 @@ export function AIEvaluationPage() {
   });
 
   const [evalResult, setEvalResult] = useState(null);
+  const latestEvaluation = useQuery({
+    queryKey: ['latest-evaluation'],
+    queryFn: evaluationApi.getLatest,
+  });
+
+  useEffect(() => {
+    if (latestEvaluation.data) {
+      setEvalResult(latestEvaluation.data);
+    }
+  }, [latestEvaluation.data]);
 
   const evalMutation = useMutation({
     mutationFn: (data) =>
       evaluationApi.evaluateDeveloperAI({
         ...data,
         pr_number: data.pr_number ? parseInt(data.pr_number, 10) : null,
-        human_score: parseFloat(data.human_score),
+        human_score: data.human_score ? parseFloat(data.human_score) : null,
       }),
     onSuccess: (res) => {
       setEvalResult(res);
@@ -47,6 +58,10 @@ export function AIEvaluationPage() {
       toast.error('GitHub username is required');
       return;
     }
+    if (!formData.employee_id.trim()) {
+      toast.error('Employee ID is required');
+      return;
+    }
     if (!formData.repo_owner.trim()) {
       toast.error('Repository owner is required');
       return;
@@ -55,7 +70,7 @@ export function AIEvaluationPage() {
       toast.error('Repository name is required');
       return;
     }
-    if (!formData.human_score || formData.human_score < 1 || formData.human_score > 10) {
+    if (formData.human_score && (formData.human_score < 1 || formData.human_score > 10)) {
       toast.error('Human baseline score must be between 1 and 10');
       return;
     }
@@ -74,6 +89,14 @@ export function AIEvaluationPage() {
         {/* Input Form Card */}
         <Card title="Evaluation Parameters" subtitle="GitHub repository & developer details">
           <form onSubmit={handleEvaluate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <Input
+              label="Employee ID"
+              value={formData.employee_id}
+              onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+              placeholder="e.g. DEMO-MOUNESH"
+              required
+            />
+
             <Input
               label="Developer GitHub Username"
               value={formData.github_username}
@@ -110,14 +133,13 @@ export function AIEvaluationPage() {
                 placeholder="e.g. 42"
               />
               <Input
-                label="Human Baseline Score (1-10)"
+                label="Human Baseline Score (1-10, optional)"
                 type="number"
                 step="0.1"
                 min="1"
                 max="10"
                 value={formData.human_score}
                 onChange={(e) => setFormData({ ...formData, human_score: e.target.value })}
-                required
               />
             </div>
 
@@ -138,6 +160,16 @@ export function AIEvaluationPage() {
             <LoadingState message="Analyzing commits, PRs, and running LLM evaluation..." />
           ) : evalResult ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {evalResult.is_preliminary && (
+                <div style={{ padding: '0.75rem', color: 'var(--warning)', backgroundColor: 'var(--bg-elevated)' }}>
+                  Preliminary evaluation. Review evidence coverage before using this result.
+                </div>
+              )}
+              {evalResult.unsupported_references?.length > 0 && (
+                <div style={{ padding: '0.75rem', color: 'var(--danger)', backgroundColor: 'var(--bg-elevated)' }}>
+                  Evidence validation warning: {evalResult.unsupported_references.length} unsupported reference(s) were detected.
+                </div>
+              )}
               <div
                 style={{
                   display: 'flex',
@@ -153,7 +185,7 @@ export function AIEvaluationPage() {
                     OVERALL EVALUATION
                   </span>
                   <div style={{ fontSize: '2rem', fontWeight: '900', color: 'var(--cyan)' }}>
-                    {evalResult.overall_score} / 10
+                    {evalResult.overall_score == null ? 'Insufficient evidence' : `${evalResult.overall_score} / 10`}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -166,6 +198,24 @@ export function AIEvaluationPage() {
                 </div>
               </div>
 
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                <strong>{evalResult.repo_owner}/{evalResult.repo_name}</strong>
+                {evalResult.pr_number ? ` · PR #${evalResult.pr_number}` : ''}
+                {evalResult.repo_info?.pr_title ? ` · ${evalResult.repo_info.pr_title}` : ''}
+                <div>Focus: {evalResult.evaluation_focus || 'code_quality'}</div>
+              </div>
+
+              {evalResult.evidence_coverage && (
+                <div>
+                  <h4>Evidence Coverage</h4>
+                  <ul>
+                    {Object.entries(evalResult.evidence_coverage).map(([name, status]) => (
+                      <li key={name}>{name.replaceAll('_', ' ')}: {status.replaceAll('_', ' ')}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {evalResult.recommendations && evalResult.recommendations.length > 0 && (
                 <div>
                   <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
@@ -176,6 +226,38 @@ export function AIEvaluationPage() {
                       <li key={idx}>{rec}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {evalResult.ai_analysis?.strengths?.length > 0 && (
+                <div>
+                  <h4>Strengths</h4>
+                  <ul>{evalResult.ai_analysis.strengths.map((item, idx) => <li key={idx}>{item}</li>)}</ul>
+                </div>
+              )}
+
+              {evalResult.ai_analysis?.weaknesses?.length > 0 && (
+                <div>
+                  <h4>Weaknesses</h4>
+                  <ul>{evalResult.ai_analysis.weaknesses.map((item, idx) => <li key={idx}>{item}</li>)}</ul>
+                </div>
+              )}
+
+              {evalResult.evidence_references?.length > 0 && (
+                <div>
+                  <h4>Evidence References</h4>
+                  <ul>
+                    {evalResult.evidence_references.map((item, idx) => (
+                      <li key={idx}>{item.file || 'PR evidence'}: {item.reason || item.recommendation || 'Referenced by the evaluation'}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {evalResult.limitations?.length > 0 && (
+                <div>
+                  <h4>Limitations</h4>
+                  <ul>{evalResult.limitations.map((item, idx) => <li key={idx}>{item}</li>)}</ul>
                 </div>
               )}
 

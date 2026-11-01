@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { tasksApi } from '../../api/tasks.api';
 import { projectsApi } from '../../api/projects.api';
 import { employeesApi } from '../../api/employees.api';
+import { sprintsApi } from '../../api/sprints.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
@@ -35,6 +36,7 @@ export function TasksPage() {
     title: '',
     project_id: '',
     assignee_id: '',
+    sprint_id: '',
     type: 'feature',
     priority: 'high',
     due_date: '',
@@ -66,6 +68,12 @@ export function TasksPage() {
     queryFn: () => employeesApi.list(),
   });
 
+  const { data: sprints = [] } = useQuery({
+    queryKey: ['sprints', 'project', activeProjectId],
+    queryFn: () => sprintsApi.listByProject(activeProjectId),
+    enabled: !!activeProjectId,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => tasksApi.create(data),
     onSuccess: () => {
@@ -75,6 +83,7 @@ export function TasksPage() {
         title: '',
         project_id: activeProjectId,
         assignee_id: '',
+        sprint_id: '',
         type: 'feature',
         priority: 'high',
         due_date: '',
@@ -87,6 +96,14 @@ export function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setTaskDetail(null);
+    },
+  });
+
+  const sprintMutation = useMutation({
+    mutationFn: ({ taskId, sprintId }) => tasksApi.updateSprint(taskId, sprintId),
+    onSuccess: (updatedTask) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setTaskDetail(updatedTask);
     },
   });
 
@@ -235,6 +252,25 @@ export function TasksPage() {
               <StatusBadge status={taskDetail.status} size="md" />
             </div>
 
+            {role === ROLES.PM || role === ROLES.LEAD ? (
+              <Select
+                label="Sprint"
+                value={taskDetail.sprint_id || ''}
+                onChange={(e) => {
+                  sprintMutation.mutate({
+                    taskId: taskDetail.id,
+                    sprintId: e.target.value,
+                  });
+                }}
+                placeholder="No sprint"
+                options={sprints.map((sprint) => ({
+                  value: sprint.id,
+                  label: sprint.name,
+                }))}
+                disabled={sprintMutation.isPending}
+              />
+            ) : null}
+
             <div>
               <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                 Transition Status:
@@ -310,6 +346,16 @@ export function TasksPage() {
               options={employees.map((e) => ({
                 value: e.employee_id,
                 label: `${e.name} (${e.employee_id})`,
+              }))}
+            />
+            <Select
+              label="Sprint"
+              value={formData.sprint_id}
+              onChange={(e) => setFormData({ ...formData, sprint_id: e.target.value })}
+              placeholder="No sprint selected"
+              options={sprints.map((sprint) => ({
+                value: sprint.id,
+                label: sprint.name,
               }))}
             />
           </div>

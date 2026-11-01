@@ -3,14 +3,16 @@ Task API endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from domain.models.task import TaskCreate, Task
+from domain.models.task import TaskCreate, Task, TaskSprintUpdate
 from domain.models.workflow import TransitionRequest, AvailableTransitions
 from domain.services.task_service import TaskService
 from domain.services.workflow_service import WorkflowService
+from repositories.sprint_repository import SprintRepository
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from core.authorization import (
     verify_task_access,
+    verify_task_status_update_access,
     verify_project_access,
     verify_story_access,
     verify_can_view_user_tasks,
@@ -19,6 +21,7 @@ from core.authorization import (
 router = APIRouter()
 task_service = TaskService()
 workflow_service = WorkflowService()
+sprint_repo = SprintRepository()
 
 
 @router.post("/", response_model=Task, status_code=201)
@@ -39,6 +42,41 @@ async def create_task(
         return task
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{task_id}/sprint", response_model=Task)
+async def update_task_sprint(
+    task_id: str,
+    updates: TaskSprintUpdate,
+    user: dict = Depends(require_permission(Permission.CREATE_TASK)),
+):
+    """Assign or remove a task from a sprint."""
+    await verify_task_access(user, task_id, require_write=True)
+
+    if updates.sprint_id:
+        sprint = await sprint_repo.find_by_id(updates.sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=404, detail="Sprint not found")
+        task = await task_service.get_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        task_project_id = (
+            task.project_id if hasattr(task, "project_id") else task.get("project_id")
+        )
+        if task_project_id != sprint.get("project_id"):
+            raise HTTPException(
+                status_code=400,
+                detail="Sprint does not belong to the task's project",
+            )
+
+    updated = await task_service.update_task(task_id, {"sprint_id": updates.sprint_id})
+    if not updated:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task = await task_service.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -101,7 +139,7 @@ async def list_story_tasks(
 async def update_task_status(
     task_id: str,
     status: str = Query(..., regex="^(todo|in_progress|review|done|blocked)$"),
-    user: dict = Depends(require_permission(Permission.MOVE_TASK)),
+    user: dict = Depends(get_current_user),
 ):
     """
     Update task status (no workflow enforcement — use /transition for enforced moves).
@@ -109,7 +147,7 @@ async def update_task_status(
     User must have access to the task's project.
     """
     # Verify user has write access to this task
-    await verify_task_access(user, task_id, require_write=True)
+    await verify_task_status_update_access(user, task_id)
     
     success = await task_service.update_task_status(task_id, status)
     if not success:
@@ -121,7 +159,7 @@ async def update_task_status(
 async def transition_task(
     task_id: str,
     body: TransitionRequest,
-    user: dict = Depends(require_permission(Permission.TRANSITION_TASK)),
+    user: dict = Depends(get_current_user),
 ):
     """
     Move a task to a new status via the workflow engine.
@@ -130,7 +168,7 @@ async def transition_task(
     User must have access to the task's project.
     """
     # Verify user has write access to this task
-    await verify_task_access(user, task_id, require_write=True)
+    await verify_task_status_update_access(user, task_id)
     
     user_id = user.get("employee_id", user.get("id", ""))
     user_name = user.get("name", "Unknown")

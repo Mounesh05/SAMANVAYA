@@ -12,6 +12,9 @@ import { ROLES } from '../utils/constants';
 const LoginPage = React.lazy(() =>
   import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage }))
 );
+const SetupPage = React.lazy(() =>
+  import('../pages/auth/SetupPage').then((m) => ({ default: m.SetupPage }))
+);
 
 // Role Dashboards
 const DeveloperDashboardPage = React.lazy(() =>
@@ -256,6 +259,7 @@ export function AppRoutes() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/setup" element={<SetupPage />} />
 
         {/* Authenticated Application Shell */}
         <Route
@@ -371,7 +375,7 @@ export function AppRoutes() {
           {/* Intelligence & Engineering */}
           <Route path="code-quality" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><CodeQualityPage /></RoleGuard>} />
           <Route path="code-quality/runs/:runId" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><RunDetailPage /></RoleGuard>} />
-          <Route path="github/sync" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.LEAD, ROLES.DEVOPS]}><GitHubSyncPage /></RoleGuard>} />
+          <Route path="github/sync" element={<RoleGuard allowedRoles={[ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.DEVOPS]}><GitHubSyncPage /></RoleGuard>} />
           <Route path="pull-requests" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.LEAD, ROLES.QA, ROLES.DEVOPS]}><PullRequestsPage /></RoleGuard>} />
           <Route path="cicd-logs" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><CicdLogsPage /></RoleGuard>} />
           <Route

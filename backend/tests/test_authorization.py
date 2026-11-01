@@ -171,6 +171,18 @@ class TestProjectAccess:
             
             assert exc_info.value.status_code == 403
 
+    async def test_developer_can_read_their_team_project(self):
+        """Developers can read projects assigned to their team."""
+        user = create_user(role="DEVELOPER", team_id="TEAM-A")
+
+        with patch("core.authorization._project_repo") as mock_repo:
+            mock_repo.find_by_id = AsyncMock(return_value={
+                "id": "PRJ-TEAM-A",
+                "team_id": "TEAM-A",
+            })
+
+            await verify_project_access(user, "PRJ-TEAM-A")
+
 
 # ── Task Access Tests ─────────────────────────────────────────────────────
 

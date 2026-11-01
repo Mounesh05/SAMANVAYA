@@ -67,6 +67,26 @@ class GitHubAPIService:
             "check_runs": check_runs,
         }
 
+    async def fetch_pull_request_evidence(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+    ) -> Dict[str, Any]:
+        """Fetch all read-only evidence needed for a PR evaluation."""
+        evidence = await self.fetch_pull_request_data(owner, repo, pr_number)
+        github_pr = evidence["pr"]
+        reviews = await self.client.get_pr_reviews(owner, repo, pr_number)
+        comments = await self.client.get_pr_comments(owner, repo, pr_number)
+        return {
+            "pr": github_pr,
+            "files": evidence["files"],
+            "commits": evidence["commits"],
+            "check_runs": evidence["check_runs"],
+            "reviews": reviews,
+            "comments": comments,
+        }
+
     async def list_pull_requests(
         self,
         owner: str,

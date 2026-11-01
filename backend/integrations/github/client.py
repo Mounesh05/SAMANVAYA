@@ -318,6 +318,15 @@ class GitHubClient:
         }
         response = await self._make_request("GET", url, params=params)
         return response.json()
+
+    async def list_branches(
+        self, owner: str, repo: str, per_page: int = 100
+    ) -> List[Dict[str, Any]]:
+        """List branches for a repository using read-only GitHub API access."""
+        url = f"{self.base_url}/repos/{owner}/{repo}/branches"
+        params = {"per_page": min(max(per_page, 1), 100)}
+        response = await self._make_request("GET", url, params=params)
+        return response.json()
     
     async def get_authenticated_user(self) -> Dict[str, Any]:
         """

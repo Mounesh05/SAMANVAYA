@@ -73,11 +73,19 @@ async def list_projects(
         # PM sees all projects in org
         return all_projects
     else:
-        # Others see only their assigned projects
+        # Others see projects assigned directly or through their team.
         user_project_ids = set(user.get("project_ids", []))
+        user_team_id = user.get("team_id")
         filtered_projects = [
             p for p in all_projects 
-            if (p.id if hasattr(p, 'id') else p.get("id")) in user_project_ids
+            if (
+                (p.id if hasattr(p, "id") else p.get("id")) in user_project_ids
+                or (
+                    user_team_id
+                    and (p.team_id if hasattr(p, "team_id") else p.get("team_id"))
+                    == user_team_id
+                )
+            )
         ]
         return filtered_projects
 

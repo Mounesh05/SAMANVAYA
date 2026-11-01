@@ -9,6 +9,8 @@ from core.permissions import Permission
 from core.authorization import verify_project_access
 from domain.services.github_sync_service import GitHubSyncService
 from domain.services.qa_workflow_provisioning_service import QAWorkflowProvisioningService
+from domain.models.github_project_config import GitHubProjectConfig
+from core.database import col
 from pydantic import BaseModel
 import httpx
 
@@ -40,6 +42,9 @@ class QAWorkflowProvisionRequest(BaseModel):
     repo: str
     project_id: str
     branch: str | None = None
+
+
+GITHUB_PROJECT_CONFIGS = "github_project_configs"
 
 
 @router.get("/health")
@@ -119,6 +124,100 @@ async def list_repositories(
             status_code=500,
             detail=f"Failed to list repositories: {str(e)}"
         )
+
+
+@router.get("/branches")
+async def list_branches(
+    owner: str = Query(...),
+    repo: str = Query(...),
+    user: dict = Depends(get_current_user),
+):
+    """List repository branches using the configured read-only GitHub token."""
+    try:
+        github_service = GitHubSyncService()
+        branches = await github_service.client.list_branches(owner, repo)
+        return {
+            "owner": owner,
+            "repo": repo,
+            "total": len(branches),
+            "branches": branches,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list repository branches: {str(e)}"
+        )
+
+
+@router.get("/projects/{project_id}/config", response_model=GitHubProjectConfig)
+async def get_project_github_config(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Return the persisted GitHub configuration for a Samanvaya project."""
+    await verify_project_access(user, project_id)
+    config = await col(GITHUB_PROJECT_CONFIGS).find_one(
+        {"project_id": project_id},
+        {"_id": 0},
+    )
+    if not config:
+        raise HTTPException(status_code=404, detail="GitHub project configuration not found")
+    return config
+
+
+@router.put("/projects/{project_id}/config", response_model=GitHubProjectConfig)
+async def save_project_github_config(
+    project_id: str,
+    config: GitHubProjectConfig,
+    user: dict = Depends(require_roles("CEO", "PM", "LEAD")),
+):
+    """Validate and persist repository and developer branch configuration."""
+    await verify_project_access(user, project_id, require_write=True)
+    if config.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Project ID does not match the URL")
+
+    github_service = GitHubSyncService()
+    try:
+        repository = await github_service.get_repository_info(
+            config.repository_owner,
+            config.repository_name,
+        )
+        branches = await github_service.api_service.client.list_branches(
+            config.repository_owner,
+            config.repository_name,
+        )
+    except httpx.HTTPStatusError as error:
+        raise HTTPException(
+            status_code=error.response.status_code,
+            detail="GitHub repository validation failed",
+        ) from error
+
+    actual_default = repository.get("default_branch")
+    if actual_default != config.default_branch:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Default branch must be {actual_default}",
+        )
+
+    branch_names = {branch.get("name") for branch in branches}
+    for mapping in config.developer_mappings:
+        if mapping.branch not in branch_names:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Branch does not exist: {mapping.branch}",
+            )
+
+    expected_url = f"https://github.com/{config.repository_owner}/{config.repository_name}"
+    if config.repository_url.rstrip("/") != expected_url:
+        raise HTTPException(status_code=400, detail="Repository URL does not match owner and name")
+
+    payload = config.model_dump()
+    await col(GITHUB_PROJECT_CONFIGS).replace_one(
+        {"project_id": project_id},
+        payload,
+        upsert=True,
+    )
+    return payload
 
 
 @router.post("/provision-qa-workflow")

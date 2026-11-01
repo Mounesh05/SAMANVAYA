@@ -60,8 +60,7 @@ def has_team_access(user: dict, team_id: str) -> bool:
     Check if user has access to a specific team.
     
     Access rules:
-    - CEO: Access all teams
-    - PM: Access all teams in their org
+    - CEO/PM/HR/admin: Access all teams
     - Others: Access only their own team
     
     Args:
@@ -71,7 +70,8 @@ def has_team_access(user: dict, team_id: str) -> bool:
     Returns:
         True if user can access the team
     """
-    if has_org_access(user):
+    role = user.get("role", user.get("organizational_role", "")).upper()
+    if has_org_access(user) or role == "HR" or user.get("is_admin", False):
         return True
     
     user_team_id = user.get("team_id")
@@ -135,6 +135,15 @@ async def verify_project_access(
                 return
             return
     
+    # Team members can read projects assigned to their team. This keeps
+    # project visibility aligned with the team membership used elsewhere.
+    if (
+        not require_write
+        and user.get("team_id")
+        and project.get("team_id") == user.get("team_id")
+    ):
+        return
+
     # Others: check if project is in their assigned projects
     user_project_ids = user.get("project_ids", [])
     if project_id in user_project_ids:
@@ -201,6 +210,27 @@ async def verify_task_access(
     await verify_project_access(user, project_id, require_write=require_write)
     
     return project_id
+
+
+async def verify_task_status_update_access(user: dict, task_id: str) -> str:
+    """Allow management roles or a developer assigned to the task to update it."""
+    role = user.get("role", user.get("organizational_role", "")).upper()
+    task = await _task_repo.find_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    employee_id = user.get("employee_id", user.get("id"))
+    if role == "DEVELOPER":
+        if task.get("assignee_id") != employee_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Developers can only update their own assigned tasks",
+            )
+        return await verify_task_access(user, task_id)
+
+    if role not in {"CEO", "PM", "LEAD"}:
+        raise HTTPException(status_code=403, detail="Insufficient task update permissions")
+    return await verify_task_access(user, task_id, require_write=True)
 
 
 async def verify_story_access(

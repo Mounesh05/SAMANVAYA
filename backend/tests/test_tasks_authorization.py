@@ -241,6 +241,64 @@ class TestUpdateTaskStatus:
                 
                 assert exc_info.value.status_code == 403
 
+    async def test_developer_can_update_own_task(self):
+        user = create_user(
+            employee_id="E001",
+            role="DEVELOPER",
+            team_id="TEAM-A",
+        )
+        with patch("core.authorization._task_repo") as task_repo:
+            with patch("core.authorization._project_repo") as project_repo:
+                with patch.object(TaskService, "update_task_status") as update:
+                    task_repo.find_by_id = AsyncMock(return_value={
+                        "id": "TASK-1",
+                        "project_id": "PRJ-A",
+                        "assignee_id": "E001",
+                    })
+                    project_repo.find_by_id = AsyncMock(return_value={
+                        "id": "PRJ-A",
+                        "team_id": "TEAM-A",
+                    })
+                    update.return_value = True
+                    from api.routes.tasks import update_task_status
+                    result = await update_task_status("TASK-1", "in_progress", user=user)
+                    assert result["status"] == "in_progress"
+
+    async def test_developer_cannot_update_another_developers_task(self):
+        user = create_user(employee_id="E001", role="DEVELOPER", team_id="TEAM-A")
+        with patch("core.authorization._task_repo") as task_repo:
+            task_repo.find_by_id = AsyncMock(return_value={
+                "id": "TASK-2",
+                "project_id": "PRJ-A",
+                "assignee_id": "E002",
+            })
+            from api.routes.tasks import update_task_status
+            with pytest.raises(HTTPException) as exc_info:
+                await update_task_status("TASK-2", "in_progress", user=user)
+            assert exc_info.value.status_code == 403
+
+    async def test_sprint_assignment_rejects_cross_project_sprint(self):
+        user = create_user(role="PM")
+        with patch("api.routes.tasks.verify_task_access", new=AsyncMock()):
+            with patch("api.routes.tasks.sprint_repo") as sprint_repo:
+                with patch.object(TaskService, "get_task", new=AsyncMock(return_value={
+                    "id": "TASK-1",
+                    "project_id": "PRJ-A",
+                })):
+                    sprint_repo.find_by_id = AsyncMock(return_value={
+                        "id": "SPR-B",
+                        "project_id": "PRJ-B",
+                    })
+                    from api.routes.tasks import update_task_sprint
+                    from domain.models.task import TaskSprintUpdate
+                    with pytest.raises(HTTPException) as exc_info:
+                        await update_task_sprint(
+                            "TASK-1",
+                            TaskSprintUpdate(sprint_id="SPR-B"),
+                            user=user,
+                        )
+                    assert exc_info.value.status_code == 400
+
 
 # ── PATCH /tasks/{task_id}/transition Tests ───────────────────────────────
 
