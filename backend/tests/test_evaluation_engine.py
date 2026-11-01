@@ -326,6 +326,7 @@ async def test_repository_round_trip_and_duplicate_handling(monkeypatch):
         ai_provider="ollama",
         model_name="llama3.2",
         overall_score=7,
+        evidence_manifest={"files": [{"file": "events.py"}]},
     )
 
     first = await repository.create_or_get(item)
@@ -335,6 +336,114 @@ async def test_repository_round_trip_and_duplicate_handling(monkeypatch):
     assert first.evaluation_id == "EVAL-1"
     assert second.evaluation_id == "EVAL-1"
     assert fetched and fetched.employee_id == "DEMO-DEV"
+    client.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "existing_updates",
+    [
+        {"evidence_manifest": {}},
+        {"evidence_manifest": {"files": [{"file": "events.py"}]}, "unsupported_references": [{"file": "fake.py"}]},
+        {"status": "failed", "evidence_manifest": {"files": [{"file": "events.py"}]}},
+    ],
+)
+async def test_invalid_existing_evaluation_does_not_block_new_attempt(
+    monkeypatch,
+    existing_updates,
+):
+    client = AsyncMongoMockClient()
+    collection = client["evaluation_test"]["developer_evaluations"]
+    monkeypatch.setattr(evaluation_repository, "col", lambda _: collection)
+    repository = evaluation_repository.EvaluationRepository()
+    existing = DeveloperEvaluation(
+        evaluation_id="EVAL-HISTORICAL",
+        employee_id="DEMO-DEV",
+        github_username="developer",
+        repo_owner="owner",
+        repo_name="repo",
+        pr_number=1,
+        head_commit_sha="abc123",
+        evaluation_focus="code_quality",
+        ai_provider="ollama",
+        model_name="llama3.2",
+        overall_score=7,
+        **existing_updates,
+    )
+    await collection.insert_one(existing.model_dump(mode="json"))
+    candidate = existing.model_copy(
+        update={"evaluation_id": "EVAL-NEW", "status": "completed"}
+    )
+
+    saved = await repository.create_or_get(candidate)
+
+    assert saved.evaluation_id == "EVAL-NEW"
+    assert await collection.count_documents({}) == 2
+    client.close()
+
+
+@pytest.mark.asyncio
+async def test_different_head_sha_gets_distinct_evaluation(monkeypatch):
+    client = AsyncMongoMockClient()
+    collection = client["evaluation_test"]["developer_evaluations"]
+    monkeypatch.setattr(evaluation_repository, "col", lambda _: collection)
+    repository = evaluation_repository.EvaluationRepository()
+    base = DeveloperEvaluation(
+        evaluation_id="EVAL-ONE",
+        employee_id="DEMO-DEV",
+        github_username="developer",
+        repo_owner="owner",
+        repo_name="repo",
+        pr_number=1,
+        head_commit_sha="abc123",
+        evaluation_focus="code_quality",
+        ai_provider="ollama",
+        model_name="llama3.2",
+        overall_score=7,
+        evidence_manifest={"files": [{"file": "events.py"}]},
+    )
+
+    first = await repository.create_or_get(base)
+    second = await repository.create_or_get(
+        base.model_copy(
+            update={"evaluation_id": "EVAL-TWO", "head_commit_sha": "def456"}
+        )
+    )
+
+    assert first.evaluation_id == "EVAL-ONE"
+    assert second.evaluation_id == "EVAL-TWO"
+    assert await collection.count_documents({}) == 2
+    client.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_valid_duplicates_return_one_persisted_result(monkeypatch):
+    client = AsyncMongoMockClient()
+    collection = client["evaluation_test"]["developer_evaluations"]
+    monkeypatch.setattr(evaluation_repository, "col", lambda _: collection)
+    repository = evaluation_repository.EvaluationRepository()
+    item = DeveloperEvaluation(
+        evaluation_id="EVAL-CONCURRENT",
+        employee_id="DEMO-DEV",
+        github_username="developer",
+        repo_owner="owner",
+        repo_name="repo",
+        pr_number=1,
+        head_commit_sha="abc123",
+        evaluation_focus="code_quality",
+        ai_provider="ollama",
+        model_name="llama3.2",
+        overall_score=7,
+        evidence_manifest={"files": [{"file": "events.py"}]},
+    )
+
+    results = await asyncio.gather(
+        repository.create_or_get(item),
+        repository.create_or_get(item.model_copy(update={"evaluation_id": "EVAL-OTHER"})),
+    )
+
+    assert len({result.evaluation_id for result in results}) == 1
+    assert await collection.count_documents({}) == 1
     client.close()
 
 

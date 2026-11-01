@@ -36,3 +36,4 @@ class DeveloperEvaluation(BaseModel):
     unsupported_references: List[Dict[str, Any]] = Field(default_factory=list)
     limitations: List[str] = Field(default_factory=list)
     is_preliminary: bool = True
+    duplicate_key: Optional[str] = None
