@@ -4,15 +4,42 @@ Shows: Test health, bug reports, regression risks, release readiness.
 """
 
 from fastapi import APIRouter, Depends
+from typing import Optional
 from core.dependencies import require_roles
 from core.database import col
 from repositories.task_repository import TaskRepository
+from domain.services.qa_service import QAService
 
 
-async def _qa_snapshot():
+async def _qa_snapshot(user: dict | None = None, project_id: str | None = None):
     task_repo = TaskRepository()
-    bugs = await task_repo.find_all({"type": {"$regex": "^bug$", "$options": "i"}})
-    test_runs = await col("test_runs").find({}, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    if user is None:
+        project_ids = None
+    else:
+        service = QAService()
+        if project_id:
+            await service.accessible_project(user, project_id)
+            project_ids = [project_id]
+        else:
+            projects = await service.list_projects(user)
+            project_ids = [project["id"] for project in projects]
+    query = {"type": {"$regex": "^bug$", "$options": "i"}}
+    run_query = {}
+    case_query = {}
+    if project_ids is not None:
+        query["project_id"] = {"$in": project_ids}
+        run_query["project_id"] = {"$in": project_ids}
+        case_query["project_id"] = {"$in": project_ids}
+    bugs = await task_repo.find_all(query)
+    test_runs = await col("test_runs").find(run_query, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
+    test_cases = await col("qa_test_cases").find(
+        {**case_query, "is_archived": False}, {"_id": 0, "id": 1}
+    ).limit(5000).to_list(5000)
+    if user is not None and project_ids:
+        qa_defects = await col("qa_defects").find(
+            {"project_id": {"$in": project_ids}}, {"_id": 0}
+        ).limit(5000).to_list(5000)
+        bugs.extend(qa_defects)
     total_tests = sum(int(run.get("tests_run", 0) or 0) for run in test_runs)
     passed_tests = sum(int(run.get("tests_passed", 0) or 0) for run in test_runs)
     failed_tests = sum(int(run.get("tests_failed", 0) or 0) for run in test_runs)
@@ -31,6 +58,7 @@ async def _qa_snapshot():
     return {
         "bugs": bugs,
         "test_runs": test_runs,
+        "total_test_cases": len(test_cases),
         "total_tests": total_tests,
         "passed_tests": passed_tests,
         "failed_tests": failed_tests,
@@ -66,7 +94,10 @@ router = APIRouter()
 
 
 @router.get("/dashboard")
-async def qa_dashboard(user: dict = Depends(require_roles("QA"))):
+async def qa_dashboard(
+    project_id: Optional[str] = None,
+    user: dict = Depends(require_roles("QA")),
+):
     """
     QA dashboard - Quality and testing overview.
     
@@ -76,12 +107,12 @@ async def qa_dashboard(user: dict = Depends(require_roles("QA"))):
         - Regression risk
         - Release readiness
     """
-    snapshot = await _qa_snapshot()
+    snapshot = await _qa_snapshot(user, project_id)
     return {
         "role": "QA",
         "name": user["name"],
         "summary": {
-            "total_test_cases": snapshot["total_tests"],
+            "total_test_cases": snapshot["total_test_cases"],
             "passed_tests": snapshot["passed_tests"],
             "failed_tests": snapshot["failed_tests"],
             "open_bugs": len(snapshot["open_bugs"]),
@@ -93,9 +124,12 @@ async def qa_dashboard(user: dict = Depends(require_roles("QA"))):
 
 
 @router.get("/test-health")
-async def test_health(user: dict = Depends(require_roles("QA"))):
+async def test_health(
+    project_id: Optional[str] = None,
+    user: dict = Depends(require_roles("QA")),
+):
     """Get test execution health metrics."""
-    snapshot = await _qa_snapshot()
+    snapshot = await _qa_snapshot(user, project_id)
     suites = [_test_suite_view(run) for run in snapshot["test_runs"]]
     no_test_failures = sum(
         1 for suite in suites
@@ -114,9 +148,12 @@ async def test_health(user: dict = Depends(require_roles("QA"))):
 
 
 @router.get("/bugs")
-async def bug_reports(user: dict = Depends(require_roles("QA"))):
+async def bug_reports(
+    project_id: Optional[str] = None,
+    user: dict = Depends(require_roles("QA")),
+):
     """Get all bug reports."""
-    snapshot = await _qa_snapshot()
+    snapshot = await _qa_snapshot(user, project_id)
     return {
         "bugs": snapshot["bugs"],
         "total": len(snapshot["bugs"]),

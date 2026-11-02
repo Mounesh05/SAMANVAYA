@@ -18,13 +18,13 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { Plus, KanbanSquare } from 'lucide-react';
 import { TASK_STATUS, STATUS_LABELS, DEFAULT_ORG_ID, ROLES } from '../../utils/constants';
+import { canUpdateTask } from '../../utils/taskPermissions';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
 
 export function TasksPage() {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
-  const canTransitionTask = role === ROLES.PM || role === ROLES.LEAD || role === ROLES.DEVELOPER;
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -92,11 +92,23 @@ export function TasksPage() {
   });
 
   const transitionMutation = useMutation({
-    mutationFn: ({ taskId, status }) => tasksApi.updateStatus(taskId, status),
+    mutationFn: ({ taskId, status }) => tasksApi.transition(taskId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board'] });
       setTaskDetail(null);
     },
+  });
+
+  const {
+    data: availableTransitions = [],
+    isLoading: isTransitionsLoading,
+    error: transitionsError,
+  } = useQuery({
+    queryKey: ['task-transitions', taskDetail?.id],
+    queryFn: () => tasksApi.getAvailableTransitions(taskDetail.id),
+    enabled: !!taskDetail?.id,
+    select: (result) => result.allowed_statuses,
   });
 
   const sprintMutation = useMutation({
@@ -134,7 +146,7 @@ export function TasksPage() {
     {
       key: 'action',
       header: 'Actions',
-      render: (t) => (
+      render: (t) => canUpdateTask(user, t) ? (
         <Button
           variant="secondary"
           size="sm"
@@ -145,7 +157,7 @@ export function TasksPage() {
         >
           Update
         </Button>
-      ),
+      ) : null,
     },
   ];
 
@@ -251,6 +263,28 @@ export function TasksPage() {
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Current Status:</span>
               <StatusBadge status={taskDetail.status} size="md" />
             </div>
+            <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '0.4rem 0.75rem', margin: 0, fontSize: '0.8125rem' }}>
+              <dt style={{ color: 'var(--text-muted)' }}>Assignee</dt>
+              <dd style={{ margin: 0, color: 'var(--text-primary)' }}>{taskDetail.assignee_id || 'Unassigned'}</dd>
+              <dt style={{ color: 'var(--text-muted)' }}>Type</dt>
+              <dd style={{ margin: 0, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{taskDetail.type || '—'}</dd>
+              <dt style={{ color: 'var(--text-muted)' }}>Priority</dt>
+              <dd style={{ margin: 0, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{taskDetail.priority || '—'}</dd>
+              <dt style={{ color: 'var(--text-muted)' }}>Sprint</dt>
+              <dd style={{ margin: 0, color: 'var(--text-primary)' }}>{taskDetail.sprint_id || 'Unassigned'}</dd>
+              {taskDetail.story_id && (
+                <>
+                  <dt style={{ color: 'var(--text-muted)' }}>Story</dt>
+                  <dd style={{ margin: 0, color: 'var(--text-primary)' }}>{taskDetail.story_id}</dd>
+                </>
+              )}
+              {taskDetail.due_date && (
+                <>
+                  <dt style={{ color: 'var(--text-muted)' }}>Due date</dt>
+                  <dd style={{ margin: 0, color: 'var(--text-primary)' }}>{taskDetail.due_date}</dd>
+                </>
+              )}
+            </dl>
 
             {role === ROLES.PM || role === ROLES.LEAD ? (
               <Select
@@ -275,25 +309,37 @@ export function TasksPage() {
               <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                 Transition Status:
               </h4>
-              {canTransitionTask ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {Object.values(TASK_STATUS).map((status) => (
-                    <Button
-                      key={status}
-                      variant={taskDetail.status === status ? 'primary' : 'secondary'}
-                      size="sm"
-                      onClick={() =>
-                        transitionMutation.mutate({
-                          taskId: taskDetail.id,
-                          status,
-                        })
-                      }
-                      isLoading={transitionMutation.isPending}
-                    >
-                      Move to {STATUS_LABELS[status]}
-                    </Button>
-                  ))}
-                </div>
+              {canUpdateTask(user, taskDetail) ? (
+                isTransitionsLoading ? (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading valid transitions...</p>
+                ) : transitionsError ? (
+                  <p role="alert" style={{ fontSize: '0.8125rem', color: 'var(--danger)' }}>
+                    Could not load valid transitions: {transitionsError.message}
+                  </p>
+                ) : availableTransitions.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {availableTransitions.map((status) => (
+                      <Button
+                        key={status}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          transitionMutation.mutate({
+                            taskId: taskDetail.id,
+                            status,
+                          })
+                        }
+                        isLoading={transitionMutation.isPending}
+                      >
+                        Move to {STATUS_LABELS[status]}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    No workflow transitions are available from this status.
+                  </p>
+                )
               ) : (
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   You do not have permission to transition this task.

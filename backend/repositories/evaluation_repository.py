@@ -1,6 +1,7 @@
 """Persistence and retrieval for evidence-backed developer evaluations."""
 
 import hashlib
+import json
 from pymongo.errors import DuplicateKeyError
 from typing import Any, Dict, List, Optional
 
@@ -19,19 +20,34 @@ class EvaluationRepository:
         evaluation: DeveloperEvaluation,
     ) -> DeveloperEvaluation:
         """Insert a validated evaluation or return an eligible duplicate."""
+        if not self._is_duplicate_eligible(evaluation):
+            raise ValueError("Only completed, schema- and evidence-validated evaluations can be persisted")
+
         duplicate_key = self._duplicate_key(evaluation)
         await self.collection.create_index(
             "duplicate_key",
             unique=True,
-            sparse=True,
+            partialFilterExpression={
+                "duplicate_key": {"$type": "string"},
+                "status": "completed",
+                "schema_validated": True,
+                "evidence_validated": True,
+                "is_preliminary": False,
+                "unsupported_references": [],
+                "overall_score": {"$gte": 0, "$lte": 10},
+                "evidence_manifest.files.0": {"$exists": True},
+            },
         )
         eligibility = {
             "status": "completed",
-            "overall_score": {"$ne": None},
-            "evidence_manifest": {"$exists": True, "$ne": {}},
+            "overall_score": {"$gte": 0, "$lte": 10},
+            "schema_validated": True,
+            "evidence_validated": True,
+            "is_preliminary": False,
+            "evidence_manifest.files.0": {"$exists": True},
             "unsupported_references": {"$exists": True, "$eq": []},
         }
-        existing = await self.collection.find_one(
+        existing_cursor = self.collection.find(
             {**eligibility, "$or": [
                 {"duplicate_key": duplicate_key},
                 {
@@ -45,8 +61,10 @@ class EvaluationRepository:
             ]},
             {"_id": 0},
         )
-        if existing:
-            return DeveloperEvaluation(**existing)
+        async for existing in existing_cursor:
+            existing_evaluation = DeveloperEvaluation(**existing)
+            if self._is_duplicate_eligible(existing_evaluation):
+                return existing_evaluation
 
         evaluation = evaluation.model_copy(update={"duplicate_key": duplicate_key})
         document = evaluation.model_dump(mode="json")
@@ -54,27 +72,66 @@ class EvaluationRepository:
             await self.collection.insert_one(document)
         except DuplicateKeyError:
             existing = await self.collection.find_one(
-                {"duplicate_key": duplicate_key},
+                {**eligibility, "duplicate_key": duplicate_key},
                 {"_id": 0},
             )
             if existing:
-                return DeveloperEvaluation(**existing)
+                existing_evaluation = DeveloperEvaluation(**existing)
+                if self._is_duplicate_eligible(existing_evaluation):
+                    return existing_evaluation
             raise
         return evaluation
 
     @staticmethod
     def _duplicate_key(evaluation: DeveloperEvaluation) -> str:
-        identity = "|".join(
+        identity = json.dumps(
             (
+                "score-contract-v3",
                 evaluation.employee_id,
                 evaluation.repo_owner,
                 evaluation.repo_name,
                 str(evaluation.pr_number),
                 evaluation.head_commit_sha,
                 evaluation.evaluation_focus,
-            )
+            ),
+            ensure_ascii=False,
+            separators=(",", ":"),
         )
         return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _is_duplicate_eligible(evaluation: DeveloperEvaluation) -> bool:
+        base_eligibility = (
+            evaluation.status == "completed"
+            and evaluation.overall_score is not None
+            and evaluation.schema_validated
+            and evaluation.evidence_validated
+            and not evaluation.is_preliminary
+            and bool(evaluation.evidence_manifest.get("files"))
+            and not evaluation.unsupported_references
+            and bool(evaluation.evidence_coverage)
+            and set(evaluation.dimensions) == set(evaluation.evidence_coverage)
+        )
+        if not base_eligibility:
+            return False
+        for name, coverage in evaluation.evidence_coverage.items():
+            dimension = evaluation.dimensions.get(name)
+            if not isinstance(dimension, dict) or dimension.get("assessment") != coverage:
+                return False
+            if coverage in {"insufficient_evidence", "not_assessed"}:
+                if "score" in dimension:
+                    return False
+            elif coverage in {"assessed", "partially_assessable"}:
+                score = dimension.get("score")
+                if (
+                    not isinstance(score, (int, float))
+                    or isinstance(score, bool)
+                    or not 0 <= score <= 10
+                ):
+                    return False
+            else:
+                return False
+        return True
 
     async def get_by_id(self, evaluation_id: str) -> Optional[DeveloperEvaluation]:
         document = await self.collection.find_one(

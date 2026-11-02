@@ -207,14 +207,14 @@ class TestUpdateTaskStatus:
         
         with patch("core.authorization._task_repo") as mock_task_repo:
             with patch("core.authorization._project_repo") as mock_project_repo:
-                with patch.object(TaskService, "update_task_status") as mock_update:
+                with patch.object(WorkflowService, "transition_task") as mock_update:
                     mock_task_repo.find_by_id = AsyncMock(return_value={
                         "id": "TASK-1", "project_id": "PRJ-A"
                     })
                     mock_project_repo.find_by_id = AsyncMock(return_value={
                         "id": "PRJ-A"
                     })
-                    mock_update.return_value = True
+                    mock_update.return_value = {"id": "TASK-1", "status": "in_progress"}
                     
                     from api.routes.tasks import update_task_status
                     
@@ -249,7 +249,7 @@ class TestUpdateTaskStatus:
         )
         with patch("core.authorization._task_repo") as task_repo:
             with patch("core.authorization._project_repo") as project_repo:
-                with patch.object(TaskService, "update_task_status") as update:
+                with patch.object(WorkflowService, "transition_task") as update:
                     task_repo.find_by_id = AsyncMock(return_value={
                         "id": "TASK-1",
                         "project_id": "PRJ-A",
@@ -259,7 +259,7 @@ class TestUpdateTaskStatus:
                         "id": "PRJ-A",
                         "team_id": "TEAM-A",
                     })
-                    update.return_value = True
+                    update.return_value = {"id": "TASK-1", "status": "in_progress"}
                     from api.routes.tasks import update_task_status
                     result = await update_task_status("TASK-1", "in_progress", user=user)
                     assert result["status"] == "in_progress"

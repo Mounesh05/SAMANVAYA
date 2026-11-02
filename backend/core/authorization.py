@@ -213,18 +213,18 @@ async def verify_task_access(
 
 
 async def verify_task_status_update_access(user: dict, task_id: str) -> str:
-    """Allow management roles or a developer assigned to the task to update it."""
+    """Allow management roles or an assignee in an engineering role to update it."""
     role = user.get("role", user.get("organizational_role", "")).upper()
     task = await _task_repo.find_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     employee_id = user.get("employee_id", user.get("id"))
-    if role == "DEVELOPER":
+    if role in {"DEVELOPER", "QA", "DEVOPS"}:
         if task.get("assignee_id") != employee_id:
             raise HTTPException(
                 status_code=403,
-                detail="Developers can only update their own assigned tasks",
+                detail="You can only update tasks assigned to you",
             )
         return await verify_task_access(user, task_id)
 

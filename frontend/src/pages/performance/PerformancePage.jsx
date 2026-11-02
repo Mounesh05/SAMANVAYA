@@ -172,7 +172,7 @@ export function PerformancePage() {
           {/* Main Score Card */}
           <ScoreCard
             title={`${curr?.developer_name || selectedDevId} — Performance`}
-            score={curr?.overall_score || 0}
+            score={curr?.overall_score ?? curr?.final_score ?? null}
             grade={curr?.grade || 'N/A'}
             aiScore={null}
             humanScore={null}

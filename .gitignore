@@ -145,6 +145,7 @@ npm-audit.json
 *.crt
 secrets/
 credentials/
+DEMO_CREDENTIALS.txt
 
 # ------------------------------------------------------------------------------
 # Databases, local data, logs, and temporary files

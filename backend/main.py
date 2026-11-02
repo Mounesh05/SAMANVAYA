@@ -35,6 +35,9 @@ async def lifespan(app: FastAPI):
         
         from domain.services.hitl_workflow_service import hitl_service
         await hitl_service._ensure_indexes()
+
+        from repositories.qa_repository import QARepository
+        await QARepository().ensure_indexes()
         
         logger.info("✓ Database indexes created/verified")
     except Exception as e:
@@ -247,7 +250,7 @@ async def health_check():
 # ━━ Register API Routers ━━
 from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai, setup,
-    cicd_logs, qa_test_runs, performance, employees, teams, evaluation,
+    cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
     recommendations, traceability, risk_configurations,
 )
@@ -267,6 +270,7 @@ app.include_router(github.router, prefix="/api/github", tags=["GitHub Integratio
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])
 app.include_router(cicd_logs.router, prefix="/api/cicd-logs", tags=["CI/CD Logs"])
 app.include_router(qa_test_runs.router, prefix="/api/qa", tags=["QA Test Results"])
+app.include_router(qa_management.router, prefix="/api/qa", tags=["QA Management"])
 app.include_router(performance.router, prefix="/api/performance", tags=["Developer Performance"])
 
 # ━━ New Features ━━

@@ -139,19 +139,25 @@ async def list_story_tasks(
 async def update_task_status(
     task_id: str,
     status: str = Query(..., regex="^(todo|in_progress|review|done|blocked)$"),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.TRANSITION_TASK)),
 ):
     """
-    Update task status (no workflow enforcement — use /transition for enforced moves).
-    Requires MOVE_TASK permission (LEAD, PM roles by default).
-    User must have access to the task's project.
+    Update task status using the workflow engine and task ownership rules.
     """
     # Verify user has write access to this task
     await verify_task_status_update_access(user, task_id)
     
-    success = await task_service.update_task_status(task_id, status)
-    if not success:
-        raise HTTPException(status_code=404, detail="Task not found")
+    user_id = user.get("employee_id", user.get("id", ""))
+    user_name = user.get("name", "Unknown")
+    try:
+        await workflow_service.transition_task(
+            task_id=task_id,
+            new_status=status,
+            user_id=user_id,
+            user_name=user_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"message": "Status updated", "task_id": task_id, "status": status}
 
 
@@ -159,7 +165,7 @@ async def update_task_status(
 async def transition_task(
     task_id: str,
     body: TransitionRequest,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.TRANSITION_TASK)),
 ):
     """
     Move a task to a new status via the workflow engine.

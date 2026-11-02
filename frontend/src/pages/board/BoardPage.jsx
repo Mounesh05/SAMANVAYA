@@ -25,9 +25,10 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GripVertical, AlertCircle } from 'lucide-react';
 import { DEFAULT_ORG_ID, ROLES } from '../../utils/constants';
+import { canUpdateTask } from '../../utils/taskPermissions';
 
 // Sortable Task Card Component
-function SortableCard({ item, onClick }) {
+function SortableCard({ item, onClick, canDrag }) {
   const {
     attributes,
     listeners,
@@ -35,7 +36,7 @@ function SortableCard({ item, onClick }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id, data: { item } });
+  } = useSortable({ id: item.id, data: { item }, disabled: !canDrag });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -46,7 +47,7 @@ function SortableCard({ item, onClick }) {
     padding: '0.85rem',
     border: '1px solid var(--border-default)',
     boxShadow: 'var(--shadow-sm)',
-    cursor: 'pointer',
+    cursor: canDrag ? 'grab' : 'default',
     marginBottom: '0.65rem',
     display: 'flex',
     flexDirection: 'column',
@@ -59,19 +60,21 @@ function SortableCard({ item, onClick }) {
         <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: '1.3' }}>
           {item.title}
         </span>
-        <button
-          {...attributes}
-          {...listeners}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'grab',
-            padding: '0.1rem',
-          }}
-        >
-          <GripVertical size={16} />
-        </button>
+        {canDrag && (
+          <button
+            {...attributes}
+            {...listeners}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'grab',
+              padding: '0.1rem',
+            }}
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -91,7 +94,7 @@ function SortableCard({ item, onClick }) {
 }
 
 // Kanban Column Component
-function KanbanColumn({ title, count, items = [], onItemClick }) {
+function KanbanColumn({ title, count, items = [], onItemClick, user }) {
   return (
     <div
       style={{
@@ -138,7 +141,12 @@ function KanbanColumn({ title, count, items = [], onItemClick }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem' }}>
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
-            <SortableCard key={item.id} item={item} onClick={() => onItemClick(item)} />
+            <SortableCard
+              key={item.id}
+              item={item}
+              onClick={() => onItemClick(item)}
+              canDrag={canUpdateTask(user, item)}
+            />
           ))}
         </SortableContext>
       </div>
@@ -149,7 +157,13 @@ function KanbanColumn({ title, count, items = [], onItemClick }) {
 export function BoardPage() {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
-  const canMoveTasks = role === ROLES.DEVELOPER || role === ROLES.LEAD || role === ROLES.PM;
+  const canMoveTasks = [
+    ROLES.DEVELOPER,
+    ROLES.LEAD,
+    ROLES.PM,
+    ROLES.QA,
+    ROLES.DEVOPS,
+  ].includes(role);
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [activeItem, setActiveItem] = useState(null);
@@ -204,7 +218,7 @@ export function BoardPage() {
     setActiveItem(null);
 
     if (!over) return;
-    if (!canMoveTasks) {
+    if (!canMoveTasks || !canUpdateTask(user, active.data.current?.item)) {
       setErrorMessage('You do not have permission to move tasks on this board.');
       return;
     }
@@ -307,6 +321,7 @@ export function BoardPage() {
               count={col.count || col.items?.length || 0}
               items={col.items || []}
               onItemClick={() => {}}
+              user={user}
             />
           ))}
         </div>

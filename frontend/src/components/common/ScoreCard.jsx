@@ -4,7 +4,7 @@ import { getGradeColor } from '../../utils/formatters';
 
 export function ScoreCard({
   title = 'Performance Score',
-  score = 0,
+  score = null,
   grade = 'N/A',
   aiScore = null,
   humanScore = null,
@@ -38,9 +38,11 @@ export function ScoreCard({
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
             <span style={{ fontSize: '3rem', fontWeight: '900', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
-              {typeof score === 'number' ? score.toFixed(1) : score}
+              {score == null ? '—' : typeof score === 'number' ? score.toFixed(1) : score}
             </span>
-            <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)', fontWeight: '600' }}>/ 100</span>
+            {score != null && (
+              <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)', fontWeight: '600' }}>/ 100</span>
+            )}
 
             <div
               style={{

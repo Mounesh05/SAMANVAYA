@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────────
     MONGO_URI: str = "mongodb://localhost:27017"
     DB_NAME: str = "samanvaya"
+    DEFAULT_ORG_ID: str = "ORG001"
     DB_MAX_POOL_SIZE: int = 10
     DB_MIN_POOL_SIZE: int = 2
 

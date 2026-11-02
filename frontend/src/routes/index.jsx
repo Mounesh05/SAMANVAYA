@@ -367,10 +367,10 @@ export function AppRoutes() {
               </RoleGuard>
             }
           />
-          <Route path="sprints" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER]}><SprintsPage /></RoleGuard>} />
-          <Route path="sprints/:sprintId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER]}><SprintsPage /></RoleGuard>} />
-          <Route path="tasks" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER]}><TasksPage /></RoleGuard>} />
-          <Route path="board" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM]}><BoardPage /></RoleGuard>} />
+          <Route path="sprints" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><SprintsPage /></RoleGuard>} />
+          <Route path="sprints/:sprintId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><SprintsPage /></RoleGuard>} />
+          <Route path="tasks" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><TasksPage /></RoleGuard>} />
+          <Route path="board" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS]}><BoardPage /></RoleGuard>} />
 
           {/* Intelligence & Engineering */}
           <Route path="code-quality" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><CodeQualityPage /></RoleGuard>} />
@@ -399,7 +399,7 @@ export function AppRoutes() {
           <Route
             path="bugs"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA]}>
+              <RoleGuard allowedRoles={[ROLES.QA, ROLES.DEVELOPER, ROLES.DEVOPS, ROLES.LEAD, ROLES.PM, ROLES.CEO]}>
                 <BugsPage />
               </RoleGuard>
             }
@@ -409,7 +409,7 @@ export function AppRoutes() {
           <Route
             path="stories"
             element={
-              <RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER]}>
+              <RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}>
                 <StoriesPage />
               </RoleGuard>
             }

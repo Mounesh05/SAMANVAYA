@@ -135,7 +135,7 @@ async def list_branches(
     """List repository branches using the configured read-only GitHub token."""
     try:
         github_service = GitHubSyncService()
-        branches = await github_service.client.list_branches(owner, repo)
+        branches = await github_service.api_service.client.list_branches(owner, repo)
         return {
             "owner": owner,
             "repo": repo,

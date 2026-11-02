@@ -17,6 +17,8 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { BookOpen, Plus, ArrowRight } from 'lucide-react';
 import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { PermissionGuard } from '../../auth/PermissionGuard';
+import { PERMISSIONS } from '../../auth/permissions';
 
 const STORY_STATUS = {
   TODO: 'todo',
@@ -48,10 +50,12 @@ export function StoriesPage() {
     queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
   });
 
+  const activeProjectId = selectedProjectId || projects[0]?.id || '';
+
   const { data: sprints = [] } = useQuery({
-    queryKey: ['sprints', 'project', selectedProjectId],
-    queryFn: () => sprintsApi.listByProject(selectedProjectId),
-    enabled: !!selectedProjectId,
+    queryKey: ['sprints', 'project', activeProjectId],
+    queryFn: () => sprintsApi.listByProject(activeProjectId),
+    enabled: !!activeProjectId,
   });
 
   const { data: employees = [] } = useQuery({
@@ -59,8 +63,7 @@ export function StoriesPage() {
     queryFn: () => employeesApi.list(),
   });
 
-  const activeProjectId = selectedProjectId || projects[0]?.id || '';
-  const activeSprintId = selectedSprintId || '';
+  const activeSprintId = selectedSprintId || sprints[0]?.id || '';
 
   const { data: stories = [], isLoading, error, refetch } = useQuery({
     queryKey: ['stories', 'sprint', activeSprintId],
@@ -151,13 +154,15 @@ export function StoriesPage() {
         title="Stories"
         subtitle="Manage user stories, acceptance criteria, and sprint planning."
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<Plus size={16} />}
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            Create Story
-          </Button>
+          <PermissionGuard permission={PERMISSIONS.CREATE_STORY}>
+            <Button
+              variant="primary"
+              leftIcon={<Plus size={16} />}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              Create Story
+            </Button>
+          </PermissionGuard>
         }
       />
 

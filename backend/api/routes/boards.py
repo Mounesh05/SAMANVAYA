@@ -6,7 +6,12 @@ Returns sprint/project items grouped into status columns.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from core.dependencies import get_current_user, require_roles
-from core.authorization import verify_project_access, verify_task_access, verify_story_access
+from core.authorization import (
+    verify_project_access,
+    verify_task_access,
+    verify_task_status_update_access,
+    verify_story_access,
+)
 from repositories.task_repository import TaskRepository
 from repositories.story_repository import StoryRepository
 from repositories.sprint_repository import SprintRepository
@@ -127,7 +132,7 @@ async def move_item(
     """
     # Verify user has access to the item before moving it
     if body.item_type == "task":
-        await verify_task_access(user, body.item_id)
+        await verify_task_status_update_access(user, body.item_id)
     elif body.item_type == "story":
         await verify_story_access(user, body.item_id)
     else:

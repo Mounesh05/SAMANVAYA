@@ -61,19 +61,19 @@ export function Sidebar() {
         to: '/sprints',
         icon: <Layers size={19} />,
         label: 'Sprints',
-        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER],
+        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/stories',
         icon: <BookOpen size={19} />,
         label: 'Stories',
-        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER],
+        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/tasks',
         icon: <ListTodo size={19} />,
         label: 'Tasks',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM],
+        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/board',
@@ -138,7 +138,7 @@ export function Sidebar() {
         to: '/bugs',
         icon: <Bug size={19} />,
         label: 'Bugs',
-        roles: [ROLES.QA],
+        roles: [ROLES.QA, ROLES.DEVELOPER, ROLES.DEVOPS, ROLES.LEAD, ROLES.PM, ROLES.CEO],
       },
       {
         to: '/pipelines',

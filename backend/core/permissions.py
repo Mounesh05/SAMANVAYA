@@ -88,6 +88,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
+        Permission.TRANSITION_TASK,
         # CRUD permissions
         Permission.CREATE_BUG,
         Permission.CREATE_STORY,
@@ -140,6 +141,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_QA_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        Permission.TRANSITION_TASK,
         # CRUD permissions
         Permission.CREATE_BUG,
         # Code analysis
@@ -154,6 +156,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_DEVOPS_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        Permission.TRANSITION_TASK,
         # CRUD permissions
         Permission.CREATE_INCIDENT,
         # Code analysis

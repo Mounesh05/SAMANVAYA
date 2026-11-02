@@ -70,7 +70,7 @@ async def test_list_branches_route_returns_branch_data():
     )
 
     with patch("api.routes.github.GitHubSyncService") as service:
-        service.return_value.client = fake_client
+        service.return_value.api_service.client = fake_client
         result = await list_branches(
             owner="Mounesh05",
             repo="campusconnect-demo",
