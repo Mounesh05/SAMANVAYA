@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: bash ci/run_tests.sh
       
-      # Upload results to Samanvaya
+      # Upload results to Samanvaya (includes failure reporting)
       - name: Upload results to Samanvaya
         if: always() && github.event_name != 'pull_request'
         env:
@@ -82,9 +82,36 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: |
           if [ -n "$TEST_RESULTS_FILE" ] && [ -f "$TEST_RESULTS_FILE" ]; then
+            echo "✅ Uploading test results: $TEST_RESULTS_FILE"
             SAMANVAYA_TEST_SUITE="${SAMANVAYA_TEST_SUITE}" python ci/upload_junit_results.py --junit "$TEST_RESULTS_FILE"
           else
-            echo "No test results file to upload"
+            echo "⚠️  No test results file found - creating failure report for Samanvaya"
+            cat > workflow-failure.xml << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="workflow-failure" tests="1" failures="1" errors="0" time="0">
+    <testcase classname="github-actions" name="workflow-execution">
+      <failure message="GitHub Actions workflow failed before tests could complete">
+Workflow Status: Failed
+Exit Code: ${TEST_EXIT_CODE:-unknown}
+
+Common Causes:
+- No test files found (pytest exit code 5)
+- Dependency installation failed
+- Syntax errors in code or tests
+- Missing configuration files
+
+View detailed logs:
+https://github.com/${GITHUB_REPOSITORY}/actions
+
+Branch: ${GITHUB_REF_NAME}
+Commit: ${GITHUB_SHA}
+      </failure>
+    </testcase>
+  </testsuite>
+</testsuites>
+EOF
+            SAMANVAYA_TEST_SUITE="workflow" python ci/upload_junit_results.py --junit workflow-failure.xml || echo "❌ Failed to upload failure report"
           fi
       
       # Fail workflow if tests failed

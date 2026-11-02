@@ -20,4 +20,14 @@ export const qaApi = {
   createDefect: (data) => apiClient.post('/qa/defects', data),
   getDefect: (defectId) => apiClient.get(`/qa/defects/${defectId}`),
   updateDefect: (defectId, data) => apiClient.patch(`/qa/defects/${defectId}`, data),
+  
+  // CI Integration
+  enableCIIntegration: (projectId, repository, branch = 'main') =>
+    apiClient.post(`/qa/projects/${projectId}/enable-ci`, { repository, branch }),
+  getCIConfigs: (projectId, branch = null) => 
+    apiClient.get(`/qa/projects/${projectId}/ci-config`, { params: branch ? { branch } : {} }),
+  disableCIIntegration: (projectId, branch) => 
+    apiClient.delete(`/qa/projects/${projectId}/ci-config`, { params: { branch } }),
+  getTestRuns: (projectId, filters = {}) =>
+    apiClient.get('/qa/test-runs', { params: { project_id: projectId, ...filters } }),
 };
