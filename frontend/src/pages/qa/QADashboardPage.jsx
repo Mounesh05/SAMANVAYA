@@ -18,7 +18,7 @@ const EMPTY_LIST = [];
 export function QADashboardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isProvisioningModalOpen, setIsProvisioningModalOpen] = useState(false);
-  const [testRunsFilter, setTestRunsFilter] = useState('automated'); // 'manual', 'automated', 'all'
+  const [testRunsFilter, setTestRunsFilter] = useState('github_actions'); // 'manual', 'github_actions', 'all'
   
   const queryClient = useQueryClient();
 
@@ -267,7 +267,7 @@ export function QADashboardPage() {
                       borderRadius: 'var(--radius-md)',
                     }}
                   >
-                    {['automated', 'all'].map((filter) => (
+                    {['github_actions', 'all'].map((filter) => (
                       <button
                         key={filter}
                         onClick={() => setTestRunsFilter(filter)}
@@ -282,7 +282,7 @@ export function QADashboardPage() {
                           color: testRunsFilter === filter ? '#fff' : 'var(--text-muted)',
                         }}
                       >
-                        {filter === 'all' ? 'All' : 'Automated'}
+                        {filter === 'all' ? 'All' : 'GitHub Actions'}
                       </button>
                     ))}
                   </div>
