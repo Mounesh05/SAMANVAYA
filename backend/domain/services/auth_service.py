@@ -89,6 +89,11 @@ class AuthService:
             "team_id": user.get("team_id"),
             "team_lead_id": user.get("team_lead_id"),
             "project_ids": user.get("project_ids", []),
+            "org_id": (
+                user.get("org_id")
+                or user.get("organization_id")
+                or user.get("organisation_id")
+            ),
         }
 
     @staticmethod
