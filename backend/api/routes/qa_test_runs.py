@@ -26,6 +26,13 @@ class TestRunSubmission(BaseModel):
     duration_seconds: float | None = Field(default=None, ge=0)
     status: str = Field(..., pattern="^(passed|failed|error|cancelled)$")
     created_at: datetime | None = None
+    
+    # GitHub Actions metadata
+    source: str = Field(default="github_actions")
+    pr_number: int | None = Field(default=None, ge=1)
+    workflow_run_id: str | None = Field(default=None, max_length=100)
+    workflow_name: str | None = Field(default=None, max_length=200)
+    run_attempt: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def validate_counts(self):
@@ -35,9 +42,22 @@ class TestRunSubmission(BaseModel):
 
 
 def _record_id(submission: TestRunSubmission) -> str:
-    key = "|".join(
-        [submission.repository, submission.commit_sha, submission.test_suite]
-    )
+    """Generate idempotency key including workflow run details."""
+    if submission.workflow_run_id and submission.run_attempt:
+        # Use workflow run ID + attempt for GitHub Actions runs
+        key = "|".join([
+            submission.repository,
+            submission.workflow_run_id,
+            str(submission.run_attempt),
+            submission.test_suite
+        ])
+    else:
+        # Fallback to commit-based key for other sources
+        key = "|".join([
+            submission.repository,
+            submission.commit_sha,
+            submission.test_suite
+        ])
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
@@ -59,6 +79,17 @@ async def submit_test_run(
 ):
     """Store one CI test result. Safe to retry for the same commit and suite."""
     _verify_ci_token(x_test_results_token)
+    
+    # Validate repository is allowed for this project (check any branch config)
+    ci_configs = await col("qa_ci_configs").find({"project_id": submission.project_id}).to_list(length=None)
+    if ci_configs:
+        # Get unique repositories from all branch configs
+        allowed_repos = set(config.get("repository") for config in ci_configs if config.get("repository"))
+        if submission.repository not in allowed_repos:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Repository {submission.repository} is not authorized for this project"
+            )
 
     now = datetime.now(timezone.utc)
     document = submission.model_dump(mode="json")
