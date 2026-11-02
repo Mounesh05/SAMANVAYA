@@ -1,7 +1,8 @@
-"""
-Password hashing and JWT token management.
-All auth primitives live here — nowhere else.
-"""
+import bcrypt
+if not hasattr(bcrypt, "__about__"):
+    class _About:
+        __version__ = getattr(bcrypt, "__version__", "4.0.1")
+    bcrypt.__about__ = _About()
 
 from datetime import datetime, timedelta
 from jose import JWTError, jwt

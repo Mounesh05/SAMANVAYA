@@ -43,12 +43,16 @@ class BaseRepository:
         
         return {"data": data, "total": total, "limit": limit, "skip": skip}
 
-    async def find_all(self, query: dict) -> list:
+    async def find_all(self, query: dict, limit: int = None, skip: int = None) -> list:
         """
-        Unbounded fetch — only use for small controlled datasets.
-        Prefer find_many() with pagination for user-facing endpoints.
+        Fetch documents matching query with optional limit and skip.
         """
-        return [doc async for doc in self.col.find(query, {"_id": 0})]
+        cursor = self.col.find(query, {"_id": 0})
+        if skip:
+            cursor = cursor.skip(skip)
+        if limit:
+            cursor = cursor.limit(limit)
+        return [doc async for doc in cursor]
 
     async def insert(self, doc: dict) -> bool:
         """Insert a single document."""

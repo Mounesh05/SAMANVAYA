@@ -1,223 +1,277 @@
 """
-AI Evaluation API.
-Requires authentication for all endpoints.
+AI Evaluation API — Endpoints for multi-agent employee evaluation.
+Protected with authentication and RBAC.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from fastapi import APIRouter, HTTPException, Depends, Query, Body
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional, List
+from datetime import datetime
+from bson import ObjectId
 from core.dependencies import get_current_user
+from core.database import col
+from agents.supervisor import evaluate_employee
 import time
 import uuid
+import logging
+import traceback as _traceback
+
+logger = logging.getLogger("samanvaya.evaluation")
+
+
+def _serialize(obj):
+    """Recursively convert MongoDB docs to JSON-safe types."""
+    if isinstance(obj, dict):
+        return {k: _serialize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_serialize(i) for i in obj]
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    try:
+        # Catch NaN/Inf floats that JSON can't encode
+        import math
+        if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+            return None
+    except Exception:
+        pass
+    # Handle Pydantic BaseModel objects
+    try:
+        from pydantic import BaseModel as _BaseModel
+        if isinstance(obj, _BaseModel):
+            return _serialize(obj.model_dump())
+    except Exception:
+        pass
+    # Handle sets, tuples
+    if isinstance(obj, (set, tuple, frozenset)):
+        return [_serialize(i) for i in obj]
+    # Last resort: convert to string
+    try:
+        import json
+        json.dumps(obj)  # test if already serializable
+        return obj
+    except (TypeError, ValueError):
+        return str(obj)
+
 
 router = APIRouter()
 
 
+class EmployeeEvaluationRequest(BaseModel):
+    """Multi-agent employee evaluation request."""
+    employee_id: str = Field(..., description="Employee ID (e.g. 'EMP-001')")
+    start_date: str = Field(default="2026-09-01", description="Period start YYYY-MM-DD")
+    end_date: str = Field(default="2026-09-30", description="Period end YYYY-MM-DD")
+    period_label: Optional[str] = Field(default="2026-09", description="Label for period (e.g. '2026-09' or '2026-Q3')")
+    company_id: Optional[str] = Field(default="ORG-001", description="Company isolation ID")
+    skip_llm: bool = Field(default=False, description="Skip LLM calls and use deterministic scoring (fast mode for CI/CD testing)")
+    verbose: bool = Field(default=True, description="Include per-agent metrics, reasoning, confidence, and evidence summary in response")
+
+
 class SimpleEvalRequest(BaseModel):
-    """Simple evaluation request."""
-    github_username: str                    # e.g., "torvalds"
-    repo_owner: str                        # e.g., "microsoft" 
-    repo_name: str                         # e.g., "vscode"
-    pr_number: Optional[int] = None        # e.g., 200000 (optional)
-    human_score: float = 5.0               # Human baseline score (1-10)
-    evaluation_focus: str = "code_quality" # Focus area
-
-
-class EvaluationResult(BaseModel):
-    """AI evaluation result."""
-    evaluation_id: str
+    """Simple repo-based evaluation request (compat)."""
     github_username: str
-    repo_info: Dict[str, Any]
-    human_score: float
-    ai_analysis: Dict[str, Any]
-    overall_score: float
-    recommendations: list
-    timestamp: str
+    repo_owner: str
+    repo_name: str
+    pr_number: Optional[int] = None
+    human_score: float = 5.0
+    evaluation_focus: str = "code_quality"
 
 
-@router.post("/evaluate", response_model=EvaluationResult)
-async def evaluate_developer_ai(request: SimpleEvalRequest, user: dict = Depends(get_current_user)):
+@router.post("/run")
+async def run_employee_evaluation(
+    request: EmployeeEvaluationRequest,
+    user: dict = Depends(get_current_user),
+):
     """
-    AI-powered developer evaluation for a specific repository.
-    
-    This endpoint:
-    1. Fetches repository data from GitHub
-    2. Analyzes recent commits/PRs by the developer
-    3. Runs AI evaluation using Ollama
-    4. Combines human score with AI insights
-    5. Returns comprehensive evaluation
-    
-    Example request:
-    {
-        "github_username": "gaearon",
-        "repo_owner": "facebook", 
-        "repo_name": "react",
-        "pr_number": 25840,
-        "human_score": 7.5,
-        "evaluation_focus": "code_quality"
-    }
+    Triggers multi-agent specialist scoring for an employee across an evaluation period.
+
+    Executes in parallel:
+    - Code Agent: Code Quality ONLY
+    - QA Agent: Testing & Reliability ONLY
+    - DevOps Agent: Deployment & Infrastructure ONLY
+    - CI/CD Agent: CI/CD Performance ONLY
+    - Meeting Agent: Agile & Collaboration ONLY
+    Followed by Performance Aggregator and Report Agent presentation.
     """
+    company_id = user.get("company_id") or user.get("org_id") or request.company_id or "ORG-001"
+    evaluator_id = user.get("employee_id") or user.get("id") or "system"
+
     try:
-        evaluation_id = f"EVAL-{uuid.uuid4().hex[:8].upper()}"
-        
-        # Step 1: Get repository info
-        from domain.services.github_service import GitHubService
-        github_service = GitHubService()
-        
-        repo_info = await github_service.get_repository_info(
-            request.repo_owner, 
-            request.repo_name
+        result = await evaluate_employee(
+            employee_id=request.employee_id,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            company_id=company_id,
+            evaluator_id=evaluator_id,
+            period_label=request.period_label,
+            skip_llm=request.skip_llm,
+            verbose=request.verbose,
         )
-        
-        # Step 2: If PR specified, analyze specific PR
-        pr_analysis = None
-        if request.pr_number:
-            try:
-                pr_result = await github_service.sync_pull_request(
-                    owner=request.repo_owner,
-                    repo=request.repo_name,
-                    pr_number=request.pr_number,
-                    project_id=f"eval-{evaluation_id}",
-                    use_ai=True,
-                    use_deep_analysis=False,
-                    triggered_by=f"evaluation-{request.github_username}"
-                )
-                pr_analysis = pr_result.get("ai_analysis")
-            except Exception as e:
-                pr_analysis = {"error": f"Could not analyze PR: {str(e)}"}
-        
-        # Step 3: Run AI evaluation
-        ai_analysis = await _run_ai_evaluation(
-            github_username=request.github_username,
-            repo_info=repo_info,
-            pr_analysis=pr_analysis,
-            human_score=request.human_score,
-            focus=request.evaluation_focus
-        )
-        
-        # Step 4: Calculate overall score
-        ai_score = ai_analysis.get("technical_score", 0.0)
-        if ai_score > 0:
-            overall_score = (request.human_score * 0.3 + ai_score * 0.7)
-        else:
-            overall_score = request.human_score  # AI unavailable, use human only
-        
-        # Step 5: Get recommendations from AI (no hardcoded fallbacks)
-        recommendations = ai_analysis.get("recommendations", [])
-        
-        return EvaluationResult(
-            evaluation_id=evaluation_id,
-            github_username=request.github_username,
-            repo_info={
-                "name": repo_info.get("name"),
-                "owner": repo_info.get("owner"),
-                "language": repo_info.get("language"),
-                "description": repo_info.get("description"),
-                "stars": repo_info.get("github_url", "").split("/")[-1] if repo_info.get("github_url") else "N/A"
-            },
-            human_score=request.human_score,
-            ai_analysis=ai_analysis,
-            overall_score=round(overall_score, 2),
-            recommendations=recommendations,
-            timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-        )
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Evaluation failed: {str(e)}"
-        )
+        return JSONResponse(content=_serialize(result))
+    except Exception as exc:
+        logger.error("[EVAL] /run failed for %s: %s", request.employee_id, exc)
+        logger.error(_traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Employee evaluation failed: {exc}")
 
 
-async def _run_ai_evaluation(
-    github_username: str,
-    repo_info: Dict[str, Any],
-    pr_analysis: Optional[Dict[str, Any]],
-    human_score: float,
-    focus: str
-) -> Dict[str, Any]:
-    """Run AI evaluation using Ollama."""
+@router.get("")
+@router.get("/all")
+async def list_all_evaluations(
+    period_label: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """
+    List latest multi-agent evaluations for all employees in the organization.
+    """
+    company_id = user.get("company_id") or user.get("org_id") or "ORG-001"
+    query = {"company_id": company_id} if company_id else {}
+    if period_label:
+        query["period.label"] = period_label
+
     try:
-        from agents.llm_provider import get_ollama_llm, check_ollama_connection
-        
-        # Check if Ollama is available
-        if not check_ollama_connection():
-            return {
-                "technical_score": 0.0,
-                "analysis": "AI evaluation unavailable — Ollama not connected",
-                "confidence": 0.0,
-                "recommendations": [],
-                "error": "Ollama not available"
-            }
-        
-        # Build evaluation prompt
-        prompt = f"""
-Evaluate the technical performance of GitHub user '{github_username}' based on:
+        cursor = col("employee_evaluations").find(query).sort("period.end", -1)
+        docs = await cursor.to_list(100)
+        return JSONResponse(content=_serialize(docs))
+    except Exception as exc:
+        logger.error("[EVAL] list_all_evaluations failed: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
-Repository Context:
-- Repository: {repo_info.get('name', 'N/A')}
-- Owner: {repo_info.get('owner', 'N/A')}
-- Primary Language: {repo_info.get('language', 'N/A')}
-- Description: {repo_info.get('description', 'N/A')}
 
-Human Assessment: {human_score}/10
+@router.get("/{employee_id}")
+async def get_latest_employee_evaluation(
+    employee_id: str,
+    period_label: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Fetch the latest multi-agent evaluation for an employee.
+    If no evaluation exists yet, automatically calculates an evaluation for September 2026.
+    """
+    company_id = user.get("company_id") or user.get("org_id") or "ORG-001"
 
-Pull Request Analysis:
-{pr_analysis if pr_analysis else 'No specific PR analyzed'}
+    query = {"employee_id": employee_id}
+    if period_label:
+        query["period.label"] = period_label
 
-Focus Area: {focus}
+    doc = await col("employee_evaluations").find_one(
+        query,
+        sort=[("period.end", -1), ("_id", -1)],
+    )
 
-Please provide:
-1. Technical Score (1-10): Based on code quality, architecture, best practices
-2. Analysis: Detailed assessment of technical skills
-3. Strengths: Key technical strengths observed
-4. Areas for Improvement: Specific areas to focus on
-5. Recommendations: 3-5 actionable recommendations
-
-Format as JSON with keys: technical_score, analysis, strengths, improvements, recommendations
-"""
-
-        # Get AI response
-        llm = get_ollama_llm(temperature=0.3)
-        response = llm.invoke(prompt)
-        
-        # Parse AI response (basic parsing)
+    if not doc:
+        # Generate dynamically on first request
         try:
-            import json
-            # Try to extract JSON from response
-            start_idx = response.find('{')
-            end_idx = response.rfind('}') + 1
-            if start_idx >= 0 and end_idx > start_idx:
-                ai_data = json.loads(response[start_idx:end_idx])
-            else:
-                raise ValueError("No JSON found")
-        except Exception:
-            # Fallback: return raw response without fabricating scores
-            ai_data = {
-                "technical_score": 0.0,
-                "analysis": response[:500] + "..." if len(response) > 500 else response,
-                "strengths": [],
-                "improvements": [],
-                "recommendations": [],
-                "parse_error": "Could not extract structured JSON from AI response"
-            }
-        
-        # Ensure technical_score is numeric
-        if "technical_score" not in ai_data or not isinstance(ai_data["technical_score"], (int, float)):
-            ai_data["technical_score"] = 0.0
-        
-        # Confidence based on whether we got a real structured response
-        ai_data["confidence"] = 0.8 if ai_data["technical_score"] > 0 else 0.0
-        return ai_data
-        
-    except Exception as e:
-        return {
-            "technical_score": 0.0,
-            "analysis": f"AI evaluation failed: {str(e)}",
-            "confidence": 0.0,
-            "recommendations": [],
-            "error": str(e)
-        }
+            doc = await evaluate_employee(
+                employee_id=employee_id,
+                start_date="2026-09-01",
+                end_date="2026-09-30",
+                company_id=company_id,
+                evaluator_id="system",
+                period_label="2026-09",
+            )
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"No evaluation found for {employee_id}: {e}")
+
+    # Remove mongo ObjectId if present
+    if "_id" in doc and not isinstance(doc["_id"], str):
+        doc["_id"] = str(doc["_id"])
+
+    return doc
+
+
+@router.get("/{employee_id}/report.pdf")
+async def download_evaluation_pdf(
+    employee_id: str,
+    period_label: Optional[str] = Query(None),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Generate and download a professional PDF evaluation scorecard.
+    """
+    from fastapi.responses import Response
+    from agents.report_agent import EmployeeReportGenerator
+
+    query = {"employee_id": employee_id}
+    if period_label:
+        query["period.label"] = period_label
+
+    doc = await col("employee_evaluations").find_one(
+        query,
+        sort=[("period.end", -1), ("_id", -1)],
+    )
+
+    if not doc:
+        # Generate on demand
+        company_id = user.get("company_id") or user.get("org_id") or "ORG-001"
+        try:
+            doc = await evaluate_employee(
+                employee_id=employee_id,
+                start_date="2026-09-01",
+                end_date="2026-09-30",
+                company_id=company_id,
+                period_label="2026-09",
+            )
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"No evaluation to generate PDF for {employee_id}: {e}")
+
+    pdf_bytes = EmployeeReportGenerator.generate_pdf_report_from_doc(doc)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="evaluation_{employee_id}.pdf"'},
+    )
+
+
+@router.get("/{employee_id}/history")
+async def get_employee_evaluation_history(
+    employee_id: str,
+    limit: int = Query(10, ge=1, le=50),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Retrieve historical evaluations for an employee across past periods.
+    """
+    cursor = col("employee_evaluations").find(
+        {"employee_id": employee_id},
+        sort=[("period.end", -1)],
+    ).limit(limit)
+
+    results = await cursor.to_list(limit)
+    for r in results:
+        if "_id" in r and not isinstance(r["_id"], str):
+            r["_id"] = str(r["_id"])
+
+    return {"employee_id": employee_id, "history": results}
+
+
+@router.get("/status/{task_id}")
+async def get_evaluation_status(task_id: str, user: dict = Depends(get_current_user)):
+    """Status check for long-running evaluation tasks."""
+    doc = await col("employee_evaluations").find_one({"evaluation_id": task_id})
+    if doc:
+        return {"status": "completed", "evaluation_id": task_id, "result": doc}
+    return {"status": "processing", "evaluation_id": task_id}
+
+
+# ── Backward compatibility endpoint ──
+@router.post("/evaluate")
+async def evaluate_developer_ai_compat(
+    request: SimpleEvalRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Legacy evaluate endpoint preserved for backward compatibility."""
+    return await run_employee_evaluation(
+        EmployeeEvaluationRequest(
+            employee_id=request.github_username,
+            start_date="2026-09-01",
+            end_date="2026-09-30",
+            period_label="2026-09",
+        ),
+        user=user,
+    )
 
 
 @router.get("/health")
@@ -225,17 +279,25 @@ async def evaluation_health():
     """Check evaluation system health."""
     from agents.llm_provider import check_ollama_connection
     from integrations.github.client import GitHubClient
-    
+
     github_status = "not_configured"
     try:
         client = GitHubClient()
         github_status = "configured" if await client.check_token_validity() else "invalid"
     except Exception:
         github_status = "error"
-    
+
     return {
         "status": "operational",
         "ai_available": check_ollama_connection(),
         "github_available": github_status,
-        "evaluation_ready": check_ollama_connection() and github_status in ["configured", "not_configured"]
+        "specialist_agents": [
+            "code_agent (Code Quality)",
+            "qa_agent (Testing & Reliability)",
+            "devops_agent (DevOps & Infrastructure)",
+            "cicd_agent (CI/CD Performance)",
+            "meeting_agent (Agile & Collaboration)",
+        ],
+        "aggregator": "performance_agent",
+        "reporter": "report_agent",
     }

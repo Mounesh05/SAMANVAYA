@@ -11,6 +11,7 @@ router = APIRouter()
 notification_service = NotificationService()
 
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 async def list_notifications(
     limit: int = Query(50, ge=1, le=100),

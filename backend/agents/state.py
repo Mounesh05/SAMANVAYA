@@ -1,31 +1,98 @@
 """
-Shared state definitions for LangGraph agents
+AgentState — Canonical shared state for the LangGraph Supervisor pipeline.
+
+Architecture:
+    FastAPI -> Auth/RBAC -> Supervisor (LangGraph) -> [Agent Nodes]
+                                                         -> Guardrails
+                                                         -> MCP Tools
+                                                         -> Memory (MongoDB + Redis)
+                                                         -> LiteLLM Gateway
+
+Every field is documented with its source and consumer.
 """
 
-from typing import TypedDict, Literal, Optional, Dict, Any, List
+from typing import TypedDict, Literal, Optional, Dict, Any, List, Annotated
+import operator
 
 
-class AgentState(TypedDict):
+# ─────────────────────────────────────────────────────────────────────────────
+# Allowed task types (controls supervisor routing)
+# ─────────────────────────────────────────────────────────────────────────────
+TaskType = Literal[
+    "code_review",
+    "qa_analysis",
+    "devops_risk",
+    "cicd_analysis",
+    "meeting_insights",
+    "performance_eval",
+    "report_synthesis",
+]
+
+RiskLevel = Literal["low", "medium", "high", "critical"]
+AgentRole = Literal["CEO", "HR", "LEAD", "PM", "DEV", "QA", "DEVOPS", "ADMIN"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Core AgentState — passed through every node in the LangGraph graph
+# ─────────────────────────────────────────────────────────────────────────────
+class AgentState(TypedDict, total=False):
     """
-    Shared state passed between agents in the supervisor graph.
-    
-    The supervisor routes tasks to specialized agents based on task_type.
-    Each agent interprets evidence from the Intelligence Engine (Layer 5).
+    Shared mutable state propagated through the LangGraph supervisor graph.
+
+    Fields are grouped into:
+        [INPUT]      - Set by the API caller before graph invocation
+        [AUTH]       - Set by RBAC/OPA guardrail at graph entry
+        [ROUTING]    - Set by supervisor router
+        [EVIDENCE]   - Rich context injected by MCP tools / Intelligence Engine
+        [MEMORY]     - Retrieved from Redis short-term / MongoDB long-term memory
+        [OUTPUT]     - Written by specialist agent nodes
+        [GUARDRAILS] - Written by NeMo / Pydantic validators
+        [TELEMETRY]  - Timing, cost, token counts per node
     """
-    # Input
-    task_type: Literal["code_review", "qa_analysis", "devops_risk", "meeting_insights"]
-    evidence: Dict[str, Any]  # From Intelligence Engine
-    context: Optional[Dict[str, Any]]  # Additional context (sprint, PR, etc.)
-    
-    # Routing
-    next_agent: Optional[str]
-    
-    # Output
-    analysis: Optional[str]
-    recommendations: Optional[List[str]]
-    risk_level: Optional[Literal["low", "medium", "high", "critical"]]
-    confidence: Optional[float]
-    
-    # Metadata
-    agent_history: List[str]  # Track which agents processed this
-    errors: List[str]
+
+    # ── [INPUT] ──────────────────────────────────────────────────────────────
+    task_type: TaskType                       # Which specialist agent to invoke
+    task_id: str                              # UUID for dedup + audit trail
+    user_id: str                              # Authenticated user ID (JWT sub)
+    user_role: AgentRole                      # RBAC role from JWT claims
+    company_id: str                           # Multi-tenant isolation key
+    input_text: str                           # Raw user request / document
+    context: Dict[str, Any]                   # PR metadata, sprint info, etc.
+
+    # ── [AUTH / RBAC] ────────────────────────────────────────────────────────
+    rbac_allowed: bool                        # OPA policy decision
+    rbac_reason: str                          # Human-readable deny reason
+    prompt_injection_detected: bool          # Prompt injection flag
+    guardrail_passed: bool                    # NeMo / Pydantic gate result
+    guardrail_violations: List[str]           # List of violated policy names
+
+    # ── [EVIDENCE] ───────────────────────────────────────────────────────────
+    evidence: Dict[str, Any]                  # From Intelligence Engine / MCP tools
+    mcp_tool_calls: List[Dict[str, Any]]      # Log of all MCP tool invocations
+    rag_context: str                          # Retrieved documents from Qdrant/MongoDB
+
+    # ── [MEMORY] ─────────────────────────────────────────────────────────────
+    redis_hit: bool                           # True if result served from Redis cache
+    cache_key: str                            # Redis cache key for this request
+    conversation_history: List[Dict[str, Any]]  # Long-term memory from MongoDB
+
+    # ── [ROUTING] ────────────────────────────────────────────────────────────
+    next_agent: Optional[str]                 # Supervisor override for next node
+    retry_count: int                          # How many times this task has retried
+
+    # ── [OUTPUT] — Written by specialist agents ───────────────────────────────
+    analysis: str                             # Agent's narrative analysis
+    recommendations: List[str]               # Actionable recommendations
+    risk_level: RiskLevel                     # Assessed risk classification
+    confidence: float                         # 0.0–1.0 confidence in output
+    structured_output: Dict[str, Any]         # Agent-specific structured result
+    agent_history: List[str]                  # Trail of nodes that processed state
+
+    # ── [GUARDRAILS OUTPUT] ───────────────────────────────────────────────────
+    output_sanitized: bool                    # True if output was cleaned
+
+    # ── [TELEMETRY] ──────────────────────────────────────────────────────────
+    latency_ms: Dict[str, float]             # Per-node latency: {"code_agent": 14230}
+    token_counts: Dict[str, int]              # Per-node token usage
+    llm_model_used: str                       # Model name that ran inference
+    errors: List[str]                         # Error accumulator (non-fatal)

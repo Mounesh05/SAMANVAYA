@@ -129,3 +129,17 @@ class SprintService:
     async def update_sprint_status(self, sprint_id: str, status: str) -> bool:
         """Update sprint status (planning|active|completed)."""
         return await self.sprint_repo.update({"id": sprint_id}, {"status": status})
+
+    async def update_sprint(self, sprint_id: str, updates: dict) -> bool:
+        """Update sprint fields."""
+        return await self.sprint_repo.update({"id": sprint_id}, updates)
+
+    async def get_all_sprints(self, filter_query: dict = None, limit: int = 100) -> list[Sprint]:
+        """Get all sprints matching filter."""
+        sprints = await self.sprint_repo.find_all(filter_query or {}, limit=limit)
+        return [Sprint(**s) for s in sprints]
+
+    async def delete_sprint(self, sprint_id: str) -> bool:
+        """Delete sprint by ID."""
+        return await self.sprint_repo.delete({"id": sprint_id})
+

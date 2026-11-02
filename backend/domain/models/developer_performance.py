@@ -19,8 +19,8 @@ class PerformanceBreakdown(BaseModel):
 
 
 class AIEvaluation(BaseModel):
-    """AI-generated evaluation of developer performance"""
-    score: float = Field(..., ge=0, le=90, description="Total AI evaluation score (0-90)")
+    """AI/Agent-generated evaluation of developer performance (80 marks max)"""
+    score: float = Field(..., ge=0, le=100, description="Agent evaluation score (0-80 marks or 0-100 normalized)")
     breakdown: PerformanceBreakdown
     strengths: List[str] = Field(default_factory=list, description="Identified strengths")
     weaknesses: List[str] = Field(default_factory=list, description="Areas for improvement")
@@ -97,7 +97,7 @@ class RoleEvaluation(BaseModel):
     hr: Optional[HRFeedback] = None
     
     average_score: float = Field(default=0, ge=0, le=100, description="Average role score (0-100)")
-    contribution: float = Field(default=0, ge=0, le=10, description="Role contribution (0-10)")
+    contribution: float = Field(default=0, ge=0, le=20, description="Superior score contribution (0-20 marks)")
 
 
 class DeveloperPerformance(BaseModel):
@@ -113,14 +113,17 @@ class DeveloperPerformance(BaseModel):
     period_end: datetime
     period_label: str = Field(..., description="e.g., 'Sprint-23', 'Q1-2024'")
     
-    # AI Evaluation (90%)
+    # Authoritative 80/20 marks model:
+    # Agent Score (80 marks)
     ai_evaluation: AIEvaluation
     
-    # Role Evaluation (10%)
+    # Superior Score (20 marks)
     role_evaluation: RoleEvaluation
     
-    # Final Score
-    final_score: float = Field(..., ge=0, le=100, description="Total performance score (0-100)")
+    # Final Score (100 marks) = Agent Score (80) + Superior Score (20)
+    final_score: float = Field(..., ge=0, le=100, description="Total final performance score (0-100 marks)")
+    agent_score: Optional[float] = Field(default=None, ge=0, le=80, description="Agent Score out of 80 marks")
+    superior_score: Optional[float] = Field(default=None, ge=0, le=20, description="Superior Score out of 20 marks")
     grade: str = Field(..., description="A+, A, B+, B, C+, C, D, F")
     
     # Trend Analysis
@@ -133,6 +136,10 @@ class DeveloperPerformance(BaseModel):
     confidence_reason: str = Field(..., description="Reason for confidence level")
     data_points: Dict[str, int] = Field(default_factory=dict, description="Amount of data analyzed")
     
+    # Specialist Agent Scores & Versioning
+    agent_scores: Optional[Dict[str, Any]] = Field(default=None, description="Detailed specialist agent scores")
+    scoring_version: str = Field(default="1.0", description="Scoring engine version")
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

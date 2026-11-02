@@ -15,7 +15,7 @@ from domain.models.ai_run import AIRun
 from repositories.ai_run_repository import AIRunRepository
 from core.database import db
 
-router = APIRouter(prefix="/ai", tags=["AI Agents"])
+router = APIRouter(tags=["AI Agents"])
 
 
 class AgentRequest(BaseModel):
@@ -93,9 +93,15 @@ async def invoke_agent(
         # Create supervisor graph
         graph = create_supervisor_graph()
         
-        # Prepare initial state
+        import uuid as _uuid
+        # Prepare initial state with all required AgentState fields
         initial_state = {
             "task_type": request.task_type,
+            "task_id": str(_uuid.uuid4()),
+            "user_id": current_user.get("employee_id", "unknown"),
+            "user_role": current_user.get("role", "USER"),
+            "company_id": current_user.get("company_id") or current_user.get("org_id") or "ORG-001",
+            "input_text": f"{request.task_type} analysis request",
             "evidence": request.evidence,
             "context": request.context,
             "agent_history": [],
@@ -105,10 +111,15 @@ async def invoke_agent(
             "recommendations": None,
             "risk_level": None,
             "confidence": None,
+            "mcp_tool_calls": [],
+            "latency_ms": {},
+            "token_counts": {},
+            "rag_context": "",
+            "conversation_history": [],
         }
-        
-        # Invoke graph
-        result = graph.invoke(initial_state)
+
+        # Invoke graph asynchronously (required — memory_read node is async)
+        result = await graph.ainvoke(initial_state)
         
         # Calculate execution time
         execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000

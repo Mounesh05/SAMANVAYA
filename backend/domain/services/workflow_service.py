@@ -75,11 +75,20 @@ class WorkflowService:
                 f"Allowed: {allowed}"
             )
         
-        # Update status
-        await self.task_repo.update({"id": task_id}, {"status": new_status})
+        # Update status & trigger agent score update on completion
+        now = datetime.now(timezone.utc).isoformat()
+        task_updates = {"status": new_status}
+        from intelligence.task_scoring_trigger import is_completion_status, on_task_completed
+        if is_completion_status(new_status):
+            task_updates["completed_at"] = now
+
+        await self.task_repo.update({"id": task_id}, task_updates)
+
+        if is_completion_status(new_status):
+            target_assignee = task.get("assignee_id") or user_id
+            await on_task_completed(task_id, assignee_id=target_assignee, run_in_background=True)
         
         # Record transition
-        now = datetime.now(timezone.utc).isoformat()
         transition = StatusTransition(
             id=f"TR-{uuid.uuid4().hex[:8].upper()}",
             item_id=task_id,

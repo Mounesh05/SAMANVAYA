@@ -47,6 +47,12 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     """Response model for successful login."""
     
-    token: str  # Changed from access_token to match frontend
+    token: str
+    access_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserOut
+    employee_id: Optional[str] = None
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+    dept: Optional[str] = None

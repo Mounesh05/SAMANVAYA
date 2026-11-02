@@ -11,8 +11,8 @@ class TaskCreate(BaseModel):
     """Request model for creating a new task."""
     
     title: str
-    project_id: str
-    assignee_id: str
+    project_id: Optional[str] = None
+    assignee_id: Optional[str] = None
     story_id: Optional[str] = None
     sprint_id: Optional[str] = None
     type: str = "feature"  # feature|bug|chore|research
@@ -25,4 +25,4 @@ class Task(TaskCreate):
     
     id: str
     status: str = "todo"  # todo|in_progress|review|done|blocked
-    created_at: str = ""
+    created_at: Optional[str] = ""

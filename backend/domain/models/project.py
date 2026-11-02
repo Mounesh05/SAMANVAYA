@@ -12,8 +12,10 @@ class ProjectCreate(BaseModel):
     
     name: str
     description: Optional[str] = None
-    org_id: str
-    team_id: str
+    org_id: Optional[str] = "ORG-001"
+    team_id: Optional[str] = None
+    team_ids: Optional[list[str]] = []
+    key: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     main_module: Optional[str] = None  # expected GitHub module path
@@ -24,5 +26,5 @@ class Project(ProjectCreate):
     
     id: str
     status: str = "active"  # active|paused|completed|archived
-    created_by: str = ""
-    created_at: str = ""
+    created_by: Optional[str] = ""
+    created_at: Optional[str] = ""

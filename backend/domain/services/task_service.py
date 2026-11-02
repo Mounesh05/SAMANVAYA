@@ -63,9 +63,35 @@ class TaskService:
         return [Task(**t) for t in tasks]
 
     async def update_task_status(self, task_id: str, status: str) -> bool:
-        """Update task status."""
-        return await self.task_repo.update({"id": task_id}, {"status": status})
+        """Update task status. Triggers agent score update if task is completed."""
+        from intelligence.task_scoring_trigger import is_completion_status, on_task_completed
+        updates = {"status": status}
+        if is_completion_status(status):
+            updates["completed_at"] = datetime.utcnow().isoformat()
+
+        updated = await self.task_repo.update({"id": task_id}, updates)
+        if updated and is_completion_status(status):
+            await on_task_completed(task_id, run_in_background=True)
+        return updated
 
     async def update_task(self, task_id: str, updates: dict) -> bool:
-        """Update task fields."""
-        return await self.task_repo.update({"id": task_id}, updates)
+        """Update task fields. Triggers agent score update if task is completed."""
+        from intelligence.task_scoring_trigger import is_completion_status, on_task_completed
+        status = updates.get("status")
+        if is_completion_status(status) and "completed_at" not in updates:
+            updates["completed_at"] = datetime.utcnow().isoformat()
+
+        updated = await self.task_repo.update({"id": task_id}, updates)
+        if updated and is_completion_status(status):
+            await on_task_completed(task_id, run_in_background=True)
+        return updated
+
+    async def get_all_tasks(self, filter_query: dict = None, limit: int = 100) -> List[Task]:
+        """Get tasks matching optional filter."""
+        tasks = await self.task_repo.find_all(filter_query or {}, limit=limit)
+        return [Task(**t) for t in tasks]
+
+    async def delete_task(self, task_id: str) -> bool:
+        """Delete task by id."""
+        return await self.task_repo.delete({"id": task_id})
+

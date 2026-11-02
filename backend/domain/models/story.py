@@ -12,9 +12,9 @@ class StoryCreate(BaseModel):
     
     title: str
     description: Optional[str] = None
-    sprint_id: str
-    project_id: str
-    assignee_id: str
+    sprint_id: Optional[str] = None
+    project_id: Optional[str] = None
+    assignee_id: Optional[str] = None
     points: int = 3
     priority: str = "medium"  # low|medium|high|critical
 
@@ -26,4 +26,4 @@ class Story(StoryCreate):
     status: str = "todo"  # todo|in_progress|review|done
     risk: str = "low"  # low|medium|high|critical
     alignment_score: Optional[int] = None  # 0-100, AI-calculated
-    created_at: str = ""
+    created_at: Optional[str] = ""

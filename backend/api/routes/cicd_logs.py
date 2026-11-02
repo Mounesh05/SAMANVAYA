@@ -14,7 +14,7 @@ from core.dependencies import get_current_user
 from repositories.ai_run_repository import AIRunRepository
 from core.database import db
 
-router = APIRouter(prefix="/cicd-logs", tags=["CI/CD Logs"])
+router = APIRouter(tags=["CI/CD Logs"])
 
 
 class LogAnalysisRequest(BaseModel):

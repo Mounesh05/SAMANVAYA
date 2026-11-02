@@ -1,4 +1,4 @@
-﻿"""
+"""
 FastAPI dependency injection.
 Every protected route uses Depends(get_current_user).
 Role-restricted routes use Depends(require_roles(...)).
@@ -103,11 +103,14 @@ def require_roles(*roles: str):
         user_role = user.get("role", user.get("organizational_role", "")).upper()
         allowed_roles = [r.upper() for r in roles]
         
-        if user_role not in allowed_roles:
-            raise HTTPException(
-                status_code=403, 
-                detail=f"Insufficient permissions. Required role: {', '.join(roles)} (user has: {user_role})"
-            )
+        # Admin or CEO can inspect all dashboards and views
+        if user.get("is_admin") or user_role == "CEO" or user_role in allowed_roles:
+            return user
+        
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Insufficient permissions. Required role: {', '.join(roles)} (user has: {user_role})"
+        )
         return user
 
     return _check

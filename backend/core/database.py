@@ -4,6 +4,7 @@ Single client instance — collections accessed by name.
 Client is created lazily on first use, not at import time.
 """
 
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from .config import settings
 
@@ -11,8 +12,22 @@ _client: AsyncIOMotorClient = None
 
 
 def get_client() -> AsyncIOMotorClient:
-    """Get or create MongoDB client singleton."""
+    """Get or create MongoDB client singleton, ensuring it matches the current running event loop."""
     global _client
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    if _client is not None:
+        try:
+            client_loop = getattr(_client, "get_io_loop", lambda: None)()
+            if client_loop and (client_loop.is_closed() or (current_loop and client_loop is not current_loop)):
+                _client.close()
+                _client = None
+        except Exception:
+            _client = None
+
     if _client is None:
         _client = AsyncIOMotorClient(settings.MONGO_URI)
     return _client

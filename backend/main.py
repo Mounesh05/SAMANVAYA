@@ -1,3 +1,9 @@
+import bcrypt
+if not hasattr(bcrypt, "__about__"):
+    class _About:
+        __version__ = getattr(bcrypt, "__version__", "4.0.1")
+    bcrypt.__about__ = _About()
+
 """
 Samanvaya FastAPI application entry point.
 All routers will be registered here with their URL prefixes.
@@ -26,14 +32,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration - properly configured from environment
-allowed_origins = getattr(settings, 'ALLOWED_ORIGINS', "http://localhost:3000,http://localhost:5173").split(",")
+# CORS configuration - supports localhost and 127.0.0.1 on any port + env origins
+raw_origins = [o.strip() for o in getattr(settings, 'ALLOWED_ORIGINS', "").split(",") if o.strip()]
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+allowed_origins = list(set(raw_origins + default_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://[a-zA-Z0-9-]+\.(ngrok-free\.app|ngrok\.app|ngrok\.io)$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -125,12 +139,26 @@ app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code 
 # AI Evaluation (Requires Auth)
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["AI Evaluation"])
 
-# Role-specific dashboards
+# Role-specific dashboards (both /api/role/* and /api/* prefixes supported)
 app.include_router(developer.router, prefix="/api/role/developer", tags=["Role: Developer"])
+app.include_router(developer.router, prefix="/api/developer", tags=["Role: Developer (Compat)"], include_in_schema=False)
 app.include_router(lead.router, prefix="/api/role/lead", tags=["Role: Lead"])
+app.include_router(lead.router, prefix="/api/lead", tags=["Role: Lead (Compat)"], include_in_schema=False)
 app.include_router(pm.router, prefix="/api/role/pm", tags=["Role: PM"])
+app.include_router(pm.router, prefix="/api/pm", tags=["Role: PM (Compat)"], include_in_schema=False)
 app.include_router(ceo.router, prefix="/api/role/ceo", tags=["Role: CEO"])
+app.include_router(ceo.router, prefix="/api/ceo", tags=["Role: CEO (Compat)"], include_in_schema=False)
 app.include_router(hr.router, prefix="/api/role/hr", tags=["Role: HR"])
+app.include_router(hr.router, prefix="/api/hr", tags=["Role: HR (Compat)"], include_in_schema=False)
 app.include_router(qa.router, prefix="/api/role/qa", tags=["Role: QA"])
+app.include_router(qa.router, prefix="/api/qa", tags=["Role: QA (Compat)"], include_in_schema=False)
 app.include_router(devops.router, prefix="/api/role/devops", tags=["Role: DevOps"])
+app.include_router(devops.router, prefix="/api/devops", tags=["Role: DevOps (Compat)"], include_in_schema=False)
 
+# Extended platform routes (candidates, pipelines, deployments, bugs, metrics, dashboards)
+from api.routes import platform_routes
+app.include_router(platform_routes.router, prefix="/api", tags=["Platform Extended"])
+
+# SuperAdmin & Tenant Provisioning Routes (Isolated, not exposed to public APIs)
+from api.routes import admin
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin Panel"])

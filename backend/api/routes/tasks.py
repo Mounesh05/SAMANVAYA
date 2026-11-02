@@ -14,7 +14,10 @@ task_service = TaskService()
 workflow_service = WorkflowService()
 
 
-@router.post("/", response_model=Task, status_code=201)
+from typing import Optional, List, Any
+
+@router.post("", response_model=Task, status_code=201)
+@router.post("/", response_model=Task, status_code=201, include_in_schema=False)
 async def create_task(
     task_data: TaskCreate,
     user: dict = Depends(get_current_user),
@@ -25,6 +28,29 @@ async def create_task(
         return task
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create task: {str(e)}")
+
+
+@router.get("", response_model=List[Task])
+@router.get("/", response_model=List[Task], include_in_schema=False)
+async def list_tasks(
+    project_id: Optional[str] = Query(None),
+    assignee_id: Optional[str] = Query(None),
+    story_id: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    user: dict = Depends(get_current_user),
+):
+    """List all tasks with optional filters."""
+    filter_q = {}
+    if project_id:
+        filter_q["project_id"] = project_id
+    if assignee_id:
+        filter_q["assignee_id"] = assignee_id
+    if story_id:
+        filter_q["story_id"] = story_id
+    if status:
+        filter_q["status"] = status
+    return await task_service.get_all_tasks(filter_q, limit=limit)
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -133,3 +159,78 @@ async def get_task_history(
     """Get the full transition history for a task."""
     history = await workflow_service.get_transition_history(task_id, "task")
     return {"task_id": task_id, "history": history}
+
+
+from fastapi import Body
+
+@router.put("/{task_id}")
+async def update_task(
+    task_id: str,
+    data: dict = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """Update task fields."""
+    success = await task_service.update_task(task_id, data)
+    if not success:
+        # If task does not exist, return 404
+        task = await task_service.get_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+    task = await task_service.get_task(task_id)
+    return task or {"message": "Updated", "task_id": task_id}
+
+
+@router.delete("/{task_id}")
+async def delete_task(
+    task_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Delete task."""
+    await task_service.delete_task(task_id)
+    return {"message": "Deleted", "task_id": task_id}
+
+
+@router.patch("/{task_id}/assign")
+async def assign_task(
+    task_id: str,
+    data: dict = Body(...),
+    user: dict = Depends(get_current_user),
+):
+    """Assign task to an employee."""
+    assignee_id = data.get("assignee_id")
+    await task_service.update_task(task_id, {"assignee_id": assignee_id})
+    return {"message": "Assigned", "task_id": task_id, "assignee_id": assignee_id}
+
+
+@router.post("/{task_id}/mark-done")
+async def mark_task_done(
+    task_id: str,
+    data: dict = Body(default={}),
+    user: dict = Depends(get_current_user),
+):
+    """Mark task as done / submit for review."""
+    await task_service.update_task_status(task_id, "review")
+    return {"message": "Submitted for review", "task_id": task_id, "status": "review"}
+
+
+@router.post("/{task_id}/approve")
+async def approve_task(
+    task_id: str,
+    data: dict = Body(default={}),
+    user: dict = Depends(get_current_user),
+):
+    """Approve task and mark done."""
+    await task_service.update_task_status(task_id, "done")
+    return {"message": "Approved", "task_id": task_id, "status": "done"}
+
+
+@router.post("/{task_id}/reject")
+async def reject_task(
+    task_id: str,
+    data: dict = Body(default={}),
+    user: dict = Depends(get_current_user),
+):
+    """Reject task back to in_progress."""
+    await task_service.update_task_status(task_id, "in_progress")
+    return {"message": "Rejected back to in_progress", "task_id": task_id, "status": "in_progress"}
+

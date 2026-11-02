@@ -94,7 +94,7 @@ class PerformanceService:
             period_label=request.period_label
         )
         
-        # Step 3: Role Evaluation (10% of score) - Initialize empty
+        # Step 3: Role Evaluation (Superior Score: 20 marks max) - Initialize empty
         # Role feedback is collected separately via API
         role_evaluation = RoleEvaluation(
             average_score=0,
@@ -102,9 +102,11 @@ class PerformanceService:
         )
         
         # Step 4: Calculate final score
-        # For now, just AI score (role feedback added later)
-        final_score = ai_evaluation.score  # Out of 90
-        final_score_percentage = (final_score / 90) * 100  # Convert to 0-100
+        # Authoritative 80/20 marks model:
+        # Agent Score (80 marks) + Superior Score (20 marks) = Final Score (100 marks)
+        ai_score = ai_evaluation.score
+        agent_score_marks = round((ai_score / 100.0) * 80.0 if ai_score > 80.0 else ai_score, 2)
+        final_score_percentage = round((agent_score_marks / 80.0) * 100.0, 2) if agent_score_marks else 0.0
         
         # Step 5: Calculate confidence
         days_of_data = (request.period_end - request.period_start).days
@@ -148,6 +150,8 @@ class PerformanceService:
             ai_evaluation=ai_evaluation,
             role_evaluation=role_evaluation,
             final_score=final_score_percentage,
+            agent_score=agent_score_marks,
+            superior_score=None,
             grade=grade,
             previous_score=previous_score,
             score_change=score_change,
@@ -216,11 +220,15 @@ class PerformanceService:
         performance.role_evaluation.average_score = role_scores['average']
         performance.role_evaluation.contribution = role_scores['contribution']
         
-        # Recalculate final score
-        ai_score = performance.ai_evaluation.score  # Out of 90
-        role_contribution = role_scores['contribution']  # Out of 10
+        # Recalculate final score:
+        # Agent Score (80 marks) + Superior Score (20 marks) = Final Score (100 marks)
+        ai_score = performance.ai_evaluation.score
+        agent_score_marks = (ai_score / 100.0) * 80.0 if ai_score > 80.0 else ai_score
+        superior_score_marks = role_scores['contribution']  # Out of 20 marks
         
-        performance.final_score = ((ai_score / 90) * 90) + ((role_contribution / 10) * 10)
+        performance.agent_score = round(agent_score_marks, 2)
+        performance.superior_score = round(superior_score_marks, 2)
+        performance.final_score = round(agent_score_marks + superior_score_marks, 2)
         performance.grade = self.evaluation_agent.determine_grade(performance.final_score)
         
         # Update in database
@@ -306,7 +314,7 @@ class PerformanceService:
         # Calculate average
         if role_scores:
             average_score = sum(role_scores) / len(role_scores)
-            contribution = (average_score / 100) * 10  # Convert to 0-10
+            contribution = (average_score / 100) * 20  # Convert to 0-20 marks (Superior Score)
         else:
             average_score = 0
             contribution = 0

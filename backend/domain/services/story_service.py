@@ -65,3 +65,13 @@ class StoryService:
     async def update_story(self, story_id: str, updates: dict) -> bool:
         """Update story fields."""
         return await self.story_repo.update({"id": story_id}, updates)
+
+    async def get_all_stories(self, filter_query: dict = None, limit: int = 100) -> List[Story]:
+        """Get all stories matching filter."""
+        stories = await self.story_repo.find_all(filter_query or {}, limit=limit)
+        return [Story(**s) for s in stories]
+
+    async def delete_story(self, story_id: str) -> bool:
+        """Delete story by ID."""
+        return await self.story_repo.delete({"id": story_id})
+

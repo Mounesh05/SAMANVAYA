@@ -51,8 +51,8 @@ class ProjectService:
         project = await self.project_repo.find_by_id(project_id)
         return Project(**project) if project else None
 
-    async def get_active_projects(self, org_id: str) -> list[Project]:
-        """Get all active projects in an organization."""
+    async def get_active_projects(self, org_id: Optional[str] = None) -> list[Project]:
+        """Get all active projects in an organization (or all if org_id is None)."""
         projects = await self.project_repo.find_active(org_id)
         return [Project(**p) for p in projects]
 

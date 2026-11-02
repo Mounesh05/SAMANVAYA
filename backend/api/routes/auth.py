@@ -13,24 +13,25 @@ router = APIRouter()
 auth_service = AuthService()
 
 
-class SimpleLoginRequest(BaseModel):
-    """Simplified login request for email + password authentication."""
-    email: EmailStr
-    password: str
+from typing import Optional
+
+class UniversalLoginRequest(BaseModel):
+    """Universal login request accepting email, employee_id, or user_id."""
+    email: Optional[str] = None
+    employee_id: Optional[str] = None
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    organisation_password: Optional[str] = None
+    employee_password: Optional[str] = None
+    company_password: Optional[str] = None
+    personal_password: Optional[str] = None
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
 async def register(user_data: UserCreate):
     """
     Register a new user/employee.
-    
-    - **employee_id**: Unique employee identifier
-    - **name**: Full name
-    - **email**: Email address
-    - **role**: CEO|HR|PM|LEAD|DEVELOPER|DEVOPS|QA
-    - **dept**: Department name
-    - **organisation_password**: Organization-level password
-    - **employee_password**: Employee-specific password
     """
     try:
         user = await auth_service.register_user(user_data)
@@ -42,24 +43,41 @@ async def register(user_data: UserCreate):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(credentials: SimpleLoginRequest):
+async def login(credentials: UniversalLoginRequest):
     """
-    Authenticate user with email and password.
+    Authenticate user with flexible identifier (email, employee_id, user_id)
+    and password (single password or dual organization/employee password).
     Returns JWT token and user information.
-    
-    This is a simplified login endpoint that accepts email + password.
-    The password is used for both organization and employee authentication.
     """
-    # Use email to find user and password for both auth fields
-    result = await auth_service.authenticate_user_by_email(
-        credentials.email,
-        credentials.password
+    identifier = (
+        credentials.employee_id
+        or credentials.user_id
+        or credentials.email
+        or credentials.username
+        or ""
+    )
+    personal_pwd = (
+        credentials.employee_password
+        or credentials.personal_password
+        or credentials.password
+        or ""
+    )
+    org_pwd = (
+        credentials.organisation_password
+        or credentials.company_password
+        or credentials.password
+    )
+
+    result = await auth_service.authenticate_user_flexible(
+        identifier=identifier,
+        password=personal_pwd,
+        organisation_password=org_pwd,
     )
 
     if not result:
         raise HTTPException(
             status_code=401, 
-            detail="Invalid email or password"
+            detail="Invalid credentials"
         )
 
     return result

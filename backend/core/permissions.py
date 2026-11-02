@@ -72,6 +72,9 @@ class SystemAccess(str, Enum):
 ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     OrganizationalRole.DEVELOPER: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_TEAM_DATA,
+        Permission.VIEW_PROJECT_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
     },
@@ -79,6 +82,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     OrganizationalRole.LEAD: {
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_TEAM_DATA,
+        Permission.VIEW_PROJECT_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_TEAM_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
@@ -88,7 +93,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     
     OrganizationalRole.PM: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_TEAM_DATA,
         Permission.VIEW_PROJECT_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PROJECT_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
@@ -98,7 +105,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     
     OrganizationalRole.QA: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_TEAM_DATA,
         Permission.VIEW_PROJECT_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PROJECT_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
@@ -108,7 +117,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     
     OrganizationalRole.DEVOPS: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_TEAM_DATA,
         Permission.VIEW_PROJECT_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PROJECT_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
@@ -118,23 +129,39 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     
     OrganizationalRole.HR: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_TEAM_DATA,
+        Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_ORGANIZATION_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        Permission.MANAGE_EMPLOYEES,
+        Permission.MANAGE_TEAMS,
+        Permission.ASSIGN_PROJECT,
+        Permission.ASSIGN_TEAM_LEAD,
     },
     
     OrganizationalRole.CEO: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_TEAM_DATA,
+        Permission.VIEW_PROJECT_DATA,
+        Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_ALL_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.VIEW_TEAM_PERFORMANCE,
+        Permission.VIEW_PROJECT_PERFORMANCE,
         Permission.VIEW_ORGANIZATION_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_CEO_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
         Permission.TRIGGER_AI_EVALUATION,
+        Permission.TRIGGER_BULK_EVALUATION,
+        Permission.EXPORT_DATA,
+        Permission.MANAGE_TEAMS,
+        Permission.MANAGE_EMPLOYEES,
+        Permission.MANAGE_USERS,
     },
 }
 
@@ -168,6 +195,14 @@ def get_user_permissions(role: str, is_admin: bool = False) -> Set[Permission]:
     try:
         org_role = OrganizationalRole(role.upper())
         permissions = ROLE_PERMISSIONS.get(org_role, set()).copy()
+        
+        # If user has VIEW_ALL_DATA, ensure all individual view permissions are active
+        if Permission.VIEW_ALL_DATA in permissions:
+            permissions.update({
+                Permission.VIEW_ORGANIZATION_DATA,
+                Permission.VIEW_PROJECT_DATA,
+                Permission.VIEW_TEAM_DATA,
+            })
         
         # Add admin permissions if user is admin
         if is_admin:
