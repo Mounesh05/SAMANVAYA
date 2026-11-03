@@ -15,7 +15,7 @@ class TaskCreate(BaseModel):
     assignee_id: Optional[str] = None
     story_id: Optional[str] = None
     sprint_id: Optional[str] = None
-    type: str = "feature"  # feature|bug|chore|research
+    type: str = "feature"  # feature|bug|chore|research|devops|qa
     priority: str = "medium"  # low|medium|high|critical
     due_date: Optional[str] = None
 
@@ -24,5 +24,5 @@ class Task(TaskCreate):
     """Complete task model with status."""
     
     id: str
-    status: str = "todo"  # todo|in_progress|review|done|blocked
+    status: str = "todo"  # todo|in_progress|review|changes_requested|done|blocked
     created_at: Optional[str] = ""

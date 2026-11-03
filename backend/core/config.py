@@ -3,7 +3,10 @@ Application configuration loaded from .env via pydantic-settings.
 All settings are typed. SECRET_KEY has no default — must be set.
 """
 
+from pathlib import Path
 from pydantic_settings import BaseSettings
+
+_env_path = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -27,9 +30,13 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str = ""
     GITHUB_TIMEOUT: int = 15
     GITHUB_WEBHOOK_SECRET: str = ""  # Set to your webhook secret from GitHub
+    GITHUB_APP_ID: str = ""          # GitHub App ID for Option 1 App auth
+    GITHUB_APP_PRIVATE_KEY: str = "" # PEM private key content or inline
+    GITHUB_APP_PRIVATE_KEY_PATH: str = "" # Path to .pem private key file
+    GITHUB_APP_INSTALLATION_ID: str = ""  # Organization App Installation ID
 
     class Config:
-        env_file = ".env"
+        env_file = (str(_env_path), ".env")
         env_file_encoding = "utf-8"
 
 

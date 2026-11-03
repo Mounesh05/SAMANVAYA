@@ -100,7 +100,7 @@ async def list_story_tasks(
 @router.patch("/{task_id}/status")
 async def update_task_status(
     task_id: str,
-    status: str = Query(..., regex="^(todo|in_progress|review|done|blocked)$"),
+    status: str = Query(..., regex="^(todo|in_progress|review|changes_requested|done|blocked)$"),
     user: dict = Depends(get_current_user),
 ):
     """Update task status (no workflow enforcement — use /transition for enforced moves)."""

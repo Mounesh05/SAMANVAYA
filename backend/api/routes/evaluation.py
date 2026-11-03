@@ -80,6 +80,14 @@ class SimpleEvalRequest(BaseModel):
     evaluation_focus: str = "code_quality"
 
 
+class SuperiorScoreRequest(BaseModel):
+    """Human superior evaluation score request."""
+    superior_score: float = Field(..., description="Superior evaluation score (out of 20 marks or percentage 0-100)")
+    evaluator_role: Optional[str] = Field(default="PM", description="Role of evaluator (PM/Lead/Manager)")
+    evaluator_name: Optional[str] = Field(default=None, description="Name or ID of evaluator")
+    notes: Optional[str] = Field(default=None, description="Qualitative feedback notes")
+
+
 @router.post("/run")
 async def run_employee_evaluation(
     request: EmployeeEvaluationRequest,
@@ -254,6 +262,70 @@ async def get_evaluation_status(task_id: str, user: dict = Depends(get_current_u
     if doc:
         return {"status": "completed", "evaluation_id": task_id, "result": doc}
     return {"status": "processing", "evaluation_id": task_id}
+
+
+@router.post("/{evaluation_id}/superior-score")
+async def record_superior_score(
+    evaluation_id: str,
+    payload: SuperiorScoreRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Submits human superior score (out of 20 marks) to complement the 80 marks AI agent evaluation,
+    producing the combined 100-mark final score.
+    """
+    doc = await col("employee_evaluations").find_one({
+        "$or": [{"evaluation_id": evaluation_id}, {"_id": evaluation_id}]
+    })
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Evaluation {evaluation_id} not found")
+
+    raw_sup = payload.superior_score
+    if raw_sup > 20.0:
+        superior_score_marks = round((raw_sup / 100.0) * 20.0, 2)
+    else:
+        superior_score_marks = round(float(raw_sup), 2)
+
+    agent_score_marks = doc.get("agent_score_marks")
+    if agent_score_marks is None:
+        overall = doc.get("overall_score") or 0.0
+        agent_score_marks = round((overall / 100.0) * 80.0, 2)
+
+    final_score = round(agent_score_marks + superior_score_marks, 2)
+    from intelligence.scoring.engine import ScoringEngine
+    grade = ScoringEngine.determine_grade(final_score)
+
+    update_fields = {
+        "agent_score_marks": agent_score_marks,
+        "superior_score_marks": superior_score_marks,
+        "final_score": final_score,
+        "grade": grade,
+        "superior_evaluation": {
+            "score": payload.superior_score,
+            "score_marks": superior_score_marks,
+            "evaluator_role": payload.evaluator_role,
+            "evaluator_name": payload.evaluator_name or user.get("name") or user.get("email"),
+            "evaluator_id": user.get("id") or user.get("employee_id"),
+            "notes": payload.notes,
+            "submitted_at": datetime.utcnow().isoformat(),
+        }
+    }
+
+    if "report" in doc and isinstance(doc["report"], dict):
+        report = dict(doc["report"])
+        report["agent_score_marks"] = agent_score_marks
+        report["superior_score_marks"] = superior_score_marks
+        report["final_score"] = final_score
+        report["grade"] = grade
+        update_fields["report"] = report
+
+    await col("employee_evaluations").update_one(
+        {"_id": doc["_id"]},
+        {"$set": update_fields}
+    )
+
+    doc.update(update_fields)
+    return JSONResponse(content=_serialize(doc))
 
 
 # ── Backward compatibility endpoint ──

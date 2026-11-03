@@ -225,10 +225,18 @@ class RiskEngine:
         now = datetime.now(timezone.utc)
         
         if start_date_str and end_date_str:
-            start_dt = datetime.fromisoformat(start_date_str.replace("Z", "+00:00"))
-            end_dt = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
-            days_elapsed = max(0, (now - start_dt).days)
-            sprint_duration_days = max(1, (end_dt - start_dt).days)
+            try:
+                start_dt = datetime.fromisoformat(start_date_str.replace("Z", "+00:00"))
+                end_dt = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=timezone.utc)
+                if end_dt.tzinfo is None:
+                    end_dt = end_dt.replace(tzinfo=timezone.utc)
+                days_elapsed = max(0, (now - start_dt).days)
+                sprint_duration_days = max(1, (end_dt - start_dt).days)
+            except Exception:
+                sprint_duration_days = sprint.get("duration_days", 14)
+                days_elapsed = sprint_duration_days // 2
         else:
             # Fallback: use sprint duration_days field or sensible minimum
             sprint_duration_days = sprint.get("duration_days", 14)

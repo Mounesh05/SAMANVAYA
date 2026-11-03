@@ -13,17 +13,19 @@ from datetime import datetime, timezone
 
 TASK_WORKFLOW = {
     "todo": ["in_progress"],
-    "in_progress": ["review", "blocked", "todo"],
-    "review": ["done", "in_progress"],
-    "blocked": ["in_progress", "todo"],
+    "in_progress": ["review", "blocked", "todo", "changes_requested"],
+    "review": ["done", "in_progress", "changes_requested", "blocked"],
+    "changes_requested": ["in_progress", "review"],
+    "blocked": ["in_progress", "todo", "review"],
     "done": ["in_progress"],  # reopen
 }
 
 STORY_WORKFLOW = {
     "todo": ["in_progress"],
-    "in_progress": ["review", "blocked", "todo"],
-    "review": ["done", "in_progress"],
-    "blocked": ["in_progress", "todo"],
+    "in_progress": ["review", "blocked", "todo", "changes_requested"],
+    "review": ["done", "in_progress", "changes_requested", "blocked"],
+    "changes_requested": ["in_progress", "review"],
+    "blocked": ["in_progress", "todo", "review"],
     "done": ["in_progress"],  # reopen
 }
 
