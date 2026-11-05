@@ -59,6 +59,15 @@ async def invoke_agent_endpoint(
     """
     Invoke AI agent to interpret Intelligence Engine evidence.
     """
+    # Check permission to trigger AI evaluation
+    user_permissions = get_user_permissions(
+        current_user.get('role', '').upper(),
+        current_user.get('is_admin', False),
+        current_user.get('designation')
+    )
+    if Permission.TRIGGER_AI_EVALUATION not in user_permissions:
+        raise HTTPException(status_code=403, detail='Insufficient permissions')
+    
     start_time = datetime.now(timezone.utc)
 
     if not check_ollama_connection():
