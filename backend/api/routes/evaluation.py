@@ -113,6 +113,8 @@ class SimpleEvalRequest(BaseModel):
 
 class EvaluationResult(BaseModel):
     """API representation of a persisted evaluation."""
+    
+    model_config = {"protected_namespaces": ()}
 
     evaluation_id: str
     employee_id: str

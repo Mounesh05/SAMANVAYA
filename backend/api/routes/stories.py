@@ -90,7 +90,7 @@ async def list_assignee_stories(
 @router.patch("/{story_id}/status")
 async def update_story_status(
     story_id: str,
-    status: str = Query(..., regex="^(todo|in_progress|review|done)$"),
+    status: str = Query(..., pattern="^(todo|in_progress|review|done)$"),
     user: dict = Depends(get_current_user),
 ):
     """Update story status. User must have access to the story's project."""

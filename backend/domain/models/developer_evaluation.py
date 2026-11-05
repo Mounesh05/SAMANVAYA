@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 class DeveloperEvaluation(BaseModel):
     """A completed or failed evaluation for one developer contribution."""
+    
+    model_config = {"protected_namespaces": ()}
 
     evaluation_id: str
     employee_id: str

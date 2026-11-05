@@ -6,7 +6,7 @@ Operates with filtered data, NO access to technical details or source code.
 from typing import Dict, Any
 from .state import AgentState
 from .llm_provider import get_ollama_llm
-from .parsers import parse_response, AgentAnalysisResult
+from .parsers import safe_parse, AgentAnalysisResult
 from core.permissions import Permission
 
 
@@ -80,7 +80,12 @@ Return ONLY the JSON object. No prose before or after."""
         llm = get_ollama_llm(temperature=0.2, response_format=AgentAnalysisResult.model_json_schema())
         response = llm.invoke(prompt)
         
-        parsed = parse_response(response, AgentAnalysisResult)
+        fallback = AgentAnalysisResult(
+            analysis="Failed to parse AI response",
+            risk_level="medium",
+            confidence=0.0
+        )
+        parsed = safe_parse(response.content if hasattr(response, 'content') else str(response), AgentAnalysisResult, fallback)
         
         return {
             **state,

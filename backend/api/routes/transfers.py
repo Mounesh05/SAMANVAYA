@@ -280,17 +280,26 @@ async def execute_transfer(
     """
     Execute approved transfer (update team membership).
 
-    **Authorization:** PM or CEO only
+    **Required Permission:** EXECUTE_TRANSFER (CEO or authorized technical authority)
 
     This operation updates:
-    1. Employment records (HR concern)
-    2. Team membership (Engineering concern - PM/CEO permission)
+    1. Employment records (HR concern - updated via UPDATE_EMPLOYMENT_RECORDS)
+    2. Team membership (Engineering/organizational concern - requires EXECUTE_TRANSFER)
+    
+    **Note:** PM manages project-level resources, not permanent organizational team membership.
     """
-    role = user.get("role", "").upper()
-    if role not in ("PM", "CEO"):
+    from core.permissions import get_user_permissions
+    
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    
+    if Permission.EXECUTE_TRANSFER not in user_permissions:
         raise HTTPException(
             status_code=403,
-            detail="Only PM or CEO can execute transfers"
+            detail="Insufficient permissions. Only CEO or authorized technical authority can execute organizational transfers."
         )
 
     service = TransferService()

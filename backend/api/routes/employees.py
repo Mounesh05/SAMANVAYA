@@ -4,7 +4,7 @@ HR and Admin functionality for managing employees.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr, model_validator
 from repositories.user_repository import UserRepository
@@ -12,6 +12,7 @@ from core.dependencies import get_current_user, require_admin
 from core.permissions import Permission, get_user_permissions
 from core.security import hash_password, validate_password_strength
 from core.audit import log_audit, AuditAction
+from domain.schemas.hr_views import EmployeeHRView
 
 router = APIRouter()
 
@@ -83,7 +84,7 @@ class EmployeeResponse(BaseModel):
     created_at: Optional[str] = None
 
 
-@router.post("/", response_model=EmployeeResponse, status_code=201)
+@router.post("/", response_model=Union[EmployeeResponse, EmployeeHRView], status_code=201)
 async def create_employee(
     employee: EmployeeCreate,
     user: dict = Depends(get_current_user)
@@ -99,11 +100,14 @@ async def create_employee(
     - Optional GitHub username for integration
     - Optional team assignment
     - Admin status (can only be set by existing admins)
+    
+    **HR users receive filtered response without technical fields.**
     """
     # Check permission
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
-        user.get('is_admin', False)
+        user.get('is_admin', False),
+        user.get('designation')
     )
     
     if Permission.MANAGE_EMPLOYEES not in user_permissions:
@@ -165,6 +169,10 @@ async def create_employee(
             details={"role": employee.role, "dept": employee.dept}
         )
         
+        # Return filtered view for HR users
+        if user.get('role', '').upper() == 'HR':
+            return EmployeeHRView.from_employee(employee_doc)
+        
         return EmployeeResponse(
             employee_id=employee.employee_id,
             name=employee.name,
@@ -184,7 +192,7 @@ async def create_employee(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/", response_model=List[EmployeeResponse])
+@router.get("/", response_model=Union[List[EmployeeResponse], List[EmployeeHRView]])
 async def list_employees(
     role: Optional[str] = Query(None, description="Filter by role"),
     dept: Optional[str] = Query(None, description="Filter by department"),
@@ -199,21 +207,24 @@ async def list_employees(
     **Required Permission:** VIEW_ORGANIZATION_DATA (HR, CEO, or ADMIN)
     
     Returns list of employees matching the filters.
+    **HR users receive filtered response without technical fields.**
     """
     # Check permission
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
-        user.get('is_admin', False)
+        user.get('is_admin', False),
+        user.get('designation')
     )
     
     if not (
         Permission.VIEW_ORGANIZATION_DATA in user_permissions
         or Permission.VIEW_PROJECT_DATA in user_permissions
         or Permission.VIEW_TEAM_DATA in user_permissions
+        or Permission.VIEW_EMPLOYEE_DIRECTORY in user_permissions
     ):
         raise HTTPException(
             status_code=403,
-            detail="Insufficient permissions to view project team members."
+            detail="Insufficient permissions to view employees."
         )
     
     try:
@@ -237,6 +248,10 @@ async def list_employees(
         # Get employees
         employees = await repo.find_all(filter_query)
         
+        # Return filtered view for HR users
+        if user.get('role', '').upper() == 'HR':
+            return [EmployeeHRView.from_employee(emp) for emp in employees]
+        
         return [
             EmployeeResponse(
                 employee_id=emp.get("employee_id", ""),
@@ -259,7 +274,7 @@ async def list_employees(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{employee_id}", response_model=EmployeeResponse)
+@router.get("/{employee_id}", response_model=Union[EmployeeResponse, EmployeeHRView])
 async def get_employee(
     employee_id: str,
     user: dict = Depends(get_current_user)
@@ -270,6 +285,8 @@ async def get_employee(
     **Permission Check:**
     - Own data: Any authenticated user
     - Other's data: Requires VIEW_ORGANIZATION_DATA (HR, CEO, ADMIN)
+    
+    **HR users receive filtered response without technical fields.**
     """
     # Check if viewing own data
     is_own_data = employee_id == user.get('employee_id')
@@ -278,10 +295,14 @@ async def get_employee(
         # Check permission for viewing others' data
         user_permissions = get_user_permissions(
             user.get('role', '').upper(),
-            user.get('is_admin', False)
+            user.get('is_admin', False),
+            user.get('designation')
         )
         
-        if Permission.VIEW_ORGANIZATION_DATA not in user_permissions:
+        if not (
+            Permission.VIEW_ORGANIZATION_DATA in user_permissions
+            or Permission.VIEW_EMPLOYEE_DIRECTORY in user_permissions
+        ):
             raise HTTPException(
                 status_code=403,
                 detail="Insufficient permissions to view other employees' data"
@@ -296,6 +317,10 @@ async def get_employee(
                 status_code=404,
                 detail=f"Employee {employee_id} not found"
             )
+        
+        # Return filtered view for HR users
+        if user.get('role', '').upper() == 'HR':
+            return EmployeeHRView.from_employee(employee)
         
         return EmployeeResponse(
             employee_id=employee.get("employee_id", ""),

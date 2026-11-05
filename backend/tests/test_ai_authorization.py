@@ -212,6 +212,9 @@ class TestAIRunFiltering:
             'output_data': {
                 'analysis': 'Code analysis result',
                 'recommendations': ['Improve tests'],
+                'pr_diffs': 'SENSITIVE PR DIFF',
+                'commit_details': 'SENSITIVE COMMITS',
+                'cicd_logs': 'SENSITIVE LOGS',
                 'agent_history': ['code_agent', 'qa_agent'],
                 'errors': ['Some technical error'],
             },
@@ -219,14 +222,17 @@ class TestAIRunFiltering:
         
         filtered = filter_ai_run_for_hr(run)
         
-        # Evidence should be filtered
+        # Evidence should be completely removed, not just marked as filtered
         assert 'input_data' in filtered
-        assert filtered['input_data']['evidence']['filtered'] is True
+        assert 'evidence' not in filtered['input_data'], "Evidence should be completely removed"
         
         # Technical details should be removed from output
         assert 'output_data' in filtered
-        assert 'agent_history' not in filtered['output_data']
-        assert 'errors' not in filtered['output_data']
+        assert 'pr_diffs' not in filtered['output_data'], "PR diffs should be removed"
+        assert 'commit_details' not in filtered['output_data'], "Commit details should be removed"
+        assert 'cicd_logs' not in filtered['output_data'], "CI/CD logs should be removed"
+        assert 'agent_history' not in filtered['output_data'], "Agent history should be removed"
+        assert 'errors' not in filtered['output_data'], "Errors should be removed"
         
         # High-level info should remain
         assert filtered['output_data']['analysis'] == 'Code analysis result'

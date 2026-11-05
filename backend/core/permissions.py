@@ -158,11 +158,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         # Task management
         Permission.MOVE_TASK,
         Permission.TRANSITION_TASK,
-        # Transfer
+        # Transfer - PM can initiate and approve but NOT execute organizational transfers
         Permission.REQUEST_TRANSFER,
         Permission.APPROVE_TRANSFER_AS_MANAGER,
         Permission.APPROVE_TRANSFER_AS_MANAGEMENT,
-        Permission.EXECUTE_TRANSFER,
+        # Note: EXECUTE_TRANSFER removed - PM manages projects, not permanent team membership
     },
 
     OrganizationalRole.QA: {
@@ -201,30 +201,34 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.HR: {
         Permission.VIEW_OWN_DATA,
-        Permission.VIEW_ORGANIZATION_DATA,
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.VIEW_ORG_CHART,
         Permission.VIEW_OWN_PERFORMANCE,
-        Permission.VIEW_ORGANIZATION_PERFORMANCE,
-        Permission.VIEW_AI_EVALUATION,
+        Permission.VIEW_PERFORMANCE_OUTCOMES,
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
-        # Admin permissions (HR gets some admin capabilities)
-        Permission.MANAGE_EMPLOYEES,
-        Permission.MANAGE_TEAMS,
-        Permission.ASSIGN_TEAM_LEAD,
-        Permission.ASSIGN_PROJECT,
-        Permission.TRIGGER_AI_EVALUATION,
-        Permission.VIEW_AUDIT_LOGS,
-        # CRUD permissions
-        Permission.CREATE_TEAM,
         # HR employee management
+        Permission.MANAGE_EMPLOYEES,
         Permission.CREATE_EMPLOYEE,
         Permission.UPDATE_EMPLOYEE_PROFILE,
         Permission.DEACTIVATE_EMPLOYEE,
-        # Transfer
+        # Transfer workflow
         Permission.REQUEST_TRANSFER,
-        Permission.REVIEW_TRANSFER_HR,
         Permission.VIEW_TRANSFER_REQUESTS,
         Permission.REVIEW_TRANSFER_REQUEST,
+        Permission.REVIEW_TRANSFER_HR,
+        # HR administration
+        Permission.VIEW_AUDIT_LOGS,
+        # Note: HR does NOT have:
+        # - MANAGE_TEAMS (engineering)
+        # - ASSIGN_TEAM_LEAD (engineering)
+        # - ASSIGN_PROJECT (engineering)
+        # - CREATE_TEAM (engineering)
+        # - TRIGGER_AI_EVALUATION (restricted)
+        # - VIEW_AI_EVALUATION (no raw technical data)
+        # - VIEW_ORGANIZATION_DATA (too broad, use VIEW_EMPLOYEE_DIRECTORY)
+        # - VIEW_ORGANIZATION_PERFORMANCE (too broad, use VIEW_PERFORMANCE_OUTCOMES)
     },
 
     OrganizationalRole.CEO: {
@@ -280,6 +284,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.REVIEW_TRANSFER_REQUEST,
         Permission.UPDATE_EMPLOYMENT_RECORDS,
         Permission.MANAGE_CANDIDATES,
+        Permission.MANAGE_EMPLOYEES,
         Permission.VIEW_COMPENSATION,
         Permission.VIEW_GRIEVANCES,
         Permission.VIEW_OWN_DATA,
@@ -303,6 +308,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.DEACTIVATE_EMPLOYEE,
         Permission.UPDATE_EMPLOYMENT_RECORDS,
         Permission.VIEW_TRANSFER_REQUESTS,
+        Permission.MANAGE_EMPLOYEES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
     },
@@ -350,14 +356,19 @@ def get_user_permissions(role: str, is_admin: bool = False, designation: Optiona
     """
     try:
         org_role = OrganizationalRole(role.upper())
-        permissions = set(ROLE_PERMISSIONS.get(org_role, set()))
+        
+        # For HR role with designation, use designation permissions instead of base role
+        if org_role == OrganizationalRole.HR and designation and designation in HR_DESIGNATION_PERMISSIONS:
+            permissions = set(HR_DESIGNATION_PERMISSIONS[designation])
+        else:
+            # Use base role permissions
+            permissions = set(ROLE_PERMISSIONS.get(org_role, set()))
+            
+            # Add HR designation-specific permissions on top (for non-HR roles or no designation)
+            if org_role == OrganizationalRole.HR and designation and designation in HR_DESIGNATION_PERMISSIONS:
+                permissions.update(HR_DESIGNATION_PERMISSIONS[designation])
     except (ValueError, KeyError):
         return set()
-
-    # Add HR designation-specific permissions
-    if org_role == OrganizationalRole.HR and designation:
-        designation_perms = HR_DESIGNATION_PERMISSIONS.get(designation, set())
-        permissions.update(designation_perms)
 
     if is_admin:
         permissions.update(ADMIN_PERMISSIONS)

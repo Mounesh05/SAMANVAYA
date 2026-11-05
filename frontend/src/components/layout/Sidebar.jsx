@@ -56,7 +56,7 @@ export function Sidebar() {
         to: '/projects',
         icon: <FolderGit2 size={19} />,
         label: 'Projects',
-        roles: [ROLES.PM, ROLES.CEO, ROLES.HR, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
+        roles: [ROLES.PM, ROLES.CEO, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/sprints',
@@ -183,7 +183,7 @@ export function Sidebar() {
         to: '/evaluation',
         icon: <Cpu size={19} />,
         label: 'AI Evaluation',
-        roles: [ROLES.CEO, ROLES.HR, ROLES.LEAD, ROLES.DEVELOPER],
+        roles: [ROLES.CEO, ROLES.LEAD, ROLES.DEVELOPER],
       }
     );
 
@@ -193,19 +193,19 @@ export function Sidebar() {
         to: '/performance',
         icon: <Award size={19} />,
         label: 'Performance',
-        roles: Object.values(ROLES),
+        roles: [ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/feedback',
         icon: <MessageSquareQuote size={19} />,
         label: 'Role Feedback',
-        roles: [ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS, ROLES.HR, ROLES.CEO],
+        roles: [ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS, ROLES.CEO],
       },
       {
         to: '/reports',
         icon: <FileBarChart size={19} />,
         label: 'Reports & Trends',
-        roles: Object.values(ROLES),
+        roles: [ROLES.CEO, ROLES.PM],
       },
       {
         to: '/audit',
@@ -234,7 +234,7 @@ export function Sidebar() {
           to: '/organization',
           icon: <Building2 size={19} />,
           label: 'Organization',
-          roles: [ROLES.CEO, ROLES.HR],
+          roles: [ROLES.CEO],
         }
       );
     }

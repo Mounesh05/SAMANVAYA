@@ -138,7 +138,7 @@ async def list_story_tasks(
 @router.patch("/{task_id}/status")
 async def update_task_status(
     task_id: str,
-    status: str = Query(..., regex="^(todo|in_progress|review|done|blocked)$"),
+    status: str = Query(..., pattern="^(todo|in_progress|review|done|blocked)$"),
     user: dict = Depends(require_permission(Permission.TRANSITION_TASK)),
 ):
     """

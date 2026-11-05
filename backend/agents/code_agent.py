@@ -8,7 +8,7 @@ Uses JSON-mode prompting + shared parsers for robust LLM output handling.
 from typing import Dict, Any
 from .state import AgentState
 from .llm_provider import get_ollama_llm
-from .parsers import parse_response, CodeAnalysisResult
+from .parsers import safe_parse, CodeAnalysisResult
 from core.permissions import Permission
 
 
@@ -76,7 +76,12 @@ Return ONLY the JSON object. No prose before or after."""
         llm = get_ollama_llm(temperature=0.2, response_format=CodeAnalysisResult.model_json_schema())
         response = llm.invoke(prompt)
 
-        parsed = parse_response(response, CodeAnalysisResult)
+        fallback = CodeAnalysisResult(
+            analysis="Failed to parse AI response",
+            risk_level="medium",
+            confidence=0.0
+        )
+        parsed = safe_parse(response.content if hasattr(response, 'content') else str(response), CodeAnalysisResult, fallback)
 
         return {
             **state,

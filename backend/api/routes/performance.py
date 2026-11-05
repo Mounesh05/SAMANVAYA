@@ -6,13 +6,14 @@ Protected with RBAC permissions.
 
 from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 from domain.services.performance_service import PerformanceService
 from domain.models.developer_performance import (
     DeveloperPerformance,
     DeveloperPerformanceCreate
 )
+from domain.schemas.hr_views import PerformanceOutcomeHR
 from core.config import settings
 from core.dependencies import get_current_user
 from core.permissions import Permission, get_user_permissions
@@ -345,7 +346,7 @@ async def evaluate_developer_performance(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/developer/{developer_id}", response_model=DeveloperPerformance)
+@router.get("/developer/{developer_id}", response_model=Union[DeveloperPerformance, PerformanceOutcomeHR])
 async def get_developer_performance(
     developer_id: str,
     period_label: Optional[str] = None,
@@ -358,20 +359,25 @@ async def get_developer_performance(
     - Own data: Requires VIEW_OWN_PERFORMANCE
     - Team data: Requires VIEW_TEAM_PERFORMANCE (LEAD)
     - Any data: ADMIN or CEO
+    - HR: Requires VIEW_PERFORMANCE_OUTCOMES (filtered view, no technical details)
     
     Args:
         developer_id: Developer's user ID
         period_label: Specific period (optional, returns latest if not specified)
     
     Returns:
-        Complete performance evaluation with scores and recommendations
+        Complete performance evaluation with scores and recommendations.
+        **HR users receive filtered outcome without technical evidence.**
     """
     # Check if user can view this developer's performance
-    from core.permissions import get_user_permissions
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
-        user.get('is_admin', False)
+        user.get('is_admin', False),
+        user.get('designation')
     )
+    
+    # Determine if HR user
+    is_hr_user = user.get('role', '').upper() == 'HR'
     
     # Admin can view anyone
     if not user.get('is_admin', False):
@@ -379,6 +385,9 @@ async def get_developer_performance(
         if developer_id == user.get('employee_id'):
             if Permission.VIEW_OWN_PERFORMANCE not in user_permissions:
                 raise HTTPException(status_code=403, detail="Cannot view own performance")
+        # Check if HR viewing performance outcomes
+        elif is_hr_user and Permission.VIEW_PERFORMANCE_OUTCOMES in user_permissions:
+            pass  # HR can view, but will get filtered data
         # Check if viewing team data (LEAD must be same team)
         elif Permission.VIEW_TEAM_PERFORMANCE in user_permissions:
             # Verify user has access to the developer's data (same team for LEAD)
@@ -399,6 +408,13 @@ async def get_developer_performance(
                 status_code=404,
                 detail=f"No performance data found for developer {developer_id}"
             )
+        
+        # Convert to dict if needed
+        perf_dict = performance if isinstance(performance, dict) else performance.dict() if hasattr(performance, 'dict') else performance.__dict__
+        
+        # Return filtered view for HR users
+        if is_hr_user:
+            return PerformanceOutcomeHR.from_performance(perf_dict)
         
         return performance
         
