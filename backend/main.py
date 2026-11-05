@@ -252,7 +252,7 @@ from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai, setup,
     cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
-    recommendations, traceability, risk_configurations,
+    recommendations, traceability, risk_configurations, audit,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -300,6 +300,9 @@ app.include_router(notification_preferences.router, prefix="/api/notifications",
 # Phase 3: Approvals & HITL Workflow
 from api.routes import approvals
 app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"])
+
+# Audit Logs (Role-based filtering)
+app.include_router(audit.router, prefix="/api/audit", tags=["Audit Logs"])
 
 # Role-specific dashboards
 app.include_router(developer.router, prefix="/api/role/developer", tags=["Role: Developer"])

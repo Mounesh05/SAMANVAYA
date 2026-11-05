@@ -291,6 +291,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
+        Permission.VIEW_AUDIT_LOGS,  # HR Manager can view HR-relevant audit logs
     },
     "RECRUITER": {
         Permission.VIEW_EMPLOYEE_DIRECTORY,
@@ -299,6 +300,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.MANAGE_CANDIDATES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        # No VIEW_AUDIT_LOGS for recruiter
     },
     "HR_OPERATIONS": {
         Permission.VIEW_EMPLOYEE_DIRECTORY,
@@ -308,6 +310,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.DEACTIVATE_EMPLOYEE,
         Permission.UPDATE_EMPLOYMENT_RECORDS,
         Permission.VIEW_TRANSFER_REQUESTS,
+        Permission.VIEW_AUDIT_LOGS,  # HR Operations can view audit logs
         Permission.MANAGE_EMPLOYEES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
