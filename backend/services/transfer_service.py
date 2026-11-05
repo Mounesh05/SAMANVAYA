@@ -277,11 +277,12 @@ class TransferService:
         1. Updates employment records (HR records)
         2. Updates team membership (Engineering records)
 
-        Only PM/CEO can execute.
+        Only CEO or authorized technical authority can execute organizational transfers.
+        PM manages project-level resource assignment, not permanent team membership.
 
         Args:
             transfer_id: Transfer ID
-            executor: PM or CEO executing the transfer
+            executor: CEO or authorized technical authority executing the transfer
 
         Returns:
             Updated transfer
@@ -296,9 +297,18 @@ class TransferService:
         if transfer["status"] != TransferStatus.APPROVED.value:
             raise ValueError(f"Cannot execute transfer in status: {transfer['status']}")
 
-        executor_role = executor.get("role", "").upper()
-        if executor_role not in ("PM", "CEO"):
-            raise ValueError("Only PM or CEO can execute transfers")
+        # Verify executor has EXECUTE_TRANSFER permission
+        # API layer should enforce this, but service layer validates as defense-in-depth
+        from core.permissions import Permission, get_user_permissions
+        
+        executor_permissions = get_user_permissions(
+            executor.get("role", "").upper(),
+            executor.get("is_admin", False),
+            executor.get("designation")
+        )
+        
+        if Permission.EXECUTE_TRANSFER not in executor_permissions:
+            raise ValueError("Insufficient permissions to execute transfer. Only CEO or authorized technical authority can execute organizational transfers.")
 
         # Update employee's team
         employee = await self.user_repo.find_by_employee_id(transfer["employee_id"])
@@ -319,7 +329,7 @@ class TransferService:
             stage="execution",
             approver_id=executor["employee_id"],
             approver_name=executor["name"],
-            approver_role=executor_role,
+            approver_role=executor.get("role", "").upper(),
             decision="executed",
             comments="Transfer executed - team membership updated",
             timestamp=now

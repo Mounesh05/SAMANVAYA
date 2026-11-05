@@ -124,6 +124,20 @@ def sample_hr():
     }
 
 
+@pytest.fixture
+def sample_ceo():
+    """Sample CEO."""
+    return {
+        "employee_id": "CEO001",
+        "name": "Eve CEO",
+        "email": "eve@example.com",
+        "role": "CEO",
+        "dept": "Executive",
+        "is_active": True,
+        "is_admin": True
+    }
+
+
 class TestManagerInitiatedTransfer:
     """Test manager-initiated transfer workflow."""
 
@@ -426,14 +440,57 @@ class TestTransferExecution:
     """Test transfer execution by PM/CEO."""
 
     @pytest.mark.asyncio
-    async def test_pm_can_execute_approved_transfer(
+    async def test_pm_cannot_execute_approved_transfer(
         self,
         transfer_service,
         mock_transfer_repo,
         sample_pm,
         sample_employee
     ):
-        """Test PM can execute approved transfer."""
+        """Test PM cannot execute organizational transfers (only manages projects)."""
+        mock_transfer_repo['find_by_id'].return_value = {
+            "id": "TRF-001",
+            "employee_id": "EMP001",
+            "employee_name": "John Developer",
+            "initiated_by": "Alice Lead",
+            "initiated_by_id": "LEAD001",
+            "current_team_id": "TEAM-A",
+            "requested_team_id": "TEAM-B",
+            "current_manager_id": "LEAD001",
+            "receiving_manager_id": "LEAD002",
+            "reason": "career_growth",
+            "justification": "Want to change teams",
+            "status": TransferStatus.APPROVED.value,
+            "workflow_type": WorkflowType.MANAGER_INITIATED.value,
+            "approvals": [],
+            "hr_flags": [],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        with patch.object(UserRepository, 'find_by_employee_id') as mock_find, \
+             patch.object(UserRepository, 'update') as mock_update:
+            mock_find.return_value = sample_employee
+            
+            # PM should NOT be able to execute organizational transfers
+            with pytest.raises(ValueError, match="Insufficient permissions to execute transfer"):
+                await transfer_service.execute_transfer(
+                    "TRF-001",
+                    sample_pm
+                )
+            
+            # No updates should have occurred
+            mock_update.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_ceo_can_execute_approved_transfer(
+        self,
+        transfer_service,
+        mock_transfer_repo,
+        sample_ceo,
+        sample_employee
+    ):
+        """Test CEO can execute approved organizational transfer."""
         mock_transfer_repo['find_by_id'].return_value = {
             "id": "TRF-001",
             "employee_id": "EMP001",
@@ -460,7 +517,7 @@ class TestTransferExecution:
             
             executed_transfer = await transfer_service.execute_transfer(
                 "TRF-001",
-                sample_pm
+                sample_ceo
             )
             
             # Should update employee's team
@@ -488,7 +545,7 @@ class TestTransferExecution:
             "requested_team_id": "TEAM-B"
         }
         
-        with pytest.raises(ValueError, match="Only PM or CEO can execute transfers"):
+        with pytest.raises(ValueError, match="Insufficient permissions to execute transfer"):
             await transfer_service.execute_transfer("TRF-001", sample_hr)
 
 
