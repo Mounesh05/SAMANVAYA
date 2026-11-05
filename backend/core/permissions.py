@@ -31,6 +31,13 @@ class Permission(str, Enum):
     MANAGE_CANDIDATES = "MANAGE_CANDIDATES"
     VIEW_COMPENSATION = "VIEW_COMPENSATION"
     VIEW_GRIEVANCES = "VIEW_GRIEVANCES"
+    
+    # Transfer workflow permissions
+    REQUEST_TRANSFER = "REQUEST_TRANSFER"
+    APPROVE_TRANSFER_AS_MANAGER = "APPROVE_TRANSFER_AS_MANAGER"
+    APPROVE_TRANSFER_AS_MANAGEMENT = "APPROVE_TRANSFER_AS_MANAGEMENT"
+    REVIEW_TRANSFER_HR = "REVIEW_TRANSFER_HR"
+    EXECUTE_TRANSFER = "EXECUTE_TRANSFER"
 
     # Performance
     VIEW_OWN_PERFORMANCE = "VIEW_OWN_PERFORMANCE"
@@ -109,6 +116,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.CREATE_STORY,
         # Integration
         Permission.SYNC_PR,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
     },
 
     OrganizationalRole.LEAD: {
@@ -128,6 +137,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.TRANSITION_TASK,
         # AI
         Permission.TRIGGER_AI_EVALUATION,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
+        Permission.APPROVE_TRANSFER_AS_MANAGER,
     },
 
     OrganizationalRole.PM: {
@@ -146,6 +158,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         # Task management
         Permission.MOVE_TASK,
         Permission.TRANSITION_TASK,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
+        Permission.APPROVE_TRANSFER_AS_MANAGER,
+        Permission.APPROVE_TRANSFER_AS_MANAGEMENT,
+        Permission.EXECUTE_TRANSFER,
     },
 
     OrganizationalRole.QA: {
@@ -161,6 +178,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.CREATE_BUG,
         # Code analysis
         Permission.TRIGGER_CODE_ANALYSIS,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
     },
 
     OrganizationalRole.DEVOPS: {
@@ -176,6 +195,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.CREATE_INCIDENT,
         # Code analysis
         Permission.TRIGGER_CODE_ANALYSIS,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
     },
 
     OrganizationalRole.HR: {
@@ -195,6 +216,15 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AUDIT_LOGS,
         # CRUD permissions
         Permission.CREATE_TEAM,
+        # HR employee management
+        Permission.CREATE_EMPLOYEE,
+        Permission.UPDATE_EMPLOYEE_PROFILE,
+        Permission.DEACTIVATE_EMPLOYEE,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
+        Permission.REVIEW_TRANSFER_HR,
+        Permission.VIEW_TRANSFER_REQUESTS,
+        Permission.REVIEW_TRANSFER_REQUEST,
     },
 
     OrganizationalRole.CEO: {
@@ -212,6 +242,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AUDIT_LOGS,
         # CRUD permissions
         Permission.CREATE_INCIDENT,
+        # Transfer
+        Permission.REQUEST_TRANSFER,
+        Permission.APPROVE_TRANSFER_AS_MANAGER,
+        Permission.APPROVE_TRANSFER_AS_MANAGEMENT,
+        Permission.EXECUTE_TRANSFER,
     },
 }
 
