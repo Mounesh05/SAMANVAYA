@@ -4,7 +4,7 @@ Defines permissions and role-based access control.
 """
 
 from enum import Enum
-from typing import Set
+from typing import Optional, Set
 
 
 class Permission(str, Enum):
@@ -16,6 +16,21 @@ class Permission(str, Enum):
     VIEW_PROJECT_DATA = "VIEW_PROJECT_DATA"
     VIEW_ORGANIZATION_DATA = "VIEW_ORGANIZATION_DATA"
     VIEW_ALL_DATA = "VIEW_ALL_DATA"
+
+    # HR-specific permissions
+    VIEW_EMPLOYEE_DIRECTORY = "VIEW_EMPLOYEE_DIRECTORY"
+    VIEW_EMPLOYEE_PROFILE = "VIEW_EMPLOYEE_PROFILE"
+    VIEW_ORG_CHART = "VIEW_ORG_CHART"
+    VIEW_PERFORMANCE_OUTCOMES = "VIEW_PERFORMANCE_OUTCOMES"
+    CREATE_EMPLOYEE = "CREATE_EMPLOYEE"
+    UPDATE_EMPLOYEE_PROFILE = "UPDATE_EMPLOYEE_PROFILE"
+    DEACTIVATE_EMPLOYEE = "DEACTIVATE_EMPLOYEE"
+    VIEW_TRANSFER_REQUESTS = "VIEW_TRANSFER_REQUESTS"
+    REVIEW_TRANSFER_REQUEST = "REVIEW_TRANSFER_REQUEST"
+    UPDATE_EMPLOYMENT_RECORDS = "UPDATE_EMPLOYMENT_RECORDS"
+    MANAGE_CANDIDATES = "MANAGE_CANDIDATES"
+    VIEW_COMPENSATION = "VIEW_COMPENSATION"
+    VIEW_GRIEVANCES = "VIEW_GRIEVANCES"
 
     # Performance
     VIEW_OWN_PERFORMANCE = "VIEW_OWN_PERFORMANCE"
@@ -216,13 +231,84 @@ ADMIN_PERMISSIONS: Set[Permission] = {
 }
 
 
-def get_user_permissions(role: str, is_admin: bool = False) -> Set[Permission]:
+# HR Designation-based permissions
+HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
+    "HR_MANAGER": {
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.VIEW_ORG_CHART,
+        Permission.VIEW_PERFORMANCE_OUTCOMES,
+        Permission.CREATE_EMPLOYEE,
+        Permission.UPDATE_EMPLOYEE_PROFILE,
+        Permission.DEACTIVATE_EMPLOYEE,
+        Permission.VIEW_TRANSFER_REQUESTS,
+        Permission.REVIEW_TRANSFER_REQUEST,
+        Permission.UPDATE_EMPLOYMENT_RECORDS,
+        Permission.MANAGE_CANDIDATES,
+        Permission.VIEW_COMPENSATION,
+        Permission.VIEW_GRIEVANCES,
+        Permission.VIEW_OWN_DATA,
+        Permission.VIEW_OWN_PERFORMANCE,
+        Permission.SUBMIT_HR_FEEDBACK,
+        Permission.VIEW_ROLE_FEEDBACK,
+    },
+    "RECRUITER": {
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.CREATE_EMPLOYEE,
+        Permission.MANAGE_CANDIDATES,
+        Permission.VIEW_OWN_DATA,
+        Permission.VIEW_OWN_PERFORMANCE,
+    },
+    "HR_OPERATIONS": {
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.CREATE_EMPLOYEE,
+        Permission.UPDATE_EMPLOYEE_PROFILE,
+        Permission.DEACTIVATE_EMPLOYEE,
+        Permission.UPDATE_EMPLOYMENT_RECORDS,
+        Permission.VIEW_TRANSFER_REQUESTS,
+        Permission.VIEW_OWN_DATA,
+        Permission.VIEW_OWN_PERFORMANCE,
+    },
+    "HRBP": {
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.VIEW_ORG_CHART,
+        Permission.VIEW_PERFORMANCE_OUTCOMES,
+        Permission.VIEW_TRANSFER_REQUESTS,
+        Permission.REVIEW_TRANSFER_REQUEST,
+        Permission.VIEW_GRIEVANCES,
+        Permission.VIEW_OWN_DATA,
+        Permission.VIEW_OWN_PERFORMANCE,
+        Permission.SUBMIT_HR_FEEDBACK,
+        Permission.VIEW_ROLE_FEEDBACK,
+    },
+    "EMPLOYEE_RELATIONS": {
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.VIEW_GRIEVANCES,
+        Permission.VIEW_OWN_DATA,
+        Permission.VIEW_OWN_PERFORMANCE,
+    },
+    "COMPENSATION_BENEFITS": {
+        Permission.VIEW_EMPLOYEE_DIRECTORY,
+        Permission.VIEW_EMPLOYEE_PROFILE,
+        Permission.VIEW_COMPENSATION,
+        Permission.VIEW_OWN_DATA,
+        Permission.VIEW_OWN_PERFORMANCE,
+    },
+}
+
+
+def get_user_permissions(role: str, is_admin: bool = False, designation: Optional[str] = None) -> Set[Permission]:
     """
-    Get all permissions for a user based on role and admin status.
+    Get all permissions for a user based on role, admin status, and HR designation.
 
     Args:
         role: Organizational role
         is_admin: Whether user has admin access
+        designation: HR designation (for HR role only)
 
     Returns:
         Set of permissions
@@ -232,6 +318,11 @@ def get_user_permissions(role: str, is_admin: bool = False) -> Set[Permission]:
         permissions = set(ROLE_PERMISSIONS.get(org_role, set()))
     except (ValueError, KeyError):
         return set()
+
+    # Add HR designation-specific permissions
+    if org_role == OrganizationalRole.HR and designation:
+        designation_perms = HR_DESIGNATION_PERMISSIONS.get(designation, set())
+        permissions.update(designation_perms)
 
     if is_admin:
         permissions.update(ADMIN_PERMISSIONS)
