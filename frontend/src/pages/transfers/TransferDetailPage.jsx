@@ -82,10 +82,11 @@ export function TransferDetailPage() {
 
   const isHR = user?.role === 'HR';
   const isManager = user?.role === 'Lead';
+  const isPMorCEO = user?.role === 'PM' || user?.role === 'CEO';
   const canApprove = isHR && transfer.status === 'pending';
   const canReject = isHR && transfer.status === 'pending';
   const canFlag = isManager && transfer.status === 'pending';
-  const canExecute = isHR && transfer.status === 'approved';
+  const canExecute = isPMorCEO && transfer.status === 'approved';
 
   return (
     <div>
