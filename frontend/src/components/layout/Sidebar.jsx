@@ -26,6 +26,7 @@ import {
   History,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { authApi } from '../../api/auth.api';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ROLES, ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 
@@ -91,14 +92,28 @@ export function Sidebar() {
           icon: <Users size={19} />,
           label: 'Employees',
           roles: [ROLES.HR, ROLES.CEO],
-        },
-        {
-          to: '/teams',
-          icon: <Building2 size={19} />,
-          label: 'Teams',
-          roles: [ROLES.HR, ROLES.CEO],
         }
       );
+    }
+
+    // HR-specific: Transfer Requests
+    if (role === ROLES.HR || isAdmin) {
+      items.push({
+        to: '/transfers',
+        icon: <GitPullRequest size={19} />,
+        label: 'Transfer Requests',
+        roles: [ROLES.HR],
+      });
+    }
+
+    // CEO and Leads: Teams
+    if (role === ROLES.CEO || isAdmin) {
+      items.push({
+        to: '/teams',
+        icon: <Building2 size={19} />,
+        label: 'Teams',
+        roles: [ROLES.CEO],
+      });
     } else if (role === ROLES.LEAD) {
       items.push({
         to: '/teams',
@@ -168,7 +183,7 @@ export function Sidebar() {
         to: '/evaluation',
         icon: <Cpu size={19} />,
         label: 'AI Evaluation',
-        roles: [ROLES.CEO, ROLES.HR, ROLES.LEAD],
+        roles: [ROLES.CEO, ROLES.HR, ROLES.LEAD, ROLES.DEVELOPER],
       }
     );
 
@@ -231,16 +246,17 @@ export function Sidebar() {
   const navItems = getNavItems();
   const roleColor = ROLE_COLORS[role] || '#3b82f6';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await authApi.logout();
     logout();
-    navigate('/login');
+    window.location.replace('/login');
   };
 
   return (
     <aside
       className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}
       style={{
-        width: sidebarCollapsed ? '76px' : '260px',
+        width: sidebarCollapsed ? '72px' : '236px',
         height: '100vh',
         backgroundColor: 'var(--bg-secondary)',
         borderRight: '1px solid var(--border-subtle)',
@@ -285,7 +301,7 @@ export function Sidebar() {
             </div>
             <div>
               <h2 style={{ fontSize: '1.125rem', fontWeight: '800', letterSpacing: '-0.03em' }}>
-                <span className="gradient-text">SAMANVAYA</span>
+                <span className="gradient-text">Samanvaya</span>
               </h2>
               <p style={{ fontSize: '0.675rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Engineering AI

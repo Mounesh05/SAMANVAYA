@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rolesApi } from '../../api/roles.api';
+import { transfersApi } from '../../api/transfers.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { MetricCard } from '../../components/common/MetricCard';
 import { Card } from '../../components/common/Card';
@@ -16,6 +17,7 @@ import {
   UserPlus,
   ArrowRight,
   TrendingUp,
+  GitPullRequest,
 } from 'lucide-react';
 
 export function HRDashboardPage() {
@@ -26,12 +28,19 @@ export function HRDashboardPage() {
     queryFn: () => rolesApi.getHRDashboard(),
   });
 
+  // Fetch pending transfer requests count
+  const { data: transfersData } = useQuery({
+    queryKey: ['transfers', 'pending'],
+    queryFn: () => transfersApi.getTransfers({ status: 'pending' }),
+  });
+
   if (isLoading) return <LoadingState message="Loading People & HR dashboard..." />;
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
   const summary = data?.summary || {};
   const employees = data?.employees || [];
   const roleDistribution = summary.role_distribution || {};
+  const pendingTransfers = transfersData?.transfers?.length || 0;
 
   const employeeColumns = [
     { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '700' }}>{e.name}</span> },
@@ -88,12 +97,12 @@ export function HRDashboardPage() {
           onClick={() => navigate('/employees')}
         />
         <MetricCard
-          title="Engineering Teams"
-          value={summary.team_count ?? '—'}
-          subtitle="Teams currently reported by the API"
-          icon={<Building2 size={20} />}
-          color="cyan"
-          onClick={() => navigate('/teams')}
+          title="Pending Transfers"
+          value={pendingTransfers}
+          subtitle="Transfer requests awaiting approval"
+          icon={<GitPullRequest size={20} />}
+          color="warning"
+          onClick={() => navigate('/transfers')}
         />
         <MetricCard
           title="Performance Average"

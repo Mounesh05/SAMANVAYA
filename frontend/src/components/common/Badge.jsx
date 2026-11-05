@@ -33,6 +33,11 @@ export function Badge({
       color: 'var(--danger)',
       border: '1px solid var(--danger-border)',
     },
+    error: {
+      background: 'var(--danger-light)',
+      color: 'var(--danger)',
+      border: '1px solid var(--danger-border)',
+    },
     info: {
       background: 'var(--info-light)',
       color: 'var(--info)',

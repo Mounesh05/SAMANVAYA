@@ -94,6 +94,21 @@ const EmployeesPage = React.lazy(() =>
     default: m.EmployeesPage,
   }))
 );
+const TransferRequestsPage = React.lazy(() =>
+  import('../pages/transfers/TransferRequestsPage').then((m) => ({
+    default: m.TransferRequestsPage,
+  }))
+);
+const TransferRequestForm = React.lazy(() =>
+  import('../pages/transfers/TransferRequestForm').then((m) => ({
+    default: m.TransferRequestForm,
+  }))
+);
+const TransferDetailPage = React.lazy(() =>
+  import('../pages/transfers/TransferDetailPage').then((m) => ({
+    default: m.TransferDetailPage,
+  }))
+);
 const SprintsPage = React.lazy(() =>
   import('../pages/sprints/SprintsPage').then((m) => ({
     default: m.SprintsPage,
@@ -273,6 +288,14 @@ export function AppRoutes() {
           <Route index element={<RootRedirect />} />
 
           {/* 7 Role Dashboards */}
+          {Object.values(ROLES).map((role) => (
+            <Route
+              key={role}
+              path={role.toLowerCase()}
+              element={<Navigate to={`/${role.toLowerCase()}/dashboard`} replace />}
+            />
+          ))}
+          <Route path="github" element={<Navigate to="/github/sync" replace />} />
           <Route
             path="developer/dashboard"
             element={
@@ -300,7 +323,7 @@ export function AppRoutes() {
           <Route
             path="qa/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA]}>
+              <RoleGuard allowedRoles={[ROLES.QA, ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVOPS]}>
                 <QADashboardPage />
               </RoleGuard>
             }
@@ -367,6 +390,30 @@ export function AppRoutes() {
               </RoleGuard>
             }
           />
+          <Route
+            path="transfers"
+            element={
+              <RoleGuard allowedRoles={[ROLES.HR, ROLES.LEAD]}>
+                <TransferRequestsPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="transfers/new"
+            element={
+              <RoleGuard allowedRoles={[ROLES.HR, ROLES.LEAD]}>
+                <TransferRequestForm />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="transfers/:transferId"
+            element={
+              <RoleGuard allowedRoles={[ROLES.HR, ROLES.LEAD]}>
+                <TransferDetailPage />
+              </RoleGuard>
+            }
+          />
           <Route path="sprints" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><SprintsPage /></RoleGuard>} />
           <Route path="sprints/:sprintId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><SprintsPage /></RoleGuard>} />
           <Route path="tasks" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><TasksPage /></RoleGuard>} />
@@ -381,7 +428,7 @@ export function AppRoutes() {
           <Route
             path="evaluation"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO, ROLES.HR, ROLES.LEAD]}>
+              <RoleGuard allowedRoles={[ROLES.CEO, ROLES.HR, ROLES.LEAD, ROLES.DEVELOPER]}>
                 <AIEvaluationPage />
               </RoleGuard>
             }
