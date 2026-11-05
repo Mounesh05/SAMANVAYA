@@ -20,7 +20,7 @@ router = APIRouter(tags=["AI Agents"])
 
 class AgentRequest(BaseModel):
     """Request to invoke an AI agent."""
-    task_type: Literal["code_review", "qa_analysis", "devops_risk", "meeting_insights", "cicd_analysis"]
+    task_type: Literal["code_review", "qa_analysis", "devops_risk", "meeting_insights", "cicd_analysis", "hr_assistant"]
     evidence: Dict[str, Any] = Field(..., description="Evidence from Intelligence Engine")
     context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
     save_run: bool = Field(default=True, description="Save run to database")
@@ -77,10 +77,20 @@ async def invoke_agent_endpoint(
         )
 
     try:
+        # Add user context to agent state
+        accessible_project_ids = await get_accessible_project_ids(current_user)
+        
         initial_state = {
             "task_type": request.task_type,
             "evidence": request.evidence,
             "context": request.context,
+            "user_context": {
+                "employee_id": current_user.get('employee_id', current_user.get('id')),
+                "role": current_user.get('role', '').upper(),
+                "designation": current_user.get('designation'),
+                "permissions": [p.value for p in user_permissions],
+                "accessible_project_ids": accessible_project_ids,
+            },
             "agent_history": [],
             "errors": [],
             "analysis": None,

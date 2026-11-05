@@ -8,7 +8,8 @@ Uses JSON-mode prompting + shared parsers for robust LLM output handling.
 from typing import Dict, Any
 from .state import AgentState
 from .llm_provider import get_ollama_llm
-from .parsers import safe_parse, CodeAnalysisResult
+from .parsers import parse_response, CodeAnalysisResult
+from core.permissions import Permission
 
 
 def code_analysis_node(state: AgentState) -> Dict[str, Any]:
@@ -21,6 +22,17 @@ def code_analysis_node(state: AgentState) -> Dict[str, Any]:
     Returns:
         Updated state with detailed analysis, quality scores, and recommendations
     """
+    user_context = state.get('user_context', {})
+    user_perms = user_context.get('permissions', [])
+    
+    # Check permission to read code
+    if Permission.VIEW_AI_EVALUATION.value not in user_perms:
+        return {
+            **state,
+            "errors": state.get("errors", []) + ["Insufficient permissions to analyze code"],
+            "agent_history": state.get("agent_history", []) + ["code_agent_enhanced"],
+        }
+    
     evidence = state.get("evidence", {})
     context = state.get("context", {})
 
@@ -60,13 +72,11 @@ Analyse the evidence above and return ONLY a valid JSON object with this exact s
 
 Return ONLY the JSON object. No prose before or after."""
 
-    fallback = CodeAnalysisResult()
-
     try:
-        llm = get_ollama_llm(temperature=0.2)
+        llm = get_ollama_llm(temperature=0.2, response_format=CodeAnalysisResult.model_json_schema())
         response = llm.invoke(prompt)
 
-        parsed = safe_parse(response, CodeAnalysisResult, fallback)
+        parsed = parse_response(response, CodeAnalysisResult)
 
         return {
             **state,

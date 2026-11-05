@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+<<<<<<< HEAD
       
       # Language runtime setup with caching
       - uses: actions/setup-python@v5
@@ -80,6 +81,33 @@ jobs:
       - name: Upload results to Samanvaya
         if: always() && github.event_name != 'pull_request'
         continue-on-error: true
+=======
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+      - name: Run tests
+        shell: bash
+        run: |
+          set +e
+          if [ -d backend/tests ]; then
+            pytest backend/tests -q --junitxml=test-results.xml
+          elif [ -d tests ]; then
+            pytest tests -q --junitxml=test-results.xml
+          else
+            echo "No Python test directory found"
+            printf '<testsuite tests="0" failures="0"></testsuite>' > test-results.xml
+            echo "TEST_EXIT_CODE=1" >> "$GITHUB_ENV"
+            exit 1
+          fi
+          echo "TEST_EXIT_CODE=$?" >> "$GITHUB_ENV"
+      - name: Upload results to Samanvaya
+        if: always() && github.event_name != 'pull_request'
+>>>>>>> enterprise-hr-rbac
         env:
           SAMANVAYA_API_URL: ${{ secrets.SAMANVAYA_API_URL }}
           SAMANVAYA_PROJECT_ID: ${{ secrets.SAMANVAYA_PROJECT_ID }}
@@ -87,6 +115,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
+<<<<<<< HEAD
         run: |
           if [ ! -f test-results-manifest.tsv ]; then
             echo "No test results manifest found"
@@ -106,6 +135,42 @@ jobs:
           done < test-results-manifest.tsv
       
       # Fail workflow if tests failed
+=======
+          SAMANVAYA_TEST_SUITE: github-actions
+        run: |
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          import urllib.request
+          root = ET.parse("test-results.xml").getroot()
+          tests = int(root.attrib.get("tests", 0))
+          failures = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
+          exit_code = int(os.environ.get("TEST_EXIT_CODE", "1"))
+          payload = {
+              "project_id": os.environ["SAMANVAYA_PROJECT_ID"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "branch": os.environ["GITHUB_REF_NAME"],
+              "commit_sha": os.environ["GITHUB_SHA"],
+              "test_suite": os.environ["SAMANVAYA_TEST_SUITE"],
+              "tests_run": tests,
+              "tests_passed": max(tests - failures, 0),
+              "tests_failed": failures,
+              "status": "passed" if exit_code == 0 and failures == 0 else "failed",
+          }
+          request = urllib.request.Request(
+              os.environ["SAMANVAYA_API_URL"].rstrip("/") + "/api/qa/test-runs",
+              data=__import__("json").dumps(payload).encode(),
+              headers={
+                  "Content-Type": "application/json",
+                  "X-Test-Results-Token": os.environ["SAMANVAYA_TEST_RESULTS_TOKEN"],
+              },
+              method="POST",
+          )
+          with urllib.request.urlopen(request) as response:
+              if response.status >= 300:
+                  raise RuntimeError(f"Samanvaya rejected test results: {response.status}")
+          PY
+>>>>>>> enterprise-hr-rbac
       - name: Fail workflow when tests fail
         if: always()
         run: exit "${TEST_EXIT_CODE:-0}"
