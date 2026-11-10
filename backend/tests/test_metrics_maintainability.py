@@ -105,6 +105,13 @@ def test_comment_bonus_raises_mi():
     assert with_comments > without
 
 
+def test_comment_constant_matches_radon_variant():
+    # 171 - 5.2 ln500 - 2.3 - 16.2 ln50 + 50 sin(sqrt(2.46 * radians(30))) = 118.334 -> 69.2
+    # (radon 6.0.1: mi_compute(500, 10, 50, 30) == 69.2)
+    assert maintainability_index(500, 10, 50, comment_percent=30, comment_constant=2.46) == 69.2
+    assert maintainability_index(500, 10, 50, comment_percent=30) != 69.2   # published 2.4 differs slightly
+
+
 @pytest.mark.parametrize("value, band", [(100, "high"), (20, "high"), (19.9, "moderate"), (10, "moderate"), (9.99, "low"), (0, "low")])
 def test_bands(value, band):
     assert classify(value) == band

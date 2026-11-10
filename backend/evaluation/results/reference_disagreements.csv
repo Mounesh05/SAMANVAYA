@@ -1,0 +1,163 @@
+file,function,line,metric,tool,ours,theirs,explained,reason
+agents/cicd_agent.py,analyze_test_flakiness,187,cyclomatic,lizard,5,3,True,lizard does not support match
+agents/cicd_agent.py,_parse_cicd_response,146,cognitive,cognitive_complexity,13,12,True,nesting inside a branch followed by elif
+agents/cicd_agent.py,analyze_test_flakiness,187,cognitive,cognitive_complexity,5,3,True,comprehension
+agents/parsers.py,safe_parse,54,cognitive,cognitive_complexity,6,4,True,comprehension
+api/roles/ceo.py,ceo_dashboard,17,cognitive,cognitive_complexity,17,8,True,comprehension
+api/roles/ceo.py,execution_health,66,cognitive,cognitive_complexity,3,1,True,comprehension
+api/roles/developer.py,developer_dashboard,16,cognitive,cognitive_complexity,8,0,True,comprehension
+api/roles/devops.py,_devops_snapshot,11,cognitive,cognitive_complexity,9,5,True,comprehension
+api/roles/lead.py,lead_dashboard,16,cognitive,cognitive_complexity,11,3,True,comprehension
+api/roles/lead.py,team_overview,79,cognitive,cognitive_complexity,6,2,True,comprehension
+api/roles/lead.py,review_queue,111,cognitive,cognitive_complexity,5,3,True,comprehension
+api/roles/pm.py,pm_dashboard,17,cognitive,cognitive_complexity,12,8,True,comprehension
+api/roles/pm.py,pm_risks,118,cognitive,cognitive_complexity,3,1,True,comprehension
+api/roles/qa.py,_qa_snapshot,14,cognitive,cognitive_complexity,29,21,True,comprehension
+api/roles/qa.py,test_health,127,cognitive,cognitive_complexity,6,2,True,comprehension
+api/routes/activity.py,get_item_history,65,cognitive,cognitive_complexity,11,10,True,nesting inside a branch followed by elif
+api/routes/boards.py,_build_columns,39,cognitive,cognitive_complexity,6,4,True,comprehension
+api/routes/code_quality.py,_run_analysis,286,cyclomatic,lizard,10,9,True,lizard does not support match
+api/routes/code_quality.py,start_analysis,66,cognitive,cognitive_complexity,4,2,True,comprehension
+api/routes/code_quality.py,_run_analysis,286,cognitive,cognitive_complexity,10,9,True,comprehension
+api/routes/employees.py,list_employees,188,cognitive,cognitive_complexity,10,9,True,comprehension
+api/routes/evaluation.py,_result_from_evaluation,147,cyclomatic,lizard,18,17,True,lizard does not support match
+api/routes/evaluation.py,_citation_source_text,602,cyclomatic,lizard,28,20,True,lizard does not support match
+api/routes/evaluation.py,_validate_recommendations,688,cyclomatic,radon,12,13,True,radon counts assert / try-else / loop-else
+api/routes/evaluation.py,_run_ai_evaluation,963,cyclomatic,lizard,63,62,True,lizard does not support match
+api/routes/evaluation.py,evaluate_developer_ai,1256,cyclomatic,lizard,22,21,True,lizard does not support match
+api/routes/evaluation.py,_result_from_evaluation,147,cognitive,cognitive_complexity,20,11,True,comprehension
+api/routes/evaluation.py,_calculate_ai_evidence_score,241,cognitive,cognitive_complexity,1,0,True,comprehension
+api/routes/evaluation.py,_build_evidence_manifest,274,cognitive,cognitive_complexity,8,2,True,comprehension
+api/routes/evaluation.py,_compact_evidence_for_prompt,350,cognitive,cognitive_complexity,8,1,True,comprehension
+api/routes/evaluation.py,_compact_repository_info,435,cognitive,cognitive_complexity,4,2,True,comprehension
+api/routes/evaluation.py,_diff_lines,447,cognitive,cognitive_complexity,12,11,True,nesting inside a branch followed by elif
+api/routes/evaluation.py,_validate_evidence_references,466,cognitive,cognitive_complexity,64,63,True,comprehension
+api/routes/evaluation.py,_response_text_values,543,cognitive,cognitive_complexity,8,7,True,nesting inside a branch followed by elif
+api/routes/evaluation.py,_citation_source_text,602,cognitive,cognitive_complexity,27,14,True,comprehension
+api/routes/evaluation.py,_validate_recommendations,688,cognitive,cognitive_complexity,19,17,True,comprehension
+api/routes/evaluation.py,_determine_dimension_eligibility,738,cognitive,cognitive_complexity,38,27,True,comprehension
+api/routes/evaluation.py,_included_score_dimensions,852,cognitive,cognitive_complexity,3,1,True,comprehension
+api/routes/evaluation.py,_calculate_focus_score,867,cognitive,cognitive_complexity,3,1,True,comprehension
+api/routes/evaluation.py,_normalized_score_weights,883,cognitive,cognitive_complexity,3,1,True,comprehension
+api/routes/evaluation.py,_score_coverage_metadata,897,cognitive,cognitive_complexity,11,4,True,comprehension
+api/routes/evaluation.py,_run_ai_evaluation,963,cognitive,cognitive_complexity,71,61,True,comprehension
+api/routes/evaluation.py,evaluate_developer_ai,1256,cognitive,cognitive_complexity,25,23,True,comprehension
+api/routes/evaluation.py,list_employee_evaluations,1423,cognitive,cognitive_complexity,3,2,True,comprehension
+api/routes/evaluation.py,list_pr_evaluations,1432,cognitive,cognitive_complexity,2,1,True,comprehension
+api/routes/github.py,save_project_github_config,169,cognitive,cognitive_complexity,8,7,True,comprehension
+api/routes/github.py,sync_repository_prs,337,cognitive,cognitive_complexity,5,1,True,comprehension
+api/routes/performance.py,get_developer_performance,349,cognitive,cognitive_complexity,11,10,True,nesting inside a branch followed by elif
+api/routes/performance.py,get_team_performance,749,cognitive,cognitive_complexity,25,21,True,async for
+api/routes/projects.py,list_projects,57,cognitive,cognitive_complexity,13,5,True,comprehension
+api/routes/recommendations.py,get_role_recommendations,47,cognitive,cognitive_complexity,3,1,True,comprehension
+api/routes/recommendations.py,get_entity_recommendations,73,cognitive,cognitive_complexity,21,13,True,else + nested if (package reads it as elif)
+api/routes/risk_configurations.py,list_risk_configurations,62,cognitive,cognitive_complexity,1,0,True,comprehension
+api/routes/teams.py,list_teams,160,cognitive,cognitive_complexity,14,9,True,"async for, comprehension"
+api/routes/teams.py,get_team_members,305,cognitive,cognitive_complexity,4,3,True,comprehension
+api/routes/teams.py,update_team,354,cognitive,cognitive_complexity,22,20,True,"comprehension, nesting inside a branch followed by elif"
+api/routes/traceability.py,get_task_prs,130,cognitive,cognitive_complexity,2,1,True,comprehension
+api/routes/traceability.py,get_entity_connections,245,cognitive,cognitive_complexity,7,5,True,else + nested if (package reads it as elif)
+core/audit.py,AuditLogger.get_logs,109,cognitive,cognitive_complexity,11,10,True,async for
+core/authorization.py,get_accessible_project_ids,345,cognitive,cognitive_complexity,8,5,True,comprehension
+core/dependencies.py,require_roles,93,cognitive,cognitive_complexity,3,2,True,"comprehension, nested function/lambda"
+core/dependencies.py,require_permission,152,cognitive,cognitive_complexity,3,2,True,"comprehension, nested function/lambda"
+core/dependencies.py,require_all_permissions,209,cognitive,cognitive_complexity,3,2,True,"comprehension, nested function/lambda"
+core/security.py,validate_password_strength,83,cognitive,cognitive_complexity,10,6,True,comprehension
+domain/models/qa.py,TestCaseCreate.validate_step_order,58,cognitive,cognitive_complexity,2,1,True,comprehension
+domain/models/qa.py,TestCaseUpdate.validate_step_order,80,cognitive,cognitive_complexity,4,3,True,comprehension
+domain/models/qa.py,TestExecutionCreate.validate_evidence_references,105,cognitive,cognitive_complexity,9,6,True,comprehension
+domain/services/enhanced_notification_service.py,EnhancedNotificationService._send_notification,82,cognitive,cognitive_complexity,2,1,True,comprehension
+domain/services/github_analysis_service.py,GitHubAnalysisService._analyze_deep,159,cognitive,cognitive_complexity,35,33,True,comprehension
+domain/services/github_sync_service.py,GitHubSyncService.sync_pull_request,40,cognitive,cognitive_complexity,7,6,True,comprehension
+domain/services/github_sync_service.py,GitHubSyncService.list_repositories,232,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/notification_template_engine.py,NotificationTemplateEngine.get_available_templates,204,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/project_service.py,ProjectService.get_active_projects,54,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/project_service.py,ProjectService.get_team_projects,59,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/qa_service.py,QAService.clone_case,232,cognitive,cognitive_complexity,3,1,True,comprehension
+domain/services/qa_service.py,QAService.create_execution,252,cognitive,cognitive_complexity,10,9,True,comprehension
+domain/services/qa_service.py,QAService.list_defects,357,cognitive,cognitive_complexity,5,4,True,comprehension
+domain/services/qa_service.py,QAService.update_defect,414,cognitive,cognitive_complexity,43,40,True,nesting inside a branch followed by elif
+domain/services/qa_service.py,QAService.dashboard,509,cognitive,cognitive_complexity,18,6,True,"comprehension, nested function/lambda"
+domain/services/recommendation_engine.py,RecommendationEngine._infer_category_priority,267,cognitive,cognitive_complexity,16,9,True,comprehension
+domain/services/risk_config_service.py,RiskConfigService._create_default_configuration,161,cyclomatic,lizard,2,1,True,lizard does not support match
+domain/services/risk_config_service.py,RiskConfigService.list_configurations,273,cognitive,cognitive_complexity,3,2,True,comprehension
+domain/services/sprint_service.py,SprintService.get_project_sprints,59,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/sprint_service.py,SprintService.calculate_sprint_health,64,cognitive,cognitive_complexity,19,9,True,comprehension
+domain/services/story_service.py,StoryService.get_sprint_stories,51,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/story_service.py,StoryService.get_assignee_stories,56,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/task_service.py,TaskService.get_project_tasks,50,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/task_service.py,TaskService.get_assignee_tasks,55,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/task_service.py,TaskService.get_story_tasks,60,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/traceability_service.py,TraceabilityService.get_task_related_prs,361,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/traceability_service.py,TraceabilityService.get_file_history,378,cognitive,cognitive_complexity,1,0,True,comprehension
+domain/services/traceability_service.py,TraceabilityService.calculate_blast_radius,428,cognitive,cognitive_complexity,8,6,True,comprehension
+domain/services/webhook_event_processor.py,WebhookEventProcessor._get_project_devops_members,81,cognitive,cognitive_complexity,5,3,True,comprehension
+domain/services/webhook_event_processor.py,WebhookEventProcessor._handle_pull_request_event,227,cognitive,cognitive_complexity,25,17,True,nesting inside a branch followed by elif
+domain/services/webhook_service.py,WebhookService._handle_push,170,cognitive,cognitive_complexity,2,1,True,comprehension
+domain/services/workflow_service.py,WorkflowService.get_transition_history,273,cognitive,cognitive_complexity,1,0,True,comprehension
+integrations/cicd_integration.py,CICDIntegrationService.analyze_pipeline_health,202,cognitive,cognitive_complexity,8,4,True,comprehension
+integrations/cicd_integration.py,CICDIntegrationService._calculate_trend,265,cognitive,cognitive_complexity,8,4,True,comprehension
+integrations/github/normalizer.py,GitHubNormalizer.normalize_pr_files,103,cognitive,cognitive_complexity,11,1,True,comprehension
+integrations/github/normalizer.py,GitHubNormalizer.normalize_check_runs,166,cognitive,cognitive_complexity,13,6,True,comprehension
+intelligence/analyzers/base.py,BaseAnalyzer._filter_files,101,cognitive,cognitive_complexity,6,5,True,comprehension
+intelligence/analyzers/c/analyzer.py,CAnalyzer.analyze,49,cognitive,cognitive_complexity,11,1,True,comprehension
+intelligence/analyzers/c/analyzer.py,CAnalyzer._gcc_warnings,101,cognitive,cognitive_complexity,9,6,True,comprehension
+intelligence/analyzers/c/analyzer.py,CAnalyzer._flawfinder,144,cognitive,cognitive_complexity,4,2,True,comprehension
+intelligence/analyzers/common/code_metrics.py,build_code_metrics,67,cognitive,cognitive_complexity,14,6,True,"comprehension, nested function/lambda"
+intelligence/analyzers/common/code_metrics.py,apply_code_metrics,128,cognitive,cognitive_complexity,11,5,True,"comprehension, nested function/lambda"
+intelligence/analyzers/common/complexity.py,analyze_complexity,40,cognitive,cognitive_complexity,24,18,True,"comprehension, nesting inside a branch followed by elif"
+intelligence/analyzers/common/complexity.py,_run_lizard,111,cognitive,cognitive_complexity,16,14,True,comprehension
+intelligence/analyzers/common/complexity.py,_run_ast_complexity,219,cognitive,cognitive_complexity,24,22,True,comprehension
+intelligence/analyzers/common/complexity.py,_merge_radon_supplement,286,cognitive,cognitive_complexity,3,1,True,comprehension
+intelligence/analyzers/common/duplication.py,analyze_duplication,29,cognitive,cognitive_complexity,18,17,True,"comprehension, nested function/lambda"
+intelligence/analyzers/common/duplication.py,_is_trivial_block,131,cognitive,cognitive_complexity,2,0,True,comprehension
+intelligence/analyzers/cpp/analyzer.py,CppAnalyzer.analyze,51,cognitive,cognitive_complexity,11,1,True,comprehension
+intelligence/analyzers/cpp/analyzer.py,CppAnalyzer._clang_tidy,103,cognitive,cognitive_complexity,7,4,True,comprehension
+intelligence/analyzers/cpp/analyzer.py,CppAnalyzer._clang_fallback,156,cognitive,cognitive_complexity,9,6,True,comprehension
+intelligence/analyzers/java/analyzer.py,JavaAnalyzer.analyze,49,cognitive,cognitive_complexity,10,1,True,comprehension
+intelligence/analyzers/java/analyzer.py,JavaAnalyzer._compile_and_lint,110,cognitive,cognitive_complexity,13,11,True,"comprehension, nesting inside a branch followed by elif"
+intelligence/analyzers/javascript/analyzer.py,JavaScriptAnalyzer.analyze,53,cognitive,cognitive_complexity,12,2,True,comprehension
+intelligence/analyzers/javascript/analyzer.py,JavaScriptAnalyzer._eslint,110,cognitive,cognitive_complexity,10,9,True,comprehension
+intelligence/analyzers/language_detector.py,get_extensions_for_language,47,cognitive,cognitive_complexity,2,0,True,comprehension
+intelligence/analyzers/language_detector.py,LanguageDetector.detect_from_repo,169,cognitive,cognitive_complexity,19,18,True,comprehension
+intelligence/analyzers/python/analyzer.py,PythonAnalyzer.analyze,56,cognitive,cognitive_complexity,11,1,True,comprehension
+intelligence/analyzers/python/analyzer.py,PythonAnalyzer._parse_dep_vulns,374,cognitive,cognitive_complexity,3,2,True,comprehension
+intelligence/baselines/repository_baseline.py,RepositoryBaseline.update_baseline,119,cognitive,cognitive_complexity,20,19,True,comprehension
+intelligence/contribution_credit.py,calculate_contribution_credit,30,cognitive,cognitive_complexity,21,15,True,comprehension
+intelligence/contribution_credit.py,combine_hybrid_credit,122,cognitive,cognitive_complexity,7,5,True,comprehension
+intelligence/developer_data_aggregator.py,DeveloperDataAggregator._collect_bugs,399,cognitive,cognitive_complexity,5,1,True,comprehension
+intelligence/developer_data_aggregator.py,DeveloperDataAggregator._collect_sprint_contributions,454,cognitive,cognitive_complexity,5,2,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger.merge,41,cognitive,cognitive_complexity,14,5,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_complexity,163,cognitive,cognitive_complexity,20,8,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_security,219,cognitive,cognitive_complexity,9,3,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_testing,253,cognitive,cognitive_complexity,35,19,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_duplication,336,cognitive,cognitive_complexity,14,8,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_architecture,381,cognitive,cognitive_complexity,8,4,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_cicd,411,cognitive,cognitive_complexity,14,7,True,comprehension
+intelligence/evidence/merger.py,EvidenceMerger._merge_quality,451,cognitive,cognitive_complexity,13,9,True,comprehension
+intelligence/evidence/models.py,CodeQualityEvidence.total_critical_findings,258,cognitive,cognitive_complexity,2,0,True,comprehension
+intelligence/evidence/models.py,CodeQualityEvidence.total_high_findings,265,cognitive,cognitive_complexity,2,0,True,comprehension
+intelligence/log_analyzer.py,LogAnalyzer._extract_error_context,260,cognitive,cognitive_complexity,5,4,True,comprehension
+intelligence/log_analyzer.py,LogAnalyzer._extract_failed_test_names,300,cognitive,cognitive_complexity,2,1,True,comprehension
+intelligence/quality_engine.py,QualityEngine.calculate,54,cognitive,cognitive_complexity,4,1,True,comprehension
+intelligence/quality_engine.py,QualityEngine._static_security_penalty,109,cognitive,cognitive_complexity,8,0,True,comprehension
+intelligence/risk_engine.py,RiskEngine.analyze_sprint,215,cognitive,cognitive_complexity,25,16,True,comprehension
+intelligence/rules/risk_rules.py,RiskRules.aggregate_risk_scores,125,cognitive,cognitive_complexity,4,3,True,comprehension
+migrations/seed_risk_configurations.py,main,193,cyclomatic,lizard,2,3,True,lizard does not support match
+repositories/activity_repository.py,ActivityRepository.get_project_feed,15,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/activity_repository.py,ActivityRepository.get_user_feed,27,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/activity_repository.py,ActivityRepository.get_item_history,39,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/ai_run_repository.py,AIRunRepository.list,41,cognitive,cognitive_complexity,2,1,True,comprehension
+repositories/ai_run_repository.py,AIRunRepository.find_by_agent_type,58,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/ai_run_repository.py,AIRunRepository.find_by_user,68,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/ai_run_repository.py,AIRunRepository.get_recent,78,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/base.py,BaseRepository.find_many,21,cognitive,cognitive_complexity,2,1,True,comprehension
+repositories/base.py,BaseRepository.find_all,46,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/comment_repository.py,CommentRepository.find_by_parent,15,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/entity_relationship_repository.py,EntityRelationshipRepository.create_indexes,32,cognitive,cognitive_complexity,2,1,True,comprehension
+repositories/entity_relationship_repository.py,EntityRelationshipRepository.get_blast_radius,181,cognitive,cognitive_complexity,14,13,True,comprehension
+repositories/evaluation_repository.py,EvaluationRepository.create_or_get,18,cognitive,cognitive_complexity,10,8,True,async for
+repositories/evaluation_repository.py,EvaluationRepository._is_duplicate_eligible,103,cognitive,cognitive_complexity,17,16,True,nesting inside a branch followed by elif
+repositories/evaluation_repository.py,EvaluationRepository.list,143,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/notification_repository.py,NotificationRepository.find_by_user,16,cognitive,cognitive_complexity,1,0,True,comprehension
+repositories/notification_repository.py,NotificationRepository.find_unread,28,cognitive,cognitive_complexity,1,0,True,comprehension

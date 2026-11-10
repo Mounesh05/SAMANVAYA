@@ -174,18 +174,22 @@ def halstead(tokens: Iterable[HalsteadToken]) -> Halstead:
 
 # ── Maintainability index ─────────────────────────────────────────
 
+PUBLISHED_COMMENT_CONSTANT = 2.4  # Oman & Hagemeister; radon uses 2.46
+
+
 def maintainability_index(
     volume: float,
     cyclomatic: int,
     code_lines: int,
     comment_percent: Optional[float] = None,
+    comment_constant: float = PUBLISHED_COMMENT_CONSTANT,
 ) -> float:
     """MI on a 0-100 scale. Empty code (no volume or lines) is fully maintainable."""
     if volume <= 0 or code_lines <= 0:
         return 100.0
     raw = 171 - 5.2 * math.log(volume) - 0.23 * cyclomatic - 16.2 * math.log(code_lines)
     if comment_percent is not None and comment_percent > 0:
-        raw += 50 * math.sin(math.sqrt(2.4 * math.radians(comment_percent)))
+        raw += 50 * math.sin(math.sqrt(comment_constant * math.radians(comment_percent)))
     return round(min(100.0, max(0.0, raw * 100 / 171)), 2)
 
 
