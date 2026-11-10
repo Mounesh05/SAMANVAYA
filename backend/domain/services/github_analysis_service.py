@@ -36,6 +36,7 @@ class GitHubAnalysisService:
         changed_files: list[str],
         commit_count: int,
         pr_age_hours: float,
+        **model_inputs: Any,
     ) -> Dict[str, Any]:
         """
         Analyze PR risk using Intelligence Engine.
@@ -48,6 +49,8 @@ class GitHubAnalysisService:
             changed_files: List of file paths
             commit_count: Number of commits
             pr_age_hours: PR age in hours
+            model_inputs: optional inputs for the project's ML risk model
+                (project_id, file_changes, author_email, commit_messages, created_at)
         
         Returns:
             Risk analysis with score, level, and factors
@@ -60,6 +63,7 @@ class GitHubAnalysisService:
             changed_files=changed_files,
             commit_count=commit_count,
             pr_age_hours=pr_age_hours,
+            **model_inputs,
         )
 
     async def analyze_with_ai(

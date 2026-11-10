@@ -10,6 +10,7 @@ Scripts that check SAMANVAYA's own code-quality metrics
 | `compare_duplication.py` | jscpd and/or SonarQube | a jscpd report and/or `sonar_measures.json` |
 | `compare_sonarqube.py` | SonarQube (debt, rating, complexity, code smells) | `sonar_measures.json` |
 | `backtest_forecast.py` | Monte Carlo sprint forecast vs average velocity (simulated teams) | nothing extra: `python evaluation\backtest_forecast.py` |
+| `evaluate_risk_model.py` | PR risk model vs current rules, size baselines, LightGBM (SZZ-labelled history of real projects) | local clones; `lightgbm` + `numpy` only for `--lightgbm` (section 4) |
 
 All commands below are for **PowerShell**, run from the `backend` folder:
 
@@ -107,3 +108,21 @@ docker compose -f evaluation\sonarqube\docker-compose.yml down
 - **Technical debt**: compare the *shared-rule* row (cognitive complexity > 15 and duplicated blocks,
   both tools use the same thresholds) for a like-for-like result. SonarQube's all-rule debt is
   expected to be higher because it applies hundreds of rules.
+
+---
+
+## 4. PR risk model (just-in-time defect prediction)
+
+Clone the evaluation projects (any folder outside the repository), then run:
+
+```powershell
+git clone https://github.com/encode/httpx C:\jitdata\httpx
+git clone https://github.com/psf/requests C:\jitdata\requests
+git clone https://github.com/pallets/flask C:\jitdata\flask
+python evaluation\evaluate_risk_model.py --repos C:\jitdata\httpx C:\jitdata\requests C:\jitdata\flask --cache C:\jitdata\cache
+```
+
+Labelling takes about 1 to 2 minutes per project the first time (`--cache` skips it afterwards).
+Add `--lightgbm` in an environment with `pip install lightgbm numpy` for the reference model.
+The committed results (`results/risk_model_evaluation.md`) were made at the HEAD commits named in
+the report. Method and interpretation: `intelligence/risk_model/RISK_MODEL.md`.

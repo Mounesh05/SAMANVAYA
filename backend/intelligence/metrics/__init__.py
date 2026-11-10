@@ -23,6 +23,9 @@ Delivery (import from the module; see DORA_METRICS.md):
 - delivery:      DORA deployment frequency, change lead time, change fail
                  rate, failed deployment recovery time, rework rate, levels
 
+PR risk prediction (machine learning on git history) lives in its own
+package, intelligence/risk_model (see RISK_MODEL.md there).
+
 Supporting modules:
 - size:       Line counts (LOC, NCLOC, comments, docstrings)
 - project:    Runs all six metrics over a set of files

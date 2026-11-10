@@ -48,8 +48,8 @@ async def analyze_pr(
             changed_files=data.get("changed_files", []),
             commit_count=data.get("commit_count"),
             pr_age_hours=data.get("pr_age_hours"),
-            tests_passed=data.get("tests_passed", 0),
-            tests_failed=data.get("tests_failed", 0),
+            tests_passed=data.get("tests_passed"),
+            tests_failed=data.get("tests_failed"),
             previous_coverage=data.get("previous_coverage"),
             current_coverage=data.get("current_coverage"),
         )

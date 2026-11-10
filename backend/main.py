@@ -291,6 +291,10 @@ from api.routes import incidents, delivery
 app.include_router(incidents.router, prefix="/api/incidents", tags=["Incidents"])
 app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery (DORA)"])
 
+# PR risk model (SZZ-labelled history, see intelligence/risk_model/RISK_MODEL.md)
+from api.routes import risk_model
+app.include_router(risk_model.router, prefix="/api/risk-model", tags=["Risk Model"])
+
 # AI Evaluation (Requires Auth)
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["AI Evaluation"])
 

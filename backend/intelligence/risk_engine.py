@@ -87,13 +87,27 @@ class RiskEngine:
         changed_files: list[str] = None,
         commit_count: int = None,
         pr_age_hours: float = None,
-        tests_passed: int = 0,
-        tests_failed: int = 0,
+        tests_passed: Optional[int] = None,
+        tests_failed: Optional[int] = None,
         previous_coverage: float = None,
         current_coverage: float = None,
+        project_id: Optional[str] = None,
+        file_changes: Optional[list] = None,
+        author_email: Optional[str] = None,
+        commit_messages: Optional[list] = None,
+        created_at: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Analyze a pull request and return risk evidence.
+
+        Test results: None means "not known" and adds no risk; only real
+        results (tests_failed > 0, or a run with 0 passing) do.
+
+        When the project has a trained, validated risk model
+        (intelligence/risk_model, see RISK_MODEL.md) and `file_changes`
+        [(path, additions, deletions)] are given, the score is the model's
+        bug probability x 100 and its top factors; the rule score is kept as
+        "rule_score". Otherwise the rules decide (scoring_method "rules").
         
         If data is not provided, attempts to fetch from database.
         
@@ -110,7 +124,13 @@ class RiskEngine:
             if pr_data:
                 files_changed = pr_data.get("files_changed_count")  # Preserve None
                 commit_count = pr_data.get("commit_count")  # Preserve None
-                # Other fields would come from GitHub integration
+                # stored by the GitHub sync (pr_flow_fields); previously never read,
+                # so churn was always 0 for PRs loaded from the database
+                if lines_added is None:
+                    lines_added = pr_data.get("lines_added")
+                if lines_deleted is None:
+                    lines_deleted = pr_data.get("lines_deleted")
+                project_id = project_id or pr_data.get("project_id")
         
         # For simple formula path: use 0 as fallback ONLY if still None
         # This is OK because simple path doesn't distinguish missing from zero
@@ -134,8 +154,32 @@ class RiskEngine:
             previous_coverage=previous_coverage,
             current_coverage=current_coverage,
         )
-        
+        evidence["scoring_method"] = "rules"
+        if file_changes:
+            await self._apply_risk_model(evidence, project_id, file_changes, author_email,
+                                         commit_messages or [], created_at)
         return evidence
+
+    async def _apply_risk_model(self, evidence: Dict[str, Any], project_id: Optional[str], file_changes: list,
+                                author_email: Optional[str], commit_messages: list,
+                                created_at: Optional[int]) -> None:
+        """Replace the rule score with the project's ML probability when a usable model exists."""
+        try:
+            from domain.services.risk_model_service import RiskModelService
+            prediction = await RiskModelService().score(project_id, file_changes, author_email or "",
+                                                        created_at, commit_messages)
+        except Exception:  # model problems must never break PR analysis
+            prediction = None
+        if not prediction:
+            return
+        score = int(round(prediction["probability"] * 100))
+        evidence["rule_score"] = evidence["risk_score"]
+        evidence["rule_factors"] = list(evidence["risk_factors"])
+        evidence["risk_score"] = score
+        evidence["risk_level"] = await self._classify_risk_level(score, project_id)
+        evidence["risk_factors"] = [f"Model: {f['label']} ({f['value']:g})" for f in prediction["factors"]]             + evidence["risk_factors"]
+        evidence["scoring_method"] = "ml"
+        evidence["ml_prediction"] = {k: prediction[k] for k in ("probability", "model", "auc", "factors", "features")}
     
     async def _build_simple_pr_evidence(
         self,
@@ -145,8 +189,8 @@ class RiskEngine:
         lines_deleted: int,
         commit_count: int,
         pr_age_hours: float = None,
-        tests_passed: int = 0,
-        tests_failed: int = 0,
+        tests_passed: Optional[int] = None,
+        tests_failed: Optional[int] = None,
         previous_coverage: float = None,
         current_coverage: float = None,
     ) -> Dict[str, Any]:
@@ -175,10 +219,12 @@ class RiskEngine:
             risk_score += CHURN_MEDIUM_RISK
         
         # Factor 3: Tests (max 25 points)
-        if tests_failed > 0:
+        # None = no test results were reported: unknown, not "0 passing"
+        # (previously every synced PR got +15 here because results are never passed)
+        if tests_failed is not None and tests_failed > 0:
             risk_score += TEST_FAILURE_RISK
             risk_factors.append(f"{tests_failed} failing tests")
-        elif tests_passed == 0:
+        elif tests_passed is not None and tests_passed == 0:
             risk_score += TEST_NONE_PASSING_RISK
             risk_factors.append("No passing tests")
         
@@ -209,6 +255,7 @@ class RiskEngine:
                 "commit_count": commit_count,
                 "tests_passed": tests_passed,
                 "tests_failed": tests_failed,
+                "test_results_known": tests_passed is not None or tests_failed is not None,
             }
         }
 

@@ -9,6 +9,7 @@ Responsibilities:
 """
 
 import logging
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 from integrations.github.normalizer import GitHubNormalizer
@@ -20,6 +21,31 @@ from domain.services.github_api_service import GitHubAPIService
 from domain.services.github_analysis_service import GitHubAnalysisService
 
 logger = logging.getLogger(__name__)
+
+
+def risk_model_inputs(project_id: str, github_pr: Dict[str, Any], files: List[Dict[str, Any]],
+                      commits: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Inputs for the project's ML risk model (see intelligence/risk_model).
+
+    The author is the git e-mail that wrote most of the PR's commits: the
+    model's experience features are keyed by git e-mail, not GitHub login.
+    """
+    emails = [((c.get("commit") or {}).get("author") or {}).get("email") for c in commits]
+    emails = [e.lower() for e in emails if e]
+    created = github_pr.get("created_at")
+    try:
+        created_ts = int(datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()) if created else None
+    except (AttributeError, ValueError):
+        created_ts = None
+    return {
+        "project_id": project_id,
+        "file_changes": [(f.get("filename", ""), int(f.get("additions") or 0), int(f.get("deletions") or 0))
+                         for f in files],
+        "author_email": max(set(emails), key=emails.count) if emails else "",
+        "commit_messages": [((c.get("commit") or {}).get("message") or "").partition("\n")[0] for c in commits]
+                           + [github_pr.get("title") or ""],
+        "created_at": created_ts,
+    }
 
 
 def pr_flow_fields(github_pr: Dict[str, Any], files: List[Dict[str, Any]],
@@ -131,6 +157,7 @@ class GitHubSyncService:
             changed_files=file_stats["changed_files"],
             commit_count=len(commits),
             pr_age_hours=pr_age_hours,
+            **risk_model_inputs(project_id, github_pr, files, commits),
         )
         
         # Add risk analysis to PR

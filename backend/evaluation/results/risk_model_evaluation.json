@@ -1,0 +1,482 @@
+[
+  {
+    "repo": "httpx",
+    "head": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "changes": 1415,
+    "szz": {
+      "buggy_changes": 67,
+      "fixes": 62,
+      "fixes_traced": 56,
+      "errors": 0
+    },
+    "rows": 821,
+    "train": 492,
+    "test": 246,
+    "buggy_train": 0.0935,
+    "buggy_test": 0.0732,
+    "train_seconds": {
+      "logistic": 0.06,
+      "stumps": 0.23
+    },
+    "results": [
+      {
+        "method": "rules v0 (as deployed)",
+        "auc": 0.5677,
+        "precision": 0.25,
+        "recall": 0.0556,
+        "f1": 0.0909,
+        "flagged": 4,
+        "recall_at_20_effort": 0.2222,
+        "recall_at_20_effort_density": 0.3333
+      },
+      {
+        "method": "rules v0 (bugs fixed)",
+        "auc": 0.6499,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "flagged": 1,
+        "recall_at_20_effort": 0.1111,
+        "recall_at_20_effort_density": 0.2222
+      },
+      {
+        "method": "size (LA+LD)",
+        "auc": 0.8702,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "flagged": null,
+        "recall_at_20_effort": 0.1667,
+        "recall_at_20_effort_density": 0.1667
+      },
+      {
+        "method": "smallest first",
+        "auc": 0.1298,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "flagged": null,
+        "recall_at_20_effort": 0.3333,
+        "recall_at_20_effort_density": 0.3333
+      },
+      {
+        "method": "logistic, size only (LA, LD, NF)",
+        "auc": 0.8659,
+        "precision": 0.2708,
+        "recall": 0.7222,
+        "f1": 0.3939,
+        "flagged": 48,
+        "recall_at_20_effort": 0.1111,
+        "recall_at_20_effort_density": 0.3333
+      },
+      {
+        "method": "logistic regression",
+        "auc": 0.7941,
+        "precision": 0.2439,
+        "recall": 0.5556,
+        "f1": 0.339,
+        "flagged": 41,
+        "recall_at_20_effort": 0.1667,
+        "recall_at_20_effort_density": 0.2222
+      },
+      {
+        "method": "boosted stumps",
+        "auc": 0.7962,
+        "precision": 0.1944,
+        "recall": 0.3889,
+        "f1": 0.2593,
+        "flagged": 36,
+        "recall_at_20_effort": 0.1111,
+        "recall_at_20_effort_density": 0.4444
+      },
+      {
+        "method": "LightGBM (reference)",
+        "auc": 0.799,
+        "precision": 0.3125,
+        "recall": 0.2778,
+        "f1": 0.2941,
+        "flagged": 16,
+        "recall_at_20_effort": 0.0556,
+        "recall_at_20_effort_density": 0.2778
+      }
+    ],
+    "logistic_weights": [
+      [
+        "NUC",
+        -1.082
+      ],
+      [
+        "LA",
+        0.983
+      ],
+      [
+        "FIX",
+        -0.819
+      ],
+      [
+        "LT",
+        0.738
+      ],
+      [
+        "REXP",
+        0.589
+      ],
+      [
+        "NDEV",
+        0.562
+      ],
+      [
+        "NF",
+        0.428
+      ],
+      [
+        "EXP",
+        -0.267
+      ],
+      [
+        "NS",
+        0.214
+      ],
+      [
+        "ENTROPY",
+        -0.191
+      ],
+      [
+        "AGE",
+        -0.177
+      ],
+      [
+        "LD",
+        -0.109
+      ],
+      [
+        "SEXP",
+        0.088
+      ],
+      [
+        "ND",
+        -0.07
+      ]
+    ]
+  },
+  {
+    "repo": "requests",
+    "head": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+    "changes": 2670,
+    "szz": {
+      "buggy_changes": 399,
+      "fixes": 298,
+      "fixes_traced": 263,
+      "errors": 0
+    },
+    "rows": 1202,
+    "train": 721,
+    "test": 360,
+    "buggy_train": 0.4327,
+    "buggy_test": 0.2167,
+    "train_seconds": {
+      "logistic": 0.08,
+      "stumps": 0.31
+    },
+    "results": [
+      {
+        "method": "rules v0 (as deployed)",
+        "auc": 0.5069,
+        "precision": 0.5,
+        "recall": 0.0128,
+        "f1": 0.025,
+        "flagged": 2,
+        "recall_at_20_effort": 0.1667,
+        "recall_at_20_effort_density": 0.4872
+      },
+      {
+        "method": "rules v0 (bugs fixed)",
+        "auc": 0.5069,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "flagged": 0,
+        "recall_at_20_effort": 0.1667,
+        "recall_at_20_effort_density": 0.1667
+      },
+      {
+        "method": "size (LA+LD)",
+        "auc": 0.6701,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "flagged": null,
+        "recall_at_20_effort": 0.0769,
+        "recall_at_20_effort_density": 0.0769
+      },
+      {
+        "method": "smallest first",
+        "auc": 0.3299,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "flagged": null,
+        "recall_at_20_effort": 0.4872,
+        "recall_at_20_effort_density": 0.4872
+      },
+      {
+        "method": "logistic, size only (LA, LD, NF)",
+        "auc": 0.6873,
+        "precision": 0.3883,
+        "recall": 0.5128,
+        "f1": 0.442,
+        "flagged": 103,
+        "recall_at_20_effort": 0.0641,
+        "recall_at_20_effort_density": 0.4744
+      },
+      {
+        "method": "logistic regression",
+        "auc": 0.69,
+        "precision": 0.3818,
+        "recall": 0.5385,
+        "f1": 0.4468,
+        "flagged": 110,
+        "recall_at_20_effort": 0.0513,
+        "recall_at_20_effort_density": 0.4359
+      },
+      {
+        "method": "boosted stumps",
+        "auc": 0.6992,
+        "precision": 0.3659,
+        "recall": 0.5769,
+        "f1": 0.4478,
+        "flagged": 123,
+        "recall_at_20_effort": 0.0769,
+        "recall_at_20_effort_density": 0.4487
+      },
+      {
+        "method": "LightGBM (reference)",
+        "auc": 0.7109,
+        "precision": 0.3333,
+        "recall": 0.7308,
+        "f1": 0.4578,
+        "flagged": 171,
+        "recall_at_20_effort": 0.1538,
+        "recall_at_20_effort_density": 0.4487
+      }
+    ],
+    "logistic_weights": [
+      [
+        "LA",
+        1.241
+      ],
+      [
+        "SEXP",
+        -0.937
+      ],
+      [
+        "REXP",
+        0.571
+      ],
+      [
+        "EXP",
+        0.349
+      ],
+      [
+        "FIX",
+        0.315
+      ],
+      [
+        "NUC",
+        -0.241
+      ],
+      [
+        "LT",
+        0.228
+      ],
+      [
+        "ENTROPY",
+        0.193
+      ],
+      [
+        "LD",
+        0.133
+      ],
+      [
+        "NDEV",
+        0.103
+      ],
+      [
+        "AGE",
+        0.063
+      ],
+      [
+        "NS",
+        -0.031
+      ],
+      [
+        "ND",
+        -0.031
+      ],
+      [
+        "NF",
+        0.009
+      ]
+    ]
+  },
+  {
+    "repo": "flask",
+    "head": "49943b5a94413a530761350f04e896f76e8d620e",
+    "changes": 2283,
+    "szz": {
+      "buggy_changes": 409,
+      "fixes": 214,
+      "fixes_traced": 189,
+      "errors": 0
+    },
+    "rows": 1033,
+    "train": 619,
+    "test": 309,
+    "buggy_train": 0.4782,
+    "buggy_test": 0.3074,
+    "train_seconds": {
+      "logistic": 0.09,
+      "stumps": 0.26
+    },
+    "results": [
+      {
+        "method": "rules v0 (as deployed)",
+        "auc": 0.5825,
+        "precision": 0.8,
+        "recall": 0.0842,
+        "f1": 0.1524,
+        "flagged": 10,
+        "recall_at_20_effort": 0.1895,
+        "recall_at_20_effort_density": 0.7158
+      },
+      {
+        "method": "rules v0 (bugs fixed)",
+        "auc": 0.5983,
+        "precision": 1.0,
+        "recall": 0.0632,
+        "f1": 0.1188,
+        "flagged": 6,
+        "recall_at_20_effort": 0.1895,
+        "recall_at_20_effort_density": 0.1895
+      },
+      {
+        "method": "size (LA+LD)",
+        "auc": 0.8515,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "flagged": null,
+        "recall_at_20_effort": 0.0737,
+        "recall_at_20_effort_density": 0.0737
+      },
+      {
+        "method": "smallest first",
+        "auc": 0.1485,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "flagged": null,
+        "recall_at_20_effort": 0.7263,
+        "recall_at_20_effort_density": 0.7263
+      },
+      {
+        "method": "logistic, size only (LA, LD, NF)",
+        "auc": 0.8485,
+        "precision": 0.5524,
+        "recall": 0.8316,
+        "f1": 0.6639,
+        "flagged": 143,
+        "recall_at_20_effort": 0.1474,
+        "recall_at_20_effort_density": 0.7263
+      },
+      {
+        "method": "logistic regression",
+        "auc": 0.8068,
+        "precision": 0.4877,
+        "recall": 0.8316,
+        "f1": 0.6148,
+        "flagged": 162,
+        "recall_at_20_effort": 0.1263,
+        "recall_at_20_effort_density": 0.7263
+      },
+      {
+        "method": "boosted stumps",
+        "auc": 0.8252,
+        "precision": 0.4967,
+        "recall": 0.7895,
+        "f1": 0.6098,
+        "flagged": 151,
+        "recall_at_20_effort": 0.1158,
+        "recall_at_20_effort_density": 0.7263
+      },
+      {
+        "method": "LightGBM (reference)",
+        "auc": 0.8256,
+        "precision": 0.4286,
+        "recall": 0.9158,
+        "f1": 0.5839,
+        "flagged": 203,
+        "recall_at_20_effort": 0.1895,
+        "recall_at_20_effort_density": 0.7368
+      }
+    ],
+    "logistic_weights": [
+      [
+        "EXP",
+        1.285
+      ],
+      [
+        "REXP",
+        -1.247
+      ],
+      [
+        "ND",
+        0.964
+      ],
+      [
+        "LA",
+        0.93
+      ],
+      [
+        "NS",
+        -0.555
+      ],
+      [
+        "ENTROPY",
+        0.458
+      ],
+      [
+        "NUC",
+        -0.447
+      ],
+      [
+        "AGE",
+        0.281
+      ],
+      [
+        "NDEV",
+        0.228
+      ],
+      [
+        "SEXP",
+        0.171
+      ],
+      [
+        "LT",
+        0.17
+      ],
+      [
+        "LD",
+        0.084
+      ],
+      [
+        "FIX",
+        0.075
+      ],
+      [
+        "NF",
+        -0.002
+      ]
+    ]
+  }
+]
