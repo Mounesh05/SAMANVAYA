@@ -14,6 +14,11 @@ Implemented:
 - issues:     Issues per 1,000 lines of code (NCLOC), severity-weighted
 - debt:       Technical debt + A-E rating (SQALE, Letouzey 2012)
 
+PR and sprint (flow) metrics (import from their modules; see FLOW_METRICS.md):
+- pull_requests: PR size, review status, time to first review / merge, percentiles
+- flow:          Velocity, scope creep, cycle time, Little's Law, burndown,
+                 Monte Carlo completion forecast
+
 Supporting modules:
 - size:       Line counts (LOC, NCLOC, comments, docstrings)
 - project:    Runs all six metrics over a set of files

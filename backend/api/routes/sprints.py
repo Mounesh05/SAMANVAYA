@@ -5,6 +5,7 @@ Sprint API endpoints.
 from fastapi import APIRouter, HTTPException, Depends
 from domain.models.sprint import SprintCreate, Sprint
 from domain.services.sprint_service import SprintService
+from domain.services.sprint_flow_service import SprintFlowService, SprintTransitionError
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from core.authorization import verify_project_access
@@ -13,6 +14,56 @@ from repositories.sprint_repository import SprintRepository
 router = APIRouter()
 sprint_service = SprintService()
 sprint_repo = SprintRepository()
+sprint_flow_service = SprintFlowService()
+
+
+async def _writable_sprint(sprint_id: str, user: dict) -> dict:
+    sprint = await sprint_repo.find_by_id(sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    await verify_project_access(user, sprint.get("project_id"), require_write=True)
+    return sprint
+
+
+@router.post("/{sprint_id}/start", response_model=Sprint)
+async def start_sprint(
+    sprint_id: str,
+    user: dict = Depends(require_permission(Permission.CREATE_SPRINT)),
+):
+    """Start a planning sprint: snapshots the committed scope (points and items)
+    so scope creep and say/do ratio can be measured. One active sprint per project."""
+    await _writable_sprint(sprint_id, user)
+    try:
+        return await sprint_flow_service.start_sprint(sprint_id)
+    except SprintTransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.post("/{sprint_id}/complete", response_model=Sprint)
+async def complete_sprint(
+    sprint_id: str,
+    user: dict = Depends(require_permission(Permission.CREATE_SPRINT)),
+):
+    """Complete an active sprint: stores completed points (velocity) and completion %."""
+    await _writable_sprint(sprint_id, user)
+    try:
+        return await sprint_flow_service.complete_sprint(sprint_id)
+    except SprintTransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.get("/{sprint_id}/flow")
+async def get_sprint_flow(
+    sprint_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Flow metrics: completion, scope creep, velocity, cycle/lead time, blocked
+    time, Little's Law, burndown and a Monte Carlo completion forecast."""
+    sprint = await sprint_repo.find_by_id(sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    await verify_project_access(user, sprint.get("project_id"))
+    return await sprint_flow_service.flow_report(sprint_id)
 
 
 @router.post("/", response_model=Sprint, status_code=201)

@@ -59,12 +59,21 @@ class GitHubAPIService:
         except Exception as e:
             logger.warning(f"Failed to fetch check runs for {owner}/{repo}#{pr_number}: {e}")
             check_runs = []
-        
+
+        # Reviews: time to first review, review rounds, real review status.
+        # None (not []) on failure, so the caller can keep the previous values.
+        try:
+            reviews = await self.client.get_pr_reviews(owner, repo, pr_number)
+        except Exception as e:
+            logger.warning(f"Failed to fetch reviews for {owner}/{repo}#{pr_number}: {e}")
+            reviews = None
+
         return {
             "pr": github_pr,
             "files": files,
             "commits": commits,
             "check_runs": check_runs,
+            "reviews": reviews,
         }
 
     async def fetch_pull_request_evidence(

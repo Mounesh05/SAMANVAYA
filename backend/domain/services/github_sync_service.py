@@ -12,6 +12,7 @@ import logging
 from typing import Optional, List, Dict, Any
 
 from integrations.github.normalizer import GitHubNormalizer
+from intelligence.metrics.pull_requests import compact_reviews, first_review_at, pr_size, review_rounds, review_status
 from repositories.pr_repository import PRRepository
 from repositories.ai_run_repository import AIRunRepository
 from domain.models.ai_run import AIRun
@@ -19,6 +20,32 @@ from domain.services.github_api_service import GitHubAPIService
 from domain.services.github_analysis_service import GitHubAnalysisService
 
 logger = logging.getLogger(__name__)
+
+
+def pr_flow_fields(github_pr: Dict[str, Any], files: List[Dict[str, Any]],
+                   reviews: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
+    """PR fields for SAMANVAYA's PR metrics (intelligence/metrics/pull_requests.py):
+    size without generated/lock files, closing time, and, when the reviews could
+    be fetched, the reviews themselves, first review time, review rounds and a
+    review status taken from the reviews (instead of guessing it from GitHub's
+    mergeable_state, which describes merge conflicts and checks, not reviews)."""
+    size = pr_size(files)
+    fields: Dict[str, Any] = {
+        "lines_added": size.lines_added,
+        "lines_deleted": size.lines_deleted,
+        "generated_lines_excluded": size.generated_lines_excluded,
+        "size_bucket": size.bucket,
+        "closed_at": github_pr.get("closed_at"),
+    }
+    if reviews is not None:
+        author = (github_pr.get("user") or {}).get("login")
+        fields.update({
+            "reviews": compact_reviews(reviews),
+            "first_review_at": first_review_at(reviews, author),
+            "review_rounds": review_rounds(reviews, author),
+            "review_status": review_status(reviews, author),
+        })
+    return fields
 
 
 class GitHubSyncService:
@@ -93,6 +120,7 @@ class GitHubSyncService:
             "files_changed_count": file_stats["files_changed"],
             "ci_status": ci_data["ci_status"],
         })
+        normalized_pr.update(pr_flow_fields(github_pr, files, github_data.get("reviews")))
         
         # Step 3: Analyze risk
         risk_evidence = await self.analysis_service.analyze_risk(

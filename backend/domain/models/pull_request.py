@@ -39,3 +39,12 @@ class PullRequest(PRCreate):
     
     created_at: str = ""
     merged_at: Optional[str] = None
+    # Set by GitHub sync for PR metrics (intelligence/metrics/pull_requests.py)
+    closed_at: Optional[str] = None
+    lines_added: Optional[int] = None              # generated / lock files excluded
+    lines_deleted: Optional[int] = None
+    generated_lines_excluded: Optional[int] = None
+    size_bucket: Optional[str] = None              # XS | S | M | L | XL
+    first_review_at: Optional[str] = None          # first human review
+    review_rounds: Optional[int] = None            # "changes requested" reviews
+    reviews: Optional[list] = None                 # [{reviewer, is_bot, state, submitted_at}]

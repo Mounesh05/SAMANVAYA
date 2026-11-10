@@ -47,3 +47,9 @@ class Sprint(SprintCreate):
     velocity: Optional[int] = None
     completion_pct: Optional[float] = None
     created_at: str = ""
+    # Set by SprintFlowService when the sprint is started / completed
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    committed_points: Optional[float] = None       # scope snapshot at start
+    committed_item_ids: Optional[list] = None
+    completed_points: Optional[float] = None       # velocity, in points

@@ -7,6 +7,7 @@ from domain.models.task import TaskCreate, Task, TaskSprintUpdate
 from domain.models.workflow import TransitionRequest, AvailableTransitions
 from domain.services.task_service import TaskService
 from domain.services.workflow_service import WorkflowService
+from domain.services.sprint_flow_service import SprintFlowService
 from repositories.sprint_repository import SprintRepository
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
@@ -22,6 +23,7 @@ router = APIRouter()
 task_service = TaskService()
 workflow_service = WorkflowService()
 sprint_repo = SprintRepository()
+sprint_flow_service = SprintFlowService()
 
 
 @router.post("/", response_model=Task, status_code=201)
@@ -50,8 +52,14 @@ async def update_task_sprint(
     updates: TaskSprintUpdate,
     user: dict = Depends(require_permission(Permission.CREATE_TASK)),
 ):
-    """Assign or remove a task from a sprint."""
+    """Assign or remove a task from a sprint. The move is logged so sprint
+    scope creep can be measured (SprintFlowService.record_scope_change)."""
     await verify_task_access(user, task_id, require_write=True)
+
+    before = await task_service.get_task(task_id)
+    if not before:
+        raise HTTPException(status_code=404, detail="Task not found")
+    before = before.model_dump() if hasattr(before, "model_dump") else dict(before)
 
     if updates.sprint_id:
         sprint = await sprint_repo.find_by_id(updates.sprint_id)
@@ -72,6 +80,9 @@ async def update_task_sprint(
     updated = await task_service.update_task(task_id, {"sprint_id": updates.sprint_id})
     if not updated:
         raise HTTPException(status_code=404, detail="Task not found")
+    if not before.get("story_id"):  # tasks inside a story are counted through the story
+        await sprint_flow_service.record_scope_change(
+            before, "task", before.get("sprint_id"), updates.sprint_id, changed_by=user.get("employee_id"))
 
     task = await task_service.get_task(task_id)
     if not task:

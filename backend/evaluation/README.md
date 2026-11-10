@@ -9,6 +9,7 @@ Scripts that check SAMANVAYA's own code-quality metrics
 | `compare_reference_tools.py` | radon, lizard, cognitive_complexity | Python packages (separate venv) |
 | `compare_duplication.py` | jscpd and/or SonarQube | a jscpd report and/or `sonar_measures.json` |
 | `compare_sonarqube.py` | SonarQube (debt, rating, complexity, code smells) | `sonar_measures.json` |
+| `backtest_forecast.py` | Monte Carlo sprint forecast vs average velocity (simulated teams) | nothing extra: `python evaluation\backtest_forecast.py` |
 
 All commands below are for **PowerShell**, run from the `backend` folder:
 

@@ -10,6 +10,7 @@ from core.authorization import verify_project_access
 from domain.services.github_sync_service import GitHubSyncService
 from domain.services.qa_workflow_provisioning_service import QAWorkflowProvisioningService
 from domain.models.github_project_config import GitHubProjectConfig
+from intelligence.metrics.pull_requests import summarize_prs
 from core.database import col
 from pydantic import BaseModel
 import httpx
@@ -163,6 +164,19 @@ async def get_project_github_config(
     if not config:
         raise HTTPException(status_code=404, detail="GitHub project configuration not found")
     return config
+
+
+@router.get("/projects/{project_id}/pr-metrics")
+async def get_project_pr_metrics(
+    project_id: str,
+    exclude_weekends: bool = Query(False, description="Do not count Saturday and Sunday in durations"),
+    user: dict = Depends(get_current_user),
+):
+    """PR size, time to first review, time to merge (median / p85 / p90), review
+    rounds and the share of merged PRs nobody reviewed, from synced PRs."""
+    await verify_project_access(user, project_id)
+    prs = await col("pull_requests").find({"project_id": project_id}, {"_id": 0}).to_list(length=None)
+    return summarize_prs(prs, exclude_weekends=exclude_weekends).to_dict()
 
 
 @router.put("/projects/{project_id}/config", response_model=GitHubProjectConfig)

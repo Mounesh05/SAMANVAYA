@@ -244,15 +244,23 @@ class RiskEngine:
             completed_points = stories_data.get("completed_points") or 0
             original_points = stories_data.get("original_points") or total_points
         else:
-            # Query actual stories from the database
-            all_stories = await self.story_repo.find_all({"sprint_id": sprint_id})
-            total_stories = len(all_stories)
-            completed_stories = sum(1 for s in all_stories if s.get("status") == "completed")
-            in_progress_stories = sum(1 for s in all_stories if s.get("status") == "in_progress")
-            blocked_stories = sum(1 for s in all_stories if s.get("status") == "blocked")
-            total_points = sum(s.get("story_points") or 0 for s in all_stories)
-            completed_points = sum(s.get("story_points") or 0 for s in all_stories if s.get("status") == "completed")
-            original_points = sprint.get("original_points") or total_points
+            # Work items from the database: stories + tasks without a story.
+            # (Previously: status "completed" instead of "done", field "story_points"
+            # instead of "points", and an "original_points" field nothing writes,
+            # so completion, points and scope creep were always 0.)
+            from domain.services.sprint_flow_service import SprintFlowService
+            from intelligence.metrics.flow import DONE, item_points
+
+            flow_service = SprintFlowService()
+            items = await flow_service.work_items(sprint_id)
+            total_stories = len(items)
+            completed_stories = sum(1 for s in items if s.get("status") == DONE)
+            in_progress_stories = sum(1 for s in items if s.get("status") == "in_progress")
+            blocked_stories = sum(1 for s in items if s.get("status") == "blocked")
+            total_points = sum(item_points(s) for s in items)
+            completed_points = sum(item_points(s) for s in items if s.get("status") == DONE)
+            # committed scope snapshot taken when the sprint was started
+            original_points = sprint.get("committed_points") or total_points
         
         # Calculate elapsed days from sprint start_date
         start_date_str = sprint.get("start_date")
@@ -281,7 +289,10 @@ class RiskEngine:
             days_elapsed=days_elapsed,
             sprint_duration_days=sprint_duration_days,
         )
-        
+        if not stories_data:
+            # cycle time, scope creep, velocity, burndown, Monte Carlo forecast
+            evidence["flow"] = await flow_service.flow_report(sprint_id)
+
         return evidence
     
     async def _build_simple_sprint_evidence(
