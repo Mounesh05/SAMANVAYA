@@ -239,6 +239,14 @@ class EvidenceMerger:
             all_vulns.extend(s.dependency_vulnerabilities)
             all_findings.extend(s.findings)
         
+        # SAMANVAYA security metrics: worst rating wins; CWE counts add up;
+        # density and dependency summary come from the analyzer that computed them
+        ratings = [s.rating for s in valid if s.rating]
+        by_cwe: dict = {}
+        for s in valid:
+            for cwe, n in s.by_cwe.items():
+                by_cwe[cwe] = by_cwe.get(cwe, 0) + n
+        computed = next((s for s in valid if s.rating), None)
         return SecurityEvidence(
             critical_count=total_critical,
             high_count=total_high,
@@ -247,6 +255,10 @@ class EvidenceMerger:
             hardcoded_secrets=all_secrets,
             dependency_vulnerabilities=all_vulns,
             findings=all_findings,
+            rating=max(ratings) if ratings else None,   # "A" < "B" < ... < "E"
+            vulnerability_density=computed.vulnerability_density if computed else None,
+            by_cwe=by_cwe,
+            dependency_summary=dict(computed.dependency_summary) if computed else {},
         )
 
     @staticmethod

@@ -1,162 +1,72 @@
 """
-Universal Secrets & Credentials Scanner.
-Language-agnostic regex patterns for hardcoded API keys, tokens, and passwords.
+Universal Secrets & Credentials Scanner (all languages and config files).
 
-Extracted from the old security_scanner.py into a shared module so all
-language analyzers can use the same detection without code duplication.
+Thin adapter: detection lives in intelligence/metrics/secrets.py (known key
+formats + keyword assignments + Shannon-entropy check, placeholder
+allowlist, test-file downgrade). This module keeps the original interface:
+`scan_secrets(files, repo_path) -> List[Finding]` with rule ids
+"SEC-SECRET-<NAME>", category "security", source tool "secrets-scanner".
 
-Runs on every file type regardless of language.
+Only files that resolve inside `repo_path` are read.
 """
 
-import re
 from pathlib import Path
 from typing import List
 
 from intelligence.evidence.models import Finding, SeverityEnum
+from intelligence.metrics.secrets import detect_secrets
 
-
-# ── Secret Pattern Registry ───────────────────────────────────────────────────
-# Each entry: (pattern_name, regex, severity, description)
-
-SECRET_PATTERNS: List[tuple] = [
-    # Cloud providers
-    ("aws_access_key",
-     r"AKIA[0-9A-Z]{16}",
-     SeverityEnum.CRITICAL,
-     "AWS Access Key ID detected"),
-
-    ("aws_secret_key",
-     r"(?i)aws[_\-\s]?secret[_\-\s]?(?:access[_\-\s]?)?key[\s\"'=:]+[A-Za-z0-9/+=]{40}",
-     SeverityEnum.CRITICAL,
-     "AWS Secret Access Key detected"),
-
-    # Version control tokens
-    ("github_token",
-     r"gh[pousr]_[A-Za-z0-9_]{36,255}",
-     SeverityEnum.CRITICAL,
-     "GitHub Personal Access Token detected"),
-
-    ("gitlab_token",
-     r"glpat-[A-Za-z0-9\-_]{20}",
-     SeverityEnum.CRITICAL,
-     "GitLab Personal Access Token detected"),
-
-    # Payment processors
-    ("stripe_secret",
-     r"sk_live_[a-zA-Z0-9]{24,}",
-     SeverityEnum.CRITICAL,
-     "Stripe live secret key detected"),
-
-    ("stripe_restricted",
-     r"rk_live_[a-zA-Z0-9]{24,}",
-     SeverityEnum.HIGH,
-     "Stripe restricted key detected"),
-
-    # Communications
-    ("slack_token",
-     r"xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,32}",
-     SeverityEnum.HIGH,
-     "Slack Bot/App token detected"),
-
-    # Cryptographic
-    ("private_key",
-     r"-----BEGIN\s(?:RSA|EC|DSA|OPENSSH)\sPRIVATE\sKEY-----",
-     SeverityEnum.CRITICAL,
-     "Private key block detected"),
-
-    ("jwt_token",
-     r"eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}",
-     SeverityEnum.MEDIUM,
-     "JWT token hardcoded in source"),
-
-    # Generic patterns
-    ("password_assignment",
-     r"""(?i)(?:password|passwd|pwd)\s*[:=]\s*['"][^'"]{8,}['"]""",
-     SeverityEnum.HIGH,
-     "Hardcoded password detected"),
-
-    ("api_key_generic",
-     r"""(?i)api[_\-]?key\s*[:=]\s*['"][a-zA-Z0-9_\-]{20,}['"]""",
-     SeverityEnum.HIGH,
-     "Generic API key detected"),
-
-    ("secret_key_generic",
-     r"""(?i)secret[_\-]?key\s*[:=]\s*['"][^'"]{12,}['"]""",
-     SeverityEnum.HIGH,
-     "Generic secret key detected"),
-
-    # Database connection strings with credentials
-    ("db_conn_string",
-     r"(?i)(?:mysql|postgresql|mongodb|redis):\/\/[^:]+:[^@]{4,}@",
-     SeverityEnum.CRITICAL,
-     "Database connection string with credentials detected"),
-
-    # SendGrid / Twilio
-    ("sendgrid_key",
-     r"SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}",
-     SeverityEnum.HIGH,
-     "SendGrid API key detected"),
-]
-
-# ── Files to skip during secrets scanning ─────────────────────────────────────
 SKIP_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".ico",
     ".woff", ".woff2", ".ttf", ".eot",
     ".zip", ".tar", ".gz", ".jar", ".war", ".class",
     ".pdf", ".docx", ".xlsx",
     ".pyc", ".pyo",
-    ".lock",   # yarn.lock, package-lock.json — too noisy
+    ".lock",   # yarn.lock, package-lock.json: too noisy
+}
+MAX_FILE_BYTES = 2_000_000
+
+_SEVERITY = {
+    "critical": SeverityEnum.CRITICAL,
+    "high": SeverityEnum.HIGH,
+    "medium": SeverityEnum.MEDIUM,
+    "low": SeverityEnum.LOW,
+}
+_FIX = {
+    259: "Remove the password from the code; load it from an environment variable or a secrets manager, and rotate it.",
+    798: "Remove the credential from the code; load it from an environment variable or a secrets manager, and rotate it.",
 }
 
 
-def scan_secrets(
-    files: List[str],
-    repo_path: str,
-) -> List[Finding]:
-    """
-    Scan all provided files for hardcoded secrets and credentials.
-
-    Args:
-        files: File paths relative to repo_path
-        repo_path: Absolute repo root
-
-    Returns:
-        List of Finding objects for each detected secret
-    """
+def scan_secrets(files: List[str], repo_path: str) -> List[Finding]:
+    """Scan the given files (relative to repo_path) for hard-coded secrets."""
+    root = Path(repo_path).resolve()
     findings: List[Finding] = []
-
     for rel_path in files:
-        abs_path = Path(repo_path) / rel_path
-
-        # Skip binary / noise files
-        if abs_path.suffix.lower() in SKIP_EXTENSIONS:
-            continue
-
         try:
-            content = abs_path.read_text(encoding="utf-8", errors="replace")
-            lines = content.splitlines()
-        except (OSError, UnicodeDecodeError):
+            abs_path = (root / rel_path).resolve()
+        except (OSError, RuntimeError, ValueError):
             continue
-
-        for line_num, line in enumerate(lines, start=1):
-            for pattern_name, pattern, severity, description in SECRET_PATTERNS:
-                if re.search(pattern, line):
-                    # Redact the actual secret value before storing
-                    redacted = re.sub(
-                        pattern,
-                        f"[REDACTED:{pattern_name.upper()}]",
-                        line,
-                    ).strip()
-
-                    findings.append(Finding(
-                        file_path=rel_path,
-                        line_number=line_num,
-                        rule_id=f"SEC-SECRET-{pattern_name.upper()}",
-                        category="security",
-                        severity=severity,
-                        source_tool="secrets-scanner",
-                        message=description,
-                        code_snippet=redacted[:200],
-                    ))
-
+        if root not in abs_path.parents or abs_path.suffix.lower() in SKIP_EXTENSIONS:
+            continue  # outside the repository, or binary / noisy
+        try:
+            if not abs_path.is_file() or abs_path.stat().st_size > MAX_FILE_BYTES:
+                continue
+            content = abs_path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        shown_path = abs_path.relative_to(root).as_posix()
+        for secret in detect_secrets(content, shown_path):
+            findings.append(Finding(
+                file_path=shown_path,
+                line_number=secret.line,
+                rule_id=f"SEC-SECRET-{secret.rule.upper()}",
+                category="security",
+                severity=_SEVERITY.get(secret.severity, SeverityEnum.MEDIUM),
+                source_tool="secrets-scanner",
+                message=secret.message + (" (test file)" if secret.in_test else ""),
+                code_snippet=secret.snippet,
+                suggested_fix=_FIX.get(secret.cwe),
+                cwe=secret.cwe,
+            ))
     return findings

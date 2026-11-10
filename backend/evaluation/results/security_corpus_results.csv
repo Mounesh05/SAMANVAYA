@@ -1,0 +1,53 @@
+case,expected,samanvaya,bandit
+sql-fstring,sql injection,sql injection,sql injection
+sql-percent-variable,sql injection,sql injection,sql injection
+sql-branch-merge,sql injection,sql injection,sql injection
+sql-format,sql injection,sql injection,sql injection
+sql-string-methods,sql injection,sql injection,sql injection
+sql-dict-item,sql injection,sql injection,sql injection
+sql-body-attribute,sql injection,sql injection,sql injection
+cmd-flask-args,command injection,command injection,command injection
+cmd-subprocess-shell,command injection,command injection,command injection
+cmd-loop,command injection,command injection,command injection
+cmd-script-input,command injection,command injection,command injection
+eval-request-json,code injection,code injection,code injection
+pickle-request-body,deserialization,deserialization,deserialization
+path-open,path traversal,path traversal,
+path-pathlib,path traversal,path traversal,
+ssrf-requests,ssrf,ssrf,
+ssti-template-string,template injection,template injection,
+open-redirect,open redirect,open redirect,
+mongo-where,nosql injection,nosql injection,
+mongo-regex,nosql injection,nosql injection,
+redos-pattern,regex injection,regex injection,
+yaml-load,deserialization,deserialization,deserialization
+tls-verify-false,tls verification,tls verification,tls verification
+ssl-unverified,tls verification,tls verification,tls verification
+md5-password,weak hash,weak hash,weak hash
+random-token,weak random,weak random,weak random
+jwt-no-verify,jwt verification,jwt verification,
+tempfile-mktemp,insecure temp file,insecure temp file,insecure temp file
+debug-run,debug mode,debug mode,
+shell-true-config,command injection,command injection,command injection
+sql-format-helper,sql injection,sql injection,sql injection
+pickle-file,deserialization,deserialization,deserialization
+bind-all-interfaces,bind all interfaces,bind all interfaces,bind all interfaces
+safe-sql-parameterized,safe,,
+safe-subprocess-list,safe,,
+safe-yaml-safe-load,safe,,
+safe-yaml-safe-loader,safe,,
+safe-md5-checksum,safe,,
+safe-secrets-token,safe,,
+safe-random-non-secret,safe,,weak random
+safe-jwt-verified,safe,,
+safe-regex-escaped,safe,,
+safe-mongo-regex-escaped,safe,,
+safe-fixed-host-url,safe,,
+safe-eval-constant,safe,,code injection
+safe-depends-not-source,safe,,
+safe-reassigned,safe,,
+safe-int-sanitized,safe,,
+safe-basename,safe,,
+safe-redirect-constant,safe,,
+safe-default-context,safe,,
+safe-localhost-bind,safe,,

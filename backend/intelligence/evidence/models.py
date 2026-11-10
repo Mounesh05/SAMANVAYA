@@ -49,6 +49,7 @@ class Finding(BaseModel):
     message: str
     code_snippet: Optional[str] = None
     suggested_fix: Optional[str] = None
+    cwe: Optional[int] = None   # MITRE CWE id for security findings, when known
 
 
 # ── Gap Fix #1: ChangeContext ─────────────────────────────────────────────────
@@ -140,6 +141,11 @@ class SecurityEvidence(BaseModel):
     hardcoded_secrets: List[Dict[str, Any]] = Field(default_factory=list)
     dependency_vulnerabilities: List[Dict[str, Any]] = Field(default_factory=list)
     findings: List[Finding] = Field(default_factory=list)
+    # SAMANVAYA security metrics (intelligence/metrics/security.py); None when not computed
+    rating: Optional[str] = None                 # SonarQube-style A-E security rating
+    vulnerability_density: Optional[float] = None  # vulnerabilities per 1,000 code lines
+    by_cwe: Dict[str, int] = Field(default_factory=dict)
+    dependency_summary: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ArchitectureEvidence(BaseModel):
@@ -256,17 +262,39 @@ class CodeQualityEvidence(BaseModel):
 
     @property
     def total_critical_findings(self) -> int:
-        return sum(
-            1 for f in self.static_findings
-            if f.severity == SeverityEnum.CRITICAL
-        ) + self.security.critical_count
+        return self.severity_totals()[SeverityEnum.CRITICAL]
 
     @property
     def total_high_findings(self) -> int:
-        return sum(
-            1 for f in self.static_findings
-            if f.severity == SeverityEnum.HIGH
-        ) + self.security.high_count
+        return self.severity_totals()[SeverityEnum.HIGH]
+
+    def severity_totals(self) -> Dict[SeverityEnum, int]:
+        """Findings per severity, each finding counted ONCE.
+
+        Analyzers put hard-coded secrets both in static_findings and in the
+        security counts, so adding the two lists counted every secret twice.
+        Here every unique finding (static_findings + security.findings, by id)
+        is counted once, plus only those security counts that have no listed
+        finding behind them (tools that report counts only).
+        """
+        unique: Dict[str, Finding] = {}
+        for f in list(self.static_findings) + list(self.security.findings):
+            unique.setdefault(f.id, f)
+        totals = {s: 0 for s in SeverityEnum}
+        listed_security = {s: 0 for s in SeverityEnum}
+        for f in unique.values():
+            totals[f.severity] += 1
+            if f.category == "security":
+                listed_security[f.severity] += 1
+        counts = {
+            SeverityEnum.CRITICAL: self.security.critical_count,
+            SeverityEnum.HIGH: self.security.high_count,
+            SeverityEnum.MEDIUM: self.security.medium_count,
+            SeverityEnum.LOW: self.security.low_count,
+        }
+        for severity, count in counts.items():
+            totals[severity] += max(0, count - listed_security[severity])
+        return totals
 
     @property
     def is_high_risk_change(self) -> bool:

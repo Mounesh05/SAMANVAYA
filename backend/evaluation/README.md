@@ -9,6 +9,7 @@ Scripts that check SAMANVAYA's own code-quality metrics
 | `compare_reference_tools.py` | radon, lizard, cognitive_complexity | Python packages (separate venv) |
 | `compare_duplication.py` | jscpd and/or SonarQube | a jscpd report and/or `sonar_measures.json` |
 | `compare_sonarqube.py` | SonarQube (debt, rating, complexity, code smells) | `sonar_measures.json` |
+| `compare_security.py` | bandit (code vulnerabilities), detect-secrets (secrets) | Python packages (separate venv) |
 
 All commands below are for **PowerShell**, run from the `backend` folder:
 
@@ -33,6 +34,18 @@ python -m venv $env:USERPROFILE\samanvaya-refvenv
 ```
 
 Output: `results/reference_comparison.md`, `results/reference_disagreements.csv`.
+
+### Security: bandit and detect-secrets
+
+Same environment. bandit 1.7.10 (pinned in `requirements.txt`) crashes on Python 3.14, so use 1.9.4:
+
+```powershell
+& $env:USERPROFILE\samanvaya-refvenv\Scripts\python -m pip install bandit==1.9.4 detect-secrets==1.5.0
+& $env:USERPROFILE\samanvaya-refvenv\Scripts\python evaluation\compare_security.py
+```
+
+Runs both tools on the labelled corpora (`security_corpus.py`, `secrets_corpus.py`) and on the backend.
+Output: `results/security_comparison.md`, `results/security_corpus_results.csv`.
 
 ## 2. jscpd (duplication)
 

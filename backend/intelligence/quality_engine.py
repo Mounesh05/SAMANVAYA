@@ -102,6 +102,18 @@ class QualityEngine:
         }
         if evidence.metrics is not None:
             result["maintainability"] = self._maintainability_summary(evidence)
+        if evidence.security.rating is not None:
+            sec = evidence.security
+            result["security"] = {
+                "rating": sec.rating,
+                "vulnerability_density": sec.vulnerability_density,
+                "by_cwe": dict(sec.by_cwe),
+                "critical": sec.critical_count,
+                "high": sec.high_count,
+                "medium": sec.medium_count,
+                "low": sec.low_count,
+                "dependencies": dict(sec.dependency_summary),
+            }
         return result
 
     # ── Penalty Calculators ───────────────────────────────────────────────────
@@ -112,16 +124,13 @@ class QualityEngine:
         S_pen = 10*critical + 5*high + 2*medium + 0.5*warnings
         Normalized to [0, 100].
         """
-        findings = evidence.static_findings
-        critical = sum(1 for f in findings if f.severity == SeverityEnum.CRITICAL)
-        high     = sum(1 for f in findings if f.severity == SeverityEnum.HIGH)
-        medium   = sum(1 for f in findings if f.severity == SeverityEnum.MEDIUM)
-        low      = sum(1 for f in findings if f.severity == SeverityEnum.LOW)
-
-        # Also add security-specific counts
-        critical += evidence.security.critical_count
-        high     += evidence.security.high_count
-        medium   += evidence.security.medium_count
+        # Each finding counted once (secrets used to be counted twice: they are
+        # in static_findings AND in the security counts).
+        totals = evidence.severity_totals()
+        critical = totals[SeverityEnum.CRITICAL]
+        high     = totals[SeverityEnum.HIGH]
+        medium   = totals[SeverityEnum.MEDIUM]
+        low      = totals[SeverityEnum.LOW]
 
         raw = 10 * critical + 5 * high + 2 * medium + 0.5 * low
         return min(100.0, raw)

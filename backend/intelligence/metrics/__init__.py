@@ -14,6 +14,11 @@ Implemented:
 - issues:     Issues per 1,000 lines of code (NCLOC), severity-weighted
 - debt:       Technical debt + A-E rating (SQALE, Letouzey 2012)
 
+Security metrics (import from their modules; see SECURITY_METRICS.md):
+- security:     Python pattern rules + taint analysis, CWE-mapped; A-E rating
+- secrets:      Hard-coded secrets: known formats, keywords, Shannon entropy
+- dependencies: Manifest parsing, CVSS 3.1 scoring, pip-audit/npm audit, OSV
+
 Supporting modules:
 - size:       Line counts (LOC, NCLOC, comments, docstrings)
 - project:    Runs all six metrics over a set of files

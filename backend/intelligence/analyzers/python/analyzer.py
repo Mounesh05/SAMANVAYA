@@ -8,8 +8,11 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from core.config import settings
 from intelligence.analyzers.base import BaseAnalyzer
 from intelligence.analyzers.common.code_metrics import apply_code_metrics
+from intelligence.analyzers.common.security_checks import apply_security_metrics
+from intelligence.metrics.dependencies import DependencyVulnerability, parse_pip_audit, parse_requirements, query_osv
 from intelligence.analyzers.common.complexity import analyze_complexity
 from intelligence.analyzers.common.duplication import analyze_duplication
 from intelligence.analyzers.common.secrets_scanner import scan_secrets
@@ -21,6 +24,22 @@ from intelligence.evidence.models import (
     SeverityEnum,
     TestingEvidence,
 )
+
+
+def _vuln_dict(v: DependencyVulnerability) -> Dict:
+    """Evidence format; keeps the original keys (package, severity, cve, description)."""
+    return {
+        "package": v.package,
+        "version": v.version,
+        "ecosystem": v.ecosystem,
+        "id": v.vuln_id,
+        "cve": next((a for a in v.aliases if a.startswith("CVE-")), v.vuln_id),
+        "severity": v.severity,
+        "cvss_score": v.cvss_score,
+        "fix_versions": list(v.fixed_versions),
+        "description": v.summary[:200],
+        "source": v.source,
+    }
 
 
 async def _run(cmd: List[str], cwd: Optional[str] = None) -> Optional[str]:
@@ -112,6 +131,8 @@ class PythonAnalyzer(BaseAnalyzer):
         # SAMANVAYA's own six metrics; replaces the tool-based complexity and
         # duplication numbers. CPU-bound, so it runs off the event loop.
         await asyncio.to_thread(apply_code_metrics, evidence, files, repo_path)
+        # SAMANVAYA's security rules + taint analysis, merged with bandit; rating, density, CWE counts
+        await asyncio.to_thread(apply_security_metrics, evidence, files, repo_path)
 
         evidence.analysis_duration_ms = (time.monotonic() - start) * 1000
         return evidence
@@ -184,9 +205,16 @@ class PythonAnalyzer(BaseAnalyzer):
 
         findings = []
         sev_map = {"HIGH": SeverityEnum.HIGH, "MEDIUM": SeverityEnum.MEDIUM, "LOW": SeverityEnum.LOW}
+        root = Path(repo_path).resolve()
         for issue in data.get("results", []):
+            filename = issue.get("filename", "")
+            try:  # bandit reports the absolute paths it was given; store repo-relative "/" paths
+                filename = Path(filename).resolve().relative_to(root).as_posix()
+            except (ValueError, OSError):
+                filename = filename.replace("\\", "/")
+            cwe = (issue.get("issue_cwe") or {}).get("id")
             findings.append(Finding(
-                file_path=issue.get("filename", ""),
+                file_path=filename,
                 line_number=issue.get("line_number"),
                 rule_id=f"BANDIT-{issue.get('test_id', 'B000')}",
                 category="security",
@@ -194,6 +222,7 @@ class PythonAnalyzer(BaseAnalyzer):
                 source_tool="bandit",
                 message=issue.get("issue_text", ""),
                 code_snippet=issue.get("code", "")[:200],
+                cwe=int(cwe) if isinstance(cwe, (int, str)) and str(cwe).isdigit() else None,
             ))
         return findings
 
@@ -202,6 +231,7 @@ class PythonAnalyzer(BaseAnalyzer):
     async def _dependencies(
         self, repo_path: str, evidence: CodeQualityEvidence
     ) -> List[Dict]:
+        vulns: List[Dict] = []
         for tool, cmd in [
             ("pip-audit", ["pip-audit", "--format=json", "-r", "requirements.txt"]),
             ("safety",    ["safety", "check", "--json"]),
@@ -210,9 +240,25 @@ class PythonAnalyzer(BaseAnalyzer):
                 result = await _run(cmd, cwd=repo_path)
                 if result:
                     evidence.tools_executed.append(tool)
-                    return self._parse_dep_vulns(result)
+                    vulns = self._parse_dep_vulns(result)
                 break
-        return []
+        if settings.OSV_LOOKUP_ENABLED:  # external service: opt-in
+            vulns += await asyncio.to_thread(self._osv_dependencies, repo_path, evidence)
+        return vulns
+
+    @staticmethod
+    def _osv_dependencies(repo_path: str, evidence: CodeQualityEvidence) -> List[Dict]:
+        """Pinned requirements.txt dependencies looked up in OSV (osv.dev)."""
+        manifest = Path(repo_path).resolve() / "requirements.txt"
+        if not manifest.is_file():
+            return []
+        try:
+            deps = parse_requirements(manifest.read_text(encoding="utf-8", errors="replace"), "requirements.txt")
+            found = query_osv(deps)
+        except Exception:  # network or API problem: report nothing rather than fail the analysis
+            return []
+        evidence.tools_executed.append("osv")
+        return [_vuln_dict(v) for v in found]
 
     # ── Testing ───────────────────────────────────────────────────────────────
 
@@ -372,14 +418,10 @@ class PythonAnalyzer(BaseAnalyzer):
 
     @staticmethod
     def _parse_dep_vulns(output: str) -> List[Dict]:
+        """pip-audit JSON: the 2.x object form ({"dependencies": [...]}) and the
+        older list form. (The previous parser only accepted a list, so pip-audit
+        2.x results were silently dropped.)"""
         try:
-            data = json.loads(output)
-            if isinstance(data, list):
-                return [
-                    {"package": v.get("name", ""), "severity": v.get("severity", "unknown"),
-                     "cve": v.get("id", ""), "description": v.get("description", "")[:200]}
-                    for v in data
-                ]
-        except (json.JSONDecodeError, AttributeError):
-            pass
-        return []
+            return [_vuln_dict(v) for v in parse_pip_audit(output)]
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            return []
