@@ -1,0 +1,8 @@
+FROM python:3.12.8-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /opt/benchmark
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY python_worker.py contracts.py ./
+USER 65532:65532
+ENTRYPOINT ["python", "-B", "/opt/benchmark/python_worker.py"]

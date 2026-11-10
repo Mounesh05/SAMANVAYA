@@ -1,0 +1,8 @@
+FROM node:22.14.0-bookworm-slim
+ENV NODE_ENV=production
+WORKDIR /opt/benchmark
+COPY package.json ./package.json
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund
+COPY node_worker.cjs ./node_worker.cjs
+USER 65532:65532
+ENTRYPOINT ["node", "/opt/benchmark/node_worker.cjs"]

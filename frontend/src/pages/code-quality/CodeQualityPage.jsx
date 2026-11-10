@@ -17,6 +17,7 @@ import { formatDate } from '../../utils/dates';
 import { getGradeColor } from '../../utils/formatters';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
+import { AlgorithmComparisonPanel } from './AlgorithmComparisonPanel';
 
 export function CodeQualityPage() {
   const selectedRepo = '';
@@ -143,6 +144,8 @@ export function CodeQualityPage() {
           </PermissionGuard>
         }
       />
+
+      <AlgorithmComparisonPanel />
 
       {/* Language Engine Banner */}
       <Card

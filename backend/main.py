@@ -283,6 +283,10 @@ app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 # Code Quality & Multi-Language Intelligence Engine
 app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code Quality"])
 
+# Evidence-first, opt-in isolated algorithm comparisons.
+from api.routes import algorithms
+app.include_router(algorithms.router, prefix="/api/algorithms", tags=["Algorithm Intelligence"])
+
 # Risk Configuration Management (Production-scale configurable weights)
 app.include_router(risk_configurations.router, prefix="/api/risk-configurations", tags=["Risk Configuration"])
 

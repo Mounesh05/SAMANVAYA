@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     QA_TEST_RESULTS_TOKEN: str = ""  # Token used by CI to submit test results
     SAMANVAYA_PUBLIC_API_URL: str = ""  # Public HTTPS URL used by provisioned CI workflows
     
+    # Opt in only after configuring isolated Docker Linux benchmark workers.
+    ALGORITHM_BENCHMARK_ENABLED: bool = False
+
     # ── Logging ───────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     LOG_FORMAT: str = "json"  # json or text
