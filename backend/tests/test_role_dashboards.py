@@ -94,29 +94,42 @@ def test_qa_test_health_marks_zero_test_failures_as_blocking():
 
 @pytest.mark.anyio
 async def test_devops_snapshot_uses_workflow_and_deployment_events(monkeypatch):
-    monkeypatch.setattr(
-        devops,
-        "col",
-        lambda _name: FakeCollection(
-            [
-                {
-                    "event_type": "workflow_run",
-                    "payload": {"workflow_run": {"conclusion": "success"}},
-                },
-                {
-                    "event_type": "deployment_status",
-                    "payload": {"deployment_status": {"state": "failure"}},
-                },
-            ]
-        ),
-    )
+    from datetime import datetime, timezone
 
-    snapshot = await devops._devops_snapshot()
+    today = datetime.now(timezone.utc).isoformat()
+    data = {
+        "webhook_events": [
+            {"event_type": "workflow_run", "project_id": "P1",
+             "payload": {"workflow_run": {"conclusion": "success"}}},
+            {"event_type": "deployment_status", "project_id": "P1",
+             "payload": {"deployment_status": {"state": "failure"}}},
+        ],
+        # recorded deployments (DeploymentService), not raw events
+        "deployments": [
+            {"id": "d1", "project_id": "P1", "production": True, "status": "success", "finished_at": today},
+            {"id": "d2", "project_id": "P1", "production": False, "status": "success", "finished_at": today},
+        ],
+    }
+
+    class Collection(FakeCollection):
+        async def count_documents(self, _query):
+            return 2     # incidents open or investigating
+
+    async def accessible(_user):
+        return ["P1"]
+
+    monkeypatch.setattr(devops, "col", lambda name: Collection(data.get(name, [])))
+    monkeypatch.setattr(devops, "get_accessible_project_ids", accessible)
+
+    snapshot = await devops._devops_snapshot({"id": "u1", "role": "DEVOPS"})
 
     assert len(snapshot["pipelines"]) == 1
-    assert len(snapshot["deployments"]) == 1
+    assert len(snapshot["deployment_events"]) == 1
+    assert len(snapshot["deployments"]) == 2
+    assert snapshot["deployments_today"] == 1     # production only
+    assert snapshot["active_incidents"] == 2
     assert snapshot["successful"] == 1
-    assert snapshot["failed"] == 1
+    assert snapshot["failed"] == 0                # the failed deployment is not a failed pipeline
 
 
 @pytest.mark.anyio
