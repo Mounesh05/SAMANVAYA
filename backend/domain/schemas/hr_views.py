@@ -4,7 +4,7 @@ Filtered response models that exclude technical/engineering data from HR users.
 """
 
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from datetime import date, datetime
 
 
@@ -18,6 +18,7 @@ class EmployeeHRView(BaseModel):
     role: str
     reporting_manager_id: Optional[str] = None
     current_team_id: Optional[str] = None  # View only
+    team_id: Optional[str] = None
     employment_status: str = "active"
     employment_type: Optional[str] = None
     joining_date: Optional[date] = None
@@ -35,15 +36,23 @@ class EmployeeHRView(BaseModel):
     @classmethod
     def from_employee(cls, employee: dict) -> "EmployeeHRView":
         """Create HR view from full employee record."""
+        role_upper = employee.get("role", "").upper()
+        dept = employee.get("dept", "")
+        if role_upper == "CEO" and dept in ("Engineering", "", None):
+            dept = "Executive"
+        elif role_upper == "HR" and dept in ("Engineering", "", None):
+            dept = "People & Culture"
+
         return cls(
             employee_id=employee.get("employee_id", ""),
             name=employee.get("name", "Unknown"),
             email=employee.get("email", ""),
-            dept=employee.get("dept", ""),
+            dept=dept,
             designation=employee.get("designation"),
             role=employee.get("role", ""),
             reporting_manager_id=employee.get("reporting_manager_id"),
             current_team_id=employee.get("team_id"),
+            team_id=employee.get("team_id"),
             employment_status="active" if employee.get("is_active", True) else "inactive",
             employment_type=employee.get("employment_type"),
             joining_date=employee.get("joining_date"),
@@ -72,6 +81,9 @@ class PerformanceOutcomeHR(BaseModel):
     development_recommendations: Optional[List[str]] = None
     promotion_consideration: Optional[str] = None
     role_feedback_summary: Optional[Dict[str, str]] = None  # PM, Lead, QA feedback summaries
+    hr_assessment: Optional[Dict[str, Any]] = None  # HR workplace assessment summary
+    human_score: Optional[float] = None
+    ai_score_summary: Optional[float] = None
     
     # EXCLUDED from HR view:
     # - raw_evidence (technical details)
@@ -95,6 +107,13 @@ class PerformanceOutcomeHR(BaseModel):
         
         # Extract role feedback summaries (comments only, no technical criteria)
         role_feedback_summary = {}
+        role_eval = performance.get("role_evaluation") or {}
+        if isinstance(role_eval, dict):
+            for role_name in ("pm", "lead", "qa", "devops", "ceo", "hr"):
+                fb = role_eval.get(role_name)
+                if isinstance(fb, dict) and fb.get("comments"):
+                    role_feedback_summary[role_name] = fb["comments"]
+
         if performance.get("role_feedback"):
             for role, feedback in performance["role_feedback"].items():
                 if feedback and feedback.get("comments"):
@@ -102,17 +121,24 @@ class PerformanceOutcomeHR(BaseModel):
         
         # Extract development recommendations from AI evaluation
         dev_recommendations = []
+        ai_score = None
         if performance.get("ai_evaluation"):
             ai_eval = performance["ai_evaluation"]
             if isinstance(ai_eval, dict):
-                # Get recommendations if available
+                ai_score = ai_eval.get("score")
                 if ai_eval.get("recommendations"):
                     dev_recommendations = ai_eval["recommendations"]
                 elif ai_eval.get("summary"):
                     dev_recommendations = [ai_eval["summary"]]
         
+        # Extract HR assessment details if available
+        hr_assessment = performance.get("hr_assessment")
+        human_score = None
+        if isinstance(role_eval, dict):
+            human_score = role_eval.get("average_score")
+
         return cls(
-            evaluation_id=performance.get("_id", performance.get("id", "")),
+            evaluation_id=str(performance.get("_id", performance.get("id", ""))),
             employee_id=performance.get("developer_id", ""),
             employee_name=performance.get("developer_name", "Unknown"),
             period=performance.get("period_label", ""),
@@ -128,7 +154,10 @@ class PerformanceOutcomeHR(BaseModel):
             manager_recommendation=performance.get("manager_notes"),
             development_recommendations=dev_recommendations,
             promotion_consideration=performance.get("promotion_notes"),
-            role_feedback_summary=role_feedback_summary
+            role_feedback_summary=role_feedback_summary,
+            hr_assessment=hr_assessment,
+            human_score=human_score,
+            ai_score_summary=ai_score,
         )
     
     @staticmethod
@@ -184,3 +213,17 @@ class AIRunHRView(BaseModel):
             risk_level=output_data.get("risk_level"),
             confidence=output_data.get("confidence")
         )
+
+
+class HRDashboardPerformanceView(BaseModel):
+    """
+    HR-Safe Developer Dashboard View.
+    Replaces raw AI technical code breakdown with approved performance outcomes,
+    workforce compliance status, and human evaluation summaries.
+    """
+    current_performance: Dict[str, Any]
+    historical_trend: List[Dict[str, Any]]
+    peer_comparison: Optional[Dict[str, Any]] = None
+    hr_assessment: Optional[Dict[str, Any]] = None
+    is_hr_view: bool = True
+

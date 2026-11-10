@@ -12,6 +12,7 @@ export function Button({
   className = '',
   type = 'button',
   onClick,
+  style = {},
   ...props
 }) {
   const baseStyles = {
@@ -24,7 +25,9 @@ export function Button({
     transition: 'all var(--transition-fast)',
     cursor: disabled || isLoading ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
-    border: '1px solid transparent',
+    borderWidth: '1px',
+    borderStyle: 'solid',
+    borderColor: 'transparent',
     outline: 'none',
   };
 
@@ -39,6 +42,7 @@ export function Button({
       background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
       color: '#ffffff',
       boxShadow: '0 2px 10px rgba(37, 99, 235, 0.3)',
+      borderColor: 'transparent',
     },
     secondary: {
       background: 'var(--bg-elevated)',
@@ -54,10 +58,12 @@ export function Button({
       background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
       color: '#ffffff',
       boxShadow: '0 2px 10px rgba(220, 38, 38, 0.3)',
+      borderColor: 'transparent',
     },
     ghost: {
       background: 'transparent',
       color: 'var(--text-secondary)',
+      borderColor: 'transparent',
     },
     glass: {
       background: 'rgba(255, 255, 255, 0.05)',
@@ -76,6 +82,7 @@ export function Button({
         ...baseStyles,
         ...sizeStyles[size],
         ...variantStyles[variant],
+        ...style,
       }}
       className={`btn-${variant} ${className}`}
       {...props}

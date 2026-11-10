@@ -189,8 +189,8 @@ def require_permission(*permissions: Permission):
         user_role = user.get("role", user.get("organizational_role", ""))
         is_admin = user.get("is_admin", False)
         
-        # Get user's permissions based on role and admin status
-        user_permissions = get_user_permissions(user_role, is_admin)
+        # Get user's permissions based on role, admin status, and designation
+        user_permissions = get_user_permissions(user_role, is_admin, user.get('designation'))
         
         # Check if user has at least one of the required permissions
         required_perms = set(permissions)
@@ -238,7 +238,7 @@ def require_all_permissions(*permissions: Permission):
         is_admin = user.get("is_admin", False)
         
         # Get user's permissions
-        user_permissions = get_user_permissions(user_role, is_admin)
+        user_permissions = get_user_permissions(user_role, is_admin, user.get('designation'))
         
         # Check if user has ALL required permissions
         required_perms = set(permissions)

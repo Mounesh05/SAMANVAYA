@@ -20,19 +20,52 @@ class PerformanceRepository:
         return str(result.inserted_id)
     
     async def get_by_id(self, performance_id: str) -> Optional[Dict[str, Any]]:
-        """Get performance by ID."""
-        from bson import ObjectId
-        return await self.collection.find_one({"_id": ObjectId(performance_id)})
+        """Get performance by ObjectId, string _id, or developer ID."""
+        from bson import ObjectId, errors
+        
+        # 1. Try valid ObjectId
+        try:
+            doc = await self.collection.find_one({"_id": ObjectId(performance_id)})
+            if doc:
+                return doc
+        except (errors.InvalidId, TypeError, ValueError):
+            pass
+        
+        # 2. Try string _id match
+        doc = await self.collection.find_one({"_id": performance_id})
+        if doc:
+            return doc
+            
+        # 3. Fallback: try developer_id match (get latest evaluation)
+        return await self.get_latest_by_developer(performance_id)
     
     async def update(self, performance_id: str, data: Dict[str, Any]) -> bool:
-        """Update performance record."""
-        from bson import ObjectId
+        """Update performance record by ObjectId, string _id, or developer ID."""
+        from bson import ObjectId, errors
         data["updated_at"] = datetime.now(timezone.utc)
-        result = await self.collection.update_one(
-            {"_id": ObjectId(performance_id)},
-            {"$set": data}
-        )
-        return result.modified_count > 0
+        
+        query = None
+        try:
+            doc = await self.collection.find_one({"_id": ObjectId(performance_id)})
+            if doc:
+                query = {"_id": ObjectId(performance_id)}
+        except (errors.InvalidId, TypeError, ValueError):
+            pass
+        
+        if not query:
+            doc = await self.collection.find_one({"_id": performance_id})
+            if doc:
+                query = {"_id": performance_id}
+            else:
+                latest = await self.get_latest_by_developer(performance_id)
+                if latest:
+                    query = {"_id": latest["_id"]}
+                    
+        if not query:
+            return False
+            
+        result = await self.collection.update_one(query, {"$set": data})
+        return result.modified_count > 0 or result.matched_count > 0
     
     async def get_by_developer_and_period(
         self,

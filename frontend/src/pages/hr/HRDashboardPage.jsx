@@ -19,6 +19,7 @@ import {
   TrendingUp,
   GitPullRequest,
 } from 'lucide-react';
+import { ROLE_LABELS } from '../../utils/constants';
 
 export function HRDashboardPage() {
   const navigate = useNavigate();
@@ -40,26 +41,44 @@ export function HRDashboardPage() {
   const summary = data?.summary || {};
   const employees = data?.employees || [];
   const roleDistribution = summary.role_distribution || {};
-  const pendingTransfers = transfersData?.transfers?.length || 0;
+  const pendingTransfers = Array.isArray(transfersData)
+    ? transfersData.length
+    : (transfersData?.transfers?.length || 0);
 
   const employeeColumns = [
     { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '700' }}>{e.name}</span> },
     { key: 'employee_id', header: 'Employee ID', render: (e) => <span className="font-mono">{e.employee_id}</span> },
-    { key: 'role', header: 'Role', render: (e) => e.role },
+    { key: 'role', header: 'Role', render: (e) => ROLE_LABELS[e.role] || e.role },
     { key: 'dept', header: 'Department', render: (e) => e.dept },
-    { key: 'team_id', header: 'Team', render: (e) => e.team_id || 'Unassigned' },
+    { key: 'team_id', header: 'Team', render: (e) => e.team_id || (e.role === 'CEO' || e.role === 'HR' ? '—' : 'Unassigned') },
     {
       key: 'action',
       header: 'Profile',
-      render: (e) => (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => navigate(`/performance?developer=${e.employee_id}`)}
-        >
-          Performance
-        </Button>
-      ),
+      render: (e) => {
+        if (e.role === 'CEO') {
+          return (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Executive
+            </span>
+          );
+        }
+        if (e.role === 'HR') {
+          return (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              HR
+            </span>
+          );
+        }
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(`/performance?developer=${e.employee_id}`)}
+          >
+            Performance
+          </Button>
+        );
+      },
     },
   ];
 

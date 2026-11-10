@@ -6,14 +6,21 @@ Protected with RBAC permissions.
 
 from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, Field
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 from datetime import datetime
 from domain.services.performance_service import PerformanceService
+from domain.services.hr_performance_service import HRPerformanceService
 from domain.models.developer_performance import (
     DeveloperPerformance,
     DeveloperPerformanceCreate
 )
-from domain.schemas.hr_views import PerformanceOutcomeHR
+from domain.models.hr_performance import (
+    HRAssessment,
+    HRAssessmentCreate,
+    HumanEvaluationPolicy,
+    HumanEvaluationCompleteness,
+)
+from domain.schemas.hr_views import PerformanceOutcomeHR, HRDashboardPerformanceView
 from core.config import settings
 from core.dependencies import get_current_user
 from core.permissions import Permission, get_user_permissions
@@ -128,6 +135,22 @@ async def bulk_evaluate_developers(
             status_code=400,
             detail="Maximum 100 developers per bulk evaluation"
         )
+
+    # Disallow evaluating executive or administrative roles (CEO, HR)
+    try:
+        from repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        for d_id in developer_ids:
+            t_user = await user_repo.find_by_employee_id(d_id)
+            if t_user and t_user.get("role", "").upper() in ("CEO", "HR"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot evaluate employee {d_id} with role {t_user.get('role')}. Performance evaluations only apply to engineering contributors."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     
     try:
         # Parse period to dates
@@ -275,6 +298,23 @@ async def evaluate_developer_performance(
             status_code=403,
             detail="Insufficient permissions. Only CEO or ADMIN can trigger evaluations."
         )
+
+    # Disallow evaluating executive or administrative roles (CEO, HR)
+    try:
+        from repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        target_emp = await user_repo.find_by_employee_id(developer_id)
+        if target_emp:
+            target_role = target_emp.get("role", "").upper()
+            if target_role in ("CEO", "HR"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot evaluate employee {developer_id} with role {target_role}. Performance evaluations only apply to engineering contributors."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     
     try:
         # Parse period to dates (simple quarter parsing)
@@ -420,8 +460,8 @@ async def get_developer_performance(
         
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.get("/developer/{developer_id}/trend")
@@ -459,7 +499,23 @@ async def get_performance_trend(
         ```
     """
     # Authorization: verify user can view this developer's performance
-    await verify_can_view_user_tasks(user, developer_id)
+    user_role = user.get('role', user.get('organizational_role', '')).upper()
+    if user_role == "HR":
+        user_permissions = get_user_permissions(
+            user_role,
+            user.get('is_admin', False),
+            user.get('designation')
+        )
+        if (
+            Permission.VIEW_PERFORMANCE_OUTCOMES not in user_permissions
+            and Permission.VIEW_HR_PERFORMANCE_ASSESSMENT not in user_permissions
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Insufficient permissions to view developer performance outcomes"
+            )
+    else:
+        await verify_can_view_user_tasks(user, developer_id)
 
     try:
         service = PerformanceService()
@@ -488,9 +544,28 @@ async def get_performance_trend(
         
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
+
+
+async def _resolve_evaluatable_developer(performance_id: str, service: PerformanceService):
+    """Safely resolve developer ID from performance ID or employee ID, barring CEO/HR evaluations."""
+    performance = await service.repository.get_by_id(performance_id)
+    if performance:
+        return performance.get("developer_id"), performance
+    from repositories.user_repository import UserRepository
+    user_repo = UserRepository()
+    target_emp = await user_repo.find_by_employee_id(performance_id)
+    if not target_emp:
+        raise HTTPException(status_code=404, detail="Performance evaluation or employee not found")
+    target_role = target_emp.get("role", "").upper()
+    if target_role in ("CEO", "HR"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot evaluate employee with role {target_role}. Performance evaluations only apply to engineering contributors."
+        )
+    return target_emp.get("employee_id"), None
 
 
 @router.post("/feedback/{performance_id}/pm", response_model=DeveloperPerformance)
@@ -507,16 +582,7 @@ async def add_pm_feedback(
     Add Product Manager feedback (structured 1-5 ratings).
     
     **Required Permission:** SUBMIT_PM_FEEDBACK (PM role only)
-    
-    **PM evaluates:**
-    - Requirement understanding (1-5)
-    - Delivery reliability (1-5)
-    - Communication (1-5)
-    - Business alignment (1-5)
-    
-    Score automatically recalculated with 10% weight.
     """
-    # Check permission
     from core.permissions import get_user_permissions
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
@@ -531,11 +597,7 @@ async def add_pm_feedback(
     
     # Authorization: verify user can view the target developer's performance
     service = PerformanceService()
-    performance = await service.repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-    
-    developer_id = performance.get("developer_id")
+    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
     await verify_can_view_user_tasks(user, developer_id)
     
     try:
@@ -547,8 +609,8 @@ async def add_pm_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "pm", feedback)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.post("/feedback/{performance_id}/lead", response_model=DeveloperPerformance)
@@ -573,11 +635,7 @@ async def add_lead_feedback(
     
     # Authorization: verify user can view the target developer's performance
     service = PerformanceService()
-    performance = await service.repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-    
-    developer_id = performance.get("developer_id")
+    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
     await verify_can_view_user_tasks(user, developer_id)
     
     try:
@@ -589,8 +647,8 @@ async def add_lead_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "lead", feedback)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.post("/feedback/{performance_id}/qa", response_model=DeveloperPerformance)
@@ -615,11 +673,7 @@ async def add_qa_feedback(
     
     # Authorization: verify user can view the target developer's performance
     service = PerformanceService()
-    performance = await service.repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-    
-    developer_id = performance.get("developer_id")
+    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
     await verify_can_view_user_tasks(user, developer_id)
     
     try:
@@ -631,8 +685,8 @@ async def add_qa_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "qa", feedback)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.post("/feedback/{performance_id}/devops", response_model=DeveloperPerformance)
@@ -657,11 +711,7 @@ async def add_devops_feedback(
     
     # Authorization: verify user can view the target developer's performance
     service = PerformanceService()
-    performance = await service.repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-    
-    developer_id = performance.get("developer_id")
+    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
     await verify_can_view_user_tasks(user, developer_id)
     
     try:
@@ -673,8 +723,8 @@ async def add_devops_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "devops", feedback)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.post("/feedback/{performance_id}/ceo", response_model=DeveloperPerformance)
@@ -699,11 +749,7 @@ async def add_ceo_feedback(
     
     # Authorization: verify user can view the target developer's performance
     service = PerformanceService()
-    performance = await service.repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-    
-    developer_id = performance.get("developer_id")
+    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
     await verify_can_view_user_tasks(user, developer_id)
     
     try:
@@ -715,8 +761,8 @@ async def add_ceo_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "ceo", feedback)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.post("/feedback/{performance_id}/hr", response_model=DeveloperPerformance)
@@ -735,18 +781,20 @@ async def add_hr_feedback(
     **Required Permission:** SUBMIT_HR_FEEDBACK (HR role only)
     """
     from core.permissions import get_user_permissions
-    user_permissions = get_user_permissions(user.get('role', '').upper(), user.get('is_admin', False))
-    if Permission.SUBMIT_HR_FEEDBACK not in user_permissions:
-        raise HTTPException(status_code=403, detail="Only HR role can submit HR feedback")
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    if (
+        Permission.SUBMIT_HR_FEEDBACK not in user_permissions
+        and Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT not in user_permissions
+    ):
+        raise HTTPException(status_code=403, detail="Only authorized HR role can submit HR feedback")
     
-    # Authorization: verify user can view the target developer's performance
+    # Verify performance evaluation exists
     service = PerformanceService()
-    performance = await service.repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-    
-    developer_id = performance.get("developer_id")
-    await verify_can_view_user_tasks(user, developer_id)
+    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
     
     try:
         feedback = {
@@ -757,8 +805,185 @@ async def add_hr_feedback(
             "comments": comments
         }
         return await service.add_role_feedback(performance_id, "hr", feedback)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+
+
+@router.get("/assessment/hr/{performance_id}", response_model=Optional[HRAssessment])
+async def get_hr_assessment(
+    performance_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get HR assessment record for a developer's evaluation (draft or submitted).
+    Returns null with 200 OK if no HR assessment has been created yet for this developer.
+    Required Permission: VIEW_HR_PERFORMANCE_ASSESSMENT or VIEW_PERFORMANCE_OUTCOMES
+    """
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    if (
+        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT not in user_permissions
+        and Permission.VIEW_PERFORMANCE_OUTCOMES not in user_permissions
+        and not user.get('is_admin', False)
+    ):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to view HR performance assessment")
+
+    hr_service = HRPerformanceService()
+    assessment = await hr_service.assessment_repo.get_by_performance_id(performance_id)
+    if not assessment:
+        return None
+    return assessment
+
+
+@router.post("/assessment/hr/{performance_id}")
+async def save_hr_assessment_draft(
+    performance_id: str,
+    data: HRAssessmentCreate,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Save HR assessment draft without affecting the final evaluation score.
+    Required Permission: CREATE_HR_PERFORMANCE_ASSESSMENT or SUBMIT_HR_PERFORMANCE_ASSESSMENT
+    """
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    if (
+        Permission.CREATE_HR_PERFORMANCE_ASSESSMENT not in user_permissions
+        and Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT not in user_permissions
+        and not user.get('is_admin', False)
+    ):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create HR assessment draft")
+
+    hr_service = HRPerformanceService()
+    try:
+        return await hr_service.save_hr_assessment_draft(performance_id, data, user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save HR assessment draft: {e}")
+
+
+@router.post("/assessment/hr/{performance_id}/submit", response_model=DeveloperPerformance)
+async def submit_hr_assessment(
+    performance_id: str,
+    data: HRAssessmentCreate,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Submit finalized HR performance assessment with enterprise rubric.
+    Enforces documented evidence requirement for negative ratings (1 or 2).
+    Recalculates human component and the overall 90% AI + 10% Human final score.
+    Required Permission: SUBMIT_HR_PERFORMANCE_ASSESSMENT
+    """
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    if (
+        Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT not in user_permissions
+        and not user.get('is_admin', False)
+    ):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to submit HR performance assessment")
+
+    hr_service = HRPerformanceService()
+    try:
+        return await hr_service.submit_hr_assessment(performance_id, data, user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to submit HR assessment: {e}")
+
+
+@router.get("/assessments/{performance_id}/completeness", response_model=HumanEvaluationCompleteness)
+async def check_human_evaluation_completeness(
+    performance_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Review completeness of human evaluations across configured roles.
+    Required Permission: REVIEW_HUMAN_EVALUATION_COMPLETENESS or VIEW_PERFORMANCE_OUTCOMES
+    """
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    if (
+        Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS not in user_permissions
+        and Permission.VIEW_PERFORMANCE_OUTCOMES not in user_permissions
+        and not user.get('is_admin', False)
+    ):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to review evaluation completeness")
+
+    hr_service = HRPerformanceService()
+    try:
+        return await hr_service.check_human_evaluation_completeness(performance_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check evaluation completeness: {e}")
+
+
+@router.get("/policy")
+async def get_human_evaluation_policy(
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get active human evaluation policy defining weights across human roles.
+    """
+    hr_service = HRPerformanceService()
+    return await hr_service.get_or_create_policy()
+
+
+@router.post("/policy", response_model=HumanEvaluationPolicy)
+async def configure_human_evaluation_policy(
+    role_weights: Dict[str, float] = Body(..., description="Map of role name to weight, summing to 1.0"),
+    notes: Optional[str] = Body(None, description="Reason or notes for policy change"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Configure human evaluation role weights for the 10% human component.
+    Preserves 90% AI + 10% Human model.
+    Required Permission: MANAGE_EVALUATION_POLICY (CEO or ADMIN)
+    """
+    user_permissions = get_user_permissions(
+        user.get('role', '').upper(),
+        user.get('is_admin', False),
+        user.get('designation')
+    )
+    if (
+        Permission.MANAGE_EVALUATION_POLICY not in user_permissions
+        and not user.get('is_admin', False)
+    ):
+        raise HTTPException(status_code=403, detail="Only CEO or ADMIN can configure evaluation policies")
+
+    hr_service = HRPerformanceService()
+    try:
+        configured_by = user.get("employee_id", user.get("id", "admin"))
+        return await hr_service.configure_policy(role_weights, configured_by=configured_by, notes=notes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to configure policy: {e}")
+
+
+@router.get("/policy/history")
+async def get_human_evaluation_policy_history(
+    limit: int = 20,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get version history of human evaluation policies.
+    """
+    hr_service = HRPerformanceService()
+    return await hr_service.policy_repo.get_policy_history(limit)
 
 
 @router.get("/team/{project_id}/{period_label}")
@@ -882,8 +1107,8 @@ async def get_team_performance(
         
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
 @router.get("/dashboard/{developer_id}")
@@ -909,6 +1134,28 @@ async def get_developer_dashboard(
             detail="Developers can only view their own performance dashboard"
         )
 
+    # Protect executive and administrative non-evaluatee roles (CEO, HR)
+    try:
+        from repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        target_user = await user_repo.find_by_employee_id(developer_id)
+        if target_user:
+            target_role = target_user.get("role", "").upper()
+            if target_role == "CEO":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Employee {developer_id} has the CEO role. The CEO is an executive and is not evaluated under the developer performance evaluation framework."
+                )
+            if target_role == "HR":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Employee {developer_id} has the HR role. HR personnel are evaluators and are not evaluated under the developer performance evaluation framework."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
     try:
         service = PerformanceService()
         
@@ -916,15 +1163,78 @@ async def get_developer_dashboard(
         current = await service.get_developer_performance(developer_id)
         
         if not current:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No performance data found for developer {developer_id}. Run an evaluation first at POST /api/performance/evaluate"
-            )
+            return {
+                "current_performance": None,
+                "historical_trend": [],
+                "peer_comparison": None,
+                "hr_assessment": None,
+                "is_hr_view": user_role == 'HR',
+                "developer_id": developer_id,
+            }
         
         # Get trend
         trend_data = await service.get_performance_trend(developer_id, periods)
         
-        # Transform to frontend format
+        # Check if HR user: return sanitized HR-safe dashboard view
+        if user_role == 'HR':
+            hr_assessment_dict = None
+            if current.hr_assessment:
+                hr_assessment_dict = (
+                    current.hr_assessment.model_dump()
+                    if hasattr(current.hr_assessment, "model_dump")
+                    else current.hr_assessment
+                )
+            
+            hr_current_performance = {
+                "developer_id": current.developer_id,
+                "developer_name": current.developer_name,
+                "period": current.period_label,
+                "overall_score": current.final_score,
+                "grade": current.grade,
+                "rating": PerformanceOutcomeHR._score_to_rating(current.final_score),
+                "contribution_credit": None,  # Suppressed for HR (contains LOC, commits, PR metrics)
+                "ai_evaluation": {
+                    "overall_score": current.ai_evaluation.score if current.ai_evaluation else None,
+                    "confidence_score": (
+                        85.0 if current.ai_evaluation and current.ai_evaluation.confidence == "high"
+                        else 70.0 if current.ai_evaluation and current.ai_evaluation.confidence == "medium"
+                        else 50.0
+                    ),
+                    "evaluation_summary": (current.ai_evaluation.reasoning if current.ai_evaluation else "") or "Performance evaluation summary",
+                    "recommendations": current.ai_evaluation.recommendations if current.ai_evaluation else [],
+                    "dimension_scores": {},  # Technical scores suppressed
+                    "strengths": [],
+                    "weaknesses": []
+                },
+                "human_evaluation_summary": {
+                    "average_score": current.role_evaluation.average_score if current.role_evaluation else None,
+                    "roles_evaluated": [
+                        r for r in ("pm", "lead", "qa", "devops", "ceo", "hr")
+                        if getattr(current.role_evaluation, r, None) is not None
+                    ] if current.role_evaluation else [],
+                },
+                "last_evaluated": current.created_at.isoformat() if current.created_at else None,
+                "evaluation_count": len(trend_data) if trend_data else 1
+            }
+            
+            historical_trend = []
+            if trend_data:
+                for item in trend_data:
+                    historical_trend.append({
+                        "period": item.get('period_label', ''),
+                        "score": item.get('final_score', 0),
+                        "grade": item.get('grade', 'N/A')
+                    })
+            
+            return HRDashboardPerformanceView(
+                current_performance=hr_current_performance,
+                historical_trend=historical_trend,
+                peer_comparison=None,
+                hr_assessment=hr_assessment_dict,
+                is_hr_view=True
+            ).model_dump()
+
+        # Transform to frontend format for Engineering / Leadership
         current_performance = {
             "developer_id": current.developer_id,
             "developer_name": current.developer_name,
@@ -979,5 +1289,5 @@ async def get_developer_dashboard(
         
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")

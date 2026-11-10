@@ -174,7 +174,13 @@ class TestPerformanceHRFiltering:
         """Get developer performance should return complete data for engineering users."""
         from api.routes import performance
         from domain.services.performance_service import PerformanceService
-        from domain.models.developer_performance import DeveloperPerformance
+        from domain.models.developer_performance import (
+            DeveloperPerformance,
+            AIEvaluation,
+            PerformanceBreakdown,
+            RoleEvaluation
+        )
+        from datetime import datetime
         
         lead_user = {
             "employee_id": "LEAD001",
@@ -186,12 +192,29 @@ class TestPerformanceHRFiltering:
         mock_performance = DeveloperPerformance(
             developer_id="EMP001",
             developer_name="Developer One",
+            project_id="PROJ001",
+            period_type="quarter",
+            period_start=datetime.utcnow(),
+            period_end=datetime.utcnow(),
             period_label="2024-Q1",
             final_score=82.0,
             grade="B",
-            dimension_scores={"code_quality": 20.0},
-            project_id="PROJ001",
-            period_type="quarter",
+            ai_evaluation=AIEvaluation(
+                score=75.0,
+                breakdown=PerformanceBreakdown(
+                    code_quality=20.0,
+                    delivery=15.0,
+                    collaboration=12.0,
+                    reliability=13.0,
+                    engineering_impact=10.0,
+                    engineering_judgment=5.0,
+                ),
+                reasoning="Solid engineering delivery",
+                confidence="high",
+            ),
+            role_evaluation=RoleEvaluation(average_score=70.0, contribution=7.0),
+            confidence_level="high",
+            confidence_reason="Comprehensive data points",
             evaluated_by="LEAD001",
         )
         
@@ -277,6 +300,77 @@ class TestPerformanceTechnicalFieldExclusions:
         hr_dict = hr_view.model_dump()
         
         assert "code_review_comments" not in hr_dict
+
+    @pytest.mark.asyncio
+    async def test_get_developer_dashboard_rejects_ceo(self, monkeypatch):
+        """get_developer_dashboard rejects requests for CEO with 400 Bad Request."""
+        from api.routes import performance
+        from repositories.user_repository import UserRepository
+        from fastapi import HTTPException
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "DEMO-CEO":
+                return {"employee_id": "DEMO-CEO", "role": "CEO"}
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        caller = {"employee_id": "DEMO-HR", "role": "HR", "is_admin": False}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await performance.get_developer_dashboard("DEMO-CEO", periods=6, user=caller)
+
+        assert exc_info.value.status_code == 400
+        assert "CEO is an executive and is not evaluated" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_get_developer_dashboard_rejects_hr(self, monkeypatch):
+        """get_developer_dashboard rejects requests for HR with 400 Bad Request."""
+        from api.routes import performance
+        from repositories.user_repository import UserRepository
+        from fastapi import HTTPException
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "DEMO-HR":
+                return {"employee_id": "DEMO-HR", "role": "HR"}
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        caller = {"employee_id": "DEMO-HR", "role": "HR", "is_admin": False}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await performance.get_developer_dashboard("DEMO-HR", periods=6, user=caller)
+
+        assert exc_info.value.status_code == 400
+        assert "HR personnel are evaluators and are not evaluated" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_evaluate_developer_rejects_ceo_and_hr(self, monkeypatch):
+        """evaluate_developer_performance rejects evaluations targeting CEO or HR."""
+        from api.routes import performance
+        from repositories.user_repository import UserRepository
+        from fastapi import HTTPException
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "DEMO-CEO":
+                return {"employee_id": "DEMO-CEO", "role": "CEO"}
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        admin_caller = {"employee_id": "ADMIN1", "role": "CEO", "is_admin": True}
+
+        with pytest.raises(HTTPException) as exc_info:
+            await performance.evaluate_developer_performance(
+                developer_id="DEMO-CEO",
+                developer_name="Demo CEO",
+                period="2026-Q3",
+                user=admin_caller,
+            )
+
+        assert exc_info.value.status_code == 400
+        assert "Cannot evaluate employee DEMO-CEO with role CEO" in exc_info.value.detail
 
 
 if __name__ == '__main__':

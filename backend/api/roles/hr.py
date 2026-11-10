@@ -29,6 +29,10 @@ async def hr_dashboard(user: dict = Depends(require_roles("HR"))):
     # Count by role
     role_distribution = {}
     for u in all_users:
+        if u.get("role", "").upper() == "CEO" and u.get("dept") in ("Engineering", "", None):
+            u["dept"] = "Executive"
+        elif u.get("role", "").upper() == "HR" and u.get("dept") in ("Engineering", "", None):
+            u["dept"] = "People & Culture"
         role = u.get("role", "UNKNOWN")
         role_distribution[role] = role_distribution.get(role, 0) + 1
     

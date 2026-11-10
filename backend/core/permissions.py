@@ -22,6 +22,12 @@ class Permission(str, Enum):
     VIEW_EMPLOYEE_PROFILE = "VIEW_EMPLOYEE_PROFILE"
     VIEW_ORG_CHART = "VIEW_ORG_CHART"
     VIEW_PERFORMANCE_OUTCOMES = "VIEW_PERFORMANCE_OUTCOMES"
+    VIEW_APPROVED_PERFORMANCE_OUTCOMES = "VIEW_PERFORMANCE_OUTCOMES"  # Alias
+    VIEW_HR_PERFORMANCE_ASSESSMENT = "VIEW_HR_PERFORMANCE_ASSESSMENT"
+    CREATE_HR_PERFORMANCE_ASSESSMENT = "CREATE_HR_PERFORMANCE_ASSESSMENT"
+    SUBMIT_HR_PERFORMANCE_ASSESSMENT = "SUBMIT_HR_PERFORMANCE_ASSESSMENT"
+    REVIEW_HUMAN_EVALUATION_COMPLETENESS = "REVIEW_HUMAN_EVALUATION_COMPLETENESS"
+    MANAGE_EVALUATION_POLICY = "MANAGE_EVALUATION_POLICY"
     CREATE_EMPLOYEE = "CREATE_EMPLOYEE"
     UPDATE_EMPLOYEE_PROFILE = "UPDATE_EMPLOYEE_PROFILE"
     DEACTIVATE_EMPLOYEE = "DEACTIVATE_EMPLOYEE"
@@ -206,6 +212,10 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_ORG_CHART,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PERFORMANCE_OUTCOMES,
+        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT,
+        Permission.CREATE_HR_PERFORMANCE_ASSESSMENT,
+        Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT,
+        Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS,
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
         # HR employee management
@@ -238,6 +248,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_ORGANIZATION_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
+        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT,
+        Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS,
+        Permission.MANAGE_EVALUATION_POLICY,
         Permission.SUBMIT_CEO_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
         Permission.TRIGGER_AI_EVALUATION,
@@ -246,6 +259,10 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AUDIT_LOGS,
         # CRUD permissions
         Permission.CREATE_INCIDENT,
+        Permission.CREATE_TEAM,
+        Permission.MANAGE_TEAMS,
+        Permission.ASSIGN_PROJECT,
+        Permission.ASSIGN_TEAM_LEAD,
         # Transfer
         Permission.REQUEST_TRANSFER,
         Permission.APPROVE_TRANSFER_AS_MANAGER,
@@ -258,6 +275,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.MANAGE_USERS,
     Permission.MANAGE_TEAMS,
+    Permission.CREATE_TEAM,
     Permission.MANAGE_EMPLOYEES,
     Permission.ASSIGN_TEAM_LEAD,
     Permission.ASSIGN_PROJECT,
@@ -267,6 +285,8 @@ ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.EXPORT_DATA,
     Permission.MANAGE_SETTINGS,
     Permission.MANAGE_INTEGRATIONS,
+    Permission.MANAGE_EVALUATION_POLICY,
+    Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS,
 }
 
 
@@ -277,6 +297,10 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_EMPLOYEE_PROFILE,
         Permission.VIEW_ORG_CHART,
         Permission.VIEW_PERFORMANCE_OUTCOMES,
+        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT,
+        Permission.CREATE_HR_PERFORMANCE_ASSESSMENT,
+        Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT,
+        Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS,
         Permission.CREATE_EMPLOYEE,
         Permission.UPDATE_EMPLOYEE_PROFILE,
         Permission.DEACTIVATE_EMPLOYEE,
@@ -320,6 +344,9 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_EMPLOYEE_PROFILE,
         Permission.VIEW_ORG_CHART,
         Permission.VIEW_PERFORMANCE_OUTCOMES,
+        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT,
+        Permission.CREATE_HR_PERFORMANCE_ASSESSMENT,
+        Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT,
         Permission.VIEW_TRANSFER_REQUESTS,
         Permission.REVIEW_TRANSFER_REQUEST,
         Permission.VIEW_GRIEVANCES,
@@ -332,6 +359,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_EMPLOYEE_DIRECTORY,
         Permission.VIEW_EMPLOYEE_PROFILE,
         Permission.VIEW_GRIEVANCES,
+        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
     },

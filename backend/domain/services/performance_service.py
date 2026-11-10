@@ -50,6 +50,10 @@ class PerformanceService:
         self.data_aggregator = DeveloperDataAggregator(github_token)
         self.evaluation_agent = PerformanceEvaluationAgent()
         self.performance_repo = PerformanceRepository()
+
+    @property
+    def repository(self) -> PerformanceRepository:
+        return self.performance_repo
     
     async def evaluate_developer(
         self,
@@ -217,10 +221,46 @@ class PerformanceService:
         
         # Get existing performance
         performance_data = await self.performance_repo.get_by_id(performance_id)
+        target_update_id = performance_id
         if not performance_data:
-            raise ValueError(f"Performance {performance_id} not found")
-        
-        performance = DeveloperPerformance(**performance_data)
+            from repositories.user_repository import UserRepository
+            user_repo = UserRepository()
+            target_user = await user_repo.find_by_employee_id(performance_id)
+            if not target_user:
+                raise ValueError(f"Performance evaluation or employee '{performance_id}' not found")
+            target_role = target_user.get("role", "").upper()
+            if target_role in ("CEO", "HR"):
+                raise ValueError(f"Cannot evaluate {target_role} role. Performance evaluations only apply to engineering contributors.")
+            now_utc = datetime.utcnow()
+            from domain.models.developer_performance import PerformanceBreakdown, AIEvaluation
+            init_perf = DeveloperPerformance(
+                developer_id=target_user["employee_id"],
+                developer_name=target_user.get("name", target_user["employee_id"]),
+                project_id=target_user.get("team_id") or "ENGINEERING",
+                period_type="quarter",
+                period_start=now_utc,
+                period_end=now_utc,
+                period_label=f"{now_utc.year}-Q{(now_utc.month - 1) // 3 + 1}",
+                ai_evaluation=AIEvaluation(
+                    score=0.0,
+                    breakdown=PerformanceBreakdown(
+                        code_quality=0.0, delivery=0.0, collaboration=0.0, reliability=0.0, engineering_impact=0.0, engineering_judgment=0.0
+                    ),
+                    strengths=[], weaknesses=[], recommendations=[], reasoning="Initialized for role feedback.", confidence="low"
+                ),
+                role_evaluation=RoleEvaluation(),
+                final_score=0.0,
+                grade="Under Review",
+                confidence_level="low",
+                confidence_reason="Role feedback initialized",
+            )
+            inserted_id = await self.performance_repo.create(init_perf.model_dump())
+            init_perf.id = inserted_id
+            performance = init_perf
+            target_update_id = inserted_id
+        else:
+            performance = DeveloperPerformance(**performance_data)
+            target_update_id = str(performance_data.get("_id", performance_id))
         
         # Add role-specific feedback
         if role == "pm":
@@ -279,7 +319,7 @@ class PerformanceService:
         performance.grade = self.evaluation_agent.determine_grade(performance.final_score)
         
         # Update in database
-        await self.performance_repo.update(performance_id, performance.model_dump())
+        await self.performance_repo.update(target_update_id, performance.model_dump())
         
         return performance
     
@@ -349,14 +389,24 @@ class PerformanceService:
         
         # HR
         if role_eval.hr:
-            hr_avg = (
-                role_eval.hr.criterion_1 +
-                role_eval.hr.criterion_2 +
-                role_eval.hr.criterion_3 +
-                role_eval.hr.criterion_4
-            ) / 4
-            hr_score = (hr_avg / 5) * 100
-            role_scores.append(hr_score)
+            if role_eval.hr.normalized_score is not None:
+                hr_score = role_eval.hr.normalized_score
+            else:
+                criteria = [
+                    c for c in (
+                        role_eval.hr.criterion_1,
+                        role_eval.hr.criterion_2,
+                        role_eval.hr.criterion_3,
+                        role_eval.hr.criterion_4,
+                    ) if c is not None
+                ]
+                if criteria:
+                    hr_avg = sum(criteria) / len(criteria)
+                    hr_score = (hr_avg / 5.0) * 100.0
+                else:
+                    hr_score = None
+            if hr_score is not None:
+                role_scores.append(hr_score)
         
         # Calculate average
         if role_scores:

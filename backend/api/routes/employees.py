@@ -134,6 +134,13 @@ async def create_employee(
                 detail=f"Email {employee.email} already exists"
             )
         
+        # Protect CEO role from creation through employee administration
+        if employee.role.upper() == "CEO":
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot create a CEO account through employee administration."
+            )
+        
         # Only admins can create admins
         if employee.is_admin and not user.get('is_admin', False):
             raise HTTPException(
@@ -258,7 +265,11 @@ async def list_employees(
                 name=emp.get("name", "Unknown"),
                 email=emp.get("email", ""),
                 role=emp.get("role", "DEVELOPER"),
-                dept=emp.get("dept", "Engineering"),
+                dept=(
+                    "Executive" if emp.get("role", "").upper() == "CEO" and emp.get("dept") in ("Engineering", "", None)
+                    else "People & Culture" if emp.get("role", "").upper() == "HR" and emp.get("dept") in ("Engineering", "", None)
+                    else emp.get("dept", "Engineering")
+                ),
                 github_username=emp.get("github_username"),
                 team_id=emp.get("team_id"),
                 is_active=emp.get("is_active", True),
@@ -376,6 +387,28 @@ async def update_employee(
                 status_code=404,
                 detail=f"Employee {employee_id} not found"
             )
+
+        # Protect CEO account: HR cannot modify the CEO's profile or account
+        is_acting_admin = user.get('is_admin', False) or user.get('role', '').upper() == 'CEO'
+        if employee.get("role", "").upper() == "CEO" and not is_acting_admin:
+            raise HTTPException(
+                status_code=403,
+                detail="The CEO account cannot be modified by HR."
+            )
+
+        # Prevent assigning or elevating to CEO role
+        if updates.role is not None and updates.role.upper() == "CEO":
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot assign or promote an employee to CEO through employee administration."
+            )
+
+        # HR cannot directly modify engineering team membership
+        if updates.team_id is not None and user.get('role', '').upper() == 'HR':
+            raise HTTPException(
+                status_code=403,
+                detail="HR cannot directly modify engineering team membership. Team transfers must be processed through the organizational transfer workflow."
+            )
         
         # Build update dict (only include provided fields)
         update_data = {}
@@ -472,6 +505,18 @@ async def delete_employee(
                 detail=f"Employee {employee_id} not found"
             )
         
+        if employee.get("role", "").upper() == "CEO":
+            raise HTTPException(
+                status_code=403,
+                detail="The CEO account cannot be deactivated."
+            )
+
+        if employee_id == user.get("employee_id"):
+            raise HTTPException(
+                status_code=400,
+                detail="You cannot deactivate your own account."
+            )
+
         # Deactivate instead of delete
         await repo.update_one(
             {"employee_id": employee_id},

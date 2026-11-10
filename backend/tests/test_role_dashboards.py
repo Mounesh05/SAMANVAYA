@@ -123,7 +123,14 @@ async def test_devops_snapshot_uses_workflow_and_deployment_events(monkeypatch):
 async def test_test_run_submission_is_idempotent_and_persists(monkeypatch):
     stored = {}
 
+    class FindCursor:
+        async def to_list(self, length=None):
+            return [{"project_id": "PROJ-1", "repository": "Mounesh05/SAMANVAYA", "branch": "testing", "enabled": True}]
+
     class Collection:
+        def find(self, query):
+            return FindCursor()
+
         async def replace_one(self, query, document, upsert):
             stored.update(document)
             assert query["id"] == document["id"]

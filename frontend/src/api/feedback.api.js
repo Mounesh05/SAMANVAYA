@@ -24,4 +24,20 @@ export const feedbackApi = {
   submitHRFeedback: async (performanceId, data) => {
     return apiClient.post(`/performance/feedback/${performanceId}/hr`, data);
   },
+
+  getHRAssessment: async (performanceId) => {
+    return apiClient.get(`/performance/assessment/hr/${performanceId}`);
+  },
+
+  saveHRAssessmentDraft: async (performanceId, data) => {
+    return apiClient.post(`/performance/assessment/hr/${performanceId}`, data);
+  },
+
+  submitHRAssessment: async (performanceId, data) => {
+    return apiClient.post(`/performance/assessment/hr/${performanceId}/submit`, data);
+  },
+
+  getEvaluationCompleteness: async (performanceId) => {
+    return apiClient.get(`/performance/assessments/${performanceId}/completeness`);
+  },
 };

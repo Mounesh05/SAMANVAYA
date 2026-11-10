@@ -300,6 +300,181 @@ class TestEmployeeFieldExclusions:
         # project_ids should be excluded
         assert "project_ids" not in hr_dict
 
+    @pytest.mark.asyncio
+    async def test_hr_cannot_create_ceo_role(self, monkeypatch):
+        """HR cannot create an employee with the CEO role."""
+        from api.routes.employees import create_employee, EmployeeCreate
+        from fastapi import HTTPException
+
+        hr_user = {
+            "employee_id": "HR001",
+            "role": "HR",
+            "is_admin": False,
+        }
+
+        new_ceo_data = EmployeeCreate(
+            employee_id="CEO002",
+            name="New Boss",
+            email="newceo@example.com",
+            role="CEO",
+            dept="Executive",
+            organisation_password="Password123!ORG",
+            employee_password="Password123!EMP",
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await create_employee(new_ceo_data, hr_user)
+
+        assert exc_info.value.status_code == 403
+        assert "CEO" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_hr_cannot_modify_ceo_account(self, monkeypatch):
+        """HR cannot modify the existing CEO account."""
+        from api.routes.employees import update_employee, EmployeeUpdate
+        from fastapi import HTTPException
+        from repositories.user_repository import UserRepository
+
+        hr_user = {
+            "employee_id": "HR001",
+            "role": "HR",
+            "is_admin": False,
+        }
+
+        ceo_doc = {
+            "employee_id": "CEO001",
+            "name": "Original CEO",
+            "email": "ceo@example.com",
+            "role": "CEO",
+            "dept": "Executive",
+            "is_active": True,
+        }
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "CEO001":
+                return ceo_doc
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        update_data = EmployeeUpdate(name="Replaced CEO")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_employee("CEO001", update_data, hr_user)
+
+        assert exc_info.value.status_code == 403
+        assert "CEO account cannot be modified by HR" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_hr_cannot_promote_to_ceo(self, monkeypatch):
+        """HR cannot elevate/promote any employee to CEO."""
+        from api.routes.employees import update_employee, EmployeeUpdate
+        from fastapi import HTTPException
+        from repositories.user_repository import UserRepository
+
+        hr_user = {
+            "employee_id": "HR001",
+            "role": "HR",
+            "is_admin": False,
+        }
+
+        dev_doc = {
+            "employee_id": "EMP001",
+            "name": "Dev User",
+            "email": "dev@example.com",
+            "role": "DEVELOPER",
+            "dept": "Engineering",
+            "is_active": True,
+        }
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "EMP001":
+                return dev_doc
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        update_data = EmployeeUpdate(role="CEO")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_employee("EMP001", update_data, hr_user)
+
+        assert exc_info.value.status_code == 403
+        assert "Cannot assign or promote an employee to CEO" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_hr_cannot_directly_modify_team_id(self, monkeypatch):
+        """HR cannot directly overwrite team_id; must use transfer workflow."""
+        from api.routes.employees import update_employee, EmployeeUpdate
+        from fastapi import HTTPException
+        from repositories.user_repository import UserRepository
+
+        hr_user = {
+            "employee_id": "HR001",
+            "role": "HR",
+            "is_admin": False,
+        }
+
+        dev_doc = {
+            "employee_id": "EMP001",
+            "name": "Dev User",
+            "email": "dev@example.com",
+            "role": "DEVELOPER",
+            "dept": "Engineering",
+            "team_id": "TEAM_A",
+            "is_active": True,
+        }
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "EMP001":
+                return dev_doc
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        update_data = EmployeeUpdate(team_id="TEAM_B")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await update_employee("EMP001", update_data, hr_user)
+
+        assert exc_info.value.status_code == 403
+        assert "transfer workflow" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_hr_cannot_deactivate_ceo(self, monkeypatch):
+        """HR cannot deactivate or delete the CEO account."""
+        from api.routes import employees
+        from fastapi import HTTPException
+        from repositories.user_repository import UserRepository
+
+        hr_user = {
+            "employee_id": "HR001",
+            "role": "HR",
+            "is_admin": False,
+        }
+
+        ceo_doc = {
+            "employee_id": "CEO001",
+            "name": "Executive CEO",
+            "email": "ceo@example.com",
+            "role": "CEO",
+            "dept": "Executive",
+            "is_active": True,
+        }
+
+        async def mock_find_by_employee_id(self, emp_id):
+            if emp_id == "CEO001":
+                return ceo_doc
+            return None
+
+        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await employees.delete_employee("CEO001", hr_user)
+
+        assert exc_info.value.status_code == 403
+        assert "CEO account cannot be deactivated" in exc_info.value.detail
+
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

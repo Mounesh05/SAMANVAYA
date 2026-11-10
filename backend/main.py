@@ -38,6 +38,17 @@ async def lifespan(app: FastAPI):
 
         from repositories.qa_repository import QARepository
         await QARepository().ensure_indexes()
+
+        from repositories.user_repository import UserRepository
+        user_repo = UserRepository()
+        await user_repo.col.update_many(
+            {"role": {"$regex": "^ceo$", "$options": "i"}},
+            {"$set": {"dept": "Executive"}}
+        )
+        await user_repo.col.update_many(
+            {"role": {"$regex": "^hr$", "$options": "i"}},
+            {"$set": {"dept": "People & Culture"}}
+        )
         
         logger.info("✓ Database indexes created/verified")
     except Exception as e:
@@ -252,7 +263,7 @@ from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai, setup,
     cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
-    recommendations, traceability, risk_configurations, audit,
+    recommendations, traceability, risk_configurations, audit, transfers,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -261,6 +272,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(setup.router, prefix="/api/setup", tags=["Local Setup"])
 app.include_router(employees.router, prefix="/api/employees", tags=["Employee Management"])
 app.include_router(teams.router, prefix="/api/teams", tags=["Team Management"])
+app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])
 app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
 app.include_router(sprints.router, prefix="/api/sprints", tags=["Sprints"])
 app.include_router(stories.router, prefix="/api/stories", tags=["Stories"])

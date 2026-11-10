@@ -21,6 +21,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=Transfer, status_code=201)
+@router.post("", response_model=Transfer, status_code=201, include_in_schema=False)
 async def create_transfer(
     transfer: TransferCreate,
     user: dict = Depends(get_current_user)
@@ -62,6 +63,7 @@ async def create_transfer(
 
 
 @router.get("/", response_model=List[Transfer])
+@router.get("", response_model=List[Transfer], include_in_schema=False)
 async def list_transfers(
     user: dict = Depends(get_current_user),
     status: Optional[str] = Query(None, description="Filter by status"),

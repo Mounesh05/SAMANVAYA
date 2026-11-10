@@ -371,7 +371,7 @@ export function AppRoutes() {
           <Route
             path="organization"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO, ROLES.HR]}>
+              <RoleGuard allowedRoles={[ROLES.CEO]}>
                 <CEOOrganizationPage />
               </RoleGuard>
             }

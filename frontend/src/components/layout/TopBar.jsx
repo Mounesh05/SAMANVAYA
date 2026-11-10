@@ -15,7 +15,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { useNotifications } from '../../hooks/useNotifications';
 import { NotificationDrawer } from './NotificationDrawer';
 import { GlobalSearchModal } from './GlobalSearchModal';
-import { ROLE_COLORS } from '../../utils/constants';
+import { ROLES, ROLE_COLORS } from '../../utils/constants';
 
 export function TopBar() {
   const { user } = useAuthStore();
@@ -29,8 +29,37 @@ export function TopBar() {
   const role = user?.role?.toUpperCase();
   const roleColor = ROLE_COLORS[role] || '#3b82f6';
 
-  // Build breadcrumb segments
-  const pathnames = location.pathname.split('/').filter((x) => x);
+  // Build clean breadcrumb segments
+  const getBreadcrumbs = () => {
+    const rawSegments = location.pathname.split('/').filter((x) => x);
+    if (rawSegments.length === 0) return [];
+
+    // Role dashboards (e.g. /hr/dashboard, /ceo/dashboard, /developer/dashboard)
+    const roleKeys = Object.keys(ROLES).map((k) => k.toLowerCase());
+    if (rawSegments.length === 2 && roleKeys.includes(rawSegments[0]) && rawSegments[1] === 'dashboard') {
+      const roleUpper = rawSegments[0].toUpperCase();
+      return [
+        {
+          label: `${roleUpper === 'HR' || roleUpper === 'CEO' || roleUpper === 'QA' || roleUpper === 'PM' ? roleUpper : roleUpper.charAt(0) + roleUpper.slice(1).toLowerCase()} Dashboard`,
+          to: `/${rawSegments[0]}/dashboard`,
+          isLast: true,
+        },
+      ];
+    }
+
+    return rawSegments.map((name, index) => {
+      const routeTo = `/${rawSegments.slice(0, index + 1).join('/')}`;
+      const isLast = index === rawSegments.length - 1;
+      const formattedName = name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' ');
+      return {
+        label: formattedName,
+        to: routeTo,
+        isLast,
+      };
+    });
+  };
+
+  const breadcrumbs = getBreadcrumbs();
 
   return (
     <>
@@ -79,31 +108,25 @@ export function TopBar() {
             }}
           >
             <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Samanvaya</span>
-            {pathnames.map((name, index) => {
-              const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`;
-              const isLast = index === pathnames.length - 1;
-              const formattedName = name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' ');
-
-              return (
-                <React.Fragment key={routeTo}>
-                  <ChevronRight size={14} style={{ opacity: 0.5 }} />
-                  {isLast ? (
-                    <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {formattedName}
-                    </span>
-                  ) : (
-                    <span
-                      onClick={() => navigate(routeTo)}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      {formattedName}
-                    </span>
-                  )}
-                </React.Fragment>
-              );
-            })}
+            {breadcrumbs.map((crumb) => (
+              <React.Fragment key={crumb.to}>
+                <ChevronRight size={14} style={{ opacity: 0.5 }} />
+                {crumb.isLast ? (
+                  <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                    {crumb.label}
+                  </span>
+                ) : (
+                  <span
+                    onClick={() => navigate(crumb.to)}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {crumb.label}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
           </nav>
         </div>
 

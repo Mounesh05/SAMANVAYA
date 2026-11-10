@@ -36,4 +36,17 @@ export const performanceApi = {
   evaluateBulk: async (data) => {
     return apiClient.post('/performance/evaluate/bulk', data);
   },
+
+  // Human evaluation policy
+  getHumanEvaluationPolicy: async () => {
+    return apiClient.get('/performance/policy');
+  },
+
+  configureHumanEvaluationPolicy: async (data) => {
+    return apiClient.post('/performance/policy', data);
+  },
+
+  getHumanEvaluationPolicyHistory: async (limit = 10) => {
+    return apiClient.get('/performance/policy/history', { params: { limit } });
+  },
 };

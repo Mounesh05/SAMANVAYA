@@ -157,6 +157,7 @@ async def create_team(
 
 
 @router.get("/", response_model=List[TeamResponse])
+@router.get("", response_model=List[TeamResponse], include_in_schema=False)
 async def list_teams(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     user: dict = Depends(get_current_user)
@@ -164,20 +165,24 @@ async def list_teams(
     """
     List all teams.
     
-    **Required Permission:** VIEW_ORGANIZATION_DATA (HR, CEO, or ADMIN)
+    **Required Permission:** VIEW_ORGANIZATION_DATA, VIEW_PROJECT_DATA, VIEW_TEAM_DATA, or VIEW_EMPLOYEE_DIRECTORY (read-only)
     
     Returns list of teams with member counts.
     """
     # Check permission
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
-        user.get('is_admin', False)
+        user.get('is_admin', False),
+        user.get('designation')
     )
     
     if not (
         Permission.VIEW_ORGANIZATION_DATA in user_permissions
         or Permission.VIEW_PROJECT_DATA in user_permissions
         or Permission.VIEW_TEAM_DATA in user_permissions
+        or Permission.VIEW_EMPLOYEE_DIRECTORY in user_permissions
+        or Permission.VIEW_ORG_CHART in user_permissions
+        or Permission.VIEW_TRANSFER_REQUESTS in user_permissions
     ):
         raise HTTPException(
             status_code=403,
@@ -254,12 +259,16 @@ async def get_team(
     
     is_own_team = team_id == user.get('team_id')
     
-    if not is_own_team and Permission.VIEW_ORGANIZATION_DATA not in user_permissions:
-        if Permission.VIEW_TEAM_DATA not in user_permissions:
-            raise HTTPException(
-                status_code=403,
-                detail="Insufficient permissions to view this team"
-            )
+    if (
+        not is_own_team
+        and Permission.VIEW_ORGANIZATION_DATA not in user_permissions
+        and Permission.VIEW_TEAM_DATA not in user_permissions
+        and Permission.VIEW_EMPLOYEE_DIRECTORY not in user_permissions
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions to view this team"
+        )
     
     try:
         teams_col = col("teams")

@@ -1249,7 +1249,7 @@ async def _authorized_evaluation(
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
     role = user.get("role", user.get("organizational_role", "")).upper()
-    if role not in {"CEO", "HR", "LEAD"} and user.get("employee_id") != evaluation.employee_id:
+    if role not in {"CEO", "LEAD"} and user.get("employee_id") != evaluation.employee_id:
         raise HTTPException(status_code=403, detail="You cannot view this evaluation")
     return evaluation
 
@@ -1257,7 +1257,7 @@ async def _authorized_evaluation(
 @router.post("/evaluate", response_model=EvaluationResult)
 async def evaluate_developer_ai(
     request: SimpleEvalRequest,
-    user: dict = Depends(require_roles("CEO", "HR", "LEAD")),
+    user: dict = Depends(require_roles("CEO", "LEAD")),
 ):
     """Evaluate one attributable PR and persist the completed result."""
     employee_id = request.employee_id or user.get("employee_id")
@@ -1416,7 +1416,7 @@ async def evaluate_developer_ai(
 @router.get("/latest", response_model=Optional[EvaluationResult])
 async def get_latest_evaluation(user: dict = Depends(get_current_user)):
     role = user.get("role", user.get("organizational_role", "")).upper()
-    query = {} if role in {"CEO", "HR", "LEAD"} else {"employee_id": user.get("employee_id")}
+    query = {} if role in {"CEO", "LEAD"} else {"employee_id": user.get("employee_id")}
     evaluation = await EvaluationRepository().latest(query)
     return _result_from_evaluation(evaluation) if evaluation else None
 
@@ -1424,7 +1424,7 @@ async def get_latest_evaluation(user: dict = Depends(get_current_user)):
 @router.get("/employee/{employee_id}", response_model=List[EvaluationResult])
 async def list_employee_evaluations(employee_id: str, user: dict = Depends(get_current_user)):
     role = user.get("role", user.get("organizational_role", "")).upper()
-    if role not in {"CEO", "HR", "LEAD"} and user.get("employee_id") != employee_id:
+    if role not in {"CEO", "LEAD"} and user.get("employee_id") != employee_id:
         raise HTTPException(status_code=403, detail="You cannot view these evaluations")
     evaluations = await EvaluationRepository().list({"employee_id": employee_id})
     return [_result_from_evaluation(item) for item in evaluations]
@@ -1438,7 +1438,7 @@ async def list_pr_evaluations(
     user: dict = Depends(get_current_user),
 ):
     role = user.get("role", user.get("organizational_role", "")).upper()
-    if role not in {"CEO", "HR", "LEAD"}:
+    if role not in {"CEO", "LEAD"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     evaluations = await EvaluationRepository().list({
         "repo_owner": owner,

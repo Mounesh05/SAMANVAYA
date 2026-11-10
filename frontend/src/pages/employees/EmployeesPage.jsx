@@ -14,8 +14,12 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { UserPlus, Edit, Trash2 } from 'lucide-react';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
+import { useAuthStore } from '../../store/useAuthStore';
+
+const ASSIGNABLE_ROLES = Object.keys(ROLES).filter((r) => r !== 'CEO');
 
 export function EmployeesPage() {
+  const { user } = useAuthStore();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -97,7 +101,6 @@ export function EmployeesPage() {
           email: formData.email,
           role: formData.role,
           dept: formData.dept,
-          team_id: formData.team_id || null,
           github_username: formData.github_username || null,
         },
       });
@@ -107,6 +110,7 @@ export function EmployeesPage() {
   };
 
   const openEdit = (emp) => {
+    if (emp.role === 'CEO') return;
     setEditEmployee(emp);
     setFormData({
       employee_id: emp.employee_id,
@@ -132,8 +136,25 @@ export function EmployeesPage() {
     { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '700' }}>{e.name}</span> },
     { key: 'employee_id', header: 'Employee ID', render: (e) => <span className="font-mono">{e.employee_id}</span> },
     { key: 'role', header: 'Role', render: (e) => ROLE_LABELS[e.role] || e.role },
-    { key: 'dept', header: 'Department', render: (e) => e.dept },
-    { key: 'team_id', header: 'Team', render: (e) => e.team_id || '—' },
+    {
+      key: 'dept',
+      header: 'Department',
+      render: (e) => {
+        const r = e.role?.toUpperCase();
+        if (r === 'CEO' && (e.dept === 'Engineering' || !e.dept)) return 'Executive';
+        if (r === 'HR' && (e.dept === 'Engineering' || !e.dept)) return 'People & Culture';
+        return e.dept || '—';
+      },
+    },
+    {
+      key: 'team_id',
+      header: 'Team',
+      render: (e) => {
+        const r = e.role?.toUpperCase();
+        if (r === 'CEO' || r === 'HR') return '—';
+        return e.team_id || e.current_team_id || '—';
+      },
+    },
     { key: 'github_username', header: 'GitHub', render: (e) => e.github_username || '—' },
     {
       key: 'status',
@@ -147,16 +168,45 @@ export function EmployeesPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: (e) => (
-        <div style={{ display: 'flex', gap: '0.35rem' }}>
-          <Button variant="ghost" size="sm" onClick={() => openEdit(e)}>
-            <Edit size={15} />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setDeleteId(e.employee_id)}>
-            <Trash2 size={15} style={{ color: 'var(--danger)' }} />
-          </Button>
-        </div>
-      ),
+      render: (e) => {
+        const isCEO = e.role === 'CEO';
+        const isSelf = e.employee_id === user?.employee_id;
+        if (isCEO || isSelf) {
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              {!isCEO && (
+                <Button variant="ghost" size="sm" onClick={() => openEdit(e)} title="Edit Profile">
+                  <Edit size={15} />
+                </Button>
+              )}
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: isCEO ? 'var(--text-muted)' : 'var(--primary)',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: isCEO ? 'var(--bg-tertiary)' : 'rgba(59, 130, 246, 0.08)',
+                  border: isCEO ? '1px solid var(--border-subtle)' : '1px solid rgba(59, 130, 246, 0.25)',
+                  fontWeight: isSelf ? '600' : 'normal',
+                  fontStyle: isCEO ? 'italic' : 'normal',
+                }}
+              >
+                {isCEO ? 'Protected' : 'You'}
+              </span>
+            </div>
+          );
+        }
+        return (
+          <div style={{ display: 'flex', gap: '0.35rem' }}>
+            <Button variant="ghost" size="sm" onClick={() => openEdit(e)} title="Edit Employee">
+              <Edit size={15} />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteId(e.employee_id)} title="Deactivate Employee">
+              <Trash2 size={15} style={{ color: 'var(--danger)' }} />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -247,6 +297,23 @@ export function EmployeesPage() {
           </>
         }
       >
+        {(createMutation.error || updateMutation.error) && (
+          <div
+            style={{
+              padding: '0.75rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid var(--danger)',
+              color: 'var(--danger)',
+              fontSize: '0.85rem',
+              marginBottom: '1rem',
+            }}
+          >
+            {createMutation.error?.response?.data?.detail ||
+              updateMutation.error?.response?.data?.detail ||
+              'An error occurred while saving employee record.'}
+          </div>
+        )}
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <Input
@@ -301,8 +368,17 @@ export function EmployeesPage() {
             <Select
               label="Role"
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              options={Object.keys(ROLES).map((r) => ({ value: r, label: ROLE_LABELS[r] || r }))}
+              onChange={(e) => {
+                const newRole = e.target.value;
+                let defaultDept = formData.dept;
+                if (!editEmployee) {
+                  if (newRole === 'HR') defaultDept = 'People & Culture';
+                  else if (newRole === 'PM') defaultDept = 'Product';
+                  else if (['DEVELOPER', 'LEAD', 'QA', 'DEVOPS'].includes(newRole)) defaultDept = 'Engineering';
+                }
+                setFormData({ ...formData, role: newRole, dept: defaultDept });
+              }}
+              options={ASSIGNABLE_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] || r }))}
               required
             />
             <Input
@@ -315,13 +391,36 @@ export function EmployeesPage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <Select
-              label="Assigned Team"
-              value={formData.team_id}
-              onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
-              placeholder="No team assigned"
-              options={teams.map((t) => ({ value: t.team_id, label: t.name }))}
-            />
+            {editEmployee ? (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                  Assigned Team
+                </label>
+                <div
+                  style={{
+                    padding: '0.55rem 0.75rem',
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    fontSize: '0.875rem',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {teams.find((t) => t.team_id === formData.team_id)?.name || formData.team_id || 'No team assigned'}
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                  Engineering team assignments require an Organizational Transfer Request.
+                </span>
+              </div>
+            ) : (
+              <Select
+                label="Assigned Team"
+                value={formData.team_id}
+                onChange={(e) => setFormData({ ...formData, team_id: e.target.value })}
+                placeholder="No team assigned"
+                options={teams.map((t) => ({ value: t.team_id, label: t.name }))}
+              />
+            )}
             <Input
               label="GitHub Username"
               value={formData.github_username}

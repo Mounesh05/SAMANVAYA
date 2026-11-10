@@ -77,11 +77,19 @@ class CEOFeedback(RoleFeedbackCriteria):
 
 
 class HRFeedback(RoleFeedbackCriteria):
-    """HR feedback"""
-    criterion_1: int = Field(..., ge=1, le=5, description="Collaboration")
-    criterion_2: int = Field(..., ge=1, le=5, description="Professionalism")
-    criterion_3: int = Field(..., ge=1, le=5, description="Communication skills")
-    criterion_4: int = Field(..., ge=1, le=5, description="Cultural fit")
+    """HR feedback with enterprise rubric support"""
+    criterion_1: Optional[int] = Field(None, ge=1, le=5, description="Professional conduct (1-5 or 1-4)")
+    criterion_2: Optional[int] = Field(None, ge=1, le=5, description="Workplace ethics (1-5 or 1-4)")
+    criterion_3: Optional[int] = Field(None, ge=1, le=5, description="Policy compliance (1-5 or 1-4)")
+    criterion_4: Optional[int] = Field(None, ge=1, le=5, description="Workplace accountability (1-5 or 1-4)")
+    assessment_id: Optional[str] = None
+    status: Optional[str] = "submitted"
+    dimensions: Optional[Dict[str, Any]] = None
+    normalized_score: Optional[float] = None
+    policy_version: Optional[str] = None
+    evaluator_id: Optional[str] = None
+    evaluator_name: Optional[str] = None
+    submitted_at: Optional[datetime] = None
 
 
 class RoleEvaluation(BaseModel):
@@ -133,6 +141,8 @@ class DeveloperPerformance(BaseModel):
     credit_history: List[Dict[str, Any]] = Field(default_factory=list)
     credit_status: str = Field(default="advisory", description="advisory, appealed, reviewed")
     appeal: Optional[Dict[str, Any]] = None
+    hr_assessment: Optional[Dict[str, Any]] = None
+    human_evaluation_policy_version: Optional[str] = None
     grade: str = Field(..., description="A+, A, B+, B, C+, C, D, F")
     
     # Trend Analysis

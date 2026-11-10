@@ -192,14 +192,14 @@ export function Sidebar() {
       {
         to: '/performance',
         icon: <Award size={19} />,
-        label: 'Performance',
-        roles: [ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
+        label: role === ROLES.HR ? 'Performance Outcomes' : 'Performance',
+        roles: [ROLES.HR, ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
       },
       {
         to: '/feedback',
         icon: <MessageSquareQuote size={19} />,
-        label: 'Role Feedback',
-        roles: [ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS, ROLES.CEO],
+        label: role === ROLES.HR ? 'Workplace Assessment' : 'Role Feedback',
+        roles: [ROLES.HR, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS, ROLES.CEO],
       },
       {
         to: '/reports',
