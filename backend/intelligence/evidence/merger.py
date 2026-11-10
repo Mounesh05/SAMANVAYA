@@ -161,54 +161,98 @@ class EvidenceMerger:
     def _merge_complexity(complexity_list: List[ComplexityEvidence]) -> ComplexityEvidence:
         """
         Merge complexity evidence - use weighted average based on lines_of_code.
-        
-        Previously used max (conservative but unfair to large codebases).
-        Now uses weighted average: a small JS file with complexity 20 shouldn't
-        outweigh 200 Python files averaging complexity 6.
+
+        Filters out unmeasured or unavailable complexity evidence (where
+        is_available is False or average_complexity is None).
+        If all inputs are unmeasured, returns unavailable ComplexityEvidence.
         """
         if not complexity_list:
-            return ComplexityEvidence()
-        
+            return ComplexityEvidence(
+                is_available=False,
+                average_complexity=None,
+                max_complexity=None,
+                lines_of_code=0,
+            )
+
         # Filter out None values
-        valid = [c for c in complexity_list if c is not None]
-        if not valid:
-            return ComplexityEvidence()
-        
-        # Calculate weighted average complexity based on lines_of_code
-        total_loc = sum(c.lines_of_code for c in valid)
-        
-        if total_loc == 0:
-            # Fallback to simple average if no LOC data
-            weighted_avg = sum(c.average_complexity for c in valid) / len(valid)
-        else:
-            # Weighted average: (complexity * LOC) / total_LOC
-            weighted_sum = sum(c.average_complexity * c.lines_of_code for c in valid)
-            weighted_avg = weighted_sum / total_loc
-        
-        # Max complexity is still the actual maximum (worst single function)
-        max_max = max(c.max_complexity for c in valid)
-        
-        # Combine high complexity functions from all
-        all_high_complexity = []
-        for c in valid:
-            all_high_complexity.extend(c.high_complexity_functions)
-        
-        # Average ratios (these are already percentages, simple average is OK)
-        valid_comments = [c.comment_ratio for c in valid if c.comment_ratio > 0]
+        non_none = [c for c in complexity_list if c is not None]
+        if not non_none:
+            return ComplexityEvidence(
+                is_available=False,
+                average_complexity=None,
+                max_complexity=None,
+                lines_of_code=0,
+            )
+
+        total_loc = sum(c.lines_of_code for c in non_none)
+
+        # Average ratios across all non-none evidence that provide them
+        valid_comments = [c.comment_ratio for c in non_none if c.comment_ratio > 0]
         avg_comment_ratio = sum(valid_comments) / len(valid_comments) if valid_comments else 0.0
-        
-        valid_func_len = [c.avg_function_length for c in valid if c.avg_function_length > 0]
+
+        valid_mi = [
+            c.maintainability_index for c in non_none
+            if getattr(c, "maintainability_index", None) is not None
+        ]
+        avg_mi = round(sum(valid_mi) / len(valid_mi), 2) if valid_mi else None
+
+        valid_func_len = [c.avg_function_length for c in non_none if c.avg_function_length > 0]
         avg_func_len = sum(valid_func_len) / len(valid_func_len) if valid_func_len else 0.0
-        
-        valid_nesting = [c.avg_nesting_depth for c in valid if c.avg_nesting_depth > 0]
+
+        valid_nesting = [c.avg_nesting_depth for c in non_none if c.avg_nesting_depth > 0]
         avg_nesting = sum(valid_nesting) / len(valid_nesting) if valid_nesting else 0.0
-        
+
+        # Filter out unmeasured / unavailable complexity
+        measured = [
+            c for c in non_none
+            if getattr(c, "is_available", True) and c.average_complexity is not None
+        ]
+
+        if not measured:
+            return ComplexityEvidence(
+                is_available=False,
+                average_complexity=None,
+                max_complexity=None,
+                lines_of_code=total_loc,
+                comment_ratio=avg_comment_ratio,
+                maintainability_index=avg_mi,
+                avg_function_length=avg_func_len,
+                avg_nesting_depth=avg_nesting,
+            )
+
+        # Calculate weighted average complexity based on lines_of_code of measured evidence
+        measured_loc = sum(c.lines_of_code for c in measured)
+        if measured_loc == 0:
+            weighted_avg = sum(c.average_complexity for c in measured) / len(measured)
+        else:
+            weighted_sum = sum(c.average_complexity * c.lines_of_code for c in measured)
+            weighted_avg = weighted_sum / measured_loc
+
+        # Max complexity across measured evidence
+        valid_max = [c.max_complexity for c in measured if c.max_complexity is not None]
+        max_max = max(valid_max) if valid_max else None
+
+        # Combine high complexity functions from measured
+        all_high_complexity = []
+        existing_high_fn = set()
+        for c in measured:
+            for func in c.high_complexity_functions:
+                if isinstance(func, dict):
+                    key = (func.get("function"), func.get("file"))
+                    if key not in existing_high_fn:
+                        all_high_complexity.append(func)
+                        existing_high_fn.add(key)
+                else:
+                    all_high_complexity.append(func)
+
         return ComplexityEvidence(
-            average_complexity=weighted_avg,
+            is_available=True,
+            average_complexity=round(weighted_avg, 2) if isinstance(weighted_avg, float) else weighted_avg,
             max_complexity=max_max,
             high_complexity_functions=all_high_complexity,
             lines_of_code=total_loc,
             comment_ratio=avg_comment_ratio,
+            maintainability_index=avg_mi,
             avg_function_length=avg_func_len,
             avg_nesting_depth=avg_nesting,
         )

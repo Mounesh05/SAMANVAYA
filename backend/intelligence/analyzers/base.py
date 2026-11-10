@@ -15,6 +15,27 @@ from typing import List
 from intelligence.evidence.models import CodeQualityEvidence
 
 
+# ── Canonical Excluded Directories (Case-Insensitive) ─────────────────────────
+# Directories containing dependencies, generated code, build artifacts, or VCS metadata
+# that must be pruned during traversal and excluded from analyzer file filtering.
+EXCLUDED_DIRS: frozenset[str] = frozenset({
+    "node_modules",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "target",
+    "bin",
+    "obj",
+    "__pycache__",
+    "vendor",
+    ".git",
+    "generated",
+    ".gradle",
+    ".mvn",
+})
+
+
 class BaseAnalyzer(ABC):
     """
     Abstract base for all language-specific analyzers.
@@ -102,17 +123,29 @@ class BaseAnalyzer(ABC):
         """
         Filter files to only those supported by this analyzer,
         excluding auto-generated, vendor, and build directories.
+
+        Both directory exclusion and extension matching are case-insensitive,
+        while preserving the original casing of the returned file paths.
         """
-        EXCLUDED_DIRS = {
-            "node_modules", "venv", ".venv", "build", "dist",
-            "target", "bin", "obj", "__pycache__", "vendor",
-            ".git", "generated", ".gradle", ".mvn",
-        }
+        if not changed_files:
+            return []
+
+        lower_extensions = tuple(
+            ext.lower() if ext.startswith(".") else f".{ext.lower()}"
+            for ext in self.supported_extensions
+        )
+        if not lower_extensions:
+            return []
+
         result = []
         for f in changed_files:
-            parts = set(f.replace("\\", "/").split("/"))
-            if parts & EXCLUDED_DIRS:
+            if not f:
                 continue
-            if any(f.endswith(ext) for ext in self.supported_extensions):
+            f_norm = f.replace("\\", "/")
+            parts = f_norm.split("/")[:-1]
+            if any(p.lower() in EXCLUDED_DIRS for p in parts if p):
+                continue
+            f_lower = f.lower()
+            if f_lower.endswith(lower_extensions):
                 result.append(f)
         return result

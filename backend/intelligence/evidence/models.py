@@ -13,7 +13,7 @@ Gap fixes included:
 
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -72,11 +72,13 @@ class ChangeContext(BaseModel):
 # ── Evidence Sub-Dimensions ───────────────────────────────────────────────────
 
 class ComplexityEvidence(BaseModel):
-    average_complexity: float = 0.0
-    max_complexity: int = 0
+    is_available: bool = True
+    average_complexity: Optional[float] = 0.0
+    max_complexity: Optional[int] = 0
     high_complexity_functions: List[Dict[str, Any]] = Field(default_factory=list)
     lines_of_code: int = 0
     comment_ratio: float = 0.0
+    maintainability_index: Optional[float] = None
     avg_function_length: float = 0.0
     avg_nesting_depth: float = 0.0
 
