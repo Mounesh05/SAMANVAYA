@@ -141,6 +141,8 @@ class EvidenceMerger:
             security=merged_security,
             testing=merged_testing,
             duplication=merged_duplication,
+            # Only the Python analyzer produces SAMANVAYA's own metrics today
+            metrics=next((ev.metrics for ev in evidence_list if ev.metrics is not None), None),
             architecture=merged_architecture,
             ci_cd=merged_cicd,
             analysis_quality=merged_quality,

@@ -378,7 +378,7 @@ def analyze_files(
     root_path = Path(root) if root is not None else None
     for path in paths:
         p = Path(path)
-        key = str(p.relative_to(root_path)) if root_path is not None else str(p)
+        key = (p.relative_to(root_path) if root_path is not None else p).as_posix()
         try:
             sources[key] = p.read_text(encoding="utf-8-sig", errors="replace")
         except OSError as exc:

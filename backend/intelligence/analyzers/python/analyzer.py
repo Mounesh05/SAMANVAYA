@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from intelligence.analyzers.base import BaseAnalyzer
+from intelligence.analyzers.common.code_metrics import apply_code_metrics
 from intelligence.analyzers.common.complexity import analyze_complexity
 from intelligence.analyzers.common.duplication import analyze_duplication
 from intelligence.analyzers.common.secrets_scanner import scan_secrets
@@ -107,6 +108,10 @@ class PythonAnalyzer(BaseAnalyzer):
         evidence.duplication = analyze_duplication(files, repo_path)
         evidence.testing = await self._testing(repo_path, evidence)
         evidence.architecture = self._architecture(files, repo_path)
+
+        # SAMANVAYA's own six metrics; replaces the tool-based complexity and
+        # duplication numbers. CPU-bound, so it runs off the event loop.
+        await asyncio.to_thread(apply_code_metrics, evidence, files, repo_path)
 
         evidence.analysis_duration_ms = (time.monotonic() - start) * 1000
         return evidence

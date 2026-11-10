@@ -41,6 +41,26 @@ class FileQuality:
     maintainability: float
     average_function_maintainability: float
     duplication_density: float = 0.0
+    function_count: int = 0       # every function, nested ones included (cyclomatic)
+    cyclomatic_total: int = 0
+    cognitive_total: int = 0      # top-level functions and methods (cognitive folds nested ones)
+    cognitive_function_count: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return dict(self.__dict__)
+
+
+@dataclass(frozen=True)
+class FunctionQuality:
+    """One top-level function or method with all its per-function metrics."""
+
+    path: str
+    name: str
+    lineno: int
+    cyclomatic: int
+    cognitive: int
+    maintainability: float
+    code_lines: int
 
     def to_dict(self) -> Dict[str, Any]:
         return dict(self.__dict__)
@@ -49,6 +69,7 @@ class FileQuality:
 @dataclass
 class CodeQualitySummary:
     files: List[FileQuality] = field(default_factory=list)
+    functions: List[FunctionQuality] = field(default_factory=list)
     duplication: Optional[DuplicationReport] = None
     issues: Optional[IssueDensityReport] = None
     debt: Optional[TechnicalDebt] = None
@@ -59,11 +80,24 @@ class CodeQualitySummary:
         total = sum(lines for _, lines in weighted)
         return round(sum(v * lines for v, lines in weighted) / total, 2) if total else 0.0
 
+    @property
+    def cyclomatic_average(self) -> float:
+        count = sum(f.function_count for f in self.files)
+        return round(sum(f.cyclomatic_total for f in self.files) / count, 2) if count else 0.0
+
+    @property
+    def cognitive_average(self) -> float:
+        count = sum(f.cognitive_function_count for f in self.files)
+        return round(sum(f.cognitive_total for f in self.files) / count, 2) if count else 0.0
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "files_analyzed": len(self.files),
             "code_lines": sum(f.code_lines for f in self.files),
+            "function_count": sum(f.function_count for f in self.files),
+            "cyclomatic_average": self.cyclomatic_average,
             "cyclomatic_max": max((f.cyclomatic_max for f in self.files), default=0),
+            "cognitive_average": self.cognitive_average,
             "cognitive_max": max((f.cognitive_max for f in self.files), default=0),
             "maintainability": self._mean("maintainability"),
             "average_function_maintainability": self._mean("average_function_maintainability"),
@@ -109,7 +143,24 @@ def analyze_sources(
             cognitive_max=cog.maximum,
             maintainability=mi.mi,
             average_function_maintainability=mi.average_function_mi,
+            function_count=cyc.function_count,
+            cyclomatic_total=cyc.total,
+            cognitive_total=cog.total,
+            cognitive_function_count=cog.function_count,
         ))
+        cyclomatic_by_name = {f.name: f.cyclomatic for f in cyc.functions}
+        mi_by_name = {f.name: f for f in mi.functions}
+        for f in cog.functions:
+            mi_func = mi_by_name.get(f.name)
+            summary.functions.append(FunctionQuality(
+                path=path,
+                name=f.name,
+                lineno=f.lineno,
+                cyclomatic=cyclomatic_by_name.get(f.name, 1),
+                cognitive=f.cognitive,
+                maintainability=mi_func.mi if mi_func else 100.0,
+                code_lines=mi_func.code_lines if mi_func else 0,
+            ))
 
     parsed = {p: sources[p] for p in code_lines}
     summary.duplication = detect_duplicates(parsed, min_tokens=min_tokens, min_lines=min_lines)
@@ -130,13 +181,17 @@ def analyze_paths(
     findings: Iterable[Any] = (),
     **kwargs: Any,
 ) -> CodeQualitySummary:
-    """All six metrics for Python files on disk (paths relative to `root`)."""
+    """All six metrics for Python files on disk.
+
+    Paths in the result are relative to `root` (when given) and always use
+    "/" so they match analyzer findings on every operating system.
+    """
     sources: Dict[str, str] = {}
     unreadable: Dict[str, str] = {}
     root_path = Path(root) if root is not None else None
     for path in paths:
         p = Path(path)
-        key = str(p.relative_to(root_path)) if root_path is not None else str(p)
+        key = (p.relative_to(root_path) if root_path is not None else p).as_posix()
         try:
             sources[key] = p.read_text(encoding="utf-8-sig", errors="replace")
         except OSError as exc:

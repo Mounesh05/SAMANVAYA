@@ -14,6 +14,15 @@ Formula:
 Each penalty is normalized to [0, 100] before weighting.
 
 Uses configurable quality weights from database (with fallback to defaults).
+
+When SAMANVAYA's own metrics are present (evidence.metrics, Python today):
+  - the complexity penalty also considers readability: the share of
+    function code above the cognitive complexity limit (15). The larger of
+    the cyclomatic and readability penalties is used.
+  - the result gains a "maintainability" section (SQALE rating, technical
+    debt, maintainability index, issue density). It is reported, not
+    weighted, so stored weight configurations stay valid.
+Without evidence.metrics the score is calculated exactly as before.
 """
 
 from intelligence.evidence.models import CodeQualityEvidence, SeverityEnum
@@ -37,7 +46,8 @@ class QualityEngine:
     MAX_COMPLEXITY = 50             # avg complexity that triggers max penalty
     MAX_DUPLICATION = 30.0          # duplication % that triggers max penalty
     MAX_ARCH_VIOLATIONS = 10
-    
+    MAX_HARD_TO_READ_SHARE = 50.0   # % of function code above the cognitive limit → max penalty
+
     def __init__(self):
         self._config_service = get_risk_config_service()
 
@@ -84,12 +94,15 @@ class QualityEngine:
             for dim, pen in penalties.items()
         }
 
-        return {
+        result = {
             "quality_score": quality_score,
             "quality_grade": self._grade(quality_score),
             "dimension_scores": dimension_scores,
             "penalties": {k: round(v, 2) for k, v in penalties.items()},
         }
+        if evidence.metrics is not None:
+            result["maintainability"] = self._maintainability_summary(evidence)
+        return result
 
     # ── Penalty Calculators ───────────────────────────────────────────────────
 
@@ -141,13 +154,45 @@ class QualityEngine:
         """
         Penalty based on average cyclomatic complexity.
         avg_complexity ≤ 5 → 0 penalty; MAX_COMPLEXITY → 100 penalty.
+
+        With SAMANVAYA metrics, also a readability penalty: the share of
+        function code in functions above the cognitive limit, scaled so that
+        MAX_HARD_TO_READ_SHARE % → 100. Averages hide a few very complex
+        functions; this share does not. The larger penalty is used.
         """
         avg = evidence.complexity.average_complexity
         LOW_BOUND = 5.0
         if avg <= LOW_BOUND:
-            return 0.0
-        ratio = (avg - LOW_BOUND) / (self.MAX_COMPLEXITY - LOW_BOUND)
-        return min(100.0, ratio * 100)
+            cyclomatic_penalty = 0.0
+        else:
+            ratio = (avg - LOW_BOUND) / (self.MAX_COMPLEXITY - LOW_BOUND)
+            cyclomatic_penalty = min(100.0, ratio * 100)
+
+        metrics = evidence.metrics
+        if metrics is None or not metrics.function_count:
+            return cyclomatic_penalty
+        readability_penalty = min(
+            100.0, metrics.hard_to_read_code_share / self.MAX_HARD_TO_READ_SHARE * 100
+        )
+        return max(cyclomatic_penalty, readability_penalty)
+
+    @staticmethod
+    def _maintainability_summary(evidence: CodeQualityEvidence) -> dict:
+        """SQALE rating, debt and related metrics (reported, not weighted)."""
+        m = evidence.metrics
+        return {
+            "rating": m.maintainability_rating,
+            "technical_debt": m.technical_debt,
+            "technical_debt_minutes": m.technical_debt_minutes,
+            "debt_ratio": m.debt_ratio,
+            "maintainability_index": m.maintainability_index,
+            "average_function_maintainability": m.average_function_maintainability,
+            "cognitive_max": m.cognitive_max,
+            "hard_to_read_code_share": m.hard_to_read_code_share,
+            "issue_density": m.issue_density,
+            "weighted_issue_density": m.weighted_issue_density,
+            "source": m.source,
+        }
 
     def _architecture_penalty(self, evidence: CodeQualityEvidence) -> float:
         """

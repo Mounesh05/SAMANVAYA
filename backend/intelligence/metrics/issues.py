@@ -144,7 +144,7 @@ def issues_from_findings(findings: Iterable[Any]) -> List[Issue]:
             rule=f"{tool}:{get('rule_id', 'unknown')}",
             type=_CATEGORY_TO_TYPE.get(str(get("category", "")).lower(), "code_smell"),
             severity=severity,
-            path=str(get("file_path", "")),
+            path=str(get("file_path", "")).replace("\\", "/"),
             line=get("line_number"),
             message=str(get("message", "")),
             source=str(tool),

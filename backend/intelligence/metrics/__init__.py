@@ -56,7 +56,7 @@ from .maintainability import (
     analyze_source as maintainability_analyze_source,
     maintainability_index,
 )
-from .project import CodeQualitySummary, FileQuality, analyze_paths, analyze_sources
+from .project import CodeQualitySummary, FileQuality, FunctionQuality, analyze_paths, analyze_sources
 from .size import FileSize, measure_file, measure_source
 from .cyclomatic import (
     FileComplexity,
@@ -85,6 +85,7 @@ __all__ = [
     "maintainability_index",
     "CodeQualitySummary",
     "FileQuality",
+    "FunctionQuality",
     "analyze_paths",
     "analyze_sources",
     "FileSize",

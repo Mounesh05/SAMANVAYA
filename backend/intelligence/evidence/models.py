@@ -88,6 +88,39 @@ class DuplicationEvidence(BaseModel):
     duplicated_files: List[Dict[str, Any]] = Field(default_factory=list)
 
 
+class CodeMetricsEvidence(BaseModel):
+    """
+    Results of SAMANVAYA's own code-quality metrics (backend/intelligence/metrics).
+
+    Produced only for languages those metrics support (Python today); None for
+    other languages. All line-based values use the same NCLOC definition.
+    """
+
+    source: str = "samanvaya-metrics"
+    files_measured: int = 0
+    files_rejected: List[str] = Field(default_factory=list)  # outside the repository or unreadable
+    code_lines: int = 0
+    function_count: int = 0
+    cyclomatic_average: float = 0.0
+    cyclomatic_max: int = 0
+    cognitive_average: float = 0.0
+    cognitive_max: int = 0
+    cognitive_limit: int = 15
+    high_cognitive_functions: List[Dict[str, Any]] = Field(default_factory=list)
+    hard_to_read_code_share: float = 0.0  # % of function code in functions above the cognitive limit
+    maintainability_index: float = 100.0
+    average_function_maintainability: float = 100.0
+    duplication_density: float = 0.0
+    duplicate_blocks: int = 0
+    issue_count: int = 0
+    issue_density: float = 0.0           # issues per 1,000 lines of code
+    weighted_issue_density: float = 0.0
+    technical_debt_minutes: int = 0
+    technical_debt: str = "0min"
+    debt_ratio: float = 0.0              # % of the estimated cost to write the code
+    maintainability_rating: str = "A"    # SQALE A-E
+
+
 class TestingEvidence(BaseModel):
     test_framework: Optional[str] = None    # "pytest" | "jest" | "junit" | "ctest"
     total_tests: int = 0
@@ -207,6 +240,7 @@ class CodeQualityEvidence(BaseModel):
     static_findings: List[Finding] = Field(default_factory=list)
     complexity: ComplexityEvidence = Field(default_factory=ComplexityEvidence)
     duplication: DuplicationEvidence = Field(default_factory=DuplicationEvidence)
+    metrics: Optional[CodeMetricsEvidence] = None  # SAMANVAYA's own metrics, when supported
     testing: TestingEvidence = Field(default_factory=TestingEvidence)
     security: SecurityEvidence = Field(default_factory=SecurityEvidence)
     architecture: ArchitectureEvidence = Field(default_factory=ArchitectureEvidence)
