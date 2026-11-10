@@ -224,3 +224,4 @@ PHASE_*.txt
 DEPLOYMENT_*.md
 temp_repo/
 samanvaya-repo-*/
+.agents
