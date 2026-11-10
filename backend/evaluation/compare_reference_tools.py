@@ -27,9 +27,7 @@ from __future__ import annotations
 import argparse
 import ast
 import csv
-import math
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -42,6 +40,7 @@ from intelligence.metrics.maintainability import (  # noqa: E402
     analyze_source as our_maintainability,
     maintainability_index,
 )
+from evaluation.stats import TABLE_HEADER, Agreement  # noqa: E402
 
 try:
     import lizard
@@ -54,69 +53,8 @@ except ImportError as exc:  # pragma: no cover - guidance for the user
         "pip install radon==6.0.1 lizard==1.17.10 cognitive_complexity==1.3.0"
     )
 
-DEFAULT_EXCLUDE = ("tests", "evaluation", "metrics", "venv", ".venv", "node_modules")
+DEFAULT_EXCLUDE = ("tests", "evaluation", "metrics", "venv", ".venv", "refvenv", "node_modules")
 _FUNCS = (ast.FunctionDef, ast.AsyncFunctionDef)
-
-
-# ── statistics (no numpy needed) ──────────────────────────────────
-
-def _ranks(values: Sequence[float]) -> List[float]:
-    order = sorted(range(len(values)), key=lambda i: values[i])
-    ranks = [0.0] * len(values)
-    i = 0
-    while i < len(order):
-        j = i
-        while j + 1 < len(order) and values[order[j + 1]] == values[order[i]]:
-            j += 1
-        for k in range(i, j + 1):
-            ranks[order[k]] = (i + j) / 2 + 1
-        i = j + 1
-    return ranks
-
-
-def pearson(x: Sequence[float], y: Sequence[float]) -> float:
-    n = len(x)
-    if n < 2:
-        return float("nan")
-    mx, my = sum(x) / n, sum(y) / n
-    sxy = sum((a - mx) * (b - my) for a, b in zip(x, y))
-    sx = math.sqrt(sum((a - mx) ** 2 for a in x))
-    sy = math.sqrt(sum((b - my) ** 2 for b in y))
-    return sxy / (sx * sy) if sx and sy else float("nan")
-
-
-def spearman(x: Sequence[float], y: Sequence[float]) -> float:
-    return pearson(_ranks(x), _ranks(y))
-
-
-@dataclass
-class Agreement:
-    name: str
-    ours: List[float] = field(default_factory=list)
-    theirs: List[float] = field(default_factory=list)
-
-    def add(self, ours: float, theirs: float) -> None:
-        self.ours.append(ours)
-        self.theirs.append(theirs)
-
-    @property
-    def n(self) -> int:
-        return len(self.ours)
-
-    def exact(self) -> float:
-        return 100 * sum(a == b for a, b in zip(self.ours, self.theirs)) / self.n if self.n else 0.0
-
-    def within(self, tolerance: float) -> float:
-        return 100 * sum(abs(a - b) <= tolerance for a, b in zip(self.ours, self.theirs)) / self.n if self.n else 0.0
-
-    def mae(self) -> float:
-        return sum(abs(a - b) for a, b in zip(self.ours, self.theirs)) / self.n if self.n else 0.0
-
-    def row(self, tolerance: float) -> str:
-        return (
-            f"| {self.name} | {self.n} | {self.exact():.1f}% | {self.within(tolerance):.1f}% (±{tolerance:g}) "
-            f"| {self.mae():.2f} | {pearson(self.ours, self.theirs):.3f} | {spearman(self.ours, self.theirs):.3f} |"
-        )
 
 
 # ── known rule differences ────────────────────────────────────────
@@ -347,7 +285,7 @@ def _explained_share(rows: List[dict], metric: str, tool: str) -> Tuple[int, int
 
 def write_report(result: dict, out: Path) -> Path:
     out.mkdir(parents=True, exist_ok=True)
-    header = "| Comparison | n | Exact match | Close match | Mean abs. error | Pearson r | Spearman ρ |\n|---|---|---|---|---|---|---|"
+    header = TABLE_HEADER
     lines = [
         "# SAMANVAYA metrics vs reference tools",
         "",

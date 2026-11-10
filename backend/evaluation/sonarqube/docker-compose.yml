@@ -1,0 +1,22 @@
+# Local SonarQube Community Edition for the SAMANVAYA metric comparison.
+# Start:  docker compose -f evaluation/sonarqube/docker-compose.yml up -d
+# Open:   http://localhost:9000   (first login asks you to change the admin password)
+# Stop:   docker compose -f evaluation/sonarqube/docker-compose.yml down
+# Pin an exact image version (e.g. sonarqube:<version>-community) to make results reproducible.
+services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: samanvaya-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
