@@ -147,6 +147,17 @@ class GitHubClient:
         response = await self._make_request("GET", url)
         return response.json()
 
+    async def compare_commits(self, owner: str, repo: str, base: str, head: str) -> Dict[str, Any]:
+        """Compare two commits (GET /repos/{owner}/{repo}/compare/{base}...{head}).
+
+        The response's "status" is ahead / behind / diverged / identical and
+        "commits" lists the commits reachable from head but not from base
+        (GitHub returns at most 250).
+        """
+        url = f"{self.base_url}/repos/{owner}/{repo}/compare/{base}...{head}"
+        response = await self._make_request("GET", url)
+        return response.json()
+
     async def get_commit(self, owner: str, repo: str, sha: str) -> Dict[str, Any]:
         """Fetch a commit, including its changed files and statistics."""
         return await self.get_commit_details(owner, repo, sha)

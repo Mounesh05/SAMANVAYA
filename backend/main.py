@@ -286,6 +286,11 @@ app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code 
 # Risk Configuration Management (Production-scale configurable weights)
 app.include_router(risk_configurations.router, prefix="/api/risk-configurations", tags=["Risk Configuration"])
 
+# Incidents and DORA delivery metrics
+from api.routes import incidents, delivery
+app.include_router(incidents.router, prefix="/api/incidents", tags=["Incidents"])
+app.include_router(delivery.router, prefix="/api/delivery", tags=["Delivery (DORA)"])
+
 # AI Evaluation (Requires Auth)
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["AI Evaluation"])
 

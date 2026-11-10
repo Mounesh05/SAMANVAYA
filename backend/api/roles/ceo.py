@@ -36,7 +36,8 @@ async def ceo_dashboard(user: dict = Depends(require_roles("CEO"))):
     ]
     healthy_projects = sum(1 for risks in project_risks if not risks)
     at_risk_projects = sum(1 for risks in project_risks if risks)
-    incidents = await col("incidents").count_documents({"status": {"$in": ["open", "active"]}})
+    # incident statuses: open | investigating | resolved | closed (api/routes/incidents.py)
+    incidents = await col("incidents").count_documents({"status": {"$in": ["open", "investigating"]}})
     completion_values = []
     for project in projects:
         for sprint in await sprint_repo.find_by_project(project["id"]):

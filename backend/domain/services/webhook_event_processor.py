@@ -34,6 +34,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def repository_key(value: str) -> str:
+    """'owner/name' (lower case) from 'owner/name', a GitHub URL or an SSH remote; '' if none."""
+    text = str(value or "").strip().lower()
+    for prefix in ("https://", "http://", "git@", "ssh://git@", "ssh://"):
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+    text = text.replace("github.com:", "github.com/")
+    if text.startswith("www."):
+        text = text[4:]
+    if text.startswith("github.com/"):
+        text = text[len("github.com/"):]
+    text = text.split("?")[0].split("#")[0].rstrip("/")
+    if text.endswith(".git"):
+        text = text[:-4]
+    parts = [p for p in text.split("/") if p]
+    return f"{parts[0]}/{parts[1]}" if len(parts) >= 2 else ""
+
+
 class WebhookEventProcessor:
     """
     Real-time webhook event processor.
@@ -516,12 +534,13 @@ class WebhookEventProcessor:
         
         Critical for operational risk tracking.
         """
-        # Track deployment attempts
-        # TODO: Phase 2.1 - Link deployments to PRs
-        # TODO: Phase 2.3 - Integrate with CI/CD platforms
-        
+        # Record the deployment for DORA metrics (deployments collection)
+        triggers = ["deployment_tracking"]
+        if await self._record(lambda service: service.record_deployment(event)):
+            triggers.append("deployment_recorded")
+
         return {
-            "triggers_executed": ["deployment_tracking"],
+            "triggers_executed": triggers,
             "risks_detected": [],
             "notifications_sent": [],
             "recommendations_created": []
@@ -539,7 +558,10 @@ class WebhookEventProcessor:
         
         risks_detected = []
         notifications_sent = []
-        
+        triggers = ["deployment_status_tracking"]
+        if await self._record(lambda service: service.record_deployment_status(event)):
+            triggers.append("deployment_recorded")
+
         if state == "failure" and event.project_id:
             # Deployment failed - critical risk
             risks_detected.append(f"deployment-failure-{uuid.uuid4().hex[:8]}")
@@ -558,7 +580,7 @@ class WebhookEventProcessor:
                 notifications_sent.append(notification["id"])
         
         return {
-            "triggers_executed": ["deployment_status_tracking"],
+            "triggers_executed": triggers,
             "risks_detected": risks_detected,
             "notifications_sent": notifications_sent,
             "recommendations_created": []
@@ -578,9 +600,14 @@ class WebhookEventProcessor:
         
         if conclusion == "failure":
             risks_detected.append(f"ci-failure-{uuid.uuid4().hex[:8]}")
-        
+
+        # A project's configured deploy workflow counts as a production deployment
+        triggers = ["ci_tracking"]
+        if await self._record(lambda service: service.record_workflow_run(event)):
+            triggers.append("deployment_recorded")
+
         return {
-            "triggers_executed": ["ci_tracking"],
+            "triggers_executed": triggers,
             "risks_detected": risks_detected,
             "notifications_sent": [],
             "recommendations_created": []
@@ -612,26 +639,43 @@ class WebhookEventProcessor:
         self, repository: str
     ) -> Optional[str]:
         """
-        Match GitHub repository to Samanvaya project.
-        
-        TODO: Implement proper project-repository mapping in database.
-        For now, we'll search for projects with matching repo URL.
+        Match a GitHub repository ("owner/name") to a Samanvaya project.
+
+        1. github_project_configs: exact owner and name (case-insensitive)
+        2. projects.code_repo_url: the URL's owner/name path, compared exactly
+
+        The previous version used a substring test, so "org/app" also matched
+        a project whose URL is ".../org/app-v2" and events could be attributed
+        to the wrong project.
         """
-        try:
-            # Look for project with matching code_repo_url
-            projects = await self.project_repo.find_all({})
-            
-            for project in projects:
-                repo_url = project.get("code_repo_url", "")
-                if repository in repo_url or repo_url.endswith(repository):
-                    return project["id"]
-            
-            # No match found
+        target = repository_key(repository)
+        if not target:
             return None
-            
+        try:
+            from core.database import col
+            configs = await col("github_project_configs").find({}, {"_id": 0}).to_list(length=None)
+            for config in configs:
+                key = repository_key(f"{config.get('repository_owner', '')}/{config.get('repository_name', '')}")
+                if key == target:
+                    return config.get("project_id")
+
+            for project in await self.project_repo.find_all({}):
+                if repository_key(project.get("code_repo_url", "")) == target:
+                    return project["id"]
+            return None
+
         except Exception as e:
             logger.warning(f"Error matching repository to project: {str(e)}")
             return None
+
+    async def _record(self, action) -> bool:
+        """Run a DeploymentService call; recording must never break webhook processing."""
+        try:
+            from domain.services.deployment_service import DeploymentService
+            return await action(DeploymentService()) is not None
+        except Exception as e:
+            logger.warning(f"Deployment recording failed: {e}")
+            return False
     
     async def _notify_pr_risks(
         self,

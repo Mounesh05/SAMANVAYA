@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { incidentsApi } from '../../api/incidents.api';
+import { projectsApi } from '../../api/projects.api';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useToast } from '../../components/common/Toast';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
@@ -29,27 +33,82 @@ const INCIDENT_SEVERITY = {
   CRITICAL: 'critical',
 };
 
+// Next status actions (backend: open -> investigating -> resolved -> closed)
+const NEXT_ACTIONS = {
+  open: [{ status: 'investigating', label: 'Investigate' }, { status: 'resolved', label: 'Resolve' }],
+  investigating: [{ status: 'resolved', label: 'Resolve' }],
+  resolved: [{ status: 'closed', label: 'Close' }, { status: 'investigating', label: 'Reopen' }],
+  closed: [],
+};
+
+const EMPTY_FORM = {
+  project_id: '',
+  title: '',
+  description: '',
+  severity: 'medium',
+  service: '',
+  assignee_id: '',
+};
+
+function isToday(value) {
+  if (!value) return false;
+  const date = new Date(value);
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+}
+
 export function IncidentsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    severity: 'medium',
-    service: '',
-    assignee_id: '',
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: incidentData, isLoading, error, refetch } = useQuery({
     queryKey: ['incidents'],
-    queryFn: async () => {
-      // Placeholder - will be replaced with real API when backend implements incidents
-      return { incidents: [], total: 0 };
-    },
+    queryFn: () => incidentsApi.list(),
     retry: 1,
   });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects', DEFAULT_ORG_ID],
+    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => incidentsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setIsCreateModalOpen(false);
+      setFormData(EMPTY_FORM);
+      toast.success('Incident reported');
+    },
+    onError: (err) => toast.error(err.message || 'Could not report the incident'),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }) => incidentsApi.update(id, { status }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['incidents'] }),
+    onError: (err) => toast.error(err.message || 'Could not update the incident'),
+  });
+
+  const projectId = formData.project_id || projects[0]?.id || '';
+
+  const submitIncident = () => {
+    if (!formData.title.trim() || !projectId) return;
+    createMutation.mutate({
+      project_id: projectId,
+      title: formData.title.trim(),
+      severity: formData.severity,
+      description: formData.description || undefined,
+      service: formData.service || undefined,
+      assignee_id: formData.assignee_id || undefined,
+    });
+  };
 
   const incidents = incidentData?.incidents || [];
 
@@ -128,6 +187,25 @@ export function IncidentsPage() {
         <span style={{ color: 'var(--text-muted)' }}>—</span>
       ),
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (inc) => (
+        <div style={{ display: 'flex', gap: '0.35rem' }}>
+          {(NEXT_ACTIONS[inc.status] || []).map((action) => (
+            <Button
+              key={action.status}
+              size="sm"
+              variant="secondary"
+              disabled={statusMutation.isPending}
+              onClick={() => statusMutation.mutate({ id: inc.id, status: action.status })}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      ),
+    },
   ];
 
   if (isLoading) return <LoadingState message="Loading incidents..." />;
@@ -165,7 +243,7 @@ export function IncidentsPage() {
         />
         <MetricCard
           title="Resolved Today"
-          value={incidents.filter((i) => i.status === 'resolved').length}
+          value={incidents.filter((i) => isToday(i.resolved_at)).length}
           icon={<CheckCircle size={20} />}
           color="success"
         />
@@ -226,13 +304,26 @@ export function IncidentsPage() {
             <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={() => setIsCreateModalOpen(false)}>
+            <Button
+              variant="primary"
+              onClick={submitIncident}
+              disabled={!formData.title.trim() || !projectId || createMutation.isPending}
+            >
               Report Incident
             </Button>
           </>
         }
       >
-        <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form
+          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+          onSubmit={(e) => { e.preventDefault(); submitIncident(); }}
+        >
+          <Select
+            label="Project"
+            value={projectId}
+            onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
+            options={projects.map((p) => ({ value: p.id, label: p.name || p.id }))}
+          />
           <Input
             label="Incident Title"
             value={formData.title}

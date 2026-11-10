@@ -19,6 +19,10 @@ PR and sprint (flow) metrics (import from their modules; see FLOW_METRICS.md):
 - flow:          Velocity, scope creep, cycle time, Little's Law, burndown,
                  Monte Carlo completion forecast
 
+Delivery (import from the module; see DORA_METRICS.md):
+- delivery:      DORA deployment frequency, change lead time, change fail
+                 rate, failed deployment recovery time, rework rate, levels
+
 Supporting modules:
 - size:       Line counts (LOC, NCLOC, comments, docstrings)
 - project:    Runs all six metrics over a set of files
