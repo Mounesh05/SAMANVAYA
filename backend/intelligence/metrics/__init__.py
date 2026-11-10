@@ -14,6 +14,11 @@ Implemented:
 - issues:     Issues per 1,000 lines of code (NCLOC), severity-weighted
 - debt:       Technical debt + A-E rating (SQALE, Letouzey 2012)
 
+Testing metrics (import from intelligence.metrics.testing):
+- testing:    Line/branch coverage (Cobertura, LCOV), diff coverage of a PR,
+              pass rate, flaky tests (same-commit flips, flip rate, Wilson
+              interval), bug density
+
 Supporting modules:
 - size:       Line counts (LOC, NCLOC, comments, docstrings)
 - project:    Runs all six metrics over a set of files
