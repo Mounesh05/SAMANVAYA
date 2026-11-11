@@ -86,13 +86,16 @@ def environment_key(benchmark):
 
 
 def raw_evidence(document):
-    return {key: copy.deepcopy(document.get(key, {} if key != "results" else []))
-            for key in ("results", "environment", "tools")}
+    value = {key: copy.deepcopy(document.get(key, {} if key != "results" else []))
+             for key in ("results", "environment", "tools")}
+    if "behavioral_compatibility" in document:
+        value["behavioral_compatibility"] = copy.deepcopy(document["behavioral_compatibility"])
+    return value
 
 
 def decision_revision(request, evidence, policy, run_id, user, number):
     decision = evaluate_decision(request, evidence, policy, run_id)
-    return {**decision, "revision_id": "DEC-" + uuid.uuid4().hex,
+    return {**decision, **({"requirements_discovery": request["requirements_discovery"]} if request.get("requirements_discovery") else {}), "revision_id": "DEC-" + uuid.uuid4().hex,
             "revision_number": number, "created_at": utcnow().isoformat(),
             "provenance": {"kind": "project-authorized-submission",
                            "established_by": user.get("employee_id") or user.get("sub"),
@@ -101,9 +104,10 @@ def decision_revision(request, evidence, policy, run_id, user, number):
 
 
 class AlgorithmBenchmarkService:
-    def __init__(self, collection=None, runner=None):
+    def __init__(self, collection=None, runner=None, requirements=None):
         self._collection = collection
         self.runner = runner or DockerBenchmarkRunner()
+        self.requirements = requirements
         self._indexes_ready = False
         self._index_lock = asyncio.Lock()
 
@@ -130,8 +134,10 @@ class AlgorithmBenchmarkService:
                       "error": "Worker lease expired (possibly a backend restart). Submit a new run."}},
         )
 
-    async def create(self, request, user):
+    async def create(self, request, user, metadata=None):
         request = copy.deepcopy(request)
+        if self.requirements is not None:
+            request = await self.requirements.prepare(request)
         policy = request.get("decision_policy")
         if policy is not None:
             request["decision_policy"] = DecisionPolicy.model_validate(policy).model_dump()
@@ -151,8 +157,16 @@ class AlgorithmBenchmarkService:
             "historical_evidence": [], "error": None,
             "structural_analysis": {},
         }
+        if request.get("requirements_discovery"):
+            document["requirements_discovery"] = request["requirements_discovery"]
         if policy is not None:
             document["policy_established_by"] = {key: user.get(key) for key in ("employee_id", "sub", "org_id")}
+        if metadata:
+            document.update(metadata)
+        if document.get("kind") == "behavioral_compatibility":
+            from intelligence.algorithms.compatibility import evaluate_compatibility
+            document["behavioral_compatibility"] = evaluate_compatibility(request, {"results": []}, document["run_id"])
+            document["phase1_eligibility"] = {"eligible": False, "evidence_reference": document["run_id"] + "/behavioral_compatibility"}
         if request["language"] == "python":
             # Parsing only: candidate source is never imported or invoked on the host.
             document["structural_analysis"] = await asyncio.to_thread(
@@ -161,6 +175,8 @@ class AlgorithmBenchmarkService:
             )
         try:
             # Motor adds _id in-place; do not return that Mongo-only field.
+            if len(BSON.encode(document)) >= 16_000_000:
+                raise ValueError("Benchmark request and provenance exceed the MongoDB document budget")
             await self.collection.insert_one(document)
         except DuplicateKeyError as exc:
             raise BenchmarkBusy("This project already has an active benchmark. Wait for it to finish.") from exc
@@ -223,7 +239,13 @@ class AlgorithmBenchmarkService:
                     return
                 claimed = True
                 try:
-                    evidence = await self.runner.run(document["request"])
+                    if document.get("kind") == "behavioral_compatibility":
+                        from domain.services.behavioral_compatibility_service import collect_compatibility_evidence
+                        from intelligence.algorithms.compatibility import evaluate_compatibility
+                        evidence = await collect_compatibility_evidence(self.runner, document["request"])
+                        evidence["behavioral_compatibility"] = evaluate_compatibility(document["request"], evidence, run_id)
+                    else:
+                        evidence = await self.runner.run(document["request"])
                     env_key = environment_key(evidence)
                     recommendation = recommend(document["request"], evidence)
                     recommendation["limitations"].extend([
@@ -235,6 +257,10 @@ class AlgorithmBenchmarkService:
                     # automatic historical retrieval / RAG is deferred to a later phase.
                     history = [] if is_generic(document["request"]) else await self.retrieve(document, env_key)
                     measurements = {key: evidence[key] for key in ("results", "environment", "tools")}
+                    if "behavioral_compatibility" in evidence:
+                        measurements["behavioral_compatibility"] = evidence["behavioral_compatibility"]
+                        measurements["phase1_eligibility"] = {"eligible": evidence["behavioral_compatibility"]["phase1_eligible"],
+                            "evidence_reference": run_id + "/behavioral_compatibility"}
                     structures = dict(document.get("structural_analysis", {}))
                     if document["request"]["language"] != "python":
                         structures = {row["candidate"]: row["structure"] for row in evidence["results"]
@@ -303,11 +329,15 @@ class AlgorithmBenchmarkService:
             if document is None or document.get("status") != "completed":
                 raise ValueError("Reevaluation requires an existing completed run")
             evidence = raw_evidence(document)
+            decision_request = document["request"]
+            if self.requirements is not None:
+                decision_request = await self.requirements.prepare({**decision_request, "decision_policy": policy})
+                policy = decision_request["decision_policy"]
             evidence_fp = decision_fingerprint(evidence)
             if document.get("immutable_evidence_fingerprint", evidence_fp) != evidence_fp:
                 raise ValueError("Preserved evidence fingerprint mismatch; reevaluation refused")
             count = document.get("decision_revision_count", 0)
-            revision = decision_revision(document["request"], evidence, policy, run_id, user, count + 1)
+            revision = decision_revision(decision_request, evidence, policy, run_id, user, count + 1)
             if document.get("immutable_execution_fingerprint", revision["identities"]["execution"]) != revision["identities"]["execution"]:
                 raise ValueError("Preserved execution context fingerprint mismatch; reevaluation refused")
             proposed = {**document, "decision": revision,

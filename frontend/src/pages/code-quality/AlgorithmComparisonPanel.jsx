@@ -7,6 +7,8 @@ import { Card } from '../../components/common/Card';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { DecisionResults } from './DecisionResults';
+import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection';
+import { RequirementsSection } from './RequirementsPanel';
 
 const activeStatuses = ['pending', 'running'];
 const engineeringRoles = ['DEVELOPER', 'LEAD', 'PM', 'CEO', 'QA', 'DEVOPS'];
@@ -162,6 +164,8 @@ function RunDetails({ run, canSubmit, onSelectRun }) {
         </details>
       </>}
       <DecisionResults decision={run.decision} revisions={run.decision_revisions} />
+      <BehavioralCompatibilitySection report={run.behavioral_compatibility} />
+      <RequirementsSection report={run.decision?.requirements_discovery || run.requirements_discovery} />
       {recommendation && !run.decision && (
         <div style={stack}>
           <h4>{recommendation.status === 'recommended' ? `Recommended: ${recommendation.winner}` : 'Insufficient evidence'}</h4>

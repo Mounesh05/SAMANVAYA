@@ -81,6 +81,9 @@ class GitHubAnalysisService:
         Returns:
             Dict with ai_analysis and optionally code_quality_report
         """
+        # Discovery must survive a missing model service. Its result is never
+        # replaced by generated prose or numerical model confidence.
+        discovery = await self.discover_functions(pr_data)
         try:
             from agents.llm_provider import check_ollama_connection
             
@@ -89,19 +92,29 @@ class GitHubAnalysisService:
                 return {
                     "ai_analysis": {"error": "Ollama not available"},
                     "code_quality_report": None,
+                    "function_discovery": discovery.model_dump(mode="json"),
                 }
             
             if use_deep_analysis:
-                return await self._analyze_deep(pr_data, risk_evidence, triggered_by)
+                result = await self._analyze_deep(pr_data, risk_evidence, triggered_by)
             else:
-                return await self._analyze_simple(pr_data, risk_evidence, triggered_by)
+                result = await self._analyze_simple(pr_data, risk_evidence, triggered_by)
+            result["function_discovery"] = discovery.model_dump(mode="json")
+            if result.get("code_quality_report") is not None:
+                result["code_quality_report"].function_discovery = discovery
+            return result
         
         except Exception as e:
             logger.error(f"AI analysis failed: {e}", exc_info=True)
             return {
                 "ai_analysis": {"error": f"AI analysis failed: {str(e)}"},
                 "code_quality_report": None,
+                "function_discovery": discovery.model_dump(mode="json"),
             }
+
+    async def discover_functions(self, pr_data):
+        from domain.services.code_quality_service import CodeQualityService
+        return await CodeQualityService().discover_functions(pr_data.get("changed_files", []), pr_data)
 
     async def _analyze_simple(
         self,

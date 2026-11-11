@@ -178,6 +178,9 @@ class AnalysisQuality(BaseModel):
 
 # ── Root Evidence Contract ────────────────────────────────────────────────────
 
+from intelligence.evidence.function_purpose import FunctionDiscovery
+
+
 class CodeQualityEvidence(BaseModel):
     """
     The unified, language-agnostic evidence package produced by every analyzer.
@@ -207,6 +210,7 @@ class CodeQualityEvidence(BaseModel):
 
     # Evidence dimensions
     static_findings: List[Finding] = Field(default_factory=list)
+    function_discovery: FunctionDiscovery = Field(default_factory=FunctionDiscovery)
     complexity: ComplexityEvidence = Field(default_factory=ComplexityEvidence)
     duplication: DuplicationEvidence = Field(default_factory=DuplicationEvidence)
     testing: TestingEvidence = Field(default_factory=TestingEvidence)

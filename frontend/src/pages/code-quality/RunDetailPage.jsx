@@ -12,6 +12,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { ArrowLeft } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
+import { DiscoveredFunctions } from './DiscoveredFunctions';
 
 export function RunDetailPage() {
   const { runId } = useParams();
@@ -141,11 +142,11 @@ export function RunDetailPage() {
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Risk Assessment</span>
           <div style={{ marginTop: '0.5rem' }}>
-            {isCompleted ? (
+            {isCompleted && run?.risk_score != null ? (
               <RiskBadge level={run?.risk_level || 'LOW'} score={run?.risk_score} size="md" />
             ) : (
               <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                Available after analysis completes
+                {isCompleted ? 'Not measured in this run' : 'Available after analysis completes'}
               </span>
             )}
           </div>
@@ -167,6 +168,8 @@ export function RunDetailPage() {
       </div>
 
       {/* Findings Table Card */}
+      <DiscoveredFunctions key={runId} runId={runId} pending={['pending', 'running'].includes(run?.status)} />
+
       <Card
         title="Quality & Security Findings"
         subtitle="Individual line-by-line evidence and fix recommendations"

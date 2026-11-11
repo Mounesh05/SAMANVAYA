@@ -79,6 +79,7 @@ async def start_analysis(
         raise HTTPException(status_code=422, detail="A real repository or project ID is required")
     if not changed_files:
         raise HTTPException(status_code=422, detail="At least one real changed file is required")
+    await verify_project_access(user, repository_id, require_write=True)
     normalized_body = body.model_copy(
         update={"repository_id": repository_id, "changed_files": changed_files}
     )
@@ -189,6 +190,20 @@ async def get_run_findings(
     }
 
 
+@router.get("/runs/{run_id}/functions")
+async def get_discovered_functions(
+    run_id: str, limit: int = Query(50, ge=1, le=256), skip: int = Query(0, ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Read preserved function evidence with the same authorization as the run."""
+    run = await get_run(run_id, user)
+    from intelligence.evidence.function_purpose import FunctionDiscovery
+    report = run.get("function_discovery") or FunctionDiscovery().model_dump()
+    functions = report.get("functions", [])
+    return {**report, "run_id": run_id, "functions": functions[skip:skip + limit],
+            "total": len(functions), "returned": len(functions[skip:skip + limit])}
+
+
 @router.get("/repositories/{repository_id}/latest")
 async def get_latest_run(
     repository_id: str,
@@ -250,9 +265,9 @@ async def save_project_config(
     
     config.project_id = project_id
     collection = col(CONFIGS_COLLECTION)
-    await collection.replace_one(
+    await collection.update_one(
         {"project_id": project_id},
-        config.model_dump(),
+        {"$set": config.model_dump(exclude={"algorithm_requirement_source_ids"})},
         upsert=True,
     )
     return {"message": "Project config saved", "project_id": project_id}
@@ -306,10 +321,31 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
 
         # Run analysis via CodeQualityService
         deep = body.analysis_level == "deep"
+        context = {**body.pr_context, "project_id": body.repository_id, "pr_number": body.pr_number}
+        if not context.get("repo_path") and "source_files" not in context:
+            # The UI submits a project, not host paths. Use the already-configured
+            # GitHub repository and freeze all discovery reads to one revision.
+            config = await col("github_project_configs").find_one({"project_id": body.repository_id})
+            if config:
+                try:
+                    from domain.services.github_api_service import GitHubAPIService
+                    github = GitHubAPIService()
+                    owner, repo = config["repository_owner"], config["repository_name"]
+                    if body.pr_number:
+                        pr = await github.client.get_pull_request(owner, repo, body.pr_number)
+                        revision = pr.get("head", {}).get("sha")
+                    else:
+                        commit = await github.client.get_commit(owner, repo, config["default_branch"])
+                        revision = commit.get("sha")
+                    sources, diagnostics = await github.fetch_analysis_sources(
+                        owner, repo, [{"filename": p} for p in body.changed_files], revision, include_context=True,
+                    )
+                    context.update(source_files=sources, source_diagnostics=diagnostics, commit_sha=revision)
+                except Exception:
+                    context.update(source_files={}, source_diagnostics=[{"kind": "connected_source_unavailable"}])
         evidence = await cq_service.analyze_pr(
             changed_files=body.changed_files,
-            pr_context={**body.pr_context, "project_id": body.repository_id,
-                        "pr_number": body.pr_number},
+            pr_context=context,
             project_config=project_config,
             deep_analysis=deep,
         )
@@ -407,6 +443,7 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
                     "analysis_confidence": evidence.analysis_quality.confidence,
                     "analysis_duration_ms": evidence.analysis_duration_ms,
                     "findings_count": len(evidence.static_findings),
+                    "function_discovery": evidence.function_discovery.model_dump(mode="json"),
                     "ai_analysis": ai_analysis,
                 }
             },

@@ -11,6 +11,40 @@ MAX_SAFE_INTEGER = 2**53 - 1
 MAX_DEPTH = 32
 MAX_NODES = 50_000
 MAX_BYTES = 500_000
+VALIDATION_VERSION = "functional-validation-v1"
+COMPARISON_MODES = {"exact", "unordered_set", "unordered_multiset", "one_of"}
+
+
+class ContractViolation(ValueError):
+    """A completed invocation violates a data-only functional requirement."""
+
+
+def comparison_mode(contract):
+    comparison = contract.get("comparison", {"version": "1", "mode": "exact"})
+    _require(type(comparison) is dict and set(comparison) == {"version", "mode"}, "Invalid comparison descriptor")
+    _require(comparison["version"] == "1" and type(comparison["mode"]) is str and comparison["mode"] in COMPARISON_MODES, "Unsupported comparison validator")
+    mode = comparison["mode"]
+    if mode in {"unordered_set", "unordered_multiset"}:
+        schema = contract.get("output_schema")
+        _require(type(schema) is dict and schema.get("type") == "array", "Unordered comparison requires an explicit array output schema")
+    return mode
+
+
+def matches_expected(output, dataset, contract):
+    """Explicit, versioned data-only comparisons. Nested array order stays significant."""
+    mode = comparison_mode(contract)
+    if mode == "one_of":
+        return any(_same(output, choice) for choice in dataset["acceptable_outputs"])
+    if mode == "exact":
+        return _same(output, dataset["expected"])
+    if type(output) is not list or type(dataset["expected"]) is not list:
+        return False
+    left = [_enum_key(v) for v in output]
+    right = [_enum_key(v) for v in dataset["expected"]]
+    if mode == "unordered_set":
+        return set(left) == set(right)
+    from collections import Counter
+    return Counter(left) == Counter(right)
 _TYPES = {"null", "boolean", "number", "integer", "string", "array", "object"}
 _KEYWORDS = {
     "type", "enum", "items", "properties", "required", "additionalProperties",
@@ -240,11 +274,12 @@ def validate_function_payload(payload):
     _require(type(contract) is dict, "contract must be an object")
     required = {"kind", "name", "version", "input_schema", "output_schema", "correctness"}
     _require(required <= contract.keys(), "Missing required contract field")
-    _require(not contract.keys() - required - {"mutation", "output"}, "Unsupported contract field")
+    _require(not contract.keys() - required - {"mutation", "output", "comparison"}, "Unsupported contract field")
     _require(contract["kind"] == "function", "contract kind must be function")
     _identity(contract["name"], 128, "Contract name")
     _identity(contract["version"], 64, "Contract version")
     _require(contract["correctness"] in ("expected", "none"), "Invalid correctness policy")
+    mode = comparison_mode(contract)
     _require(contract.get("mutation", "allowed") in ("allowed", "forbidden"), "Invalid mutation policy")
     for key in ("input_schema", "output_schema"):
         _schema(contract[key])
@@ -262,7 +297,7 @@ def validate_function_payload(payload):
         if type(dataset) is not dict:
             raise ValueError("Dataset must be an object")
         _require({"id", "args"} <= dataset.keys(), "Dataset requires id and args")
-        _require(not dataset.keys() - {"id", "args", "expected", "dimensions"}, "Unsupported dataset field")
+        _require(not dataset.keys() - {"id", "args", "expected", "dimensions", "acceptable_outputs"}, "Unsupported dataset field")
         _identity(dataset["id"], 128, "Dataset id")
         _require(dataset["id"] not in ids, "Dataset ids must be unique")
         ids.add(dataset["id"])
@@ -275,6 +310,15 @@ def validate_function_payload(payload):
             _validate(dataset["expected"], contract["output_schema"])
         else:
             _require("expected" not in dataset, "Correctness none disallows expected")
+        if mode == "one_of":
+            choices = dataset.get("acceptable_outputs")
+            _require(contract["correctness"] == "expected" and type(choices) is list and 1 <= len(choices) <= 16,
+                     "one_of requires 1..16 explicit acceptable outputs")
+            for choice in choices:
+                _validate(choice, contract["output_schema"])
+            _require(any(_same(dataset["expected"], choice) for choice in choices), "Expected output must be an approved choice")
+        else:
+            _require("acceptable_outputs" not in dataset, "Acceptable outputs require one_of comparison")
         if "dimensions" in dataset:
             dimensions = dataset["dimensions"]
             _require(type(dimensions) is dict and all(_integer(n, 0, MAX_SAFE_INTEGER) for n in dimensions.values()),

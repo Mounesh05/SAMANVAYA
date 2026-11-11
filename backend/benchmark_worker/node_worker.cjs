@@ -10,6 +10,34 @@ const {performance} = require('node:perf_hooks');
 let compiler;
 function typescript() { return compiler || (compiler = require('typescript')); }
 const MEMORY_METRIC = 'node_heap_used_delta_bytes';
+const VALIDATION_VERSION = 'functional-validation-v1';
+class ContractViolation extends Error {}
+
+function comparisonMode(contract) {
+  const comparison = Object.prototype.hasOwnProperty.call(contract, 'comparison') ? contract.comparison : {version: '1', mode: 'exact'};
+  requireValue(plainObject(comparison) && Object.keys(comparison).length === 2 &&
+    comparison.version === '1' && ['exact', 'unordered_set', 'unordered_multiset', 'one_of'].includes(comparison.mode), 'Unsupported comparison validator');
+  if (['unordered_set', 'unordered_multiset'].includes(comparison.mode)) requireValue(contract.output_schema.type === 'array', 'Unordered comparison requires an explicit array output schema');
+  return comparison.mode;
+}
+
+function matchesExpected(output, dataset, contract) {
+  const mode = comparisonMode(contract);
+  if (mode === 'one_of') return dataset.acceptable_outputs.some(choice => sameJSON(output, choice));
+  if (mode === 'exact') return sameJSON(output, dataset.expected);
+  if (!Array.isArray(output) || !Array.isArray(dataset.expected)) return false;
+  // Numeric equality follows the existing portable JSON contract; boolean remains distinct.
+  const key = value => {
+    if (Array.isArray(value)) return ['array', value.map(key)];
+    if (plainObject(value)) return ['object', Object.keys(value).sort().map(k => [k, key(value[k])])];
+    return [value === null ? 'null' : typeof value, value];
+  };
+  const canonical = values => {
+    const keys = values.map(v => JSON.stringify(key(v)));
+    return (mode === 'unordered_set' ? [...new Set(keys)] : keys).sort();
+  };
+  return sameJSON(canonical(output), canonical(dataset.expected));
+}
 
 const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
@@ -195,11 +223,12 @@ function validateFunctionPayload(payload) {
   requireValue(plainObject(contract), 'contract must be an object');
   const required = ['kind', 'name', 'version', 'input_schema', 'output_schema', 'correctness'];
   requireValue(required.every(key => own(contract, key)), 'Missing required contract field');
-  requireValue(Object.keys(contract).every(key => [...required, 'mutation', 'output'].includes(key)), 'Unsupported contract field');
+  requireValue(Object.keys(contract).every(key => [...required, 'mutation', 'output', 'comparison'].includes(key)), 'Unsupported contract field');
   requireValue(contract.kind === 'function', 'contract kind must be function');
   identity(contract.name, 128, 'Contract name');
   identity(contract.version, 64, 'Contract version');
   requireValue(['expected', 'none'].includes(contract.correctness), 'Invalid correctness policy');
+  const mode = comparisonMode(contract);
   requireValue(!own(contract, 'mutation') || ['allowed', 'forbidden'].includes(contract.mutation), 'Invalid mutation policy');
   checkSchema(contract.input_schema);
   checkSchema(contract.output_schema);
@@ -214,7 +243,7 @@ function validateFunctionPayload(payload) {
   for (const dataset of datasets) {
     requireValue(plainObject(dataset), 'Dataset must be an object');
     requireValue(own(dataset, 'id') && own(dataset, 'args'), 'Dataset requires id and args');
-    requireValue(Object.keys(dataset).every(key => ['id', 'args', 'expected', 'dimensions'].includes(key)), 'Unsupported dataset field');
+    requireValue(Object.keys(dataset).every(key => ['id', 'args', 'expected', 'dimensions', 'acceptable_outputs'].includes(key)), 'Unsupported dataset field');
     identity(dataset.id, 128, 'Dataset id');
     requireValue(!ids.has(dataset.id), 'Dataset ids must be unique');
     ids.add(dataset.id);
@@ -225,6 +254,11 @@ function validateFunctionPayload(payload) {
       requireValue(own(dataset, 'expected'), 'Expected correctness requires explicit expected on every dataset');
       validateValue(dataset.expected, contract.output_schema);
     } else requireValue(!own(dataset, 'expected'), 'Correctness none disallows expected');
+    if (mode === 'one_of') {
+      requireValue(contract.correctness === 'expected' && Array.isArray(dataset.acceptable_outputs) && dataset.acceptable_outputs.length >= 1 && dataset.acceptable_outputs.length <= 16, 'one_of requires explicit acceptable outputs');
+      for (const choice of dataset.acceptable_outputs) validateValue(choice, contract.output_schema);
+      requireValue(dataset.acceptable_outputs.some(choice => sameJSON(dataset.expected, choice)), 'Expected output must be an approved choice');
+    } else requireValue(!own(dataset, 'acceptable_outputs'), 'Acceptable outputs require one_of comparison');
     if (own(dataset, 'dimensions')) requireValue(plainObject(dataset.dimensions) && Object.values(dataset.dimensions).every(n => integer(n)),
       'Dimensions must map strings to nonnegative safe integers');
   }
@@ -362,12 +396,17 @@ function checkFunctionResult(output, arguments_, dataset, contract) {
   }
   if (contract.mutation === 'forbidden') {
     portableJSON(arguments_);
-    requireValue(sameJSON(arguments_, dataset.args), 'argument mutation is forbidden');
+    if (!sameJSON(arguments_, dataset.args)) throw new ContractViolation('argument mutation is forbidden');
   }
   const selector = contract.output || {source: 'return'};
   if (selector.source === 'argument') output = arguments_[selector.index || 0];
-  validateSchema(output, contract.output_schema);
-  if (contract.correctness === 'expected') requireValue(sameJSON(output, dataset.expected), 'output does not match expected JSON');
+  if (comparisonMode(contract) === 'unordered_set' && !Array.isArray(output)) {
+    try { output = Array.from(Set.prototype.values.call(output)); }
+    catch { /* No generic iterable conversion: only native Set internal slots. */ }
+  }
+  try { validateSchema(output, contract.output_schema); }
+  catch { throw new ContractViolation('output violates approved JSON schema'); }
+  if (contract.correctness === 'expected' && !matchesExpected(output, dataset, contract)) throw new ContractViolation('output does not match expected JSON');
 }
 function benchmarkFunctionCases(payload, fn, result) {
   const contract = payload.contract;
@@ -412,10 +451,16 @@ function benchmarkIndependentCases(payload, fn, result, clock = () => performanc
       measurement_version: 'independent-v1', timing_status: 'UNAVAILABLE', timing_error: 'Timing not reached',
       memory_status: 'UNAVAILABLE', memory_error: 'Memory not reached'};
     result.cases.push(entry);
+    const behavior = {version: VALIDATION_VERSION, status: 'UNVERIFIED', validated_calls: 0, reason: 'No completed validation'};
+    entry.behavioral_validation = behavior;
     const original = generic ? descriptor.args : [makeInput(descriptor.size, descriptor.distribution, payload.seed ?? 42)];
     const expected = generic ? null : [...original[0]].sort((a, b) => a - b);
     const clone = () => JSON.parse(JSON.stringify(original));
-    const check = (output, args) => generic ? checkFunctionResult(output, args, descriptor, payload.contract) : checkResult(output, args[0], expected);
+    const check = (output, args) => {
+      if (generic) checkFunctionResult(output, args, descriptor, payload.contract);
+      else checkResult(output, args[0], expected);
+      behavior.validated_calls++;
+    };
     const invoke = () => { const args = clone(); check(fn(...args), args); };
     try {
       for (let i = 0; i < 2; i++) invoke();
@@ -450,7 +495,9 @@ function benchmarkIndependentCases(payload, fn, result, clock = () => performanc
       const verified = !generic || payload.contract.correctness === 'expected';
       entry.correct = verified ? true : null;
       if (generic) entry.validation_status = verified ? 'verified' : 'unverified';
+      Object.assign(behavior, {status: verified ? 'PASS' : 'UNVERIFIED', reason: verified ? 'All configured invocations validated' : 'No correctness oracle'});
     } catch (error) {
+      if (error instanceof ContractViolation) Object.assign(behavior, {status: 'FAIL', reason: 'Functional contract violation'});
       entry.error = String(error).slice(0, 1500) || 'Candidate invocation failed';
       if (entry.timings_seconds.length && entry.timings_seconds.length !== payload.repetitions) {
         Object.assign(entry, {timing_status: 'INVALID', timing_error: 'Incomplete timing due to invocation failure'});
@@ -596,4 +643,4 @@ if (require.main === module) {
   } else supervise();
 }
 module.exports = {makeInput, checkResult, isGeneric, portableJSON, sameJSON,
-  validateSchema, validateFunctionPayload, checkFunctionResult, analyzeStructure, benchmarkIndependentCases};
+  validateSchema, validateFunctionPayload, checkFunctionResult, analyzeStructure, benchmarkIndependentCases, matchesExpected};

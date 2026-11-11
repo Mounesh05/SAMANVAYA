@@ -30,6 +30,9 @@ from domain.services.traceability_service import TraceabilityService
 from domain.services.recommendation_engine import RecommendationEngine
 from intelligence.risk_engine import RiskEngine
 import logging
+import hashlib
+import json
+from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +143,13 @@ class WebhookEventProcessor:
         )
         
         # Save event to database
-        await self.event_repo.insert(webhook_event.dict())
+        delivery_key = hashlib.sha256(json.dumps([event_type, payload], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        await self.event_repo.collection.create_index("delivery_key", unique=True, sparse=True)
+        try:
+            await self.event_repo.insert({**webhook_event.model_dump(), "delivery_key": delivery_key})
+        except DuplicateKeyError:
+            existing = await self.event_repo.collection.find_one({"delivery_key": delivery_key})
+            return {"event_id": existing["id"], "status": "accepted", "duplicate": True}
         
         logger.info(f"Webhook event {event_id} created: {event_type}.{event_action} from {repository}")
         
@@ -166,7 +175,8 @@ class WebhookEventProcessor:
         try:
             # Mark as processing
             now = datetime.now(timezone.utc).isoformat()
-            await self.event_repo.mark_processing(event_id, now)
+            if not await self.event_repo.mark_processing(event_id, now):
+                return
             
             # Load event
             event_data = await self.event_repo.find_by_id(event_id)
@@ -269,6 +279,8 @@ class WebhookEventProcessor:
             
             triggers_executed.append("pr_sync")
             triggers_executed.append("risk_analysis")
+            if sync_result.get("algorithm_intelligence"):
+                triggers_executed.append("algorithm_intelligence")
             
             if sync_result.get("ai_analysis"):
                 triggers_executed.append("ai_review")
@@ -331,7 +343,7 @@ class WebhookEventProcessor:
             # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             
             # Step 3: Determine if risks warrant notification
-            if risk_level in ("high", "critical") or risk_score >= 70:
+            if risk_level in ("high", "critical") or (risk_score is not None and risk_score >= 70):
                 risks_detected.append(f"PR-{pr_data['id']}-risk")
                 
                 # Step 4: Generate role-aware recommendations (Phase 1.3)
@@ -618,13 +630,24 @@ class WebhookEventProcessor:
         For now, we'll search for projects with matching repo URL.
         """
         try:
-            # Look for project with matching code_repo_url
+            from core.database import col
+            from urllib.parse import urlparse
+            owner, name = repository.split("/")
+            configs = await col("github_project_configs").find({"repository_owner": owner, "repository_name": name}).limit(2).to_list(2)
+            if len(configs) == 1:
+                return configs[0]["project_id"]
+            if configs:
+                return None
+            # Preserve legacy exact mappings for ordinary risk/security workflows.
             projects = await self.project_repo.find_all({})
-            
+            matches = []
             for project in projects:
-                repo_url = project.get("code_repo_url", "")
-                if repository in repo_url or repo_url.endswith(repository):
-                    return project["id"]
+                parsed = urlparse(project.get("code_repo_url", ""))
+                path = parsed.path.strip("/").removesuffix(".git")
+                if parsed.hostname == "github.com" and path.lower() == repository.lower():
+                    matches.append(project["id"])
+            if len(matches) == 1:
+                return matches[0]
             
             # No match found
             return None

@@ -75,6 +75,8 @@ async def github_webhook(
         payload = json.loads(body_bytes)
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Webhook payload must be an object")
 
     logger.info(f"Received GitHub webhook: {x_github_event}.{payload.get('action', '')}")
 

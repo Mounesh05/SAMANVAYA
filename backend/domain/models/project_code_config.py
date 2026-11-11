@@ -78,6 +78,8 @@ class ProjectCodeConfig(BaseModel):
     default_analysis_level: str = "standard"    # "quick" | "standard" | "deep"
     use_ai_by_default: bool = True
     max_files_per_run: int = 500                # Safety cap to prevent OOM on huge PRs
+    # Server-maintained references; approval payloads are held in the evidence store.
+    algorithm_requirement_source_ids: List[str] = Field(default_factory=list)
 
     model_config = {"protected_namespaces": ()}
 

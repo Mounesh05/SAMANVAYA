@@ -197,6 +197,12 @@ class DockerBenchmarkRunner:
                         require(isinstance(dimensions, dict))
                         require(all(isinstance(k, str) and type(v) is int for k, v in dimensions.items()))
                         require(dimensions == descriptor.get("dimensions", {}))
+                        if payload.get("compatibility_context"):
+                            behavior = case.get("behavioral_validation", {})
+                            require(isinstance(behavior, dict))
+                            require(behavior.get("version") == "functional-validation-v1")
+                            require(behavior.get("status") in {"PASS", "FAIL", "UNVERIFIED"})
+                            require(type(behavior.get("validated_calls")) is int and behavior["validated_calls"] >= 0)
                         status = case["validation_status"]
                         if status == "verified":
                             require(payload["contract"]["correctness"] == "expected" and case["correct"] is True)

@@ -31,6 +31,32 @@ class CodeQualityService:
         self._detector = LanguageDetector()
 
     async def analyze_pr(
+        self, changed_files, pr_context, project_config=None, deep_analysis=False,
+    ) -> CodeQualityEvidence:
+        # Discovery is deterministic, model-independent, and preserved even if
+        # unrelated quality tools fail. No benchmark jobs are submitted here.
+        discovery = await self.discover_functions(changed_files, pr_context)
+        evidence = await self._analyze_quality_pr(changed_files, pr_context, project_config, deep_analysis)
+        evidence.function_discovery = discovery
+        return evidence
+
+    async def discover_functions(self, changed_files, pr_context):
+        from intelligence.algorithms.discovery.service import discover_repository, discover_sources
+        from intelligence.evidence.function_purpose import FunctionDiscovery
+
+        repository_id = pr_context.get("project_id") or pr_context.get("repository_id") or "unknown"
+        revision = pr_context.get("commit_sha")
+        try:
+            if isinstance(pr_context.get("source_files"), dict):
+                return await discover_sources(pr_context["source_files"], repository_id, revision,
+                                              pr_context.get("source_diagnostics", []))
+            return await discover_repository(pr_context.get("repo_path"), repository_id, revision, changed_files)
+        except Exception:
+            logger.exception("Function discovery could not complete")
+            return FunctionDiscovery(status="unavailable", source_revision=revision,
+                                     diagnostics=[{"kind": "discovery_unavailable"}])
+
+    async def _analyze_quality_pr(
         self,
         changed_files: list[str],
         pr_context: Dict[str, Any],

@@ -112,20 +112,49 @@ class GitHubSyncService:
         })
         
         # Step 4: Store PR in database
-        existing_pr = await self.pr_repo.find_by_pr_number(repo_id, pr_number)
-        
-        if existing_pr:
-            # Update existing PR
-            await self.pr_repo.update(
-                {"id": existing_pr["id"]},
-                normalized_pr
-            )
-            normalized_pr["id"] = existing_pr["id"]
-        else:
-            # Insert new PR
-            await self.pr_repo.insert(normalized_pr)
+        async def validate_current():
+            latest = await self.api_service.client.get_pull_request(owner, repo, pr_number)
+            return (latest.get("head", {}).get("sha") == github_pr.get("head", {}).get("sha")
+                    and latest.get("base", {}).get("sha") == github_pr.get("base", {}).get("sha"))
+        normalized_pr, current_revision = await self.pr_repo.store_revision(normalized_pr,
+            validate_current=validate_current if github_pr.get("base", {}).get("sha") else None)
+        # Queue before optional model analysis. Security/quality risk gates and
+        # Ollama availability cannot suppress deterministic algorithm findings.
+        algorithm_intelligence = None
+        if current_revision and github_pr.get("base", {}).get("sha") and github_pr.get("head", {}).get("sha"):
+            try:
+                from domain.services.pr_algorithm_intelligence_service import PRAlgorithmIntelligenceService
+                algorithm_intelligence = await PRAlgorithmIntelligenceService(self.api_service).enqueue(
+                    project_id, repo_id, github_pr, files, normalized_pr["id"])
+            except Exception:
+                logger.exception("Automatic algorithm analysis could not be queued")
+                algorithm_intelligence = {"status": "unsupported", "reason": "Exact authorized repository mapping or analysis persistence is unavailable"}
         
         # Step 5: Optional AI Analysis
+        # Static function discovery runs for every PR sync, independently of AI.
+        # Only exact-revision file contents are inspected; code is never executed.
+        discovery_run_id = None
+        function_discovery = None
+        sources = {}
+        diagnostics = []
+        try:
+            from domain.services.code_quality_service import CodeQualityService
+            from repositories.code_quality_repository import CodeQualityRepository
+            sources, diagnostics = await self.api_service.fetch_analysis_sources(
+                owner, repo, files, github_pr.get("head", {}).get("sha"), include_context=True,
+            )
+            function_discovery = await CodeQualityService().discover_functions(
+                file_stats["changed_files"], {
+                    "project_id": project_id, "commit_sha": github_pr.get("head", {}).get("sha"),
+                    "source_files": sources, "source_diagnostics": diagnostics,
+                },
+            )
+            discovery_run_id = await CodeQualityRepository().save_discovery(
+                project_id, function_discovery, pr_number, triggered_by,
+            )
+        except Exception:
+            logger.exception("Static function snapshot unavailable for PR sync")
+
         ai_analysis = None
         ai_run_id = None
         code_quality_report = None
@@ -140,6 +169,8 @@ class GitHubSyncService:
                 "project_id": project_id,
                 "commit_sha": github_pr.get("head", {}).get("sha"),
                 "changed_files": [f["filename"] for f in files],
+                "source_files": sources,
+                "source_diagnostics": diagnostics,
             }
             
             analysis_result = await self.analysis_service.analyze_with_ai(
@@ -167,6 +198,10 @@ class GitHubSyncService:
             "code_quality_report": code_quality_report.dict() if code_quality_report else None,
             "ci_data": ci_data,
             "commit_count": len(commits),
+            "discovery_run_id": discovery_run_id,
+            "function_discovery": function_discovery.model_dump(mode="json") if function_discovery else None,
+            "algorithm_intelligence": algorithm_intelligence,
+            "revision_superseded": not current_revision,
         }
 
     async def sync_repository_prs(

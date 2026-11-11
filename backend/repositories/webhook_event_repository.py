@@ -46,7 +46,7 @@ class WebhookEventRepository:
     async def mark_processing(self, event_id: str, started_at: str) -> bool:
         """Mark event as processing."""
         return await self.update(
-            {"id": event_id},
+            {"id": event_id, "status": {"$in": ["pending", "failed"]}},
             {"status": "processing", "processing_started_at": started_at}
         )
     

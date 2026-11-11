@@ -54,12 +54,14 @@ def identities(request, evidence):
     contract_fp = fingerprint({"language": request["language"], "contract": contract})
     datasets = {d["id"]: {"inputs": fingerprint(d["args"]),
                            "validation": fingerprint({"contract": contract_fp,
-                               "has_expected": "expected" in d, "expected": d.get("expected")})}
+                               "has_expected": "expected" in d, "expected": d.get("expected"),
+                               **({"acceptable_outputs": d["acceptable_outputs"]} if "acceptable_outputs" in d else {})})}
                 for d in datasets_for(request)}
     implementations = {c["name"]: fingerprint({"source": c["source"], "entrypoint": c["entrypoint"]}) for c in request["candidates"]}
     execution = fingerprint({"contract": contract_fp, "datasets": datasets, "implementations": implementations,
                              "resources": request.get("resources", {}), "repetitions": request["repetitions"],
-                             "seed": request.get("seed", 42)})
+                             "seed": request.get("seed", 42),
+                             **({"compatibility_context": request["compatibility_context"]} if request.get("compatibility_context") else {})})
     return {"fingerprint_version": FINGERPRINT_VERSION, "contract": contract_fp,
             "datasets": datasets, "implementations": implementations,
             "execution": execution, "evidence": fingerprint(evidence)}
@@ -118,6 +120,16 @@ def evaluate_constraints(request, evidence, policy, run_id="evidence"):
     required = policy["required_dataset_ids"] or ids
     generic = is_generic(request)
     expected_correctness = not generic or request["contract"]["correctness"] == "expected"
+    from intelligence.algorithms.compatibility import phase1_prerequisites
+    compatibility_ready = phase1_prerequisites(request, evidence)
+    compatibility_failures = set()
+    if "compatibility_context" in request and not compatibility_ready:
+        from intelligence.algorithms.compatibility import evaluate_compatibility
+        try:
+            validation = evaluate_compatibility(request, evidence, run_id)
+            compatibility_failures = {(c["candidate"], c["dataset_id"]) for c in validation["checks"] if c["status"] == "FAIL"}
+        except (ValueError, KeyError, TypeError, AttributeError):
+            compatibility_failures = set()
     results = evidence.get("results", [])
     if not isinstance(results, list):
         results = []
@@ -162,6 +174,8 @@ def evaluate_constraints(request, evidence, policy, run_id="evidence"):
                 correctness = "UNVERIFIED"
             if protocol_error:
                 correctness = "UNVERIFIED" if correctness != "FAIL" else "FAIL"
+            if not compatibility_ready:
+                correctness = "FAIL" if (name, key) in compatibility_failures else "UNVERIFIED"
             per_dataset[key] = {"dataset_id": key, "correctness": correctness,
                                 "timing": _stats(case, states["timing"]),
                                 "memory": {"status": states["memory"], "metric": case.get("memory_metric"),

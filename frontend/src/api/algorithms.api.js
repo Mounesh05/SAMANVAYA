@@ -1,6 +1,20 @@
 import apiClient from './client';
 
 export const algorithmsApi = {
+  getPRIntelligence: params => apiClient.get('/algorithms/pr-intelligence', { params }),
+  discoverRequirements: body => apiClient.post('/algorithms/requirements/discover', body),
+  proposeRequirementSource: body => apiClient.post('/algorithms/requirements/sources', body),
+  getRequirementSources: projectId => apiClient.get(`/algorithms/projects/${encodeURIComponent(projectId)}/requirement-sources`),
+  approveRequirementSource: (id, body) => apiClient.post(`/algorithms/requirements/sources/${encodeURIComponent(id)}/approve`, body),
+  proposeContract: (body) => apiClient.post('/algorithms/contracts', body),
+  getContract: (id) => apiClient.get(`/algorithms/contracts/${encodeURIComponent(id)}`),
+  getContracts: (projectId) => apiClient.get(`/algorithms/projects/${encodeURIComponent(projectId)}/contracts`),
+  approveContract: (id, body) => apiClient.post(`/algorithms/contracts/${encodeURIComponent(id)}/approve`, body),
+  startCompatibility: (body) => apiClient.post('/algorithms/compatibility/runs', body),
+  getRelationships: (params) => apiClient.get('/algorithms/compatibility/relationships', { params }),
+  getFunctionCompatibility: (projectId, functionId) => apiClient.get(
+    `/algorithms/compatibility/functions/${encodeURIComponent(functionId)}/history`, { params: { project_id: projectId } },
+  ),
   getAvailability: () => apiClient.get('/algorithms/availability'),
   inspectStructure: (data) => apiClient.post('/algorithms/structure', data),
   getCompatibleHistory: (runId) => apiClient.get(

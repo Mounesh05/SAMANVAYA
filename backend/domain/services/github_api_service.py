@@ -9,6 +9,8 @@ Responsibilities:
 """
 
 import logging
+import asyncio
+import base64
 from typing import Optional, List, Dict, Any
 
 from integrations.github.client import GitHubClient
@@ -86,6 +88,61 @@ class GitHubAPIService:
             "reviews": reviews,
             "comments": comments,
         }
+
+    async def fetch_analysis_sources(self, owner, repo, files, revision, include_context=False):
+        """Fetch bounded supported source at the immutable PR head, never patches."""
+        from intelligence.algorithms.discovery.service import (
+            MAX_FILES, MAX_SOURCE_BYTES, MAX_TOTAL_BYTES, safe_relative_path, source_language,
+        )
+        if not revision:
+            return {}, [{"kind": "missing_source_revision"}]
+        paths = [f["filename"] for f in files if f.get("status") != "removed"
+                 and isinstance(f.get("filename"), str) and safe_relative_path(f["filename"])
+                 and source_language(f["filename"])]
+        diagnostics = []
+        if include_context:
+            try:
+                tree = await self.client.get_source_tree(owner, repo, revision)
+                symlinks = {entry.get("path") for entry in tree.get("tree", []) if entry.get("mode") == "120000"}
+                paths = [path for path in paths if path not in symlinks]
+                context_paths = [entry["path"] for entry in tree.get("tree", [])
+                                 if entry.get("type") == "blob" and entry.get("mode") != "120000"
+                                 and isinstance(entry.get("path"), str) and safe_relative_path(entry["path"])
+                                 and (source_language(entry["path"]) or entry["path"] == ".samanvaya/requirements.json")]
+                # Changed files first, then tests, then other caller context.
+                paths.extend(sorted(context_paths, key=lambda p: (p != ".samanvaya/requirements.json", "test" not in p.lower() and "spec" not in p.lower(), p)))
+                if tree.get("truncated"):
+                    diagnostics.append({"kind": "repository_tree_truncated"})
+            except Exception:
+                diagnostics.append({"kind": "repository_context_unavailable"})
+        paths = list(dict.fromkeys(paths))
+        semaphore = asyncio.Semaphore(4)
+
+        async def read(path):
+            async with semaphore:
+                try:
+                    data = await self.client.get_file(owner, repo, path, ref=revision)
+                    if not isinstance(data, dict) or data.get("type") != "file" or data.get("encoding") != "base64" or data.get("size", MAX_SOURCE_BYTES + 1) > MAX_SOURCE_BYTES:
+                        return path, None
+                    raw = base64.b64decode("".join(data.get("content", "").split()), validate=True)
+                    if len(raw) > MAX_SOURCE_BYTES:
+                        return path, None
+                    return path, raw.decode("utf-8-sig")
+                except Exception:
+                    return path, None
+        rows = await asyncio.gather(*(read(path) for path in paths[:MAX_FILES]))
+        sources, total = {}, 0
+        for path, source in rows:
+            if source is None:
+                diagnostics.append({"path": path, "kind": "source_unavailable"})
+            elif total + len(source.encode()) > MAX_TOTAL_BYTES:
+                diagnostics.append({"path": path, "kind": "source_bound"})
+            else:
+                sources[path] = source
+                total += len(source.encode())
+        if len(paths) > MAX_FILES:
+            diagnostics.append({"kind": "file_bound"})
+        return sources, diagnostics
 
     async def list_pull_requests(
         self,

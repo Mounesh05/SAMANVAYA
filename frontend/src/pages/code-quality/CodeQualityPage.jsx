@@ -18,9 +18,12 @@ import { getGradeColor } from '../../utils/formatters';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
 import { AlgorithmComparisonPanel } from './AlgorithmComparisonPanel';
+import { BehavioralCompatibilityPanel } from './BehavioralCompatibilityPanel';
+import { RequirementsPanel } from './RequirementsPanel';
+import { PRAlgorithmIntelligencePanel } from './PRAlgorithmIntelligencePanel';
 
 export function CodeQualityPage() {
-  const selectedRepo = '';
+  const [selectedRepo, setSelectedRepo] = useState('');
   const [isAnalyzeModalOpen, setIsAnalyzeModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     repository_id: '',
@@ -104,7 +107,7 @@ export function CodeQualityPage() {
     {
       key: 'risk_level',
       header: 'Risk',
-      render: (r) => <RiskBadge level={r.risk_level || 'LOW'} score={r.risk_score} />,
+      render: (r) => r.risk_score != null ? <RiskBadge level={r.risk_level || 'LOW'} score={r.risk_score} /> : <span>Not measured</span>,
     },
     {
       key: 'status',
@@ -145,7 +148,12 @@ export function CodeQualityPage() {
         }
       />
 
+      <PRAlgorithmIntelligencePanel />
+      <details><summary>Advanced manual benchmarking and contract validation</summary>
       <AlgorithmComparisonPanel />
+      <BehavioralCompatibilityPanel />
+      <RequirementsPanel />
+      </details>
 
       {/* Language Engine Banner */}
       <Card
@@ -183,6 +191,10 @@ export function CodeQualityPage() {
           </div>
         </div>
       </Card>
+
+      <Input label="Analysis history project ID" value={selectedRepo}
+        onChange={(event) => setSelectedRepo(event.target.value.trim())}
+        placeholder="Open existing project analysis and discovered functions" />
 
       {isLoading ? (
         <LoadingState message="Loading code quality history..." />

@@ -19,6 +19,7 @@ Merging Strategy:
 
 import logging
 from typing import List, Optional
+from intelligence.evidence.function_purpose import FunctionDiscovery
 from intelligence.evidence.models import (
     CodeQualityEvidence,
     ComplexityEvidence,
@@ -137,6 +138,14 @@ class EvidenceMerger:
             lines_added=total_lines_added,
             lines_deleted=total_lines_deleted,
             static_findings=merged_findings,
+            function_discovery=FunctionDiscovery(
+                status="partial" if any(ev.function_discovery.status in {"partial", "unavailable"} for ev in evidence_list)
+                else "available" if any(ev.function_discovery.status == "available" for ev in evidence_list) else "not_analyzed",
+                source_revision=base.commit_sha,
+                functions=list({f.function_id: f for ev in evidence_list for f in ev.function_discovery.functions}.values()),
+                requirement_sources=[r for ev in evidence_list for r in ev.function_discovery.requirement_sources],
+                diagnostics=[d for ev in evidence_list for d in ev.function_discovery.diagnostics],
+            ),
             complexity=merged_complexity,
             security=merged_security,
             testing=merged_testing,

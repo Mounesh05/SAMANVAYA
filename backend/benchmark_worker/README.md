@@ -1,5 +1,9 @@
 # Docker numeric sorting benchmarks (v1)
 
+Behavioral replacement validation extends this same runner. See
+[Phase 3 contracts, approval, normalization and compatibility](../intelligence/algorithms/BEHAVIORAL_COMPATIBILITY.md).
+Manual measurements do not automatically certify replacement compatibility.
+
 Versioned deterministic decisions are opt-in through `decision_policy`. See the
 [policy schema, defaults, independent measurements and reevaluation guide](../intelligence/algorithms/DECISION_POLICY.md).
 Rebuild both worker images before using policy-backed runs.

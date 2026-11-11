@@ -185,6 +185,14 @@ def recommend(payload: dict, benchmark: dict) -> dict:
         response["reason"] = reason
         return response
 
+    if isinstance(payload, dict) and payload.get("requirements_discovery") is not None:
+        return insufficient("Discovered requirements are evaluated by the preserved deterministic policy decision; legacy aggregate rankings cannot establish requirement compliance.")
+
+    if isinstance(payload, dict) and "compatibility_context" in payload:
+        from intelligence.algorithms.compatibility import phase1_prerequisites
+        if not phase1_prerequisites(payload, benchmark):
+            return insufficient("Approved behavioral compatibility prerequisites are not established; no replacement ranking is available.")
+
     try:
         names, language, expected, repetitions, objective, limit = _request(payload)
     except ValueError as exc:

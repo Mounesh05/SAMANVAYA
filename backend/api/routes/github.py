@@ -22,7 +22,7 @@ class PRSyncRequest(BaseModel):
     owner: str
     repo: str
     pr_number: int
-    project_id: str
+    project_id: str | None = None
     use_ai: bool = True  # Enable AI analysis by default
     use_deep_analysis: bool = False  # Enable comprehensive deep analysis (static analysis, security, etc.)
 
@@ -285,8 +285,16 @@ async def sync_pull_request(
     }
     ```
     """
-    # Authorization: verify user has write access to the target project
-    await verify_project_access(user, request.project_id, require_write=True)
+    project_id = request.project_id
+    if not project_id:
+        mappings = await col(GITHUB_PROJECT_CONFIGS).find({"repository_owner": request.owner, "repository_name": request.repo}).limit(2).to_list(2)
+        if len(mappings) != 1:
+            raise HTTPException(status_code=422, detail="Repository must have one authorized project mapping")
+        project_id = mappings[0]["project_id"]
+    project = await col("projects").find_one({"id": project_id})
+    if not project or not user.get("org_id") or project.get("org_id") != user["org_id"]:
+        raise HTTPException(status_code=403, detail="Repository project is unavailable in this organization")
+    await verify_project_access(user, project_id, require_write=True)
     
     try:
         github_service = GitHubSyncService()
@@ -295,7 +303,7 @@ async def sync_pull_request(
             owner=request.owner,
             repo=request.repo,
             pr_number=request.pr_number,
-            project_id=request.project_id,
+            project_id=project_id,
             use_ai=request.use_ai,
             use_deep_analysis=request.use_deep_analysis,
             triggered_by=user.get("email", "unknown"),

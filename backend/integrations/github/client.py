@@ -96,7 +96,9 @@ class GitHubClient:
             List of file changes
         """
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
-        response = await self._make_request("GET", url)
+        # One bounded page matches the automatic-analysis file budget. PR metadata
+        # records whether additional changes exist, instead of implying full coverage.
+        response = await self._make_request("GET", url, params={"per_page": 100})
         return response.json()
     
     async def get_pr_reviews(self, owner: str, repo: str, pr_number: int) -> List[Dict[str, Any]]:
@@ -271,6 +273,13 @@ class GitHubClient:
             if error.response.status_code == 404:
                 return None
             raise
+        return response.json()
+
+    async def get_source_tree(self, owner: str, repo: str, revision: str) -> Dict[str, Any]:
+        """List source paths at a specific revision; discovery applies its own bounds."""
+        response = await self._make_request(
+            "GET", f"{self.base_url}/repos/{owner}/{repo}/git/trees/{revision}", params={"recursive": "1"},
+        )
         return response.json()
 
     async def upsert_file(

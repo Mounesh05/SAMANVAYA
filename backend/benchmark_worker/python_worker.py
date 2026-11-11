@@ -15,6 +15,7 @@ try:  # Direct script entrypoint inside the image.
     from contracts import (
         _json,
         _same,
+        matches_expected, comparison_mode, ContractViolation, VALIDATION_VERSION,
         is_generic,
         validate_function_payload,
         validate_schema,
@@ -23,6 +24,7 @@ except ImportError:  # Package import on the host (data-only helpers/tests).
     from benchmark_worker.contracts import (
         _json,
         _same,
+        matches_expected, comparison_mode, ContractViolation, VALIDATION_VERSION,
         is_generic,
         validate_function_payload,
         validate_schema,
@@ -43,6 +45,9 @@ def benchmark_independent_cases(payload, function, result, memray, pyperf):
                     error=None, measurement_version="independent-v1", timing_status="UNAVAILABLE",
                     timing_error="Timing not reached", memory_status="UNAVAILABLE", memory_error="Memory not reached")
         result["cases"].append(case)
+        behavior = {"version": VALIDATION_VERSION, "status": "UNVERIFIED", "validated_calls": 0,
+                    "reason": "No completed validation"}
+        case["behavioral_validation"] = behavior
         if generic:
             original = descriptor["args"]
         else:
@@ -53,6 +58,7 @@ def benchmark_independent_cases(payload, function, result, memray, pyperf):
                 check_function_result(output, arguments, descriptor, payload["contract"])
             else:
                 check_result(output, arguments[0], expected)
+            behavior["validated_calls"] += 1
         def invoke():
             arguments = copy.deepcopy(original)
             output = function(*arguments)
@@ -141,7 +147,10 @@ def benchmark_independent_cases(payload, function, result, memray, pyperf):
             case["correct"] = True if verified else None
             if generic:
                 case["validation_status"] = "verified" if verified else "unverified"
+            behavior.update(status="PASS" if verified else "UNVERIFIED", reason="All configured invocations validated" if verified else "No correctness oracle")
         except BaseException as exc:
+            if isinstance(exc, ContractViolation):
+                behavior.update(status="FAIL", reason="Functional contract violation")
             case["error"] = f"{type(exc).__name__}: {str(exc)[:1500]}"
             samples = case["timings_seconds"]
             if samples and len(samples) != payload["repetitions"]:
@@ -172,17 +181,22 @@ def check_function_result(output, arguments, dataset, contract):
     """Data-only result checks; invocation and measurements belong to the container."""
     if (inspect.isawaitable(output) or inspect.isgenerator(output) or inspect.isasyncgen(output)
             or callable(getattr(output, "then", None))):
-        raise ValueError("async, thenable, and generator results are unsupported")
+        raise ContractViolation("async, thenable, and generator results are unsupported")
     if contract.get("mutation", "allowed") == "forbidden":
         _json(arguments)
         if not _same(arguments, dataset["args"]):
-            raise ValueError("argument mutation is forbidden")
+            raise ContractViolation("argument mutation is forbidden")
     selector = contract.get("output", {"source": "return"})
     if selector["source"] == "argument":
         output = arguments[selector.get("index", 0)]
-    validate_schema(output, contract["output_schema"])
-    if contract["correctness"] == "expected" and not _same(output, dataset["expected"]):
-        raise ValueError("output does not match expected JSON")
+    if comparison_mode(contract) == "unordered_set" and type(output) in (set, frozenset):
+        output = list(output)
+    try:
+        validate_schema(output, contract["output_schema"])
+    except (ValueError, TypeError, RecursionError) as error:
+        raise ContractViolation("output violates approved JSON schema") from error
+    if contract["correctness"] == "expected" and not matches_expected(output, dataset, contract):
+        raise ContractViolation("output does not match expected JSON")
 
 
 def benchmark_function_cases(payload, function, result, memray, pyperf):

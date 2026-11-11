@@ -67,7 +67,11 @@ class Recommendation(BaseModel):
     # Evidence
     reasoning: str = Field(..., description="Why this recommendation was generated")
     evidence_ids: List[str] = Field(default_factory=list, description="Related evidence/analysis IDs")
-    confidence: float = Field(default=0.8, description="AI confidence score (0-1)")
+    confidence: Optional[float] = Field(default=0.8, description="AI confidence when available; deterministic evidence does not fabricate one")
+    finding_status: Optional[str] = None
+    algorithm_analysis_run_id: Optional[str] = None
+    benchmark_run_id: Optional[str] = None
+    head_sha: Optional[str] = None
     
     # Role targeting
     target_roles: List[str] = Field(default_factory=list, description="Roles this is relevant for")

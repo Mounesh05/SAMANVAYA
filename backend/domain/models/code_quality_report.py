@@ -6,6 +6,7 @@ Comprehensive report with separate quality and risk scores.
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from intelligence.evidence.function_purpose import FunctionDiscovery
 
 
 class QualityBreakdown(BaseModel):
@@ -65,6 +66,7 @@ class CodeQualityReport(BaseModel):
     test_metrics: Dict[str, Any] = Field(default_factory=dict)
     dependency_changes: Dict[str, Any] = Field(default_factory=dict)
     architecture_analysis: Dict[str, Any] = Field(default_factory=dict)
+    function_discovery: FunctionDiscovery = Field(default_factory=FunctionDiscovery)
     
     # AI Interpretation (from Ollama)
     ai_analysis: Optional[str] = None

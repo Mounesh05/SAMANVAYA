@@ -13,10 +13,19 @@ from domain.services.algorithm_benchmark_service import AlgorithmBenchmarkServic
 from repositories.project_repository import ProjectRepository
 from intelligence.algorithms.runner import BenchmarkFailure, BenchmarkUnavailable
 from intelligence.algorithms.structure import analyze_python
+from domain.schemas.behavioral_compatibility import ContractProposal, ContractApproval, BehavioralComparisonRequest
+from domain.services.function_contract_service import FunctionContractService
+from domain.services.behavioral_compatibility_service import BehavioralCompatibilityService
+from intelligence.algorithms.compatibility import provisional_relationships
+from core.database import col
+from domain.services.requirement_discovery_service import RequirementDiscoveryService
+from domain.schemas.requirement_discovery import RequirementDiscoveryRequest, RequirementSourceProposal, RequirementReview
 
 router = APIRouter()
-service = AlgorithmBenchmarkService()
+requirement_service = RequirementDiscoveryService()
+service = AlgorithmBenchmarkService(requirements=requirement_service)
 _ENGINEERING_ROLES = {"DEVELOPER", "LEAD", "PM", "CEO", "QA", "DEVOPS"}
+contract_service = FunctionContractService()
 
 
 def normalized_role(user):
@@ -95,6 +104,8 @@ async def start_run(body: BenchmarkRequest, background_tasks: BackgroundTasks,
         result = await service.create(body.model_dump(), user)
     except BenchmarkBusy as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     background_tasks.add_task(service.execute, result["run_id"])
     return result
 
@@ -147,3 +158,161 @@ async def explanation(run_id: str, user: dict = Depends(engineering_user)):
     if document["status"] != "completed" or not (document.get("recommendation") or document.get("decision")):
         raise HTTPException(status_code=409, detail="Explanations require a completed comparison")
     return await service.explain(document)
+
+
+@router.post("/contracts", status_code=201)
+async def propose_contract(body: ContractProposal, user: dict = Depends(engineering_user)):
+    await project_access(user, body.project_id)
+    try:
+        return await contract_service.propose(body.model_dump(), user)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.get("/contracts/{contract_id}")
+async def read_contract(contract_id: str, user: dict = Depends(get_current_user)):
+    document = await contract_service.get(contract_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Functional contract not found")
+    await project_access(user, document["project_id"])
+    return document
+
+
+@router.post("/contracts/{contract_id}/approve")
+async def approve_contract(contract_id: str, body: ContractApproval, user: dict = Depends(engineering_user)):
+    document = await read_contract(contract_id, user)
+    try:
+        return await contract_service.approve(document, body.model_dump(), user)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.post("/compatibility/runs", status_code=202)
+async def start_compatibility(body: BehavioralComparisonRequest, background_tasks: BackgroundTasks,
+                              user: dict = Depends(engineering_user)):
+    await project_access(user, body.project_id)
+    try:
+        # Missing/proposed/conflicting contracts can be reported without executing
+        # code, even when benchmarking is disabled.
+        resolution = await contract_service.resolve(body.project_id, body.contract_ids)
+        if resolution["status"] == "APPROVED" and resolution.get("validator_available") and not settings.ALGORITHM_BENCHMARK_ENABLED:
+            raise HTTPException(status_code=503, detail="Isolated workers must be enabled for approved-contract validation")
+        result = await BehavioralCompatibilityService(service, contract_service).create(body.model_dump(), user)
+    except BenchmarkBusy as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if result["status"] == "pending":
+        background_tasks.add_task(service.execute, result["run_id"])
+    return result
+
+
+@router.get("/compatibility/relationships")
+async def candidate_relationships(project_id: str, previous_run_id: str, current_run_id: str,
+                                   user: dict = Depends(get_current_user)):
+    await project_access(user, project_id)
+    snapshots = []
+    for run_id in (previous_run_id, current_run_id):
+        run = await col("code_quality_runs").find_one({"run_id": run_id, "repository_id": project_id}, {"_id": 0})
+        if run is None:
+            raise HTTPException(status_code=404, detail="Project discovery snapshot not found")
+        snapshots.append(run.get("function_discovery", {}))
+    approved = await contract_service.collection.find({"project_id": project_id, "status": "APPROVED"}, {"_id": 0}).limit(100).to_list(100)
+    return {"relationships": provisional_relationships(*snapshots, previous_run_id, current_run_id, approved),
+            "status": "PROVISIONAL", "execution_performed": False}
+
+
+@router.get("/compatibility/functions/{function_id}/history")
+async def function_compatibility_history(function_id: str, project_id: str,
+                                         user: dict = Depends(get_current_user)):
+    await project_access(user, project_id)
+    query = {"project_id": project_id, "kind": "behavioral_compatibility", "$or": [
+        {"request.compatibility_context.previous.function_reference.function_id": function_id},
+        {"request.compatibility_context.current.function_reference.function_id": function_id},
+    ]}
+    docs = await service.collection.find(query, {"_id": 0, "run_id": 1, "status": 1, "behavioral_compatibility": 1}).sort("created_at", -1).limit(10).to_list(10)
+    return {"history": docs, "historical_only": True}
+
+
+@router.get("/projects/{project_id}/contracts")
+async def list_contracts(project_id: str, user: dict = Depends(get_current_user)):
+    await project_access(user, project_id)
+    return {"contracts": await contract_service.collection.find({"project_id": project_id}, {"_id": 0}).limit(100).to_list(100)}
+
+
+@router.post("/requirements/discover")
+async def discover_requirements(body: RequirementDiscoveryRequest, user: dict = Depends(engineering_user)):
+    await project_access(user, body.project_id)
+    try:
+        return await requirement_service.discover(body.project_id, body.context.model_dump())
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.post("/requirements/sources", status_code=201)
+async def propose_requirement_source(body: RequirementSourceProposal, user: dict = Depends(engineering_user)):
+    await project_access(user, body.project_id)
+    try:
+        return await requirement_service.propose(body.model_dump(), user)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.get("/projects/{project_id}/requirement-sources")
+async def list_requirement_sources(project_id: str, user: dict = Depends(engineering_user)):
+    await project_access(user, project_id)
+    return {"sources": await requirement_service.collection("algorithm_requirement_sources").find({"project_id": project_id}, {"_id": 0}).limit(32).to_list(32)}
+
+
+@router.post("/requirements/sources/{source_id}/approve")
+async def approve_requirement_source(source_id: str, body: RequirementReview, user: dict = Depends(engineering_user)):
+    document = await requirement_service.get(source_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Requirement source not found")
+    await project_access(user, document["project_id"])
+    try:
+        return await requirement_service.approve(document, body.model_dump(), user)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+@router.get("/pr-intelligence")
+async def pr_intelligence_history(project_id: str | None = None, pr_id: str | None = None,
+                                  user: dict = Depends(engineering_user)):
+    if pr_id:
+        pr = await col("pull_requests").find_one({"id": pr_id})
+        if not pr:
+            raise HTTPException(status_code=404, detail="PR not found")
+        project_id = pr["project_id"]
+    if project_id:
+        await project_access(user, project_id)
+        projects = [project_id]
+    else:
+        projects = []
+        available = await col("projects").find({"org_id": user.get("org_id")}, {"id": 1}).limit(100).to_list(100)
+        for project in available:
+            try:
+                await project_access(user, project["id"])
+                projects.append(project["id"])
+            except HTTPException as error:
+                if error.status_code != 403:
+                    raise
+    from domain.services.pr_algorithm_intelligence_service import TERMINAL, now
+    # Reads also expire interrupted local continuations, without replaying code.
+    await col("code_quality_runs").update_many({"kind": "pr_algorithm_intelligence", "status": {"$nin": list(TERMINAL)}, "lease_expires_at": {"$lt": now()}},
+        {"$set": {"status": "failed", "error": "Local analysis lease expired; execution was not replayed", "completed_at": now()}})
+    query = {"kind": "pr_algorithm_intelligence", "project_id": {"$in": projects}}
+    if pr_id:
+        query["pr_id"] = pr_id
+    rows = await col("code_quality_runs").find(query, {"_id": 0, "function_discovery": 0, "files": 0}).sort("created_at", -1).limit(30).to_list(30)
+    # Only the latest revision is actionable. Earlier records remain historical.
+    for row in rows:
+        pr = await col("pull_requests").find_one({"id": row["pr_id"], "project_id": row["project_id"]})
+        row["historical_only"] = not pr or pr.get("status") != "open" or pr.get("head_sha") != row["head_sha"] or pr.get("algorithm_intelligence_run_id") != row["run_id"]
+    return {"analyses": rows}

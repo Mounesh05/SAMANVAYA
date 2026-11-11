@@ -84,6 +84,22 @@ ANALYZER_REGISTRY: Dict[str, str] = {
 # Internal cache — avoids re-importing the same class on every request
 _analyzer_cache: Dict[str, BaseAnalyzer] = {}
 
+# Purpose discovery shares language dispatch, but remains independent of lint,
+# benchmark opt-in, model availability and algorithm-name lists.
+FUNCTION_EXTRACTOR_REGISTRY = {
+    "python": "intelligence.algorithms.discovery.extractors:python_source",
+    "javascript": "intelligence.algorithms.discovery.extractors:typescript_source",
+    "typescript": "intelligence.algorithms.discovery.extractors:typescript_source",
+}
+
+
+def get_function_extractor(language: str):
+    target = FUNCTION_EXTRACTOR_REGISTRY.get(language)
+    if target is None:
+        return None
+    module, name = target.split(":")
+    return getattr(importlib.import_module(module), name)
+
 
 def get_analyzer(language: str) -> Optional[BaseAnalyzer]:
     """

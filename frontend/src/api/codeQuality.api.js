@@ -9,6 +9,10 @@ export const codeQualityApi = {
     return apiClient.get(`/code-quality/runs/${runId}`);
   },
 
+  getDiscoveredFunctions: async (runId, params = {}) => {
+    return apiClient.get(`/code-quality/runs/${runId}/functions`, { params });
+  },
+
   getRunFindings: async (runId, params = {}) => {
     return apiClient.get(`/code-quality/runs/${runId}/findings`, { params });
   },

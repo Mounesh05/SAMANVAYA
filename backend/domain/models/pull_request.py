@@ -18,6 +18,9 @@ class PRCreate(BaseModel):
     author_login: str
     branch: str
     base_branch: str = "main"
+    description: Optional[str] = None
+    head_sha: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 class PullRequest(PRCreate):

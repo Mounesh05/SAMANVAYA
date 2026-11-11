@@ -19,7 +19,20 @@ class RecommendationRepository:
     
     async def find_by_id(self, recommendation_id: str) -> Optional[Dict[str, Any]]:
         """Find recommendation by ID."""
-        return await self.collection.find_one({"id": recommendation_id})
+        record = await self.collection.find_one({"id": recommendation_id})
+        records = await self._current_algorithm_records([record] if record else [])
+        return records[0] if records else None
+
+    async def _current_algorithm_records(self, records, status=None):
+        for record in records:
+            if not record.get("algorithm_analysis_run_id"):
+                continue
+            pr = await db["pull_requests"].find_one({"id": record["entity_id"], "project_id": record["project_id"]})
+            if (not pr or pr.get("head_sha") != record.get("head_sha")
+                    or pr.get("algorithm_intelligence_run_id") != record["algorithm_analysis_run_id"] or pr.get("status") != "open"):
+                record.update(status="obsolete", historical_only=True)
+                await self.collection.update_one({"id": record["id"]}, {"$set": {"status": "obsolete", "historical_only": True}})
+        return [record for record in records if status is None or record.get("status") == status]
     
     async def find_by_entity(
         self,
@@ -38,7 +51,7 @@ class RecommendationRepository:
             query["status"] = status
         
         cursor = self.collection.find(query).sort("priority", -1).limit(limit)
-        return await cursor.to_list(length=limit)
+        return await self._current_algorithm_records(await cursor.to_list(length=limit), status)
     
     async def find_by_user(
         self,
@@ -53,7 +66,7 @@ class RecommendationRepository:
             query["status"] = status
         
         cursor = self.collection.find(query).sort("priority", -1).limit(limit)
-        return await cursor.to_list(length=limit)
+        return await self._current_algorithm_records(await cursor.to_list(length=limit), status)
     
     async def find_by_role(
         self,
@@ -72,7 +85,7 @@ class RecommendationRepository:
             query["status"] = status
         
         cursor = self.collection.find(query).sort("priority", -1).limit(limit)
-        return await cursor.to_list(length=limit)
+        return await self._current_algorithm_records(await cursor.to_list(length=limit), status)
     
     async def update_status(
         self,
@@ -84,6 +97,9 @@ class RecommendationRepository:
         """Update recommendation status."""
         from datetime import datetime, timezone
         
+        record = await self.find_by_id(recommendation_id)
+        if record and record.get("historical_only"):
+            return False
         update_data = {
             "status": status,
             "status_updated_at": datetime.now(timezone.utc).isoformat(),

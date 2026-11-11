@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from intelligence.algorithms.runner import DockerBenchmarkRunner
 from domain.schemas.decision_policy import DecisionPolicy
+from domain.schemas.requirement_discovery import RequirementContext
 
 
 class FunctionCandidate(BaseModel):
@@ -48,6 +49,7 @@ class BenchmarkRequest(BaseModel):
     datasets: list[dict] = Field(default_factory=list, strict=True)
     resources: dict = Field(default_factory=dict, strict=True)
     decision_policy: DecisionPolicy | None = None
+    requirement_context: RequirementContext | None = None
     sizes: list[int] = Field(default_factory=lambda: [100, 1000], min_length=1, max_length=16)
     distributions: list[Literal["random", "sorted", "reversed", "duplicates"]] = Field(
         default_factory=lambda: ["random", "sorted", "reversed", "duplicates"], min_length=1, max_length=4

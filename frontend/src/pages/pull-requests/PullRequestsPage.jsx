@@ -18,10 +18,12 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { GitPullRequest, ExternalLink, RefreshCw, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { ROLES } from '../../utils/constants';
 import { formatDate, timeAgo } from '../../utils/dates';
+import { PRAlgorithmIntelligencePanel } from '../code-quality/PRAlgorithmIntelligencePanel';
 
 export function PullRequestsPage() {
   const { user } = useAuthStore();
   const [search, setSearch] = useState('');
+  const [algorithmPR, setAlgorithmPR] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [syncData, setSyncData] = useState({ owner: '', repo: '', pr_number: '' });
@@ -131,6 +133,7 @@ export function PullRequestsPage() {
       header: 'Actions',
       render: (pr) => (
         <div style={{ display: 'flex', gap: '0.35rem' }}>
+          <Button variant="secondary" size="sm" onClick={e => { e.stopPropagation(); setAlgorithmPR(pr.id); }}>Algorithm findings</Button>
           {pr.html_url && (
             <Button
               variant="ghost"
@@ -227,6 +230,9 @@ export function PullRequestsPage() {
       />
 
       {/* Sync PR Modal */}
+      <Modal isOpen={Boolean(algorithmPR)} onClose={() => setAlgorithmPR(null)} title="PR algorithm findings" maxWidth="1100px">
+        {algorithmPR && <PRAlgorithmIntelligencePanel prId={algorithmPR} />}
+      </Modal>
       <Modal
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
