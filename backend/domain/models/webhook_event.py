@@ -38,7 +38,7 @@ class WebhookEvent(BaseModel):
     
     # Error tracking
     error: Optional[str] = Field(None, description="Error message if failed")
-    retry_count: int = Field(default=0, description="Number of retry attempts")
+    retry_count: int = Field(default=0, description="Processing attempts claimed (maximum three)")
     
     # Metadata
     created_at: str = Field(

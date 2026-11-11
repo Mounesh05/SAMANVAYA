@@ -170,7 +170,6 @@ async def seed_example_project_configs():
             created_by="system_migration",
             risk_weights=example["risk_weights"],
             quality_weights=example["quality_weights"],
-            base_risk=BASE_RISK,
             risk_thresholds=RiskThresholds(),
             pr_size_thresholds=PRSizeThresholds(),
         )

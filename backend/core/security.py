@@ -4,18 +4,14 @@ All auth primitives live here â€” nowhere else.
 """
 
 from datetime import datetime, timezone, timedelta
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 import bcrypt
 import uuid
-from threading import Lock
 from .config import settings
+from .database import col
 
-
-# TODO: For production multi-instance deployments, replace in-memory storage
-# with Redis to share revocation list across instances.
-_revoked_tokens: dict[str, datetime] = {}
-_revoked_tokens_lock = Lock()
-
+JWT_SESSION_VERSION = 1
 
 def hash_password(plain: str) -> str:
     """Hash a plain-text password using bcrypt."""
@@ -53,7 +49,7 @@ def create_access_token(payload: dict) -> str:
     )
     jti = str(uuid.uuid4())
     return jwt.encode(
-        {**payload, "exp": expire, "jti": jti},
+        {**payload, "exp": expire, "jti": jti, "session_version": JWT_SESSION_VERSION},
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
@@ -76,7 +72,7 @@ def decode_token(token: str) -> dict:
         return jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-    except JWTError:
+    except InvalidTokenError:
         raise ValueError("Invalid or expired token")
 
 
@@ -142,7 +138,7 @@ def is_password_compromised(password: str) -> bool:
     return password.lower() in common_passwords
 
 
-def revoke_token(jti: str, exp_timestamp: datetime) -> None:
+async def revoke_token(jti: str, exp_timestamp: datetime) -> None:
     """
     Revoke a token by adding its JTI to the revocation list.
     
@@ -150,12 +146,12 @@ def revoke_token(jti: str, exp_timestamp: datetime) -> None:
         jti: JWT ID (unique identifier for the token)
         exp_timestamp: Token expiration timestamp
     """
-    with _revoked_tokens_lock:
-        _revoked_tokens[jti] = exp_timestamp
-        _cleanup_expired_revocations()
+    await col("revoked_tokens").update_one(
+        {"_id": jti}, {"$set": {"expires_at": exp_timestamp}}, upsert=True
+    )
 
 
-def is_token_revoked(jti: str) -> bool:
+async def is_token_revoked(jti: str) -> bool:
     """
     Check if a token has been revoked.
     
@@ -165,28 +161,11 @@ def is_token_revoked(jti: str) -> bool:
     Returns:
         True if token is revoked
     """
-    with _revoked_tokens_lock:
-        # Check membership before cleanup to avoid timing window where
-        # a token expiring during cleanup could incorrectly pass validation
-        is_revoked = jti in _revoked_tokens
-        _cleanup_expired_revocations()
-        return is_revoked
+    return await col("revoked_tokens").find_one({
+        "_id": jti, "expires_at": {"$gt": datetime.now(timezone.utc)}
+    }) is not None
 
 
-def _cleanup_expired_revocations() -> None:
-    """
-    Remove expired tokens from the revocation list.
-    Called automatically during revocation checks to prevent memory leaks.
-    
-    Note: This runs under lock on every revocation check. For high-traffic
-    deployments with large revocation lists, consider moving to periodic
-    background cleanup or Redis with automatic TTL expiration.
-    """
-    now = datetime.now(timezone.utc)
-    # Create list snapshot to safely iterate while dict may be modified
-    expired_items = list(_revoked_tokens.items())
-    for jti, exp in expired_items:
-        if exp < now:
-            # Recheck existence in case another thread already removed it
-            if jti in _revoked_tokens:
-                del _revoked_tokens[jti]
+async def ensure_revocation_indexes() -> None:
+    """Share logout state across processes and expire it after the JWT expires."""
+    await col("revoked_tokens").create_index("expires_at", expireAfterSeconds=0)

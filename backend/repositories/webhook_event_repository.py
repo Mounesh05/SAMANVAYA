@@ -4,6 +4,9 @@ Webhook Event Repository.
 
 from typing import Optional, List, Dict, Any
 from core.database import db
+from datetime import datetime, timedelta
+from uuid import uuid4
+from pymongo import ReturnDocument
 
 
 class WebhookEventRepository:
@@ -43,12 +46,49 @@ class WebhookEventRepository:
         cursor = self.collection.find({"repository": repository}).sort("created_at", -1).limit(limit)
         return await cursor.to_list(length=limit)
     
-    async def mark_processing(self, event_id: str, started_at: str) -> bool:
-        """Mark event as processing."""
-        return await self.update(
-            {"id": event_id, "status": {"$in": ["pending", "failed"]}},
-            {"status": "processing", "processing_started_at": started_at}
+    async def ensure_indexes(self):
+        await self.collection.create_index("delivery_key", unique=True, sparse=True)
+        await self.collection.create_index([("status", 1), ("next_attempt_at", 1)])
+        await self.collection.create_index([("status", 1), ("lease_expires_at", 1)])
+
+    @staticmethod
+    def _recoverable(now: datetime, lease_seconds: int, max_retries: int = 3) -> dict:
+        return {"$and": [
+            {"$or": [{"retry_count": {"$lt": max_retries}}, {"retry_count": {"$exists": False}}]},
+            {"$or": [
+                {"status": "pending"},
+                {"status": "failed", "$or": [{"next_attempt_at": {"$lte": now}}, {"next_attempt_at": {"$exists": False}}]},
+                {"status": "processing", "lease_expires_at": {"$lte": now}},
+                # Old records predate leases; reclaim only after the lease window.
+                {"status": "processing", "lease_expires_at": {"$exists": False}, "$or": [
+                    {"processing_started_at": {"$lte": (now - timedelta(seconds=lease_seconds)).isoformat()}},
+                    {"processing_started_at": None},
+                ]},
+            ]},
+        ]}
+
+    async def get_recoverable_events(self, now: datetime, lease_seconds: int, limit: int) -> list:
+        # A worker that died on its last attempt must not stay 'processing' forever.
+        await self.collection.update_many({"status": "processing", "retry_count": {"$gte": 3},
+                                          "lease_expires_at": {"$lte": now}},
+                                         {"$set": {"status": "failed", "error": "Lease expired; retry limit reached"}})
+        return await self.collection.find(self._recoverable(now, lease_seconds)).sort("created_at", 1).limit(limit).to_list(limit)
+
+    async def claim(self, event_id: str, now: datetime, lease_seconds: int) -> Optional[dict]:
+        """Atomic ownership prevents duplicate execution by competing workers."""
+        return await self.collection.find_one_and_update(
+            {"id": event_id, **self._recoverable(now, lease_seconds)},
+            {"$set": {"status": "processing", "processing_started_at": now.isoformat(),
+                      "lease_id": uuid4().hex, "lease_expires_at": now + timedelta(seconds=lease_seconds),
+                      "error": None}, "$inc": {"retry_count": 1}},
+            return_document=ReturnDocument.AFTER,
         )
+
+    async def renew(self, event_id: str, lease_id: str, now: datetime, lease_seconds: int) -> bool:
+        result = await self.collection.update_one(
+            {"id": event_id, "status": "processing", "lease_id": lease_id, "lease_expires_at": {"$gt": now}},
+            {"$set": {"lease_expires_at": now + timedelta(seconds=lease_seconds)}})
+        return result.matched_count == 1
     
     async def mark_completed(
         self,
@@ -57,11 +97,12 @@ class WebhookEventRepository:
         triggers_executed: List[str],
         risks_detected: List[str],
         notifications_sent: List[str],
-        recommendations_created: List[str]
+        recommendations_created: List[str],
+        *, lease_id: str,
     ) -> bool:
         """Mark event as completed with results."""
         return await self.update(
-            {"id": event_id},
+            {"id": event_id, "status": "processing", "lease_id": lease_id},
             {
                 "status": "completed",
                 "processing_completed_at": completed_at,
@@ -72,17 +113,14 @@ class WebhookEventRepository:
             }
         )
     
-    async def mark_failed(self, event_id: str, error: str) -> bool:
+    async def mark_failed(self, event_id: str, error: str, *, lease_id: str, next_attempt_at: datetime) -> bool:
         """Mark event as failed."""
-        event = await self.find_by_id(event_id)
-        retry_count = event.get("retry_count", 0) + 1 if event else 1
-        
         return await self.update(
-            {"id": event_id},
+            {"id": event_id, "status": "processing", "lease_id": lease_id},
             {
                 "status": "failed",
                 "error": error,
-                "retry_count": retry_count
+                "next_attempt_at": next_attempt_at,
             }
         )
     

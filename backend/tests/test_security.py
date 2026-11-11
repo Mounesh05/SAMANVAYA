@@ -4,7 +4,7 @@ Tests for core security module.
 
 import pytest
 from datetime import datetime, timezone, timedelta
-from jose import jwt
+import jwt
 from core.security import (
     hash_password,
     verify_password,
@@ -85,7 +85,9 @@ class TestJWT:
 class TestJWTLogout:
     """Test JWT logout and token revocation."""
 
-    def test_token_revocation(self):
+    @pytest.mark.anyio
+    async def test_token_revocation(self, mock_db, monkeypatch):
+        monkeypatch.setattr("core.database.get_db", lambda: mock_db)
         """Test that a token can be revoked and is properly rejected."""
         # Create a token
         payload = {"sub": "E001", "employee_id": "E001"}
@@ -95,14 +97,14 @@ class TestJWTLogout:
         exp = decoded["exp"]
         
         # Token should not be revoked initially
-        assert not is_token_revoked(jti)
+        assert not await is_token_revoked(jti)
         
         # Revoke the token
         exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
-        revoke_token(jti, exp_datetime)
+        await revoke_token(jti, exp_datetime)
         
         # Token should now be revoked
-        assert is_token_revoked(jti)
+        assert await is_token_revoked(jti)
 
     def test_token_without_jti_handled_gracefully(self):
         """Test that tokens without jti don't crash the system."""
@@ -124,12 +126,14 @@ class TestJWTLogout:
         assert decoded["employee_id"] == "E001"
         assert "jti" not in decoded
         
-        # get_current_user should handle tokens without jti gracefully
-        # (the revocation check is skipped for None jti)
+        # Decoding legacy JWT syntax remains possible, but authentication now
+        # requires a versioned session and JTI; old sessions must log in again.
         jti = decoded.get("jti")
         assert jti is None
 
-    def test_expired_revocations_cleaned_up(self):
+    @pytest.mark.anyio
+    async def test_expired_revocations_cleaned_up(self, mock_db, monkeypatch):
+        monkeypatch.setattr("core.database.get_db", lambda: mock_db)
         """Test that expired revoked tokens are automatically cleaned up."""
         # Create a token that expired in the past
         past_expiration = datetime.now(timezone.utc) - timedelta(minutes=1)
@@ -140,20 +144,22 @@ class TestJWTLogout:
         jti_future = "future-jti-456"
         
         # Revoke both tokens
-        revoke_token(jti_expired, past_expiration)
-        revoke_token(jti_future, future_expiration)
+        await revoke_token(jti_expired, past_expiration)
+        await revoke_token(jti_future, future_expiration)
         
         # Check that the future one is still revoked
-        assert is_token_revoked(jti_future)
+        assert await is_token_revoked(jti_future)
         
-        # The expired one should have been cleaned up
-        # (cleanup happens during is_token_revoked call)
-        assert not is_token_revoked(jti_expired)
+        # Expired records are ignored even before MongoDB's TTL sweep runs.
+        assert not await is_token_revoked(jti_expired)
         
         # Verify the future token is still in the store
-        assert is_token_revoked(jti_future)
+        assert await is_token_revoked(jti_future)
 
-    def test_revoked_token_rejected_by_get_current_user(self):
+    @pytest.mark.anyio
+    async def test_revoked_token_rejected_by_get_current_user(self, mock_db, monkeypatch):
+        monkeypatch.setattr("core.database.get_db", lambda: mock_db)
+        await mock_db.users.insert_one({"employee_id": "E001", "role": "DEVELOPER", "is_active": True})
         """Test that get_current_user rejects revoked tokens with proper error."""
         from core.dependencies import get_current_user
         
@@ -166,17 +172,16 @@ class TestJWTLogout:
         
         # Token should work before revocation
         # Call get_current_user with the token - it should succeed
-        import asyncio
-        result = asyncio.run(get_current_user(authorization=f"Bearer {token}"))
+        result = await get_current_user(authorization=f"Bearer {token}")
         assert result["employee_id"] == "E001"
         
         # Now revoke the token
-        revoke_token(jti, exp_datetime)
+        await revoke_token(jti, exp_datetime)
         
         # Attempt to use the revoked token - should raise HTTPException with 401
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            asyncio.run(get_current_user(authorization=f"Bearer {token}"))
+            await get_current_user(authorization=f"Bearer {token}")
         
         assert exc_info.value.status_code == 401
         assert exc_info.value.detail == "Token has been revoked"

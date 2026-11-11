@@ -39,24 +39,23 @@ async def lifespan(app: FastAPI):
         from repositories.qa_repository import QARepository
         await QARepository().ensure_indexes()
 
-        from repositories.user_repository import UserRepository
-        user_repo = UserRepository()
-        await user_repo.col.update_many(
-            {"role": {"$regex": "^ceo$", "$options": "i"}},
-            {"$set": {"dept": "Executive"}}
-        )
-        await user_repo.col.update_many(
-            {"role": {"$regex": "^hr$", "$options": "i"}},
-            {"$set": {"dept": "People & Culture"}}
-        )
+        from core.security import ensure_revocation_indexes
+        await ensure_revocation_indexes()
         
         logger.info("✓ Database indexes created/verified")
     except Exception as e:
         logger.warning(f"Failed to create database indexes: {e}")
     
-    yield
-    # Shutdown: close MongoDB connection
-    await close_db()
+    # Use the route's processor and stop its owned tasks before closing MongoDB.
+    # Start independently of optional indexes so an unrelated index failure
+    # cannot silently disable event recovery.
+    from api.routes.webhooks import event_processor
+    try:
+        await event_processor.start()
+        yield
+    finally:
+        await event_processor.stop()
+        await close_db()
 
 
 app = FastAPI(

@@ -7,8 +7,11 @@ Permission-restricted routes use Depends(require_permission(...)).
 
 from fastapi import Depends, HTTPException, Header
 from typing import Optional
-from .security import decode_token, is_token_revoked
+from .security import decode_token, is_token_revoked, JWT_SESSION_VERSION
 from .permissions import Permission, get_user_permissions
+from pymongo.errors import PyMongoError
+from repositories.user_repository import UserRepository
+from domain.services.auth_service import AuthService
 
 
 async def get_current_user(authorization: str = Header(...)) -> dict:
@@ -38,28 +41,42 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
             return {"employee_id": user["employee_id"]}
     """
     try:
-        token = authorization.removeprefix("Bearer ").strip()
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token.strip():
+            raise ValueError("Bearer token required")
+        token = token.strip()
         payload = decode_token(token)
         
         # Check if token has been revoked
         jti = payload.get('jti')
-        if jti is not None and is_token_revoked(jti):
+        employee_id = payload.get("employee_id")
+        # Session identity is required so logout can revoke every accepted JWT.
+        if (payload.get("session_version") != JWT_SESSION_VERSION
+                or not isinstance(jti, str) or not jti or not payload.get("exp")
+                or not isinstance(employee_id, str) or not employee_id
+                or payload.get("sub") != employee_id):
+            raise ValueError("Missing session identity")
+        if await is_token_revoked(jti):
             raise HTTPException(
                 status_code=401,
                 detail="Token has been revoked",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Add is_admin flag from system_access field
-        payload['is_admin'] = payload.get('system_access') == 'ADMIN'
-        
-        # Normalize role field (JWT has organizational_role, but we want role)
-        if 'organizational_role' in payload and 'role' not in payload:
-            payload['role'] = payload['organizational_role']
-        
-        return payload
+        account = await UserRepository().find_by_employee_id(employee_id)
+        if not account or not account.get("is_active", True):
+            raise HTTPException(status_code=401, detail="Account is inactive or no longer exists")
+        # Rebuild rather than merge: removed authority fields must not survive
+        # in an older signed token. Keep only session metadata from the JWT.
+        principal = AuthService._token_payload(account)
+        principal.update(jti=jti, exp=payload["exp"], session_version=JWT_SESSION_VERSION,
+                         role=principal["organizational_role"],
+                         is_admin=principal["system_access"] == "ADMIN")
+        return principal
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except PyMongoError:
+        raise HTTPException(status_code=503, detail="Authentication temporarily unavailable")
 
 
 async def get_current_user_optional(authorization: Optional[str] = Header(None)) -> Optional[dict]:
@@ -77,17 +94,11 @@ async def get_current_user_optional(authorization: Optional[str] = Header(None))
         return None
     
     try:
-        token = authorization.removeprefix("Bearer ").strip()
-        payload = decode_token(token)
-        payload['is_admin'] = payload.get('system_access') == 'ADMIN'
-        
-        # Normalize role field
-        if 'organizational_role' in payload and 'role' not in payload:
-            payload['role'] = payload['organizational_role']
-            
-        return payload
-    except ValueError:
-        return None
+        return await get_current_user(authorization)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return None
+        raise
 
 
 def require_roles(*roles: str):

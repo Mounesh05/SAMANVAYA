@@ -17,7 +17,7 @@ from domain.models.hr_performance import (
     HRDimensionKey,
     ComplianceStatus,
 )
-from domain.models.developer_performance import DeveloperPerformance, HRFeedback
+from domain.models.developer_performance import DeveloperPerformance, HRFeedback, RoleEvaluation
 from repositories.hr_performance_repository import (
     HRAssessmentRepository,
     EvaluationPolicyRepository,

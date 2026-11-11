@@ -17,7 +17,7 @@ This addresses Critical Gaps #1, #4, #5, #6 from the vision analysis.
 import uuid
 import asyncio
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from domain.models.webhook_event import WebhookEvent
 from repositories.webhook_event_repository import WebhookEventRepository
@@ -44,6 +44,10 @@ class WebhookEventProcessor:
     Orchestrates the complete pipeline from webhook receipt to notifications.
     """
     
+    max_inflight = 4
+    lease_seconds = 60
+    poll_seconds = 5
+
     def __init__(self):
         self.event_repo = WebhookEventRepository()
         self.pr_repo = PRRepository()
@@ -54,6 +58,66 @@ class WebhookEventProcessor:
         self.risk_engine = RiskEngine()
         self.traceability_service = TraceabilityService()
         self.recommendation_engine = RecommendationEngine()
+
+    def _schedule_event(self, event_id: str) -> None:
+        if not hasattr(self, "_tasks"):
+            self._tasks = set()
+            self._scheduled_ids = set()
+        if len(self._tasks) >= self.max_inflight or event_id in self._scheduled_ids:
+            return  # MongoDB retains the event for the next recovery poll.
+        self._scheduled_ids.add(event_id)
+        task = asyncio.create_task(self._process_event_async(event_id))
+        self._tasks.add(task)
+        def finished(done):
+            self._tasks.discard(done)
+            self._scheduled_ids.discard(event_id)
+            if not done.cancelled() and done.exception():
+                logger.error("Webhook worker failed", exc_info=done.exception())
+        task.add_done_callback(finished)
+
+    async def recover_once(self):
+        available = self.max_inflight - len(getattr(self, "_tasks", ()))
+        if available <= 0:
+            return
+        events = await self.event_repo.get_recoverable_events(datetime.now(timezone.utc), self.lease_seconds, available)
+        for event in events:
+            self._schedule_event(event["id"])
+
+    async def start(self):
+        """Poll persisted events at startup and throughout the application life."""
+        await self.event_repo.ensure_indexes()
+        self._recovery_task = asyncio.create_task(self._recover_loop())
+
+    async def _recover_loop(self):
+        while True:
+            try:
+                await self.recover_once()
+            except Exception:
+                logger.exception("Webhook recovery poll failed; will retry")
+            await asyncio.sleep(self.poll_seconds)
+
+    async def stop(self):
+        recovery = getattr(self, "_recovery_task", None)
+        if recovery:
+            recovery.cancel()
+            await asyncio.gather(recovery, return_exceptions=True)
+        tasks = tuple(getattr(self, "_tasks", ()))
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _renew_lease(self, event_id, lease_id, owner):
+        try:
+            while True:
+                await asyncio.sleep(self.lease_seconds / 3)
+                if not await self.event_repo.renew(event_id, lease_id, datetime.now(timezone.utc), self.lease_seconds):
+                    owner.cancel()
+                    return
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Webhook lease renewal failed")
+            owner.cancel()
     
     async def _get_project_team_lead(self, project_id: str) -> Optional[str]:
         """
@@ -154,7 +218,7 @@ class WebhookEventProcessor:
         logger.info(f"Webhook event {event_id} created: {event_type}.{event_action} from {repository}")
         
         # Process asynchronously (don't block webhook response)
-        asyncio.create_task(self._process_event_async(event_id))
+        self._schedule_event(event_id)
         
         return {
             "event_id": event_id,
@@ -172,18 +236,12 @@ class WebhookEventProcessor:
         - Notifications
         - Traceability updates
         """
+        event_data = await self.event_repo.claim(event_id, datetime.now(timezone.utc), self.lease_seconds)
+        if not event_data:
+            return
+        lease_id = event_data["lease_id"]
+        heartbeat = asyncio.create_task(self._renew_lease(event_id, lease_id, asyncio.current_task()))
         try:
-            # Mark as processing
-            now = datetime.now(timezone.utc).isoformat()
-            if not await self.event_repo.mark_processing(event_id, now):
-                return
-            
-            # Load event
-            event_data = await self.event_repo.find_by_id(event_id)
-            if not event_data:
-                logger.error(f"Event {event_id} not found")
-                return
-            
             event = WebhookEvent(**event_data)
             
             # Route to appropriate handler
@@ -195,7 +253,7 @@ class WebhookEventProcessor:
                     triggers_executed=[],
                     risks_detected=[],
                     notifications_sent=[],
-                    recommendations_created=[]
+                    recommendations_created=[], lease_id=lease_id,
                 )
                 return
             
@@ -209,14 +267,23 @@ class WebhookEventProcessor:
                 triggers_executed=result.get("triggers_executed", []),
                 risks_detected=result.get("risks_detected", []),
                 notifications_sent=result.get("notifications_sent", []),
-                recommendations_created=result.get("recommendations_created", [])
+                recommendations_created=result.get("recommendations_created", []), lease_id=lease_id,
             )
             
             logger.info(f"Event {event_id} processed successfully")
             
+        except asyncio.CancelledError:
+            await self.event_repo.mark_failed(event_id, "Worker stopped", lease_id=lease_id,
+                                              next_attempt_at=datetime.now(timezone.utc))
+            raise
         except Exception as e:
             logger.error(f"Error processing event {event_id}: {str(e)}", exc_info=True)
-            await self.event_repo.mark_failed(event_id, str(e))
+            delay = min(300, 10 * 2 ** event_data["retry_count"])
+            await self.event_repo.mark_failed(event_id, str(e), lease_id=lease_id,
+                                              next_attempt_at=datetime.now(timezone.utc) + timedelta(seconds=delay))
+        finally:
+            heartbeat.cancel()
+            await asyncio.gather(heartbeat, return_exceptions=True)
     
     def _get_event_handler(self, event_type: str):
         """Get handler function for event type."""

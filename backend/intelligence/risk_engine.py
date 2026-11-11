@@ -9,7 +9,7 @@ NOTE: This is the SIMPLE risk engine for basic metrics.
 For DEEP ANALYSIS, use EvidenceBuilder + CodeAgent directly (see github_service.py)
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from datetime import datetime, timezone
 from intelligence.rules.risk_rules import (
     RiskRules,
@@ -33,6 +33,10 @@ from repositories.pr_repository import PRRepository
 from repositories.sprint_repository import SprintRepository
 from repositories.story_repository import StoryRepository
 from domain.services.risk_config_service import get_risk_config_service
+
+if TYPE_CHECKING:
+    from intelligence.evidence.models import CodeQualityEvidence
+    from intelligence.baselines.repository_baseline import RepositoryBaseline
 
 
 class RiskEngine:

@@ -9,7 +9,8 @@ from pydantic import BaseModel, EmailStr
 from domain.models.user import UserCreate, UserOut, LoginRequest, LoginResponse
 from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
-from core.security import decode_token, revoke_token
+from core.security import revoke_token
+from pymongo.errors import PyMongoError
 from core.rate_limiting import limiter
 from core.config import settings
 from datetime import datetime, timezone
@@ -120,32 +121,21 @@ async def logout(
     This revokes the JWT token server-side by adding its JTI to a revocation list.
     The token will be rejected on all subsequent requests until it expires naturally.
     
-    Note: For production multi-instance deployments, the revocation list must be
-    moved to Redis to share state across instances.
+    Revocations are persisted in the shared MongoDB store across restarts and
+    server instances. The response is successful only after persistence.
     """
     try:
-        token = authorization.removeprefix("Bearer ").strip()
-        payload = decode_token(token)
-        jti = payload.get("jti")
-        exp = payload.get("exp")
-        
-        if jti and exp:
-            exp_datetime = datetime.fromtimestamp(exp, tz=timezone.utc)
-            revoke_token(jti, exp_datetime)
-            return {"message": "Successfully logged out"}
-        else:
-            # Token without jti (shouldn't happen with new tokens, but handle gracefully)
-            return {"message": "Logged out successfully"}
-    except ValueError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
-        )
-    except Exception as e:
+        # Authentication already validated and decoded this exact session.
+        await revoke_token(user["jti"], datetime.fromtimestamp(user["exp"], tz=timezone.utc))
+        return {"message": "Successfully logged out"}
+    except PyMongoError:
+        logger.exception("Logout persistence unavailable")
+        raise HTTPException(status_code=503, detail="Logout temporarily unavailable")
+    except Exception:
         logger.exception("Logout failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Logout failed: {str(e)}"
+            detail="Logout failed"
         )
 
 

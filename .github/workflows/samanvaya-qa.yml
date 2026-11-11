@@ -47,6 +47,10 @@ jobs:
         run: bash ci/run_tests.sh
       
       # Static analysis
+      - name: Check runtime names and syntax with Ruff
+        if: always()
+        run: cd backend && ruff check . --select F821,E9 --exclude .venv
+
       - name: Lint with Ruff
         if: always()
         continue-on-error: true
@@ -73,7 +77,6 @@ jobs:
       
       - name: Dependency security audit
         if: always()
-        continue-on-error: true
         run: |
           if [ -f backend/requirements.txt ]; then
             pip-audit
