@@ -16,9 +16,10 @@ def source_content(doc):
     return {key: copy.deepcopy(doc.get(key)) for key in SOURCE_FIELDS}
 
 
-def trusted_source(doc):
+def trusted_source(doc, include_superseded=False):
     approval = doc.get("approval") or {}
-    return (doc.get("status") == "APPROVED" and approval.get("scope_reviewed") is True
+    allowed = {"APPROVED", "SUPERSEDED"} if include_superseded else {"APPROVED"}
+    return (doc.get("status") in allowed and approval.get("scope_reviewed") is True
             and approval.get("approved_by") and approval.get("approved_by") != doc.get("proposed_by")
             and approval.get("organization_id") == doc.get("organization_id")
             and approval.get("expected_fingerprint") == doc.get("payload_fingerprint") == fingerprint(source_content(doc)))
@@ -106,10 +107,20 @@ def resolve_requirements(project_id, context, sources, observations=(), suggesti
     return report
 
 
-def prepare_policy(policy, report):
+def prepare_policy(policy, report, previous_report=None):
     result = copy.deepcopy(policy or {"id": "discovered-requirements", "version": "1", "objective": "TRADEOFF_ONLY"})
-    # Caller-supplied IDs cannot shadow constraints imported from reviewed sources.
-    result["constraints"] = [c for c in result.get("constraints", []) if not c["id"].startswith("discovered-")]
+    # Replace only concrete server-imported IDs. The API permits ordinary manual
+    # IDs beginning with "discovered-"; a prefix alone is not source provenance.
+    imported_ids = set()
+    for snapshot in (previous_report or {}, report):
+        for row in snapshot.get("established", []):
+            if row["type"] in {"MAX_LATENCY", "MAX_MEMORY"}:
+                imported_ids.add("discovered-" + row["id"])
+            elif row["type"] == "WORKLOAD" or row["type"] == "OUTPUT_BEHAVIOR" and row.get("validated_by_contract"):
+                imported_ids.add("discovered-" + row["id"] + "-coverage")
+        if snapshot.get("conflicts") or any(r["type"] in {"INPUT_SCHEMA", "OUTPUT_BEHAVIOR"} and not r.get("validated_by_contract") for r in snapshot.get("established", [])):
+            imported_ids.add("discovered-unresolved")
+    result["constraints"] = [c for c in result.get("constraints", []) if c["id"] not in imported_ids]
     for row in report["established"]:
         if row["type"] == "WORKLOAD" or row["type"] == "OUTPUT_BEHAVIOR" and row.get("validated_by_contract"):
             ids = row["value"]["required_dataset_ids"]
@@ -129,7 +140,7 @@ def prepare_policy(policy, report):
     if blocked:
         result["constraints"].append({"id": "discovered-unresolved", "type": "EXPECTED_OUTPUT", "classification": "MANDATORY",
             "evaluation_policy": "ALL_EXPECTED", "source_reference": "requirements/" + report["fingerprint"], "applicability": "UNRESOLVED"})
-    known = {r["id"] for r in report["unknown"]}
-    result["unknown_requirements"] = [r for r in result.get("unknown_requirements", []) if not r["id"].startswith("discovered-")]
-    result["unknown_requirements"].extend({"id": r["id"], "description": r["description"]} for r in report["unknown"] if r["id"] in known)
+    known = {r["id"] for snapshot in (previous_report or {}, report) for r in snapshot.get("unknown", [])}
+    result["unknown_requirements"] = [r for r in result.get("unknown_requirements", []) if r["id"] not in known]
+    result["unknown_requirements"].extend({"id": r["id"], "description": r["description"]} for r in report["unknown"])
     return DecisionPolicy.model_validate(result).model_dump()

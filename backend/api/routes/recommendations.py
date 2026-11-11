@@ -21,6 +21,22 @@ engine = RecommendationEngine()
 logger = logging.getLogger(__name__)
 
 
+async def _visible_algorithm_recommendations(recommendations, user, *, strict=False):
+    """Keep algorithm evidence under its existing project/org read boundary."""
+    from api.routes.algorithms import project_access
+    visible = []
+    for recommendation in recommendations:
+        if recommendation.get("algorithm_analysis_run_id"):
+            try:
+                await project_access(user, recommendation["project_id"])
+            except HTTPException as error:
+                if strict or error.status_code not in {403, 404}:
+                    raise
+                continue
+        visible.append(recommendation)
+    return visible
+
+
 @router.get("/user/{user_id}")
 async def get_user_recommendations(
     user_id: str,
@@ -33,6 +49,7 @@ async def get_user_recommendations(
         await verify_can_view_user_tasks(current_user, user_id)
         
         recs = await engine.get_recommendations_for_user(user_id, status)
+        recs = await _visible_algorithm_recommendations(recs, current_user)
         return {
             "user_id": user_id,
             "status": status,
@@ -57,6 +74,7 @@ async def get_role_recommendations(
         # Authorization: filter by accessible projects
         accessible = await get_accessible_project_ids(current_user)
         recs = [r for r in recs if r.get("project_id") in accessible]
+        recs = await _visible_algorithm_recommendations(recs, current_user)
         
         return {
             "role": role,
@@ -111,6 +129,7 @@ async def get_entity_recommendations(
     
     try:
         recs = await engine.get_recommendations_for_entity(entity_type, entity_id, status)
+        recs = await _visible_algorithm_recommendations(recs, current_user, strict=True)
         return {
             "entity_type": entity_type,
             "entity_id": entity_id,
@@ -118,6 +137,8 @@ async def get_entity_recommendations(
             "recommendations": recs,
             "count": len(recs)
         }
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -136,6 +157,7 @@ async def accept_recommendation(
         rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
+        await _visible_algorithm_recommendations([rec], current_user, strict=True)
         
         if rec.get("user_id") != user_id and not has_org_access(current_user):
             raise HTTPException(status_code=403, detail="Access denied")
@@ -169,6 +191,7 @@ async def reject_recommendation(
         rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
+        await _visible_algorithm_recommendations([rec], current_user, strict=True)
         
         if rec.get("user_id") != user_id and not has_org_access(current_user):
             raise HTTPException(status_code=403, detail="Access denied")
@@ -199,6 +222,7 @@ async def mark_recommendation_implemented(
     rec = await engine.repo.find_by_id(recommendation_id)
     if not rec:
         raise HTTPException(status_code=404, detail="Recommendation not found")
+    await _visible_algorithm_recommendations([rec], current_user, strict=True)
     
     user_id = current_user["employee_id"]
     if rec.get("user_id") != user_id and not has_org_access(current_user):
@@ -231,6 +255,7 @@ async def get_recommendation(
         rec = await engine.repo.find_by_id(recommendation_id)
         if not rec:
             raise HTTPException(status_code=404, detail="Recommendation not found")
+        await _visible_algorithm_recommendations([rec], current_user, strict=True)
         
         # Authorization: verify user has access to this recommendation
         rec_user_id = rec.get("user_id")

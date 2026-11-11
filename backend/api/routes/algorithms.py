@@ -303,10 +303,9 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
             except HTTPException as error:
                 if error.status_code != 403:
                     raise
-    from domain.services.pr_algorithm_intelligence_service import TERMINAL, now
+    from domain.services.pr_algorithm_intelligence_service import expire_pr_jobs, recommendation_status
     # Reads also expire interrupted local continuations, without replaying code.
-    await col("code_quality_runs").update_many({"kind": "pr_algorithm_intelligence", "status": {"$nin": list(TERMINAL)}, "lease_expires_at": {"$lt": now()}},
-        {"$set": {"status": "failed", "error": "Local analysis lease expired; execution was not replayed", "completed_at": now()}})
+    await expire_pr_jobs(col("code_quality_runs"), col("pull_requests"), project_ids=projects)
     query = {"kind": "pr_algorithm_intelligence", "project_id": {"$in": projects}}
     if pr_id:
         query["pr_id"] = pr_id
@@ -314,5 +313,13 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
     # Only the latest revision is actionable. Earlier records remain historical.
     for row in rows:
         pr = await col("pull_requests").find_one({"id": row["pr_id"], "project_id": row["project_id"]})
-        row["historical_only"] = not pr or pr.get("status") != "open" or pr.get("head_sha") != row["head_sha"] or pr.get("algorithm_intelligence_run_id") != row["run_id"]
+        row["historical_only"] = row["status"] == "superseded" or not pr or pr.get("status") != "open" or pr.get("head_sha") != row["head_sha"] or pr.get("algorithm_intelligence_run_id") != row["run_id"]
+        for function in row.get("functions", []):
+            if not function.get("benchmark_run_id"):
+                continue
+            benchmark = await col("algorithm_benchmark_runs").find_one({"run_id": function["benchmark_run_id"], "project_id": row["project_id"]},
+                {"behavioral_compatibility.status": 1, "decision.task_suitability": 1, "decision.unknown_requirements": 1, "decision.revision_id": 1})
+            if benchmark and (benchmark.get("decision") or {}).get("revision_id"):
+                function["finding_status"] = recommendation_status(benchmark)
+                function["current_decision_reference"] = function["benchmark_run_id"] + "/" + benchmark["decision"]["revision_id"]
     return {"analyses": rows}

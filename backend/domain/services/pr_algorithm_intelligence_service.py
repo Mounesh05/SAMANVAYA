@@ -33,8 +33,36 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
+async def expire_pr_jobs(runs, prs, run_id=None, project_ids=None):
+    """Expire manifests and their matching PR cache with a guarded state change."""
+    query = {"kind": "pr_algorithm_intelligence", "status": {"$nin": list(TERMINAL)}, "lease_expires_at": {"$lt": now()}}
+    if run_id is not None:
+        query["run_id"] = run_id
+    if project_ids is not None:
+        query["project_id"] = {"$in": project_ids}
+    expired = await runs.find(query, {"_id": 0, "run_id": 1, "pr_id": 1, "project_id": 1, "head_sha": 1}).limit(100).to_list(100)
+    for doc in expired:
+        outcome = await runs.update_one({**query, "run_id": doc["run_id"]}, {"$set": {
+            "status": "failed", "error": "Local analysis lease expired; execution was not replayed", "completed_at": now()}})
+        if outcome.matched_count:
+            await prs.update_one({"id": doc["pr_id"], "project_id": doc["project_id"], "head_sha": doc["head_sha"],
+                "algorithm_intelligence_run_id": doc["run_id"]}, {"$set": {"algorithm_intelligence_status": "failed"}})
+
+
 def function_text(source, function):
-    return "\n".join(source.splitlines()[function["line"] - 1:function["end_line"]])
+    lines = source.splitlines()[(function.get("definition_line") or function["line"]) - 1:function["end_line"]]
+    if not lines or function.get("end_column") is None:
+        return "\n".join(lines)  # Legacy snapshots do not have precise end columns.
+    # Python AST columns count UTF-8 bytes; the TypeScript compiler counts UTF-16
+    # code units. Slicing decoded text with either index misidentifies Unicode.
+    encoding, width = ("utf-8", 1) if function["language"] == "python" else ("utf-16-le", 2)
+    start, end = function.get("column", 0) * width, function["end_column"] * width
+    if len(lines) == 1:
+        lines[0] = lines[0].encode(encoding)[start:end].decode(encoding)
+    else:
+        lines[0] = lines[0].encode(encoding)[start:].decode(encoding)
+        lines[-1] = lines[-1].encode(encoding)[:end].decode(encoding)
+    return "\n".join(lines)
 
 
 def changed_functions(base, head, files, before, after):
@@ -152,6 +180,10 @@ class PRAlgorithmIntelligenceService:
 
     async def set_status(self, doc, status, **fields):
         await self.collection("code_quality_runs").update_one({"run_id": doc["run_id"]}, {"$set": {"status": status, **fields}})
+        if status == "superseded":
+            await self.collection("recommendations").update_many(
+                {"algorithm_analysis_run_id": doc["run_id"], "project_id": doc["project_id"]},
+                {"$set": {"status": "obsolete", "historical_only": True}})
         await self.collection("pull_requests").update_one(
             {"id": doc["pr_id"], "project_id": doc["project_id"], "head_sha": doc["head_sha"], "algorithm_intelligence_run_id": doc["run_id"]},
             {"$set": {"algorithm_intelligence_status": status}})
@@ -207,6 +239,7 @@ class PRAlgorithmIntelligenceService:
                  "confidence": None, "target_roles": ["DEVELOPER", "LEAD", "QA", "DEVOPS"], "status": "pending",
                  "generated_by": METHOD, "generated_at": now(), "head_sha": doc["head_sha"], "algorithm_analysis_run_id": doc["run_id"],
                  "finding_status": status, "benchmark_run_id": run["run_id"], "evidence_ids": [doc["run_id"], run["run_id"]],
+                 "decision_revision_id": decision.get("revision_id"),
                  "algorithm_summary": {"compatibility": run.get("behavioral_compatibility", {}).get("status"),
                      "task_suitability": decision.get("task_suitability"), "dataset_comparisons": decision.get("dataset_comparisons", [])}}
         await self.collection("recommendations").update_one({"id": rec_id}, {"$setOnInsert": value}, upsert=True)
@@ -219,6 +252,7 @@ class PRAlgorithmIntelligenceService:
         doc = None
         try:
             async with _SLOTS:
+                await expire_pr_jobs(self.collection("code_quality_runs"), self.collection("pull_requests"), run_id=run_id)
                 doc = await self.collection("code_quality_runs").find_one_and_update(
                     {"run_id": run_id, "status": "pending", "lease_expires_at": {"$gt": now()}}, {"$set": {"status": "analyzing"}})
                 if not doc:
@@ -247,8 +281,10 @@ class PRAlgorithmIntelligenceService:
         base_run, base, before = await self.snapshot(doc, doc["base_sha"], old_files)
         head_run, head, after = await self.snapshot(doc, doc["head_sha"], files)
         pairs = changed_functions(base, head, files, before, after)
+        discovery_incomplete = base["status"] != "available" or head["status"] != "available"
         await self.set_status(doc, "analyzing", base_discovery_run_id=base_run, head_discovery_run_id=head_run,
-                              function_discovery=head, evidence_refs=[base_run, head_run], organization_id=user["org_id"])
+                              function_discovery=head, evidence_refs=[base_run, head_run], organization_id=user["org_id"],
+                              analysis_truncated=bool(doc.get("input_truncated") or discovery_incomplete))
         rows, recommendations, executed = [], [], 0
         if not pairs:
             await self.set_status(doc, "unsupported", reason="No changed function body could be extracted; inspect source diagnostics and module/caller changes", completed_at=now())
@@ -327,12 +363,10 @@ class PRAlgorithmIntelligenceService:
         if not await self.fresh(doc):
             await self.set_status(doc, "superseded", functions=rows, completed_at=now())
             return
-        status = "completed" if any(r["status"] == "completed" or r.get("finding_status") == "CORRECTNESS_FAILURE" for r in rows) else "failed" if any(r["status"] == "failed" for r in rows) else "insufficient_evidence" if any(r["status"] == "insufficient_evidence" for r in rows) else "unsupported"
+        status = "failed" if any(r["status"] == "failed" for r in rows) else "completed" if any(r["status"] == "completed" or r.get("finding_status") == "CORRECTNESS_FAILURE" for r in rows) else "insufficient_evidence" if any(r["status"] == "insufficient_evidence" for r in rows) else "unsupported"
         await self.set_status(doc, status, functions=rows, recommendation_ids=recommendations, completed_at=now(),
-                              analysis_truncated=doc.get("input_truncated") or len(pairs) > 64)
+                              analysis_truncated=bool(doc.get("input_truncated") or discovery_incomplete or len(pairs) > 64))
 
     async def get(self, run_id):
-        await self.collection("code_quality_runs").update_many(
-            {"kind": "pr_algorithm_intelligence", "status": {"$nin": list(TERMINAL)}, "lease_expires_at": {"$lt": now()}},
-            {"$set": {"status": "failed", "error": "Local analysis lease expired; results are not automatically replayed", "completed_at": now()}})
+        await expire_pr_jobs(self.collection("code_quality_runs"), self.collection("pull_requests"), run_id=run_id)
         return await self.collection("code_quality_runs").find_one({"run_id": run_id, "kind": "pr_algorithm_intelligence"}, {"_id": 0})

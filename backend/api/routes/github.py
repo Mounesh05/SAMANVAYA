@@ -310,7 +310,7 @@ async def sync_pull_request(
         )
         
         response = {
-            "message": "PR synced successfully",
+            "message": "A newer PR revision is already current; stale analysis was skipped" if result.get("revision_superseded") else "PR synced successfully",
             "pr_id": result["pr"]["id"],
             "pr_number": request.pr_number,
             "risk_level": result["pr"]["risk_level"],

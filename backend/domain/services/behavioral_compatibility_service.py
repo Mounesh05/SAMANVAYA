@@ -35,7 +35,7 @@ class BehavioralCompatibilityService:
             return identity, ["Referenced Phase 2 function evidence is unavailable in this project."]
         function = matches[0]
         if (function["source_hash"] != source_hash or function["language"] != candidate.language
-                or function["name"] != candidate.entrypoint):
+                or function["name"] != candidate.entrypoint or function["qualified_name"] != candidate.entrypoint):
             return identity, ["Submitted source, language or entrypoint does not match the referenced Phase 2 snapshot."]
         identity.update(source_revision=function.get("source_revision"), phase2_context=function)
         return identity, []

@@ -94,6 +94,10 @@ class FunctionContractService:
         present = [doc for doc in records if doc]
         if not present:
             return resolution
+        project = await self.collection.database["projects"].find_one({"id": project_id}, {"org_id": 1})
+        if project and any(doc.get("organization_id") != project.get("org_id") for doc in present):
+            resolution["status"] = "CONFLICTING"
+            return resolution
         fingerprints = {fingerprint(contract_content(doc)) for doc in present}
         if len(present) != len(records) or len(fingerprints) != 1 or any(doc["payload_fingerprint"] not in fingerprints for doc in present):
             resolution["status"] = "CONFLICTING"

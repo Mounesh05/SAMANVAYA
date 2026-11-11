@@ -91,9 +91,19 @@ class RequirementDiscoveryService:
         sources = await self.collection("algorithm_requirement_sources").find({"project_id": project_id}, {"_id": 0}).limit(33).to_list(33)
         if len(sources) > 32:
             raise ValueError("More than 32 source revisions require a narrower project policy; no partial policy was enforced")
+        project = await self.collection("projects").find_one({"id": project_id}, {"org_id": 1})
+        organization_conflicts = []
+        for doc in sources:
+            if project and doc.get("organization_id") != project.get("org_id"):
+                if doc.get("status") == "APPROVED":
+                    organization_conflicts.append("algorithm_requirement_sources/" + doc["source_id"])
+                doc["status"] = "ORGANIZATION_MISMATCH"
         superseders = {}
         for doc in sources:
-            if trusted_source(doc) and doc.get("supersedes"):
+            # A reviewed intermediate revision still establishes supersession
+            # history after it is itself replaced. Do not reactivate ancestors
+            # if an earlier predecessor status update was interrupted.
+            if trusted_source(doc, include_superseded=True) and doc.get("supersedes"):
                 superseders.setdefault(doc["supersedes"], []).append(doc["source_id"])
         for doc in sources:
             if doc["source_id"] in superseders and len(superseders[doc["source_id"]]) == 1:
@@ -179,6 +189,9 @@ class RequirementDiscoveryService:
                     "algorithm_benchmark_runs/" + run_id, fingerprint(run.get("results", [])), "OBSERVED",
                     description="Historical measurements on recorded inputs; not a production acceptance limit or workload frequency"))
         report = resolve_requirements(project_id, context, sources, observations, suggestions, limitations, dataset_ids, established)
+        if organization_conflicts:
+            report["conflicts"].append({"reason": "Requirement approval does not belong to the project's current organization; renewed authorized review is required",
+                                        "evidence_refs": organization_conflicts, "requirement_ids": []})
         for old_id, replacements in superseders.items():
             if len(replacements) > 1:
                 report["conflicts"].append({"reason": "Concurrent approved replacements of one source revision require review", "evidence_refs": replacements, "requirement_ids": []})
@@ -197,21 +210,31 @@ class RequirementDiscoveryService:
             context["discovery_run_ids"] = list(dict.fromkeys(i["function_reference"]["run_id"] for i in (compatibility["previous"], compatibility["current"]) if i.get("function_reference")))
         # Bind static identity to the actual submitted bytes. Client-supplied
         # function IDs, repositories and revision labels are not authority.
-        matches = []
-        for run_id in context.get("discovery_run_ids", []):
-            run = await self.collection("code_quality_runs").find_one({"run_id": run_id, "repository_id": request["project_id"]})
-            discovery = (run or {}).get("function_discovery", {})
-            for fn in discovery.get("functions", []) if discovery.get("method") == "function-purpose-v1" and discovery.get("status") in {"available", "partial"} else []:
-                if any(fn.get("source_hash") == hashlib.sha256(c["source"].encode()).hexdigest()
-                       and fn.get("name") == c["entrypoint"] and fn.get("language") == request.get("compatibility_context", {}).get("candidate_languages", {}).get(c["name"], request["language"])
-                       for c in request["candidates"]):
-                    matches.append(fn)
-        context["function_ids"] = list(dict.fromkeys(fn["function_id"] for fn in matches))[:8]
-        revisions = {fn.get("source_revision") for fn in matches}
-        context["source_revision"] = next(iter(revisions)) if len(revisions) == 1 else None
         configuration = await self.collection("github_project_configs").find_one({"project_id": request["project_id"]})
         context["repository"] = (configuration["repository_owner"] + "/" + configuration["repository_name"]
                                  if configuration and configuration.get("repository_owner") and configuration.get("repository_name") else None)
+        matches = []
+        bound_candidates = set()
+        for run_id in context.get("discovery_run_ids", []):
+            run = await self.collection("code_quality_runs").find_one({"run_id": run_id, "repository_id": request["project_id"]})
+            discovery = (run or {}).get("function_discovery", {})
+            provenance = (run or {}).get("source_provenance", {})
+            if (provenance.get("method") != "github-exact-revision" or not context["repository"]
+                    or provenance.get("repository") != context["repository"] or not provenance.get("revision")
+                    or provenance["revision"] != (run or {}).get("commit_sha")):
+                continue
+            for fn in discovery.get("functions", []) if discovery.get("method") == "function-purpose-v1" and discovery.get("status") in {"available", "partial"} else []:
+                matching_candidates = {c["name"] for c in request["candidates"] if fn.get("source_hash") == hashlib.sha256(c["source"].encode()).hexdigest()
+                       and fn.get("source_revision") == provenance["revision"] and fn.get("qualified_name") == c["entrypoint"]
+                       and fn.get("name") == c["entrypoint"] and fn.get("language") == request.get("compatibility_context", {}).get("candidate_languages", {}).get(c["name"], request["language"])
+                       }
+                if matching_candidates:
+                    matches.append(fn)
+                    bound_candidates.update(matching_candidates)
+        complete_scope = bound_candidates == {c["name"] for c in request["candidates"]}
+        context["function_ids"] = list(dict.fromkeys(fn["function_id"] for fn in matches))[:8] if complete_scope else []
+        revisions = {fn.get("source_revision") for fn in matches}
+        context["source_revision"] = next(iter(revisions)) if complete_scope and len(revisions) == 1 else None
         # Functional contracts require explicit references and exact payload matching.
         report = await self.discover(request["project_id"], context, [d["id"] for d in request.get("datasets", [])])
         if context.get("contract_ids"):
@@ -239,6 +262,19 @@ class RequirementDiscoveryService:
             policy["constraints"] = [{"id": "legacy-tracked-allocation-limit", "type": "MAX_MEMORY", "classification": "MANDATORY",
                 "threshold": request["memory_limit_bytes"], "unit": "bytes", "metric": "memray_peak_tracked_allocations_bytes",
                 "evaluation_policy": "OBSERVED_PEAK", "source_reference": "request/memory_limit_bytes", "applicability": "APPLIES"}]
-        request["decision_policy"] = prepare_policy(policy, report)
+        previous_report = request.get("requirements_discovery") or {}
+        previous_input = previous_report.get("policy_input")
+        manual_required = list(policy.get("required_dataset_ids", []))
+        if previous_input is not None:
+            imported_required = {key for row in previous_report.get("established", [])
+                if row["type"] == "WORKLOAD" or row["type"] == "OUTPUT_BEHAVIOR" and row.get("validated_by_contract")
+                for key in row["value"]["required_dataset_ids"]}
+            manual_required = [key for key in manual_required if key not in imported_required or key in previous_input["required_dataset_ids"]]
+        # Preserve the original explicit scope so retiring imported coverage does
+        # not remove an overlapping manually required check on reevaluation.
+        report["policy_input"] = {"required_dataset_ids": manual_required}
+        policy = {**policy, "required_dataset_ids": manual_required}
+        report["fingerprint"] = fingerprint({k: v for k, v in report.items() if k != "fingerprint"})
+        request["decision_policy"] = prepare_policy(policy, report, previous_report)
         request["requirements_discovery"] = bound_report(report)
         return request

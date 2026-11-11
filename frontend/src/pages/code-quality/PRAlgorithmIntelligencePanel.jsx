@@ -19,7 +19,9 @@ export function WorkloadDifferences({ decision }) {
     <ul>{(decision.dataset_comparisons || []).map(dataset => {
       const a = previous?.datasets.find(d => d.dataset_id === dataset.dataset_id);
       const b = current?.datasets.find(d => d.dataset_id === dataset.dataset_id);
-      const eligible = a?.eligibility === 'ELIGIBLE' && b?.eligibility === 'ELIGIBLE';
+      const comparable = ['ELIGIBLE_WINNER', 'CONDITIONAL_COMPARISON', 'MULTIPLE_ELIGIBLE'].includes(dataset.status)
+        && previous?.methodology_fingerprint && previous.methodology_fingerprint === current?.methodology_fingerprint;
+      const eligible = comparable && a?.eligibility === 'ELIGIBLE' && b?.eligibility === 'ELIGIBLE';
       const timing = eligible && a?.timing?.status === 'AVAILABLE' && b?.timing?.status === 'AVAILABLE' && Number.isFinite(a.timing.median) && Number.isFinite(b.timing.median);
       const memory = eligible && a?.memory?.status === 'AVAILABLE' && b?.memory?.status === 'AVAILABLE' && a.memory.metric === 'memray_peak_tracked_allocations_bytes' && b.memory.metric === a.memory.metric && Number.isFinite(a.memory.bytes) && Number.isFinite(b.memory.bytes);
       return <li key={dataset.dataset_id}>{dataset.dataset_id}: {timing ? `Median time delta ${(b.timing.median - a.timing.median).toPrecision(6)} seconds` : 'Time difference unverified'}.
@@ -35,7 +37,7 @@ export function PRAlgorithmIntelligencePanel({ prId }) {
     refetchInterval: 5000 });
   const comparison = useQuery({ queryKey: ['algorithms', 'run', selected], queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected) });
   const explanation = useMutation({ mutationFn: runId => algorithmsApi.getExplanation(runId) });
-  const runs = history.data?.analyses || [];
+  const runs = history.error ? [] : history.data?.analyses || [];
   return <Card title="PR Algorithm Intelligence" subtitle="Automatic evidence and fresh comparisons for connected projects" style={{ marginBottom: '1.75rem' }}>
     <p>Approved functional contracts determine what can be validated. Missing behavior stays unknown. Findings apply to tested workloads and do not identify a production-optimal algorithm.</p>
     {history.isLoading && <p role="status">Loading PR analysis…</p>}
@@ -55,15 +57,18 @@ export function PRAlgorithmIntelligencePanel({ prId }) {
         <p>Observed patterns: {(fn.current?.detected_patterns || []).map(p => p.kind).join(', ') || 'No recognized pattern'}</p>
         {fn.reason && <p>{fn.reason}</p>}
         <p>Contract: {fn.contract_id || 'No approved applicable contract'} · Evidence: {(fn.evidence_refs || []).join(' · ')}</p>
+        {fn.current_decision_reference && <p>Current decision: {fn.current_decision_reference}</p>}
+        {run.head_discovery_run_id && <p><a href={`/code-quality/runs/${encodeURIComponent(run.head_discovery_run_id)}`}>Inspect current function evidence</a></p>}
+        {fn.previous && run.base_discovery_run_id && <p><a href={`/code-quality/runs/${encodeURIComponent(run.base_discovery_run_id)}`}>Inspect previous function evidence</a></p>}
         {fn.benchmark_run_id && <Button onClick={() => setSelected(fn.benchmark_run_id)}>Inspect comparison {fn.current?.qualified_name}</Button>}
         {fn.datasets && <details><summary>Approved dataset provenance</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(fn.datasets, null, 2)}</pre></details>}
         {fn.requirements_discovery && <RequirementsSection report={fn.requirements_discovery} />}
       </article>)}
-      {(run.analysis_truncated || run.input_truncated) && <p>Analysis bounds were reached; these findings do not cover every PR change.</p>}
+      {(run.analysis_truncated || run.input_truncated) && <p>Analysis is partial; these findings do not cover every PR change.</p>}
       <ul>{(run.limitations || []).map((text, i) => <li key={i}>{text}</li>)}</ul>
     </details>)}
     {comparison.error && <p role="alert">{comparison.error.message}</p>}
-    {comparison.data && <section aria-label="Automatic comparison details">
+    {comparison.data && !comparison.error && !history.error && <section aria-label="Automatic comparison details">
       <h3>Comparison {comparison.data.run_id}</h3>
       <BehavioralCompatibilitySection report={comparison.data.behavioral_compatibility} />
       <RequirementsSection report={comparison.data.decision?.requirements_discovery || comparison.data.requirements_discovery} />

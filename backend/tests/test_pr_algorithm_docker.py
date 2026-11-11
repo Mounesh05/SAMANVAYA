@@ -1,11 +1,13 @@
 """Fresh PR base/head comparisons in the existing network-disabled worker images."""
 
 import os
+import asyncio
+from contextlib import suppress
 
 import pytest
 
 from intelligence.algorithms.runner import DockerBenchmarkRunner
-from test_pr_algorithm_intelligence import workflow, run
+from test_pr_algorithm_intelligence import workflow, run, contract
 from test_behavioral_compatibility import approved
 from test_behavioral_compatibility_docker import GRAPH, REACHABLE, PY_BFS, JS_BFS, PY_PATH, JS_PATH, PY_DFS_PATH, JS_DFS_PATH
 
@@ -63,3 +65,69 @@ async def test_automatic_bfs_to_dfs_uses_approved_behavior_not_algorithm_name(wo
         assert row["finding_status"] == "CORRECTNESS_FAILURE" and row["compatibility"] == "INCOMPATIBLE"
         assert not child["phase1_eligibility"]["eligible"]
         assert not any(c["winner"] for c in child["decision"]["dataset_comparisons"])
+
+
+async def test_optional_memory_instrumentation_failure_preserves_real_pr_timing(workflow):
+    # Fault injection stays inside each existing isolated worker, never the host.
+    unavailable_reader = "import memray\ndef unavailable_reader(*args, **kwargs):\n    raise RuntimeError('memory instrumentation unavailable')\nmemray.FileReader = unavailable_reader\n"
+    workflow.snapshots["base"]["module.py"] = unavailable_reader + workflow.snapshots["base"]["module.py"]
+    workflow.snapshots["head"]["module.py"] = unavailable_reader + workflow.snapshots["head"]["module.py"]
+    await contract(workflow)
+    workflow.benchmarks.runner = DockerBenchmarkRunner()
+    result = await run(workflow)
+    child = await workflow.benchmarks.get(result["functions"][0]["benchmark_run_id"])
+    assert result["status"] == "completed", result.get("error")
+    assert child["behavioral_compatibility"]["status"] == "COMPATIBLE_WITHIN_TESTED_CONTRACT"
+    assert all(c["task_eligibility"] == "ELIGIBLE" for c in child["decision"]["candidates"])
+    for candidate in child["results"]:
+        for case in candidate["cases"]:
+            assert case["timing_status"] == "AVAILABLE" and len(case["timings_seconds"]) == 5
+            assert case["memory_status"] == "UNAVAILABLE" and case["memory_bytes"] is None
+            assert case["behavioral_validation"]["status"] == "PASS"
+
+
+@pytest.mark.parametrize("stop", ["timeout", "cancel"])
+async def test_real_pr_worker_stop_removes_container_and_releases_lease(workflow, stop):
+    workflow.snapshots["base"]["module.py"] = "def solve(xs):\n    while True: pass\n"
+    workflow.snapshots["head"]["module.py"] = "def solve(xs):\n    while True: continue\n"
+    await contract(workflow)
+    runner = DockerBenchmarkRunner(timeout_seconds=3 if stop == "timeout" else 45)
+    workflow.benchmarks.runner = runner
+    original = runner._command
+    names = []
+    async def record_command(*args, **kwargs):
+        if args[0] == "run":
+            names.append(args[args.index("--name") + 1])
+        return await original(*args, **kwargs)
+    runner._command = record_command
+    created = await workflow.service.enqueue("P1", "o/r", workflow.pr, [{"filename": "module.py"}], "PR1", launch=False)
+    task = asyncio.create_task(workflow.service.execute(created["run_id"]))
+    try:
+        if stop == "cancel":
+            for _ in range(100):
+                if names:
+                    code, output, _ = await original("inspect", "--format", "{{.State.Running}}", names[0])
+                    if code == 0 and output.strip() == b"true":
+                        break
+                await asyncio.sleep(0.1)
+            else:
+                pytest.fail("The isolated worker never entered its running state")
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        else:
+            await asyncio.wait_for(task, 15)
+        assert names, "The check must exercise a real worker, not just fail during image inspection"
+        for name in names:
+            code, _, _ = await original("inspect", name)
+            assert code != 0, "Owned worker container survived termination"
+        child = await workflow.db.algorithm_benchmark_runs.find_one({})
+        assert child["status"] == "failed" and child["active"] is False
+        assert (await workflow.service.get(created["run_id"]))["status"] == "failed"
+    finally:
+        if not task.done():
+            task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+        for name in names:
+            await original("rm", "--force", name)

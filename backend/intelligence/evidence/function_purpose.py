@@ -45,6 +45,8 @@ class DiscoveredFunction(BaseModel):
     line: int
     end_line: int
     column: int = 0
+    end_column: int | None = None
+    definition_line: int | None = None
     source_revision: str | None = None
     source_hash: str
     method: str = METHOD

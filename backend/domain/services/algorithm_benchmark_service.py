@@ -331,7 +331,8 @@ class AlgorithmBenchmarkService:
             evidence = raw_evidence(document)
             decision_request = document["request"]
             if self.requirements is not None:
-                decision_request = await self.requirements.prepare({**decision_request, "decision_policy": policy})
+                previous_report = (document.get("decision") or {}).get("requirements_discovery", decision_request.get("requirements_discovery"))
+                decision_request = await self.requirements.prepare({**decision_request, "decision_policy": policy, "requirements_discovery": previous_report})
                 policy = decision_request["decision_policy"]
             evidence_fp = decision_fingerprint(evidence)
             if document.get("immutable_evidence_fingerprint", evidence_fp) != evidence_fp:

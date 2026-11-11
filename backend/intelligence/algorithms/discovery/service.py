@@ -149,6 +149,7 @@ async def discover_sources(sources: dict[str, str], repository_id: str, revision
                 function = DiscoveredFunction(
                     function_id=fid, repository_id=repository_id, path=path, language=language,
                     source_revision=revision, source_hash=digest, evidence=evidence,
+                    end_column=raw.get("end_column"), definition_line=raw.get("definition_line"),
                     **{key: raw[key] for key in ("name", "qualified_name", "line", "end_line", "column", "is_async",
                                                  "parameters", "return_annotation", "calls", "returns", "structure")},
                 )

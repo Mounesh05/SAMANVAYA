@@ -118,6 +118,13 @@ class GitHubSyncService:
                     and latest.get("base", {}).get("sha") == github_pr.get("base", {}).get("sha"))
         normalized_pr, current_revision = await self.pr_repo.store_revision(normalized_pr,
             validate_current=validate_current if github_pr.get("base", {}).get("sha") else None)
+        if not current_revision:
+            return {"pr": normalized_pr, "file_stats": {}, "ci_data": {}, "commit_count": None,
+                    "risk_analysis": {"risk_score": normalized_pr.get("risk_score"), "risk_level": normalized_pr.get("risk_level", "unknown"),
+                                      "analysis_status": "superseded"},
+                    "ai_analysis": None, "ai_run_id": None, "code_quality_report": None,
+                    "discovery_run_id": None, "function_discovery": None, "algorithm_intelligence": None,
+                    "revision_superseded": True}
         # Queue before optional model analysis. Security/quality risk gates and
         # Ollama availability cannot suppress deterministic algorithm findings.
         algorithm_intelligence = None

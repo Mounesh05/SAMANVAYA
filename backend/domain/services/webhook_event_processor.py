@@ -276,6 +276,9 @@ class WebhookEventProcessor:
                 use_deep_analysis=(action == "opened"),  # Deep analysis on first open
                 triggered_by=f"webhook-{action}"
             )
+            if sync_result.get("revision_superseded"):
+                return {"triggers_executed": ["pr_sync", "superseded_revision"], "risks_detected": [],
+                        "notifications_sent": [], "recommendations_created": []}
             
             triggers_executed.append("pr_sync")
             triggers_executed.append("risk_analysis")

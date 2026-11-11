@@ -122,6 +122,7 @@ function extract(sourceText, filePath) {
         for (const observed of facts) if (observed.kind === 'return_value') observed.related = collections[observed.subject] || observed.related;
         functions.push({name: binding.slice(0, 120), qualified_name: nestedScope.slice(0, 240), line: line(node), end_line: end(node),
           column: source.getLineAndCharacterOfPosition(node.getStart(source)).character,
+          end_column: source.getLineAndCharacterOfPosition(node.end).character,
           is_async: !!node.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword),
           parameters: node.parameters.slice(0, 32).map(p => ({name: p.name.getText(source).slice(0, 80), annotation: p.type?.getText(source).slice(0, 120) || null, has_default: !!p.initializer, variadic: !!p.dotDotDotToken})),
           return_annotation: node.type?.getText(source).slice(0, 120) || null,

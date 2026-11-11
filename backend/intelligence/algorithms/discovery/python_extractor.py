@@ -161,6 +161,8 @@ def extract(source: str, path: str) -> dict:
                 item["related"] = collections.get(item["subject"], item["related"])
         records.append(dict(name=binding or qualified_name, qualified_name=qualified_name,
                             line=function.lineno, end_line=function.end_lineno, column=function.col_offset,
+                            end_column=function.end_col_offset,
+                            definition_line=min([function.lineno, *(d.lineno for d in getattr(function, "decorator_list", []))]),
                             is_async=isinstance(function, ast.AsyncFunctionDef), parameters=parameters[:32],
                             return_annotation=ast.unparse(function.returns)[:120] if getattr(function, "returns", None) else None,
                             facts=sorted(facts, key=lambda f: (f["line"], f["kind"])), calls=calls,

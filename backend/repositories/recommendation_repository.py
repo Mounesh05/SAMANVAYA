@@ -19,7 +19,7 @@ class RecommendationRepository:
     
     async def find_by_id(self, recommendation_id: str) -> Optional[Dict[str, Any]]:
         """Find recommendation by ID."""
-        record = await self.collection.find_one({"id": recommendation_id})
+        record = await self.collection.find_one({"id": recommendation_id}, {"_id": 0})
         records = await self._current_algorithm_records([record] if record else [])
         return records[0] if records else None
 
@@ -28,8 +28,15 @@ class RecommendationRepository:
             if not record.get("algorithm_analysis_run_id"):
                 continue
             pr = await db["pull_requests"].find_one({"id": record["entity_id"], "project_id": record["project_id"]})
+            analysis = await db["code_quality_runs"].find_one({"run_id": record["algorithm_analysis_run_id"], "project_id": record["project_id"]}, {"status": 1})
+            benchmark = await db["algorithm_benchmark_runs"].find_one({"run_id": record.get("benchmark_run_id"), "project_id": record["project_id"]},
+                {"decision.revision_id": 1, "decision.revision_number": 1})
+            decision = (benchmark or {}).get("decision") or {}
+            revision_changed = (decision.get("revision_id") != record["decision_revision_id"] if record.get("decision_revision_id")
+                                else decision.get("revision_number", 0) > 1)
             if (not pr or pr.get("head_sha") != record.get("head_sha")
-                    or pr.get("algorithm_intelligence_run_id") != record["algorithm_analysis_run_id"] or pr.get("status") != "open"):
+                    or pr.get("algorithm_intelligence_run_id") != record["algorithm_analysis_run_id"] or pr.get("status") != "open"
+                    or not analysis or analysis.get("status") == "superseded" or not benchmark or revision_changed):
                 record.update(status="obsolete", historical_only=True)
                 await self.collection.update_one({"id": record["id"]}, {"$set": {"status": "obsolete", "historical_only": True}})
         return [record for record in records if status is None or record.get("status") == status]
@@ -50,7 +57,7 @@ class RecommendationRepository:
         if status:
             query["status"] = status
         
-        cursor = self.collection.find(query).sort("priority", -1).limit(limit)
+        cursor = self.collection.find(query, {"_id": 0}).sort("priority", -1).limit(limit)
         return await self._current_algorithm_records(await cursor.to_list(length=limit), status)
     
     async def find_by_user(
@@ -65,7 +72,7 @@ class RecommendationRepository:
         if status:
             query["status"] = status
         
-        cursor = self.collection.find(query).sort("priority", -1).limit(limit)
+        cursor = self.collection.find(query, {"_id": 0}).sort("priority", -1).limit(limit)
         return await self._current_algorithm_records(await cursor.to_list(length=limit), status)
     
     async def find_by_role(
@@ -84,7 +91,7 @@ class RecommendationRepository:
         if status:
             query["status"] = status
         
-        cursor = self.collection.find(query).sort("priority", -1).limit(limit)
+        cursor = self.collection.find(query, {"_id": 0}).sort("priority", -1).limit(limit)
         return await self._current_algorithm_records(await cursor.to_list(length=limit), status)
     
     async def update_status(
