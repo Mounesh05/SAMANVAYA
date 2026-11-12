@@ -146,7 +146,10 @@ async def test_read_only_metadata_is_not_persisted_on_legacy_writes(stored):
     assert "scoring" not in await repository.get_by_id(created)
 
 
-async def test_existing_hr_submission_numbers_remain_legacy_in_this_phase(stored):
-    result = await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", hr_data(), {"employee_id": "HR-1", "role": "HR"})
-    assert result.final_score == 77.66  # The Phase 0 scale defect is not silently migrated here.
-    assert_legacy_metadata(result.model_dump(mode="json")["scoring"])
+async def test_hr_submission_preserves_historical_values_without_recalculation(stored):
+    from domain.services.performance_human_service import HumanScoringPending
+    before = await stored.developer_performances.find_one({})
+    with pytest.raises(HumanScoringPending):
+        await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", hr_data(), {"employee_id": "HR-1", "role": "HR"})
+    assert await stored.developer_performances.find_one({}) == before
+    assert_legacy_metadata(DeveloperPerformance(**before).model_dump(mode="json")["scoring"])

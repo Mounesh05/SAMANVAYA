@@ -11,7 +11,8 @@ from core.database import col
 DEFAULT_HUMAN_EVALUATION_POLICY = {
     "policy_id": "POLICY-V1-DEFAULT",
     "version": "1.0.0",
-    "is_active": True,
+    "is_active": False,
+    "status": "LEGACY_EXAMPLE_UNAPPROVED",
     "ai_weight": 0.90,
     "human_weight": 0.10,
     "role_weights": {
@@ -37,7 +38,7 @@ DEFAULT_HUMAN_EVALUATION_POLICY = {
     "configured_by": "system",
     "created_at": datetime.now(timezone.utc).isoformat(),
     "updated_at": datetime.now(timezone.utc).isoformat(),
-    "notes": "Default 90% AI + 10% Human Evaluation Policy",
+    "notes": "Historical unapproved example; never seed or activate as canonical policy",
 }
 
 
@@ -91,14 +92,9 @@ class EvaluationPolicyRepository:
 
     async def get_active_policy(self) -> Dict[str, Any]:
         policy = await self.collection.find_one({"is_active": True}, {"_id": 0})
-        if not policy:
-            # Seed default policy if not present
-            policy = dict(DEFAULT_HUMAN_EVALUATION_POLICY)
-            try:
-                await self.collection.insert_one(dict(policy))
-            except Exception:
-                pass
-        return policy
+        return {"status": "POLICY_PENDING", "is_active": False, "role_weights": {},
+                "ceo_weight": 0, "version": "UNAPPROVED_LEGACY",
+                "legacy_policy": policy, "reason": "Legacy active flags do not establish canonical policy approval"}
 
     async def save_policy(self, policy_data: Dict[str, Any]) -> Dict[str, Any]:
         # Deactivate previous active policies if saving an active policy
@@ -111,7 +107,5 @@ class EvaluationPolicyRepository:
     async def get_policy_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         cursor = self.collection.find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
         history = [doc async for doc in cursor]
-        if not history:
-            return [DEFAULT_HUMAN_EVALUATION_POLICY]
         return history
 

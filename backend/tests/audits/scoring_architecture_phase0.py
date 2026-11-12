@@ -1,16 +1,16 @@
-"""Phase-0 characterization probes, NOT desired future scoring behavior.
+"""Remaining Phase-0 probes plus explicit desired-behavior replacements.
 
 Run explicitly with:
   python -m pytest tests/audits/scoring_architecture_phase0.py -q -s
 
 The filename deliberately avoids default test discovery. These probes assert
-observed legacy defects so the audit can be repeated without modifying runtime
-code. Replace them with desired-behavior regressions during the relevant phase.
+observed legacy defects. Phase 3 obsolete parser probes are marked retired;
+Phase 4 human-write probes now assert the corrected behavior. Historical audit
+results remain in docs/reports rather than being rewritten as current findings.
 All data is synthetic; MongoDB and model/GitHub boundaries are isolated.
 """
 
 import asyncio
-import copy
 import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -158,46 +158,47 @@ def test_f4_duplicate_activity_receives_additional_points():
     observe("F4", single_source=first, duplicated_same_source=repeated)
 
 
-def test_f5_equal_and_policy_weighted_human_aggregates_differ():
+def test_f5_legacy_aggregates_are_both_pending():
     record = assessment(role_evaluation=RoleEvaluation(pm=PMFeedback(**role_rating(1)), lead=LeadFeedback(**role_rating(5))))
     ordinary = PerformanceService.__new__(PerformanceService)._calculate_role_scores(record.role_evaluation)
     hr, _ = HRPerformanceService.__new__(HRPerformanceService).calculate_aggregated_human_score(record, DEFAULT_HUMAN_EVALUATION_POLICY)
-    assert ordinary["average"] == 60 and hr == 63.08
-    observe("F5", ordinary=ordinary["average"], policy_weighted=hr, required_hr_and_qa_missing=True)
+    assert ordinary["average"] is None and hr is None
+    observe("F5-fixed", scope="legacy paths cannot supply canonical H; approved shared math tested in test_performance_human.py")
 
 
-async def test_f6_ceo_remains_numeric_reviewer_and_policy_option(store):
-    role = RoleEvaluation(ceo=CEOFeedback(**role_rating(5)))
-    score = PerformanceService.__new__(PerformanceService)._calculate_role_scores(role)
-    policy = await HRPerformanceService().configure_policy({"ceo": 1.0}, configured_by="AUDIT-CEO")
-    assert score["average"] == 100 and policy.role_weights == {"ceo": 1.0}
-    assert await store.audit_logs.count_documents({"actor_id": "AUDIT-CEO"}) == 1
-    observe("F6", ceo_only_human_score=score["average"], accepted_policy=policy.role_weights)
+async def test_f6_ceo_cannot_be_a_numeric_reviewer_or_policy_option(store):
+    score = PerformanceService.__new__(PerformanceService)._calculate_role_scores(RoleEvaluation(ceo=CEOFeedback(**role_rating(5))))
+    assert score["average"] is None and score["contribution"] is None
+    with pytest.raises(ValueError, match="CEO"):
+        await HRPerformanceService().configure_policy({"ceo": 1.0}, configured_by="AUDIT-CEO")
+    assert await store.evaluation_policies.count_documents({}) == 0
+    observe("F6-fixed", ceo_numerical_contribution=0)
 
 
-async def test_f7_empty_hr_submission_creates_zero_score_and_grade(store):
-    result = await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", HRAssessmentCreate(dimensions={}),
-        {"employee_id": "AUDIT-HR", "role": "HR"})
-    assert result.ai_evaluation.score == 0 and result.final_score == 0 and result.grade == "C+"
-    assert await store.developer_performances.count_documents({"developer_id": "AUDIT-DEV"}) == 1
-    observe("F7", ai_score=result.ai_evaluation.score, final_score=result.final_score, grade=result.grade)
+async def test_f7_empty_hr_submission_does_not_create_zero_score_or_grade(store):
+    with pytest.raises(ValueError, match="assigned"):
+        await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", HRAssessmentCreate(dimensions={}),
+            {"employee_id": "AUDIT-HR", "role": "HR"})
+    assert await store.developer_performances.count_documents({}) == 0
+    observe("F7-fixed", fabricated_rows=0)
 
 
-async def test_f8_hr_path_applies_ninety_percent_to_legacy_ninety_point_score(store):
-    await PerformanceRepository().create(assessment().model_dump())
-    result = await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", hr_data(), {"employee_id": "AUDIT-HR", "role": "HR"})
-    assert result.ai_evaluation.score == 77.4 and result.role_evaluation.average_score == 80
-    assert result.final_score == 77.66
-    observe("F8", legacy_ai_contribution=77.4, human=80, actual=result.final_score, normalized_spec_example=85.4)
+async def test_f8_hr_submission_preserves_legacy_ninety_point_history(store):
+    key = await PerformanceRepository().create(assessment().model_dump())
+    before = await PerformanceRepository().get_by_id(key)
+    with pytest.raises(ValueError, match="assigned"):
+        await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", hr_data(), {"employee_id": "AUDIT-HR", "role": "HR"})
+    assert await PerformanceRepository().get_by_id(key) == before
+    observe("F8-fixed", scope="no implicit migration or double weighting")
 
 
-async def test_f9_not_observed_compatibility_fields_are_fabricated(store):
-    result = await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", HRAssessmentCreate(dimensions={}),
-        {"employee_id": "AUDIT-HR", "role": "HR"})
-    feedback = result.role_evaluation.hr
-    assert feedback.normalized_score is None
-    assert [feedback.criterion_1, feedback.criterion_2, feedback.criterion_3, feedback.criterion_4] == [3, 3, 3, 3]
-    observe("F9", normalized=feedback.normalized_score, invented_legacy_criteria=[3, 3, 3, 3])
+async def test_f9_no_unobserved_compatibility_fields_are_fabricated(store):
+    with pytest.raises(ValueError, match="assigned"):
+        await HRPerformanceService().submit_hr_assessment("AUDIT-DEV", HRAssessmentCreate(dimensions={}),
+            {"employee_id": "AUDIT-HR", "role": "HR"})
+    assert await store.hr_assessments.count_documents({}) == 0
+    assert await store.developer_performances.count_documents({}) == 0
+    observe("F9-fixed", invented_legacy_criteria=[])
 
 
 def test_f10_duplicates_and_invalid_period_still_establish_eligibility():
@@ -246,39 +247,26 @@ async def test_additional_aggregator_manifest_contract_mismatch(store):
     observe("A1", collected_completed_tasks=1, recognized_completed_tasks=0)
 
 
-async def test_additional_feedback_retry_reuses_prior_composite_as_objective(store):
-    credit = combine_hybrid_credit({"score": 50, "confidence": "low", "components": {}, "evidence_counts": {}}, ai_score=72)
-    await PerformanceRepository().create(assessment(ai_evaluation=ai_result(72), final_score=credit["score"], contribution_credit=credit).model_dump())
+async def test_additional_legacy_feedback_retry_cannot_reuse_prior_score(store):
+    key = await PerformanceRepository().create(assessment().model_dump())
+    before = await PerformanceRepository().get_by_id(key)
     service = PerformanceService()
-    first = await service.add_role_feedback("AUDIT-DEV", "lead", role_rating(5))
-    second = await service.add_role_feedback("AUDIT-DEV", "lead", role_rating(5))
-    assert (first.final_score, second.final_score) == (70, 76)
-    observe("A2", same_feedback_first=first.final_score, same_feedback_retry=second.final_score)
+    for _ in range(2):
+        with pytest.raises(ValueError, match="assigned"):
+            await service.add_role_feedback(key, "lead", role_rating(5))
+    assert await PerformanceRepository().get_by_id(key) == before
+    observe("A2-fixed", scope="retired legacy writes; canonical signed retry has independent tests")
 
 
-async def test_f13_concurrent_feedback_loses_one_completed_submission(store):
-    record_id = await PerformanceRepository().create(assessment().model_dump())
-    services = [PerformanceService(), PerformanceService()]
-    ready = asyncio.Event()
-    reads = []
-    for service in services:
-        original = service.performance_repo.get_by_id
-        async def snapshot(record, original=original):
-            value = copy.deepcopy(await original(record))
-            reads.append(1)
-            if len(reads) == 2:
-                ready.set()
-            await ready.wait()
-            return value
-        service.performance_repo.get_by_id = snapshot
-    results = await asyncio.wait_for(asyncio.gather(
-        services[0].add_role_feedback(record_id, "lead", role_rating(5)),
-        services[1].add_role_feedback(record_id, "pm", role_rating(4)),
-    ), 2)
-    saved = await PerformanceRepository().get_by_id(record_id)
-    kept = [name for name in ["lead", "pm"] if saved["role_evaluation"].get(name)]
-    assert len(results) == 2 and len(kept) == 1
-    observe("F13-concurrency", successful_submissions=2, retained_reviews=kept)
+async def test_f13_concurrent_legacy_feedback_cannot_lose_or_rewrite_reviews(store):
+    key = await PerformanceRepository().create(assessment().model_dump())
+    before = await PerformanceRepository().get_by_id(key)
+    service = PerformanceService()
+    results = await asyncio.gather(service.add_role_feedback(key, "lead", role_rating(5)),
+                                   service.add_role_feedback(key, "pm", role_rating(4)), return_exceptions=True)
+    assert all(isinstance(r, ValueError) for r in results)
+    assert await PerformanceRepository().get_by_id(key) == before
+    observe("F13-concurrency-fixed", scope="legacy writes gated; canonical concurrent intake tested separately")
 
 
 async def test_f13_http_cross_org_read_and_self_hr_submission(store):
@@ -296,7 +284,7 @@ async def test_f13_http_cross_org_read_and_self_hr_submission(store):
         await store.users.update_one({"employee_id": "AUDIT-DEV"}, {"$set": {"role": "HR", "designation": "HR_MANAGER"}})
         user.update(employee_id="AUDIT-DEV", org_id="ORG-B")
         submitted = await client.post("/api/performance/assessment/hr/AUDIT-DEV/submit", json=hr_data().model_dump(mode="json"))
-        assert submitted.status_code == 200
+        assert submitted.status_code == 409 and submitted.json()["status"] == "POLICY_PENDING"
     observe("F13-authorization", cross_org_read_status=foreign.status_code, self_hr_submit_status=submitted.status_code,
             scope="real routes/repositories, synthetic authenticated principals")
 

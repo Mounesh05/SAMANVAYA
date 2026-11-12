@@ -26,12 +26,56 @@ from domain.models.performance_evidence import EvidencePreview, EvidencePreviewR
 from domain.models.performance_claims import (
     ClaimReview, ClaimReviewRequest, InterpretationDetails, InterpretationRun, ReviewerAssignmentRequest,
 )
+from domain.models.performance_human import HumanPolicyDraftRequest, HumanReviewerAssignmentRequest, HumanReviewRequest
 from core.dependencies import get_current_user
 from core.permissions import Permission, get_user_permissions
 from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
 from core.audit import log_audit, AuditAction
 
 router = APIRouter()
+
+
+def pending_human_response(ceo=False):
+    from domain.services.performance_human_service import HumanScoringPending
+    pending = HumanScoringPending(ceo)
+    return JSONResponse(status_code=409, content={"detail": str(pending), "status": pending.status,
+        "human_review_endpoint": "/api/performance/human-reviewers"})
+
+
+@router.post("/human-reviewers", status_code=201)
+async def assign_human_reviewer(body: HumanReviewerAssignmentRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().assign(body, user)
+
+
+@router.post("/human-reviews/{assignment_id}", status_code=201)
+async def submit_assigned_human_review(assignment_id: str, body: HumanReviewRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().submit(assignment_id, body, user)
+
+
+@router.post("/human-reviews/{assignment_id}/hr", status_code=201)
+async def submit_assigned_hr_review(assignment_id: str, body: HumanReviewRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().submit(assignment_id, body, user, required_role="HR")
+
+
+@router.get("/human-reviews/{assignment_id}")
+async def get_own_human_review(assignment_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().get_review(assignment_id, user)
+
+
+@router.get("/human/{run_id}/completeness")
+async def get_scoped_human_completeness(run_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().summary(run_id, user)
+
+
+@router.post("/human/policy-drafts", status_code=201)
+async def propose_human_policy(body: HumanPolicyDraftRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().propose_policy(body, user)
 
 
 def pending_period_response():
@@ -377,7 +421,7 @@ async def _resolve_evaluatable_developer(performance_id: str, service: Performan
     return target_emp.get("employee_id"), None
 
 
-@router.post("/feedback/{performance_id}/pm", response_model=DeveloperPerformance)
+@router.post("/feedback/{performance_id}/pm", response_model=DeveloperPerformance, deprecated=True)
 async def add_pm_feedback(
     performance_id: str,
     requirement_understanding: int = Body(..., ge=1, le=5),
@@ -404,25 +448,10 @@ async def add_pm_feedback(
             detail="Only PM role can submit PM feedback"
         )
     
-    # Authorization: verify user can view the target developer's performance
-    service = PerformanceService()
-    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
-    await verify_can_view_user_tasks(user, developer_id)
-    
-    try:
-        feedback = {
-            "criterion_1": requirement_understanding,
-            "criterion_2": delivery_reliability,
-            "criterion_3": communication,
-            "criterion_4": business_alignment,
-            "comments": comments
-        }
-        return await service.add_role_feedback(performance_id, "pm", feedback)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    return pending_human_response(ceo=False)
 
 
-@router.post("/feedback/{performance_id}/lead", response_model=DeveloperPerformance)
+@router.post("/feedback/{performance_id}/lead", response_model=DeveloperPerformance, deprecated=True)
 async def add_lead_feedback(
     performance_id: str,
     technical_skill: int = Body(..., ge=1, le=5),
@@ -442,25 +471,10 @@ async def add_lead_feedback(
     if Permission.SUBMIT_LEAD_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only Lead role can submit Lead feedback")
     
-    # Authorization: verify user can view the target developer's performance
-    service = PerformanceService()
-    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
-    await verify_can_view_user_tasks(user, developer_id)
-    
-    try:
-        feedback = {
-            "criterion_1": technical_skill,
-            "criterion_2": code_quality,
-            "criterion_3": mentoring,
-            "criterion_4": technical_ownership,
-            "comments": comments
-        }
-        return await service.add_role_feedback(performance_id, "lead", feedback)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    return pending_human_response(ceo=False)
 
 
-@router.post("/feedback/{performance_id}/qa", response_model=DeveloperPerformance)
+@router.post("/feedback/{performance_id}/qa", response_model=DeveloperPerformance, deprecated=True)
 async def add_qa_feedback(
     performance_id: str,
     quality_focus: int = Body(..., ge=1, le=5),
@@ -480,25 +494,10 @@ async def add_qa_feedback(
     if Permission.SUBMIT_QA_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only QA role can submit QA feedback")
     
-    # Authorization: verify user can view the target developer's performance
-    service = PerformanceService()
-    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
-    await verify_can_view_user_tasks(user, developer_id)
-    
-    try:
-        feedback = {
-            "criterion_1": quality_focus,
-            "criterion_2": test_coverage,
-            "criterion_3": bug_response,
-            "criterion_4": regression_awareness,
-            "comments": comments
-        }
-        return await service.add_role_feedback(performance_id, "qa", feedback)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    return pending_human_response(ceo=False)
 
 
-@router.post("/feedback/{performance_id}/devops", response_model=DeveloperPerformance)
+@router.post("/feedback/{performance_id}/devops", response_model=DeveloperPerformance, deprecated=True)
 async def add_devops_feedback(
     performance_id: str,
     deployment_quality: int = Body(..., ge=1, le=5),
@@ -509,7 +508,7 @@ async def add_devops_feedback(
     user: dict = Depends(get_current_user),
 ):
     """
-    Add DevOps Engineer feedback (structured 1-5 ratings).
+    Retired DevOps Engineer numeric feedback: returns 409; use scoped assigned human reviews.
 
     **Required Permission:** SUBMIT_DEVOPS_FEEDBACK (DEVOPS role only)
     """
@@ -518,25 +517,10 @@ async def add_devops_feedback(
     if Permission.SUBMIT_DEVOPS_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only DevOps role can submit DevOps feedback")
     
-    # Authorization: verify user can view the target developer's performance
-    service = PerformanceService()
-    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
-    await verify_can_view_user_tasks(user, developer_id)
-    
-    try:
-        feedback = {
-            "criterion_1": deployment_quality,
-            "criterion_2": ci_cd_compliance,
-            "criterion_3": monitoring_awareness,
-            "criterion_4": incident_response,
-            "comments": comments
-        }
-        return await service.add_role_feedback(performance_id, "devops", feedback)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    return pending_human_response(ceo=False)
 
 
-@router.post("/feedback/{performance_id}/ceo", response_model=DeveloperPerformance)
+@router.post("/feedback/{performance_id}/ceo", response_model=DeveloperPerformance, deprecated=True)
 async def add_ceo_feedback(
     performance_id: str,
     business_impact: int = Body(..., ge=1, le=5),
@@ -547,7 +531,7 @@ async def add_ceo_feedback(
     user: dict = Depends(get_current_user),
 ):
     """
-    Add CEO feedback (structured 1-5 ratings).
+    Retired CEO numeric feedback: returns 409; use scoped assigned human reviews.
 
     **Required Permission:** SUBMIT_CEO_FEEDBACK (CEO role only)
     """
@@ -556,25 +540,10 @@ async def add_ceo_feedback(
     if Permission.SUBMIT_CEO_FEEDBACK not in user_permissions:
         raise HTTPException(status_code=403, detail="Only CEO role can submit CEO feedback")
     
-    # Authorization: verify user can view the target developer's performance
-    service = PerformanceService()
-    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
-    await verify_can_view_user_tasks(user, developer_id)
-    
-    try:
-        feedback = {
-            "criterion_1": business_impact,
-            "criterion_2": innovation,
-            "criterion_3": company_alignment,
-            "criterion_4": leadership_potential,
-            "comments": comments
-        }
-        return await service.add_role_feedback(performance_id, "ceo", feedback)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    return pending_human_response(ceo=True)
 
 
-@router.post("/feedback/{performance_id}/hr", response_model=DeveloperPerformance)
+@router.post("/feedback/{performance_id}/hr", response_model=DeveloperPerformance, deprecated=True)
 async def add_hr_feedback(
     performance_id: str,
     collaboration: int = Body(..., ge=1, le=5),
@@ -585,7 +554,7 @@ async def add_hr_feedback(
     user: dict = Depends(get_current_user),
 ):
     """
-    Add HR feedback (structured 1-5 ratings).
+    Retired HR numeric feedback: returns 409; use scoped assigned human reviews.
 
     **Required Permission:** SUBMIT_HR_FEEDBACK (HR role only)
     """
@@ -601,21 +570,7 @@ async def add_hr_feedback(
     ):
         raise HTTPException(status_code=403, detail="Only authorized HR role can submit HR feedback")
     
-    # Verify performance evaluation exists
-    service = PerformanceService()
-    developer_id, _ = await _resolve_evaluatable_developer(performance_id, service)
-    
-    try:
-        feedback = {
-            "criterion_1": collaboration,
-            "criterion_2": professionalism,
-            "criterion_3": communication_skills,
-            "criterion_4": cultural_fit,
-            "comments": comments
-        }
-        return await service.add_role_feedback(performance_id, "hr", feedback)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    return pending_human_response(ceo=False)
 
 
 @router.get("/assessment/hr/{performance_id}", response_model=Optional[HRAssessment])
@@ -647,14 +602,14 @@ async def get_hr_assessment(
     return assessment
 
 
-@router.post("/assessment/hr/{performance_id}")
+@router.post("/assessment/hr/{performance_id}", deprecated=True)
 async def save_hr_assessment_draft(
     performance_id: str,
     data: HRAssessmentCreate,
     user: dict = Depends(get_current_user),
 ):
     """
-    Save HR assessment draft without affecting the final evaluation score.
+    Retired mutable HR draft intake: returns 409; use scoped assigned human reviews.
     Required Permission: CREATE_HR_PERFORMANCE_ASSESSMENT or SUBMIT_HR_PERFORMANCE_ASSESSMENT
     """
     user_permissions = get_user_permissions(
@@ -669,25 +624,18 @@ async def save_hr_assessment_draft(
     ):
         raise HTTPException(status_code=403, detail="Insufficient permissions to create HR assessment draft")
 
-    hr_service = HRPerformanceService()
-    try:
-        return await hr_service.save_hr_assessment_draft(performance_id, data, user)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save HR assessment draft: {e}")
+    return pending_human_response()
 
 
-@router.post("/assessment/hr/{performance_id}/submit", response_model=DeveloperPerformance)
+@router.post("/assessment/hr/{performance_id}/submit", response_model=DeveloperPerformance, deprecated=True)
 async def submit_hr_assessment(
     performance_id: str,
     data: HRAssessmentCreate,
     user: dict = Depends(get_current_user),
 ):
     """
-    Submit finalized HR performance assessment with enterprise rubric.
-    Enforces documented evidence requirement for negative ratings (1 or 2).
-    Recalculates human component and the overall 90% AI + 10% Human final score.
+    Retired legacy HR numerical submission: returns 409 without changing historical scores.
+    Use assigned HR observations; approved calibration and validated evidence are required for H.
     Required Permission: SUBMIT_HR_PERFORMANCE_ASSESSMENT
     """
     user_permissions = get_user_permissions(
@@ -701,13 +649,7 @@ async def submit_hr_assessment(
     ):
         raise HTTPException(status_code=403, detail="Insufficient permissions to submit HR performance assessment")
 
-    hr_service = HRPerformanceService()
-    try:
-        return await hr_service.submit_hr_assessment(performance_id, data, user)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to submit HR assessment: {e}")
+    return pending_human_response()
 
 
 @router.get("/assessments/{performance_id}/completeness", response_model=HumanEvaluationCompleteness)
@@ -751,15 +693,14 @@ async def get_human_evaluation_policy(
     return await hr_service.get_or_create_policy()
 
 
-@router.post("/policy", response_model=HumanEvaluationPolicy)
+@router.post("/policy", response_model=HumanEvaluationPolicy, deprecated=True)
 async def configure_human_evaluation_policy(
     role_weights: Dict[str, float] = Body(..., description="Map of role name to weight, summing to 1.0"),
     notes: Optional[str] = Body(None, description="Reason or notes for policy change"),
     user: dict = Depends(get_current_user),
 ):
     """
-    Configure human evaluation role weights for the 10% human component.
-    Preserves 90% AI + 10% Human model.
+    Retired legacy activation: returns 409. Scoped policy proposals remain inactive drafts.
     Required Permission: MANAGE_EVALUATION_POLICY (CEO or ADMIN)
     """
     user_permissions = get_user_permissions(
@@ -773,14 +714,7 @@ async def configure_human_evaluation_policy(
     ):
         raise HTTPException(status_code=403, detail="Only CEO or ADMIN can configure evaluation policies")
 
-    hr_service = HRPerformanceService()
-    try:
-        configured_by = user.get("employee_id", user.get("id", "admin"))
-        return await hr_service.configure_policy(role_weights, configured_by=configured_by, notes=notes)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to configure policy: {e}")
+    return pending_human_response()
 
 
 @router.get("/policy/history")

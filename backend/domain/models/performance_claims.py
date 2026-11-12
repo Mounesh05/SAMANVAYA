@@ -8,7 +8,8 @@ from pydantic import AfterValidator, Field, field_validator, model_validator
 from domain.models.performance_evidence import Count, EvidencePreview, utc_time
 from domain.models.performance_scoring import Digest, DimensionId, FrozenContract, NonEmpty, nonblank
 
-PROTECTED_RUN_TYPES = ("performance_interpretation", "performance_claim_assignment", "performance_claim_review")
+PROTECTED_RUN_TYPES = ("performance_interpretation", "performance_claim_assignment", "performance_claim_review",
+    "performance_human_assignment", "performance_human_review", "performance_human_policy_draft")
 
 ClaimType = Literal["recorded_status", "recorded_test_outcome", "possible_regression_fixed",
     "possible_benchmark_improvement", "possible_architecture_tradeoff", "possible_mentoring_contribution",

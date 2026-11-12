@@ -20,11 +20,6 @@ from fastapi import HTTPException
 from domain.models.hr_performance import (
     HRAssessmentDimensionItem,
     HRAssessmentCreate,
-    HRAssessment,
-    HumanEvaluationPolicy,
-    HumanEvaluationCompleteness,
-    HRDimensionKey,
-    ComplianceStatus,
 )
 from domain.services.hr_performance_service import HRPerformanceService
 from domain.models.developer_performance import (
@@ -32,153 +27,33 @@ from domain.models.developer_performance import (
     AIEvaluation,
     PerformanceBreakdown,
     RoleEvaluation,
-    LeadFeedback,
-    HRFeedback,
 )
 from core.dependencies import require_roles
 
 
 class TestHRAssessmentScoring:
-    """Tests for the HR performance rubric and scoring service."""
+    """Historical scalar display must never establish a canonical human aggregate."""
 
-    def setup_method(self):
-        self.service = HRPerformanceService()
+    @pytest.mark.parametrize("rating,display", [(1, 25), (2, 50), (3, 75), (4, 100)])
+    def test_legacy_scalar_conversion_is_read_compatibility_only(self, rating, display):
+        item = HRAssessmentDimensionItem(dimension="professional_conduct", rating=rating)
+        assert HRPerformanceService().calculate_hr_dimension_score(item) == display
 
-    def test_calculate_hr_score_all_meets_expectations(self):
-        """All dimensions rated 3 (Meets) should yield 75.0 / 100."""
-        dimensions = {
-            k.value: HRAssessmentDimensionItem(
-                dimension=k.value,
-                rating=3,
-                is_not_observed=False,
-            )
-            for k in [
-                HRDimensionKey.PROFESSIONAL_CONDUCT,
-                HRDimensionKey.WORKPLACE_ETHICS,
-                HRDimensionKey.POLICY_COMPLIANCE,
-                HRDimensionKey.MANDATORY_LEARNING,
-                HRDimensionKey.WORKPLACE_ACCOUNTABILITY,
-            ]
-        }
-        score, errors = self.service.calculate_overall_hr_score(dimensions)
-        assert len(errors) == 0
-        assert score == 75.0
+    def test_legacy_subset_average_cannot_supply_human_credit(self):
+        item = HRAssessmentDimensionItem(dimension="professional_conduct", rating=4)
+        score, errors = HRPerformanceService().calculate_overall_hr_score({"professional_conduct": item})
+        assert score is None and "approved" in " ".join(errors)
 
-    def test_calculate_hr_score_exceeds(self):
-        """All dimensions rated 4 (Exceeds) should yield 100.0 / 100."""
-        dimensions = {
-            k.value: HRAssessmentDimensionItem(
-                dimension=k.value,
-                rating=4,
-                is_not_observed=False,
-            )
-            for k in [
-                HRDimensionKey.PROFESSIONAL_CONDUCT,
-                HRDimensionKey.WORKPLACE_ETHICS,
-                HRDimensionKey.POLICY_COMPLIANCE,
-                HRDimensionKey.MANDATORY_LEARNING,
-                HRDimensionKey.WORKPLACE_ACCOUNTABILITY,
-            ]
-        }
-        score, errors = self.service.calculate_overall_hr_score(dimensions)
-        assert len(errors) == 0
-        assert score == 100.0
-
-    def test_no_rating_excluded_without_penalty(self):
-        """
-        N/O (Not Observed) must NOT be converted to 0 or penalize the employee.
-        If 3 dimensions are 4 (Exceeds) and 2 are N/O, the score should be 100.0,
-        evaluated solely over the 3 observed dimensions.
-        """
-        dimensions = {
-            HRDimensionKey.PROFESSIONAL_CONDUCT.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.PROFESSIONAL_CONDUCT.value,
-                rating=4,
-                is_not_observed=False,
-            ),
-            HRDimensionKey.WORKPLACE_ETHICS.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.WORKPLACE_ETHICS.value,
-                rating=4,
-                is_not_observed=False,
-            ),
-            HRDimensionKey.POLICY_COMPLIANCE.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.POLICY_COMPLIANCE.value,
-                rating=4,
-                is_not_observed=False,
-            ),
-            HRDimensionKey.MANDATORY_LEARNING.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.MANDATORY_LEARNING.value,
-                rating=None,
-                is_not_observed=True,
-            ),
-            HRDimensionKey.WORKPLACE_ACCOUNTABILITY.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.WORKPLACE_ACCOUNTABILITY.value,
-                rating=None,
-                is_not_observed=True,
-            ),
-        }
-        score, errors = self.service.calculate_overall_hr_score(dimensions)
-        assert len(errors) == 0
-        # 3 observed dimensions at 100.0% -> average is 100.0%
-        assert score == 100.0
-
-    def test_all_no_returns_none_score_without_penalty(self):
-        """If all dimensions are N/O, score is None without penalizing the employee."""
-        dimensions = {
-            k.value: HRAssessmentDimensionItem(
-                dimension=k.value,
-                rating=None,
-                is_not_observed=True,
-            )
-            for k in [
-                HRDimensionKey.PROFESSIONAL_CONDUCT,
-                HRDimensionKey.WORKPLACE_ETHICS,
-                HRDimensionKey.POLICY_COMPLIANCE,
-                HRDimensionKey.MANDATORY_LEARNING,
-                HRDimensionKey.WORKPLACE_ACCOUNTABILITY,
-            ]
-        }
-        score, errors = self.service.calculate_overall_hr_score(dimensions)
-        assert len(errors) == 0
+    def test_not_observed_never_becomes_neutral(self):
+        item = HRAssessmentDimensionItem(dimension="professional_conduct", is_not_observed=True)
+        assert HRPerformanceService().calculate_hr_dimension_score(item) is None
+        score, _ = HRPerformanceService().calculate_overall_hr_score({"professional_conduct": item})
         assert score is None
 
-    def test_rating_1_or_2_requires_substantiated_evidence(self):
-        """Ratings 1 (Unsatisfactory) or 2 (Needs Improvement) must have substantiated evidence."""
-        # Missing evidence
-        invalid_dim = {
-            HRDimensionKey.PROFESSIONAL_CONDUCT.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.PROFESSIONAL_CONDUCT.value,
-                rating=2,
-                evidence_description="",
-            )
-        }
-        score, errors = self.service.calculate_overall_hr_score(invalid_dim)
-        assert len(errors) > 0
-        assert "substantiated evidence" in errors[0]
-
-        # Too short evidence (< 15 chars)
-        short_dim = {
-            HRDimensionKey.PROFESSIONAL_CONDUCT.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.PROFESSIONAL_CONDUCT.value,
-                rating=1,
-                evidence_description="bad behavior",
-            )
-        }
-        score, errors = self.service.calculate_overall_hr_score(short_dim)
-        assert len(errors) > 0
-        assert "minimum 15 characters" in errors[0]
-
-        # Adequate evidence passes
-        valid_dim = {
-            HRDimensionKey.PROFESSIONAL_CONDUCT.value: HRAssessmentDimensionItem(
-                dimension=HRDimensionKey.PROFESSIONAL_CONDUCT.value,
-                rating=2,
-                evidence_description="Documented late attendance to all sprint ceremonies with HR warning on file.",
-            )
-        }
-        score, errors = self.service.calculate_overall_hr_score(valid_dim)
-        assert len(errors) == 0
-        assert score == 50.0
+    def test_comment_length_cannot_validate_a_negative_assessment(self):
+        item = HRAssessmentDimensionItem(dimension="professional_conduct", rating=1, evidence_description="x" * 1000)
+        score, errors = HRPerformanceService().calculate_overall_hr_score({"professional_conduct": item})
+        assert score is None and "evidence" in " ".join(errors)
 
 
 class TestEvaluationPolicy:
@@ -217,179 +92,36 @@ class TestEvaluationPolicy:
             )
 
     @pytest.mark.asyncio
-    async def test_valid_policy_increments_version(self):
-        """Valid weights should save policy and increment version."""
-        valid_weights = {
-            "lead": 0.40,
-            "pm": 0.30,
-            "hr": 0.20,
-            "qa": 0.10,
-        }
-        mock_current_policy = {"version": "1.0.0", "role_weights": {}}
-        with patch.object(self.service.policy_repo, "get_active_policy", new=AsyncMock(return_value=mock_current_policy)), \
-             patch.object(self.service.policy_repo, "save_policy", new=AsyncMock(side_effect=lambda doc: doc)), \
-             patch("domain.services.hr_performance_service.log_audit", new=AsyncMock()):
-
-            policy = await self.service.configure_policy(
-                role_weights=valid_weights,
-                notes="Update role weights",
-                configured_by="CEO001",
-            )
-            assert policy.version == "1.0.1"
-            assert policy.role_weights["lead"] == 0.40
-            assert policy.role_weights["hr"] == 0.20
+    async def test_valid_legacy_weights_cannot_activate_without_governance(self):
+        from domain.services.performance_human_service import HumanScoringPending
+        with patch.object(self.service.policy_repo, "save_policy", new=AsyncMock()) as save:
+            with pytest.raises(HumanScoringPending):
+                await self.service.configure_policy({"lead": 0.4, "pm": 0.3, "hr": 0.2, "qa": 0.1}, "CEO001")
+            save.assert_not_awaited()
 
 
 class TestNinetyTenEvaluationAggregation:
-    """Tests for the 90% AI + 10% Human aggregation formula."""
-
-    def setup_method(self):
-        self.service = HRPerformanceService()
+    """Historical AI0–90 values cannot be double-weighted by HR submission."""
 
     @pytest.mark.asyncio
-    async def test_formula_aggregation_exactness(self):
-        """
-        Verify:
-        Final Score = (AI Score * 0.90) + (Human Score * 0.10)
-        Given:
-          AI Score = 80.0
-          Lead Feedback = 4/5 (80.0)
-          HR Assessment = 90.0
-          Policy: Lead weight = 0.5, HR weight = 0.5
-        Human Score = 0.5 * 80 + 0.5 * 90 = 85.0
-        Final Score = (80.0 * 0.90) + (85.0 * 0.10) = 72.0 + 8.5 = 80.5
-        """
-        perf = DeveloperPerformance(
-            developer_id="EMP101",
-            developer_name="Engineer One",
-            project_id="PROJ1",
-            period_type="quarter",
-            period_start=datetime.now(timezone.utc),
-            period_end=datetime.now(timezone.utc),
-            period_label="2024-Q1",
-            final_score=80.0,
-            grade="B",
-            ai_evaluation=AIEvaluation(
-                score=80.0,
-                breakdown=PerformanceBreakdown(
-                    code_quality=22.0,
-                    delivery=18.0,
-                    collaboration=14.0,
-                    reliability=13.0,
-                    engineering_impact=8.0,
-                    engineering_judgment=5.0,
-                ),
-                reasoning="Strong technical execution",
-                confidence="high",
-            ),
-            role_evaluation=RoleEvaluation(
-                lead=LeadFeedback(criterion_1=4, criterion_2=4, criterion_3=4, criterion_4=4),
-                average_score=80.0,
-                contribution=8.0,
-            ),
-            confidence_level="high",
-            confidence_reason="Comprehensive data points",
-        )
-
-        policy = {
-            "version": "1.0.0",
-            "role_weights": {"lead": 0.5, "hr": 0.5},
-        }
-
-        # Submit HR Assessment with 90.0 score
-        hr_submission = HRAssessmentCreate(
-            dimensions={
-                HRDimensionKey.PROFESSIONAL_CONDUCT.value: HRAssessmentDimensionItem(
-                    dimension=HRDimensionKey.PROFESSIONAL_CONDUCT.value,
-                    rating=4,  # 100
-                ),
-                HRDimensionKey.WORKPLACE_ETHICS.value: HRAssessmentDimensionItem(
-                    dimension=HRDimensionKey.WORKPLACE_ETHICS.value,
-                    rating=4,  # 100
-                ),
-                HRDimensionKey.POLICY_COMPLIANCE.value: HRAssessmentDimensionItem(
-                    dimension=HRDimensionKey.POLICY_COMPLIANCE.value,
-                    rating=4,  # 100
-                ),
-                HRDimensionKey.MANDATORY_LEARNING.value: HRAssessmentDimensionItem(
-                    dimension=HRDimensionKey.MANDATORY_LEARNING.value,
-                    rating=3,  # 75
-                ),
-                HRDimensionKey.WORKPLACE_ACCOUNTABILITY.value: HRAssessmentDimensionItem(
-                    dimension=HRDimensionKey.WORKPLACE_ACCOUNTABILITY.value,
-                    rating=3,  # 75
-                ),
-            },
-            general_comments="Great workplace collaboration.",
-        )
-        # Expected HR score = (100 + 100 + 100 + 75 + 75) / 5 = 90.0
-
-        hr_user = {"employee_id": "HR001", "name": "HR Specialist", "role": "HR"}
-
-        with patch.object(self.service.performance_repo, "get_by_id", new=AsyncMock(return_value=perf.model_dump())), \
-             patch.object(self.service.performance_repo, "update", new=AsyncMock(return_value=True)), \
-             patch.object(self.service.assessment_repo, "get_by_performance_id", new=AsyncMock(return_value=None)), \
-             patch.object(self.service.assessment_repo, "save_assessment", new=AsyncMock(side_effect=lambda doc: doc)), \
-             patch.object(self.service, "get_or_create_policy", new=AsyncMock(return_value=policy)), \
-             patch("domain.services.hr_performance_service.log_audit", new=AsyncMock()):
-
-            updated_perf = await self.service.submit_hr_assessment("PERF101", hr_submission, hr_user)
-
-            # Human score: Lead is 80.0, HR is 90.0 -> average = 85.0
-            assert updated_perf.role_evaluation.average_score == 85.0
-            # 10% human contribution = 8.5
-            assert updated_perf.role_evaluation.contribution == 8.5
-            # Final Score = (80.0 * 0.90) + (85.0 * 0.10) = 72.0 + 8.5 = 80.5
-            assert updated_perf.final_score == 80.5
-            assert updated_perf.grade == "B"
+    async def test_legacy_hr_submit_cannot_rewrite_performance(self):
+        from domain.services.performance_human_service import HumanScoringPending
+        service = HRPerformanceService()
+        with patch.object(service.performance_repo, "update", new=AsyncMock()) as update:
+            with pytest.raises(HumanScoringPending):
+                await service.submit_hr_assessment("PERF101", HRAssessmentCreate(dimensions={}),
+                                                   {"employee_id": "HR001", "role": "HR"})
+            update.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_completeness_check(self):
-        """Verify completeness report accurately tracks submitted vs pending roles."""
-        perf = DeveloperPerformance(
-            developer_id="EMP101",
-            developer_name="Engineer One",
-            project_id="PROJ1",
-            period_type="quarter",
-            period_start=datetime.now(timezone.utc),
-            period_end=datetime.now(timezone.utc),
-            period_label="2024-Q1",
-            final_score=80.0,
-            grade="B",
-            ai_evaluation=AIEvaluation(
-                score=80.0,
-                breakdown=PerformanceBreakdown(
-                    code_quality=22.0,
-                    delivery=18.0,
-                    collaboration=14.0,
-                    reliability=13.0,
-                    engineering_impact=8.0,
-                    engineering_judgment=5.0,
-                ),
-                reasoning="Strong technical execution",
-                confidence="high",
-            ),
-            role_evaluation=RoleEvaluation(
-                lead=LeadFeedback(criterion_1=4, criterion_2=4, criterion_3=4, criterion_4=4),
-            ),
-            confidence_level="high",
-            confidence_reason="Comprehensive data points",
-        )
-
-        policy = {
-            "version": "1.0.0",
-            "role_weights": {"lead": 0.40, "pm": 0.30, "hr": 0.20, "qa": 0.10},
-        }
-
-        with patch.object(self.service.performance_repo, "get_by_id", new=AsyncMock(return_value=perf.model_dump())), \
-             patch.object(self.service, "get_or_create_policy", new=AsyncMock(return_value=policy)):
-
-            report = await self.service.check_human_evaluation_completeness("PERF101")
-            assert report.is_complete is False
-            assert "lead" in report.submitted_roles
-            assert "hr" in report.pending_roles
-            assert "pm" in report.pending_roles
-            assert "qa" in report.pending_roles
+    async def test_unapproved_legacy_completeness_is_unknown(self):
+        service = HRPerformanceService()
+        with patch.object(service.performance_repo, "get_by_id", new=AsyncMock(return_value={
+            "developer_id": "EMP101", "period_label": "2024-Q1", "role_evaluation": {"lead": {"criterion_1": 4}}})):
+            result = await service.check_human_evaluation_completeness("PERF101")
+        assert not result.is_complete and result.human_score is None
+        assert result.required_roles == [] and result.pending_roles == []
+        assert result.details["status"] == "POLICY_PENDING"
 
 
 class TestHREvaluationAPISecurityAndFiltering:

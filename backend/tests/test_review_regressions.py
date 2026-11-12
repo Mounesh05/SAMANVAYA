@@ -16,18 +16,22 @@ async def store(mock_db, monkeypatch):
     return mock_db
 
 
-async def test_first_hr_assessment_creates_role_evaluation(store):
-    result = await HRPerformanceService().submit_hr_assessment("REVIEW-DEV", HRAssessmentCreate(
-        dimensions={"professional_conduct": HRAssessmentDimensionItem(dimension="professional_conduct", rating=3)}
-    ), {"employee_id": "REVIEW-HR", "role": "HR", "name": "Evaluator"})
-    assert result.role_evaluation.hr.normalized_score == 75.0
-    assert await store.developer_performances.count_documents({"developer_id": "REVIEW-DEV"}) == 1
+async def test_first_hr_assessment_cannot_fabricate_engineering_evaluation(store):
+    from domain.services.performance_human_service import HumanScoringPending
+    with pytest.raises(HumanScoringPending):
+        await HRPerformanceService().submit_hr_assessment("REVIEW-DEV", HRAssessmentCreate(
+            dimensions={"professional_conduct": HRAssessmentDimensionItem(dimension="professional_conduct", rating=3)}
+        ), {"employee_id": "REVIEW-HR", "role": "HR", "name": "Evaluator"})
+    assert await store.developer_performances.count_documents({}) == 0
+    assert await store.hr_assessments.count_documents({}) == 0
 
 
-async def test_completeness_before_first_performance_returns_pending_roles(store):
+async def test_completeness_before_first_performance_does_not_invent_required_roles(store):
     result = await HRPerformanceService().check_human_evaluation_completeness("REVIEW-DEV")
-    assert result.is_complete is False
-    assert set(result.pending_roles) == {"lead", "pm", "hr", "qa"}
+    assert result.is_complete is False and result.human_score is None
+    assert result.pending_roles == [] and result.required_roles == []
+    assert result.details["status"] == "POLICY_PENDING"
+    assert await store.developer_performances.count_documents({}) == 0
 
 
 async def test_example_risk_seed_creates_valid_configurations(store, capsys):
