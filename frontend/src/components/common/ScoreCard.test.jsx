@@ -8,7 +8,13 @@ describe('ScoreCard', () => {
 
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByText('/ 100')).not.toBeInTheDocument();
-    expect(screen.getByText('Grade N/A')).toBeInTheDocument();
+    expect(screen.queryByText('Grade N/A')).not.toBeInTheDocument();
+  });
+
+  it('does not portray a historical score or model confidence as an approved assessment', () => {
+    render(<ScoreCard score={85.4} grade="B+" confidence={85} scoring={{ mode: 'LEGACY_READ_ONLY' }} />);
+    expect(screen.getByText(/Legacy record/)).toBeInTheDocument();
+    expect(screen.queryByText('85%')).not.toBeInTheDocument();
   });
 
   it('preserves a valid zero score', () => {

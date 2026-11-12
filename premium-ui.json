@@ -1,0 +1,10 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["frontend/src/components/performance", "frontend/src/pages/performance", "frontend/src/pages/feedback"],
+  "locale": "en",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast", "CRUD"],
+  "ownership": {"Select/Listbox": "native"},
+  "commands": {},
+  "evidence": {"failurePaths": "frontend/src/components/performance/ScoringWorkflow.test.jsx"}
+}

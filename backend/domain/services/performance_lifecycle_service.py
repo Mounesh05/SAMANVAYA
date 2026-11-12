@@ -50,6 +50,28 @@ def _receipt(record):
 
 
 class AssessmentLifecycleService:
+    async def list_for_subject(self, employee_id, actor):
+        from domain.services.performance_access_service import PerformanceAccessService
+        current, _ = await PerformanceAccessService()._subject(employee_id, actor)
+        documents = await col("ai_runs").find({"agent_type": "performance_assessment_event",
+            "input_data.context.organization_id": current["org_id"], "input_data.context.employee_id": employee_id,
+            "output_data.payload.revision": 1}).limit(101).to_list(101)
+        if len(documents) > 100:
+            raise HTTPException(409, "Assessment list requires a narrower period query")
+        result = []
+        for document in documents:
+            root = _verify(document, "performance_assessment_event")
+            try:
+                history = await self.get(root["payload"]["assessment_id"], actor)
+            except HTTPException as error:
+                if error.status_code in {403, 404}:
+                    continue
+                raise
+            scope = root["payload"]["frozen_evidence"]["snapshot"]["scope"]
+            result.append({**history["current"], "period_start": scope["period_start"], "period_end": scope["period_end"],
+                           "can_appeal": current["employee_id"] == employee_id})
+        return result
+
     async def _history(self, assessment_id):
         documents = await col("ai_runs").find({"agent_type": "performance_assessment_event",
             "output_data.payload.assessment_id": assessment_id}).limit(501).to_list(501)

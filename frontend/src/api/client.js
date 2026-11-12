@@ -141,14 +141,13 @@ apiClient.interceptors.response.use(
 
     // ── Non-401 errors ──────────────────────────────────────────────────
 
-    if (status === 403) {
-      const message = detail || 'You do not have permission for this action';
-      return Promise.reject(new Error(message));
-    }
-
-    const message =
-      detail || error?.message || 'An unexpected error occurred';
-    return Promise.reject(new Error(message));
+    const message = typeof detail === 'string' ? detail : status === 403
+      ? 'You do not have permission for this action' : error?.message || 'An unexpected error occurred';
+    const normalized = new Error(message);
+    // Preserve status semantics without attaching Authorization headers, request
+    // configuration, submitted private notes or structured validation input.
+    if (status) normalized.response = { status, data: { detail: typeof detail === 'string' ? detail : undefined } };
+    return Promise.reject(normalized);
   }
 );
 

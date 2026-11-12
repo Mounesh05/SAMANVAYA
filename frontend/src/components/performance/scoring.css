@@ -1,0 +1,16 @@
+.scoring-stack { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.scoring-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+.scoring-field { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.scoring-field label { font-weight: 600; color: var(--text-secondary); font-size: .875rem; }
+.scoring-help { color: var(--text-secondary); font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.scoring-error { color: var(--danger); line-height: 1.5; }
+.scoring-status { display: inline-block; border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: .3rem .6rem; color: var(--warning); font-size: .8125rem; }
+.scoring-status[data-approved="true"] { color: var(--success); }
+.scoring-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.scoring-stack summary, .scoring-stack input[type="checkbox"] { cursor: pointer; }
+.scoring-number { font-size: 3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.scoring-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.scoring-table th, .scoring-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border-default); overflow-wrap: anywhere; }
+.scoring-table-wrap { overflow-x: auto; }
+.scoring-stack fieldset { border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 1rem; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .scoring-stack *, .scoring-stack *::before, .scoring-stack *::after { animation: none !important; transition: none !important; } }

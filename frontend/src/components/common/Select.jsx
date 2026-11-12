@@ -43,7 +43,6 @@ export const Select = forwardRef(function Select(
           color: 'var(--text-primary)',
           border: `1px solid ${error ? 'var(--danger)' : 'var(--border-default)'}`,
           borderRadius: 'var(--radius-md)',
-          outline: 'none',
           cursor: 'pointer',
         }}
         className={`select-field ${className}`}

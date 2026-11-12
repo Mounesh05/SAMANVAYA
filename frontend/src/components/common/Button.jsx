@@ -28,7 +28,6 @@ export function Button({
     borderWidth: '1px',
     borderStyle: 'solid',
     borderColor: 'transparent',
-    outline: 'none',
   };
 
   const sizeStyles = {

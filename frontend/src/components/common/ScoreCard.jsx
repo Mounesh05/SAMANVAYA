@@ -1,104 +1,19 @@
 import React from 'react';
 import { Card } from './Card';
-import { getGradeColor } from '../../utils/formatters';
+import { scoringPresentation } from '../../utils/performanceScoring';
+import '../performance/scoring.css';
 
-export function ScoreCard({
-  title = 'Performance Score',
-  score = null,
-  grade = 'N/A',
-  aiScore = null,
-  humanScore = null,
-  confidence = null,
-  period = null,
-}) {
-  const gradeColor = getGradeColor(grade);
-
-  return (
-    <Card
-      padding="lg"
-      style={{
-        background: 'linear-gradient(135deg, rgba(19, 29, 46, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
-        border: '1px solid var(--border-default)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {title}
-            </span>
-            {period && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-elevated)', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-full)' }}>
-                {period}
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <span style={{ fontSize: '3rem', fontWeight: '900', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
-              {score == null ? '—' : typeof score === 'number' ? score.toFixed(1) : score}
-            </span>
-            {score != null && (
-              <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)', fontWeight: '600' }}>/ 100</span>
-            )}
-
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0.25rem 0.85rem',
-                borderRadius: 'var(--radius-lg)',
-                backgroundColor: `${gradeColor}20`,
-                color: gradeColor,
-                border: `1px solid ${gradeColor}50`,
-                fontWeight: '800',
-                fontSize: '1.25rem',
-                marginLeft: '0.5rem',
-              }}
-            >
-              Grade {grade}
-            </div>
-          </div>
-        </div>
-
-        {/* Optional advisory breakdown */}
-        {(aiScore !== null || humanScore !== null) && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              padding: '0.85rem 1.15rem',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--border-subtle)',
-              minWidth: '200px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>AI Evaluation</span>
-              <span style={{ fontWeight: '700', color: 'var(--cyan)' }}>
-                {aiScore !== null ? `${Number(aiScore).toFixed(1)}%` : '—'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Human Feedback</span>
-              <span style={{ fontWeight: '700', color: 'var(--purple)' }}>
-                {humanScore !== null ? `${Number(humanScore).toFixed(1)}%` : '—'}
-              </span>
-            </div>
-            {confidence && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Confidence</span>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>{confidence}%</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </Card>
-  );
+export function ScoreCard({ title = 'Performance record', score = null, grade = null, period = null, scoring = null }) {
+  const presentation = scoringPresentation(scoring, score);
+  return <Card padding="lg">
+    <div className="scoring-stack">
+      <div><strong>{title}</strong>{period && <p className="scoring-help">{period}</p>}</div>
+      <div><span className="scoring-status" data-approved={presentation.approved}>{presentation.label}</span></div>
+      <div><span className="scoring-number">{presentation.score === null ? '—' : presentation.score.toFixed(1)}</span>
+        {presentation.score !== null && <span> / 100</span>}</div>
+      {presentation.legacy && grade && grade !== 'N/A' && <p>Historical grade {grade}</p>}
+      {presentation.legacy && <p className="scoring-help">Preserved historical value. It is not a canonical approved score and cannot establish a comparable performance trend.</p>}
+      {!presentation.approved && !presentation.legacy && <p className="scoring-help">Missing evidence, policy or approval is not a zero score.</p>}
+    </div>
+  </Card>;
 }

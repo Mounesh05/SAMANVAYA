@@ -1,6 +1,18 @@
 import apiClient from './client';
 
 export const performanceApi = {
+  getReadiness: () => apiClient.get('/performance/readiness'),
+  getAssessments: (id) => apiClient.get(`/performance/developer/${encodeURIComponent(id)}/assessments`),
+  getAssessmentHistory: (id) => apiClient.get(`/performance/assessments/${encodeURIComponent(id)}/history`),
+  replayAssessment: (id, revision) => apiClient.get(`/performance/assessments/${encodeURIComponent(id)}/revisions/${revision}/replay`),
+  appealAssessment: (id, data) => apiClient.post(`/performance/assessments/${encodeURIComponent(id)}/appeals`, data),
+  getAssignments: () => apiClient.get('/performance/human-assignments'),
+  getHumanReview: (id) => apiClient.get(`/performance/human-reviews/${encodeURIComponent(id)}`).catch((error) => {
+    if (error.response?.status === 404) return null;
+    throw error;
+  }),
+  submitHumanReview: (id, data) => apiClient.post(`/performance/human-reviews/${encodeURIComponent(id)}`, data),
+  reviseHumanReview: (id, data) => apiClient.post(`/performance/human-reviews/${encodeURIComponent(id)}/revisions`, data),
   // Main Dashboard endpoint for developer
   getDeveloperDashboard: async (developerId, periods = 6) => {
     return apiClient.get(`/performance/dashboard/${developerId}`, {
