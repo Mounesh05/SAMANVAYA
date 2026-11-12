@@ -246,9 +246,10 @@ class TestDeveloperDefects:
         defect = await self._service().create_defect(DEV, DefectCreate(project_id="PRJ-A", title="500 on save", description="Fails"))
         assert defect["status"] == "OPEN" and defect["reporter_id"] == "DEV-1" and defect["assignee_id"] is None
 
-    async def test_devops_still_cannot_report(self):
+    async def test_roles_without_create_bug_cannot_report(self):
+        # CR-003 gave DevOps CREATE_BUG; PM still lacks it.
         with pytest.raises(HTTPException) as error:
-            await self._service().create_defect(make_user("OPS-1", "DEVOPS"), DefectCreate(project_id="PRJ-A", title="t", description="d"))
+            await self._service().create_defect(make_user("PM-1", "PM"), DefectCreate(project_id="PRJ-A", title="t", description="d"))
         assert error.value.status_code == 403
 
     async def test_developer_sees_defects_they_reported(self):

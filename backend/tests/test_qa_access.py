@@ -51,6 +51,7 @@ class TestQaPermissions:
             Permission.SIGN_OFF_WORK, Permission.MANAGE_TEST_CASES, Permission.VERIFY_DEFECTS,
             Permission.VIEW_DEFECTS, Permission.VIEW_CODE_QUALITY, Permission.MANAGE_TEST_AUTOMATION,
             Permission.CREATE_INCIDENT,
+            Permission.VIEW_PIPELINES,  # CR-003 conversion of the Pipelines role list
         }
 
     def test_qa_sees_only_own_performance(self):
@@ -63,7 +64,7 @@ class TestQaPermissions:
         # Conversions: exactly the roles that had this access before CR-002.
         (Permission.VIEW_DEFECTS, {"QA", "DEVELOPER", "DEVOPS", "LEAD", "PM", "CEO"}),
         (Permission.VIEW_CODE_QUALITY, {"QA", "DEVELOPER", "LEAD", "DEVOPS"}),
-        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "PM", "LEAD", "CEO"}),
+        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "PM", "LEAD", "CEO", "DEVOPS"}),  # DevOps added in CR-003
         (Permission.CREATE_INCIDENT, {"QA", "DEVELOPER", "DEVOPS", "CEO"}),
     ])
     def test_permission_holders(self, permission, roles):
@@ -143,7 +144,7 @@ async def test_ci_automation_needs_manage_test_automation(route):
     check = inspect.signature(getattr(qa_ci_provisioning, route)).parameters["user"].default.dependency
     assert await check(user=QA) is QA
     with pytest.raises(HTTPException) as error:
-        await check(user=make_user("OPS-1", "DEVOPS"))
+        await check(user=make_user("DEV-9", "DEVELOPER"))
     assert error.value.status_code == 403
 
 

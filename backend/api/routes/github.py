@@ -169,10 +169,16 @@ async def get_project_github_config(
 async def save_project_github_config(
     project_id: str,
     config: GitHubProjectConfig,
-    user: dict = Depends(require_roles("CEO", "PM", "LEAD")),
+    user: dict = Depends(require_permission(Permission.MANAGE_REPOSITORY_LINK)),
 ):
-    """Validate and persist repository and developer branch configuration."""
-    await verify_project_access(user, project_id, require_write=True)
+    """Validate and persist repository and developer branch configuration.
+
+    CR-003: MANAGE_REPOSITORY_LINK holders (CEO, PM, Lead, DevOps) link
+    repositories for projects they can access. For CEO/PM/Lead read and write
+    scope are the same projects; DevOps never hold project write access, so
+    the check is project access, not write access.
+    """
+    await verify_project_access(user, project_id)
     if config.project_id != project_id:
         raise HTTPException(status_code=400, detail="Project ID does not match the URL")
 
@@ -223,14 +229,18 @@ async def save_project_github_config(
 @router.post("/provision-qa-workflow")
 async def provision_qa_workflow(
     request: QAWorkflowProvisionRequest,
-    user: dict = Depends(require_roles("LEAD", "PM", "HR")),
+    user: dict = Depends(require_permission(Permission.MANAGE_TEST_AUTOMATION)),
 ):
     """
     Install the managed QA workflow and encrypted Actions secrets.
-    User must have write access to the target project.
+
+    CR-003: same rules as POST /api/qa/projects/{id}/enable-ci: needs
+    MANAGE_TEST_AUTOMATION, access to the project, and the repository must be
+    the one linked to the project (the org token must not write elsewhere).
     """
-    # Verify user has write access to the target project
-    await verify_project_access(user, request.project_id, require_write=True)
+    await verify_project_access(user, request.project_id)
+    from api.routes.qa_ci_provisioning import _linked_repository
+    await _linked_repository(request.project_id, f"{request.owner}/{request.repo}")
     
     try:
         result = await QAWorkflowProvisioningService().provision(

@@ -111,7 +111,8 @@ async def test_devops_snapshot_uses_workflow_and_deployment_events(monkeypatch):
         ),
     )
 
-    snapshot = await devops._devops_snapshot()
+    # CR-003: the snapshot is scoped to the caller; the CEO sees every project.
+    snapshot = await devops._devops_snapshot({"role": "CEO", "employee_id": "C1"})
 
     assert len(snapshot["pipelines"]) == 1
     assert len(snapshot["deployments"]) == 1

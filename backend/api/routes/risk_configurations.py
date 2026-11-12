@@ -14,6 +14,29 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 from core.dependencies import get_current_user
+from core.permissions import Permission, get_user_permissions
+from core.authorization import verify_project_access
+
+
+async def _authorize_risk_change(user: dict, project_id: Optional[str]) -> None:
+    """CR-003: risk weights are project-scoped.
+
+    - A project's weights: MANAGE_RISK_CONFIG (Lead, PM, CEO, DevOps) and
+      access to that project.
+    - Global defaults (project_id None): MANAGE_GLOBAL_RISK_CONFIG (CEO).
+    """
+    permissions = get_user_permissions(
+        user.get("role", user.get("organizational_role", "")),
+        user.get("is_admin", False),
+        user.get("designation"),
+    )
+    if project_id is None:
+        if Permission.MANAGE_GLOBAL_RISK_CONFIG not in permissions:
+            raise HTTPException(status_code=403, detail="Only the CEO can change the global risk defaults")
+        return
+    if Permission.MANAGE_RISK_CONFIG not in permissions:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to change risk configurations")
+    await verify_project_access(user, project_id)
 from domain.models.risk_configuration import (
     RiskConfiguration,
     RiskDimensionWeights,
@@ -154,15 +177,10 @@ async def create_risk_configuration(
     - Quality weights sum to 1.0
     - Thresholds in valid ranges
     
-    Requires: LEAD, PM, CEO, or DEVOPS role
+    Requires: MANAGE_RISK_CONFIG for a project you can access, or
+    MANAGE_GLOBAL_RISK_CONFIG (CEO) for the global default.
     """
-    # Check permissions (only certain roles can modify configurations)
-    allowed_roles = ["LEAD", "PM", "CEO", "DEVOPS"]
-    if current_user.get("role") not in allowed_roles:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Only {', '.join(allowed_roles)} can modify risk configurations"
-        )
+    await _authorize_risk_change(current_user, request.project_id or None)
     
     # Create configuration object
     config = RiskConfiguration(
@@ -216,17 +234,11 @@ async def delete_risk_configuration(
     Note: This doesn't delete the configuration from database,
     just marks it as inactive. System will fall back to hardcoded defaults.
     
-    Requires: LEAD, PM, CEO, or DEVOPS role
+    Requires: MANAGE_RISK_CONFIG for a project you can access, or
+    MANAGE_GLOBAL_RISK_CONFIG (CEO) for the global default.
     """
-    # Check permissions
-    allowed_roles = ["LEAD", "PM", "CEO", "DEVOPS"]
-    if current_user.get("role") not in allowed_roles:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Only {', '.join(allowed_roles)} can delete risk configurations"
-        )
-    
     project_id = None if project_id_or_global == "global" else project_id_or_global
+    await _authorize_risk_change(current_user, project_id)
     
     service = get_risk_config_service()
     deleted = await service.delete_configuration(project_id)
@@ -257,13 +269,14 @@ async def clear_cache(
     
     Useful after bulk updates or database migrations.
     
-    Requires: DEVOPS or CEO role
+    Requires: CLEAR_RISK_CACHE (DevOps, CEO)
     """
-    # Only DEVOPS or CEO can clear cache
-    if current_user.get("role") not in ["DEVOPS", "CEO"]:
+    if Permission.CLEAR_RISK_CACHE not in get_user_permissions(
+            current_user.get("role", current_user.get("organizational_role", "")),
+            current_user.get("is_admin", False), current_user.get("designation")):
         raise HTTPException(
             status_code=403,
-            detail="Only DEVOPS or CEO can clear configuration cache"
+            detail="Only DevOps or the CEO can clear the configuration cache"
         )
     
     service = get_risk_config_service()

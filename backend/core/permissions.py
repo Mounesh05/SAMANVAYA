@@ -86,6 +86,14 @@ class Permission(str, Enum):
     VIEW_DEFECTS = "VIEW_DEFECTS"                   # defect lists and the Bugs page
     VIEW_CODE_QUALITY = "VIEW_CODE_QUALITY"         # the Code Quality page
     MANAGE_TEST_AUTOMATION = "MANAGE_TEST_AUTOMATION"  # enable/disable the CI test workflow
+    # DevOps (CR-003)
+    MANAGE_REPOSITORY_LINK = "MANAGE_REPOSITORY_LINK"      # link a project to its GitHub repository
+    VIEW_PIPELINES = "VIEW_PIPELINES"                      # CI/CD pipeline runs of own projects
+    VIEW_DEPLOYMENTS = "VIEW_DEPLOYMENTS"                  # deployment history of own projects
+    ANALYZE_DEPLOYMENT_RISK = "ANALYZE_DEPLOYMENT_RISK"    # rule-based deployment risk analysis
+    MANAGE_RISK_CONFIG = "MANAGE_RISK_CONFIG"              # project risk weights (own projects)
+    MANAGE_GLOBAL_RISK_CONFIG = "MANAGE_GLOBAL_RISK_CONFIG"  # organisation-wide risk defaults
+    CLEAR_RISK_CACHE = "CLEAR_RISK_CACHE"                  # operational cache reset
     
     # Code Analysis & Integration
     TRIGGER_CODE_ANALYSIS = "TRIGGER_CODE_ANALYSIS"
@@ -153,6 +161,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.LEAD: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_DEPLOYMENTS,
+        Permission.ANALYZE_DEPLOYMENT_RISK,
+        Permission.VIEW_PIPELINES,
+        Permission.MANAGE_REPOSITORY_LINK,
+        Permission.MANAGE_RISK_CONFIG,
         Permission.MANAGE_TEST_AUTOMATION,
         Permission.VIEW_CODE_QUALITY,
         Permission.VIEW_DEFECTS,
@@ -182,6 +195,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.PM: {
         Permission.VIEW_OWN_DATA,
+        Permission.MANAGE_REPOSITORY_LINK,
+        Permission.MANAGE_RISK_CONFIG,
         Permission.MANAGE_TEST_AUTOMATION,
         Permission.VIEW_DEFECTS,
         Permission.VIEW_PROJECT_DATA,
@@ -210,6 +225,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # projects; sees only their own performance.
     OrganizationalRole.QA: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_PIPELINES,
         Permission.SIGN_OFF_WORK,
         Permission.MANAGE_TEST_CASES,
         Permission.VERIFY_DEFECTS,
@@ -233,8 +249,18 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.REQUEST_TRANSFER,
     },
 
+    # CR-003: DevOps own pipelines, deployments, repository links and CI in
+    # their projects; own performance only.
     OrganizationalRole.DEVOPS: {
         Permission.VIEW_OWN_DATA,
+        Permission.MANAGE_REPOSITORY_LINK,
+        Permission.VIEW_PIPELINES,
+        Permission.VIEW_DEPLOYMENTS,
+        Permission.ANALYZE_DEPLOYMENT_RISK,
+        Permission.MANAGE_RISK_CONFIG,
+        Permission.CLEAR_RISK_CACHE,
+        Permission.MANAGE_TEST_AUTOMATION,
+        Permission.CREATE_BUG,
         Permission.VIEW_CODE_QUALITY,
         Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,
@@ -242,7 +268,6 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.ANALYZE_PR_RISK,
         Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
-        Permission.VIEW_PROJECT_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_DEVOPS_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
@@ -293,6 +318,10 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.CEO: {
         Permission.VIEW_OWN_DATA,
+        Permission.MANAGE_GLOBAL_RISK_CONFIG,
+        Permission.CLEAR_RISK_CACHE,
+        Permission.MANAGE_REPOSITORY_LINK,
+        Permission.MANAGE_RISK_CONFIG,
         Permission.MANAGE_TEST_AUTOMATION,
         Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,

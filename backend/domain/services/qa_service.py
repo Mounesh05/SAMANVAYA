@@ -370,11 +370,9 @@ class QAService:
         query = {"project_id": {"$in": project_ids}}
         if status:
             query["status"] = status
-        if _role(user) == "DEVELOPER":
-            # Defects assigned to them, plus the ones they reported.
+        if _role(user) in {"DEVELOPER", "DEVOPS"}:
+            # Defects assigned to them, plus the ones they reported (CR-001/CR-003).
             query["$or"] = [{"assignee_id": _identity(user)}, {"reporter_id": _identity(user)}]
-        elif _role(user) == "DEVOPS":
-            query["assignee_id"] = _identity(user)
         return await self.repo.list_documents(
             self.repo.defects, query, skip=skip, limit=limit
         )
@@ -421,10 +419,8 @@ class QAService:
             raise HTTPException(status_code=404, detail="Defect not found")
         await self.accessible_project(user, defect["project_id"])
         identity = _identity(user)
-        if _role(user) == "DEVELOPER" and identity not in {defect.get("assignee_id"), defect.get("reporter_id")}:
+        if _role(user) in {"DEVELOPER", "DEVOPS"} and identity not in {defect.get("assignee_id"), defect.get("reporter_id")}:
             raise HTTPException(status_code=403, detail="You can only view defects assigned to you or reported by you")
-        if _role(user) == "DEVOPS" and defect.get("assignee_id") != identity:
-            raise HTTPException(status_code=403, detail="You can only view defects assigned to you")
         return defect
 
     async def update_defect(self, user, defect_id, updates: DefectUpdate):

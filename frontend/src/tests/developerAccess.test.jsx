@@ -71,10 +71,11 @@ describe('CR-001 page access table', () => {
 
   it('keeps Reports for the roles that still have it', () => {
     expect(canOpenPage({ role: 'CEO' }, 'reports')).toBe(true);
-    expect(canOpenPage({ role: 'DEVOPS' }, 'reports')).toBe(true);
-    expect(showInMenu({ role: 'DEVOPS' }, 'reports')).toBe(false);
-    // CR-002: blocked for QA as for Developers (its export is made-up data).
+    expect(canOpenPage({ role: 'LEAD' }, 'reports')).toBe(true);
+    expect(showInMenu({ role: 'LEAD' }, 'reports')).toBe(false);
+    // CR-002/CR-003: blocked for QA and DevOps as for Developers (made-up export data).
     expect(canOpenPage({ role: 'QA' }, 'reports')).toBe(false);
+    expect(canOpenPage({ role: 'DEVOPS' }, 'reports')).toBe(false);
   });
 
   it('never lists a role in the menu for a page that role cannot open', () => {

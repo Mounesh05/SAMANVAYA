@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { githubApi } from '../../api/github.api';
+import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -11,6 +13,10 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { GitPullRequest, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 
 export function GitHubSyncPage() {
+  const { user } = useAuthStore();
+  // CR-003: show each action only to people the backend accepts it from.
+  const canManageCi = hasPermission(user, PERMISSIONS.MANAGE_TEST_AUTOMATION);
+  const canSyncPr = hasPermission(user, PERMISSIONS.SYNC_PR);
   const [prForm, setPrForm] = useState({
     owner: '',
     repo: '',
@@ -134,6 +140,7 @@ export function GitHubSyncPage() {
                 <GitPullRequest size={20} />
               </div>
 
+              {canManageCi && (
               <Card
                 title="Automatic QA Setup"
                 subtitle="Install Samanvaya's GitHub Actions test workflow and configure encrypted repository secrets."
@@ -158,6 +165,7 @@ export function GitHubSyncPage() {
                   </div>
                 )}
               </Card>
+              )}
               <div>
                 <div style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                   GitHub API Gateway: {health?.status === 'operational' ? 'Operational' : 'Ready'}
@@ -222,6 +230,7 @@ export function GitHubSyncPage() {
         )}
       </Card>
 
+      {canSyncPr && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
         <Card title="Synchronize Single PR" subtitle="Fetch PR metadata and analyze risk">
           <form onSubmit={handleSync} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -312,6 +321,7 @@ export function GitHubSyncPage() {
           )}
         </Card>
       </div>
+      )}
     </div>
   );
 }

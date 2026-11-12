@@ -97,7 +97,7 @@ async def analyze_sprint(
 async def analyze_deployment(
     deployment_id: str,
     data: dict = Body(...),
-    user: dict = Depends(require_roles("DEVOPS", "LEAD")),
+    user: dict = Depends(require_permission(Permission.ANALYZE_DEPLOYMENT_RISK)),
 ):
     """
     Analyze deployment risk based on CI/CD metrics.

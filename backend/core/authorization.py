@@ -357,7 +357,8 @@ async def verify_story_status_update_access(user: dict, story_id: str, new_statu
         if new_status != "todo":
             raise HTTPException(status_code=409, detail="A draft story must be accepted into todo first")
     elif (
-        (user.get("role") or user.get("organizational_role") or "").upper() == "DEVELOPER"
+        # CR-001 (Developer) and CR-003 (DevOps): own stories only.
+        (user.get("role") or user.get("organizational_role") or "").upper() in {"DEVELOPER", "DEVOPS"}
         and story.get("assignee_id") != user.get("employee_id")
     ):
         raise HTTPException(status_code=403, detail="You can only update stories assigned to you")
