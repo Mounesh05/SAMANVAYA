@@ -283,6 +283,61 @@ async def test_lifecycle_api_never_accepts_direct_scores_or_approval_flags(store
         assert response.status_code == 200 and response.json()["current"]["state"] == "DRAFT"
 
 
+def appeal_body(head, request_id):
+    return dict(expected_digest=head["digest"], request_id=request_id, reason="Please review the attribution of this source",
+                evidence_references=[])
+
+
+async def test_cancelled_or_already_disputed_assessment_cannot_be_appealed_again(stored):
+    _, run = stored
+    first = await create(run)
+    disputed = await service().appeal(first["assessment_id"], appeal_body(first, "appeal-1"), {"employee_id": "D"})
+    retry = await service().appeal(first["assessment_id"], appeal_body(first, "appeal-1"), {"employee_id": "D"})
+    assert retry == disputed  # An exact retry still returns the original receipt.
+    with pytest.raises(HTTPException) as error:
+        await service().appeal(first["assessment_id"], appeal_body(disputed, "appeal-2"), {"employee_id": "D"})
+    assert error.value.status_code == 409
+    corrected = await service().transition(first["assessment_id"], transition(disputed, "CORRECT", run_id=run.run_id), {"employee_id": "A"})
+    cancelled = await service().transition(first["assessment_id"], transition(corrected, "CANCEL"), {"employee_id": "A"})
+    with pytest.raises(HTTPException) as error:
+        await service().appeal(first["assessment_id"], appeal_body(cancelled, "appeal-3"), {"employee_id": "D"})
+    assert error.value.status_code == 409
+    assert len((await service().get(first["assessment_id"], {"employee_id": "D"}))["history"]) == 4
+
+
+async def test_restating_an_approved_assessment_requires_the_independent_approver(stored):
+    _, run = stored
+    head = await create(run)
+    measurement_id, approver = await trusted_measurement(stored, head)
+    for action in ("COLLECT", "VALIDATE", "ELIGIBLE", "CALCULATE"):
+        head = await service().transition(head["assessment_id"], transition(head, action, measurement_id=measurement_id), {"employee_id": "A"})
+    for action in ("REVIEW", "APPROVE"):
+        head = await service().transition(head["assessment_id"], transition(head, action, assignment_id=approver), {"employee_id": "FINAL"})
+    assert head["state"] == "APPROVED"
+    with pytest.raises(HTTPException) as error:
+        await service().transition(head["assessment_id"], transition(head, "CORRECT", run_id=run.run_id), {"employee_id": "A"})
+    assert error.value.status_code == 403  # The initiating administrator alone cannot void an approval.
+    corrected = await service().transition(head["assessment_id"],
+        transition(head, "CORRECT", run_id=run.run_id, assignment_id=approver), {"employee_id": "FINAL"})
+    assert corrected["state"] == "DRAFT" and corrected["approved_score"] is None
+
+
+async def test_expired_approver_grant_can_be_renewed_for_the_same_reviewer(stored):
+    _, run = stored
+    head = await create(run)
+
+    def grant(expires_at):
+        return dict(reviewer_id="R", qualification_reason="Independent technical review qualification attested",
+                    qualification_source_ids=[run.evidence.snapshot.records[0].source_id],
+                    no_conflict_attested=True, expires_at=expires_at)
+
+    expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    first = await service().assign_approver(head["assessment_id"], grant(expiry), {"employee_id": "A"})
+    assert await service().assign_approver(head["assessment_id"], grant(expiry), {"employee_id": "A"}) == first
+    renewed = await service().assign_approver(head["assessment_id"], grant(expiry + timedelta(days=2)), {"employee_id": "A"})
+    assert renewed["reviewer_id"] == "R" and renewed["assignment_id"] != first["assignment_id"]
+
+
 async def test_subject_cannot_manage_own_workflow_after_becoming_an_admin(stored):
     db, run = stored
     head = await create(run)

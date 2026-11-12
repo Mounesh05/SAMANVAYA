@@ -124,6 +124,31 @@ async def test_unscoped_and_foreign_policy_history_is_not_disclosed(records):
     assert current["status"] == "POLICY_PENDING" and current["role_weights"] == {}
 
 
+async def test_out_of_scope_rows_are_withheld_without_hiding_visible_history(records):
+    from datetime import timedelta
+    await records.projects.insert_one({"id": "OTHER-PROJECT", "org_id": "O1"})
+    other = copy.deepcopy(await records.developer_performances.find_one({}, {"_id": 0}))
+    other.update(id="other-legacy", project_id="OTHER-PROJECT", period_label="2026-Q4",
+                 period_start=other["period_start"] + timedelta(days=92), period_end=other["period_end"] + timedelta(days=92))
+    await records.developer_performances.insert_one(other)
+    managed = await service().trend("AUDIT-DEV", {"employee_id": "L"})
+    assert [r["period_label"] for r in managed["history"]] == ["2026-Q3"]  # The unassigned project row is withheld.
+    own = await service().trend("AUDIT-DEV", {"employee_id": "AUDIT-DEV"})
+    assert [r["period_label"] for r in own["history"]] == ["2026-Q4", "2026-Q3"]
+    await records.developer_performances.delete_many({"project_id": "AUDIT-PROJECT"})
+    with pytest.raises(HTTPException) as error:
+        await service().trend("AUDIT-DEV", {"employee_id": "L"})
+    assert error.value.status_code == 403  # Nothing visible remains, so the read is still denied.
+
+
+async def test_team_summary_excludes_rows_for_accounts_outside_the_organization(records):
+    foreign = copy.deepcopy(await records.developer_performances.find_one({}, {"_id": 0}))
+    foreign.update(id="foreign-account-row", developer_id="X")  # X belongs to another organization.
+    await records.developer_performances.insert_one(foreign)
+    rows = await service().team("AUDIT-PROJECT", "current", {"employee_id": "L"})
+    assert [r["developer_id"] for r in rows] == ["AUDIT-DEV"]
+
+
 async def test_hr_case_without_any_historical_scope_proof_is_withheld(records):
     await records.developer_performances.delete_many({})  # This fixture is an isolated in-memory database.
     await records.hr_assessments.insert_one(dict(developer_id="AUDIT-DEV", evaluator_id="H", performance_id="AUDIT-DEV",

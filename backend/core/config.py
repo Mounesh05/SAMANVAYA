@@ -4,7 +4,7 @@ All settings are typed. SECRET_KEY has no default — must be set.
 """
 
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, model_validator
 from typing import List, Optional
 
 
@@ -68,7 +68,17 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
-    
+
+    @model_validator(mode="after")
+    def _active_signing_key_is_configured(self):
+        """Fail at startup instead of rejecting every signed performance write at runtime."""
+        if self.PERFORMANCE_SIGNING_KEYS:
+            if not self.PERFORMANCE_SIGNING_KEYS.get(self.PERFORMANCE_SIGNING_KEY_ID):
+                raise ValueError("PERFORMANCE_SIGNING_KEY_ID must name a non-empty key in PERFORMANCE_SIGNING_KEYS")
+        elif self.PERFORMANCE_SIGNING_KEY_ID != "application-secret":
+            raise ValueError("PERFORMANCE_SIGNING_KEYS must be configured for a custom PERFORMANCE_SIGNING_KEY_ID")
+        return self
+
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.ENVIRONMENT == "production"

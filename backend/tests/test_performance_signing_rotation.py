@@ -32,6 +32,19 @@ async def test_rotation_retains_old_artifact_and_missing_key_fails_closed(mock_d
     assert error.value.status_code == 409
 
 
+async def test_misconfigured_active_signing_key_fails_at_startup():
+    from pydantic import ValidationError
+    from core.config import Settings
+    base = dict(SECRET_KEY="s" * 64, _env_file=None)
+    with pytest.raises(ValidationError):
+        Settings(**base, PERFORMANCE_SIGNING_KEY_ID="rotated")
+    with pytest.raises(ValidationError):
+        Settings(**base, PERFORMANCE_SIGNING_KEYS={"other": "k" * 40}, PERFORMANCE_SIGNING_KEY_ID="rotated")
+    configured = Settings(**base, PERFORMANCE_SIGNING_KEYS={"rotated": "k" * 40}, PERFORMANCE_SIGNING_KEY_ID="rotated")
+    assert configured.PERFORMANCE_SIGNING_KEY_ID == "rotated"
+    assert Settings(**base).PERFORMANCE_SIGNING_KEY_ID == "application-secret"
+
+
 async def test_original_v1_signature_survives_explicit_legacy_key_retention(mock_db, monkeypatch):
     import hashlib
     import hmac

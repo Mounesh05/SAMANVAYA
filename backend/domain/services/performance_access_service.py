@@ -21,6 +21,7 @@ from domain.services.performance_artifact_store import _read, _write
 from domain.services.performance_human_service import _assigned, _current
 from repositories.performance_repository import PerformanceRepository
 
+HISTORY_SCAN_LIMIT = 500  # Upper bound on legacy rows inspected per employee read.
 COMPARISON_LIMITATIONS = ["Legacy methodology, evidence coverage and period normalization are not verified; numeric changes are not a verified employee trend"]
 
 
@@ -76,8 +77,14 @@ class PerformanceAccessService:
             raise HTTPException(403, "Current HR outcome access is not authorized")
         return current, subject
 
-    async def _row(self, record, current):
-        project = await col("projects").find_one({"id": record.get("project_id"), "org_id": current["org_id"]}, {"_id": 0})
+    async def _row(self, record, current, projects=None):
+        project_id = record.get("project_id")
+        if projects is not None and project_id in projects:
+            project = projects[project_id]
+        else:
+            project = await col("projects").find_one({"id": project_id, "org_id": current["org_id"]}, {"_id": 0})
+            if projects is not None:
+                projects[project_id] = project
         if not project or record.get("org_id", current["org_id"]) != current["org_id"]:
             raise HTTPException(403, "Historical project/organization provenance is unavailable or unauthorized")
         if (current["employee_id"] != record["developer_id"] and current.get("role") not in {"HR", "CEO"}
@@ -90,9 +97,20 @@ class PerformanceAccessService:
         query = {"developer_id": employee_id}
         if period_label:
             query["period_label"] = period_label
-        records = await col("developer_performances").find(query).sort("period_start", -1).limit(limit).to_list(limit)
-        for record in records:
-            await self._row(record, current)
+        rows = await col("developer_performances").find(query).sort("period_start", -1).limit(HISTORY_SCAN_LIMIT).to_list(HISTORY_SCAN_LIMIT)
+        # Withhold individual out-of-scope rows; deny only when nothing in the history is visible.
+        records, projects, denial = [], {}, None
+        for row in rows:
+            try:
+                await self._row(row, current, projects)
+            except HTTPException as error:
+                denial = denial or error
+                continue
+            records.append(row)
+            if len(records) == limit:
+                break
+        if not records and denial:
+            raise denial
         return current, records
 
     async def _audit(self, current, action, resource, **metadata):
@@ -148,12 +166,17 @@ class PerformanceAccessService:
         rows = await col("developer_performances").find(query).sort("period_start", -1).limit(1001).to_list(1001)
         if len(rows) > 1000:
             raise HTTPException(409, "Team history requires a narrower period/project query")
+        developer_ids = list({row["developer_id"] for row in rows})
+        members = set()
+        if developer_ids:
+            users = await col("users").find({"employee_id": {"$in": developer_ids}, "org_id": current["org_id"]},
+                                            {"_id": 0, "employee_id": 1}).to_list(len(developer_ids))
+            members = {user["employee_id"] for user in users}
         result, seen = [], set()
         for row in rows:
             if period_label == "current" and row["developer_id"] in seen:
                 continue
-            subject = await col("users").find_one({"employee_id": row["developer_id"], "org_id": current["org_id"]})
-            if not subject or row.get("org_id", current["org_id"]) != current["org_id"]:
+            if row["developer_id"] not in members or row.get("org_id", current["org_id"]) != current["org_id"]:
                 continue
             seen.add(row["developer_id"])
             created = row.get("created_at")

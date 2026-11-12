@@ -33,6 +33,9 @@ TRANSITIONS = {
     "CANCEL": ({"DRAFT", "EVIDENCE_COLLECTING", "EVIDENCE_VALIDATED", "SCORING_ELIGIBLE", "PROVISIONAL", "UNDER_REVIEW"}, "CANCELLED"),
     "CORRECT": ({"DISPUTED", "REJECTED", "APPROVED", "INSUFFICIENT_EVIDENCE"}, "DRAFT"),
 }
+# A cancelled assessment is closed, and an open dispute must be resolved before another appeal.
+APPEAL_BLOCKED_STATES = frozenset({"CANCELLED", "DISPUTED"})
+INDEPENDENT_ACTIONS = frozenset({"REVIEW", "APPROVE", "REJECT"})
 
 
 def _key(assessment_id, revision):
@@ -80,6 +83,10 @@ class AssessmentLifecycleService:
         if not (own or manager or current.get("role") in {"CEO", "HR"}):
             raise HTTPException(403, "Assessment access is outside current scope")
         return current, run, project
+
+    @staticmethod
+    def _is_retry(records, body, current):
+        return any(r["payload"]["request_id"] == body.request_id and r["created_by"] == current["employee_id"] for r in records)
 
     @staticmethod
     def _manage(current, project):
@@ -218,12 +225,14 @@ class AssessmentLifecycleService:
         current, run, project = await self._access(records, actor)
         if current["employee_id"] == run.evidence.snapshot.scope.employee_id:
             raise HTTPException(403, "The subject may appeal but cannot manage or approve their own assessment")
-        if body.action in {"REVIEW", "APPROVE", "REJECT"}:
+        # Restating a previously approved outcome needs the same independent approver as approval itself.
+        restates_approval = body.action == "CORRECT" and any(r["payload"]["state"] == "APPROVED" for r in records)
+        if body.action in INDEPENDENT_ACTIONS or restates_approval:
             await self._approver(body.assignment_id, records, current, run, project)
         else:
             self._manage(current, project)
         # Recover exact retries before applying a transition to the newer head.
-        if any(r["payload"]["request_id"] == body.request_id and r["created_by"] == current["employee_id"] for r in records):
+        if self._is_retry(records, body, current):
             return await self._append(records, body, current, records[-1]["payload"]["state"])
         allowed, state = TRANSITIONS[body.action]
         if records[-1]["payload"]["state"] not in allowed:
@@ -251,6 +260,8 @@ class AssessmentLifecycleService:
         current, run, _ = await self._access(records, actor, historical=True)
         if current["employee_id"] != run.evidence.snapshot.scope.employee_id:
             raise HTTPException(403, "Only the scoped subject may file this appeal; delegated authority is not inferred")
+        if not self._is_retry(records, body, current) and records[-1]["payload"]["state"] in APPEAL_BLOCKED_STATES:
+            raise HTTPException(409, "This assessment is cancelled or already disputed; await its resolution")
         return await self._append(records, body, current, "DISPUTED", action="APPEAL",
                                   evidence_references=list(body.evidence_references))
 
@@ -301,7 +312,9 @@ class AssessmentLifecycleService:
                 or current["employee_id"] == scope.employee_id or body.expires_at <= datetime.now(timezone.utc)
                 or not set(body.qualification_source_ids) <= {r.source_id for r in run.evidence.snapshot.records}):
             raise HTTPException(403, "Independent qualified approver scope and period-source attestation are required")
-        key = "PAQ-" + canonical_digest({"assessment_id": assessment_id, "reviewer_id": body.reviewer_id, "snapshot_digest": run.evidence.digest})
+        # The expiry is part of the identity so an expired grant can be renewed; exact retries stay idempotent.
+        key = "PAQ-" + canonical_digest({"assessment_id": assessment_id, "reviewer_id": body.reviewer_id,
+                                         "snapshot_digest": run.evidence.digest, "expires_at": body.expires_at.isoformat()})
         payload = {"assessment_id": assessment_id, "snapshot_digest": run.evidence.digest, "request": body.model_dump(mode="json")}
         try:
             await _write("performance_assessment_approver", payload, _context(scope), current["employee_id"], key)
