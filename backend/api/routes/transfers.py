@@ -8,7 +8,7 @@ from typing import List, Optional
 from repositories.transfer_repository import TransferRepository
 from services.transfer_service import TransferService
 from core.dependencies import get_current_user, require_permission
-from core.permissions import Permission
+from core.permissions import Permission, get_user_permissions
 from core.audit import log_audit, AuditAction
 from domain.models.transfer import (
     Transfer,
@@ -36,7 +36,22 @@ async def create_transfer(
     - Employee-initiated: Starts with HR validation
     - Grievance: HR validation → Skip current manager → Receiving manager
     """
-    # All employees can request transfers
+    # Every employee may request their own transfer. Requesting one for
+    # someone else is reserved for managers and HR: otherwise any employee
+    # could open a request for a colleague and block theirs (one active
+    # request per employee).
+    permissions = get_user_permissions(
+        user.get("role", ""), user.get("is_admin", False), user.get("designation")
+    )
+    may_request_for_others = bool(permissions & {
+        Permission.APPROVE_TRANSFER_AS_MANAGER,  # LEAD, PM, CEO
+        Permission.REVIEW_TRANSFER_HR,           # HR
+        Permission.REVIEW_TRANSFER_REQUEST,      # HR Manager, HRBP
+        Permission.VIEW_TRANSFER_REQUESTS,       # HR Operations
+    })
+    if transfer.employee_id != user.get("employee_id") and not may_request_for_others:
+        raise HTTPException(status_code=403, detail="You can only request a transfer for yourself")
+
     service = TransferService()
 
     try:

@@ -8,6 +8,7 @@ import { employeesApi } from '../../api/employees.api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ToastProvider } from '../../components/common/Toast';
 import { ROLES } from '../../utils/constants';
+import { permissionsFor } from '../../tests/utils/roleUser';
 
 vi.mock('../../api/performance.api', () => ({
   performanceApi: {
@@ -101,6 +102,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -129,6 +131,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -148,6 +151,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -167,6 +171,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -186,6 +191,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-CEO',
         name: 'Executive CEO',
         role: ROLES.CEO,
+        permissions: permissionsFor(ROLES.CEO, false),
         is_admin: false,
       });
 
@@ -212,6 +218,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -240,6 +247,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -263,6 +271,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -279,6 +288,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 
@@ -330,6 +340,7 @@ describe('PerformancePage Adversarial Stress Tests: Network Lifecycle & Eligibil
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
+        permissions: permissionsFor(ROLES.HR, false),
         is_admin: false,
       });
 

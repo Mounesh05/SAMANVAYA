@@ -17,14 +17,16 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { Plus, KanbanSquare } from 'lucide-react';
-import { TASK_STATUS, STATUS_LABELS, DEFAULT_ORG_ID, ROLES } from '../../utils/constants';
+import { TASK_STATUS, STATUS_LABELS, DEFAULT_ORG_ID } from '../../utils/constants';
 import { canUpdateTask } from '../../utils/taskPermissions';
 import { PermissionGuard } from '../../auth/PermissionGuard';
-import { PERMISSIONS } from '../../auth/permissions';
+import { PERMISSIONS, hasPermission } from '../../auth/permissions';
 
 export function TasksPage() {
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase();
+  // Leads/PMs plan work for others; contributors create tasks for themselves
+  // (the backend refuses anything else).
+  const assignsOthers = hasPermission(user, PERMISSIONS.MOVE_TASK);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -66,6 +68,7 @@ export function TasksPage() {
   const { data: employees = [] } = useQuery({
     queryKey: ['employees', 'list'],
     queryFn: () => employeesApi.list(),
+    enabled: assignsOthers,
   });
 
   const { data: sprints = [] } = useQuery({
@@ -124,6 +127,7 @@ export function TasksPage() {
     createMutation.mutate({
       ...formData,
       project_id: formData.project_id || activeProjectId,
+      assignee_id: assignsOthers ? formData.assignee_id : user?.employee_id,
     });
   };
 
@@ -286,7 +290,7 @@ export function TasksPage() {
               )}
             </dl>
 
-            {role === ROLES.PM || role === ROLES.LEAD ? (
+            {assignsOthers ? (
               <Select
                 label="Sprint"
                 value={taskDetail.sprint_id || ''}
@@ -384,16 +388,20 @@ export function TasksPage() {
               options={projects.map((p) => ({ value: p.id, label: p.name }))}
               required
             />
-            <Select
-              label="Assignee"
-              value={formData.assignee_id}
-              onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-              placeholder="No assignee selected"
-              options={employees.map((e) => ({
-                value: e.employee_id,
-                label: `${e.name} (${e.employee_id})`,
-              }))}
-            />
+            {assignsOthers ? (
+              <Select
+                label="Assignee"
+                value={formData.assignee_id}
+                onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
+                placeholder="No assignee selected"
+                options={employees.map((e) => ({
+                  value: e.employee_id,
+                  label: `${e.name} (${e.employee_id})`,
+                }))}
+              />
+            ) : (
+              <Input label="Assignee" value={user?.name || user?.employee_id || ''} readOnly />
+            )}
             <Select
               label="Sprint"
               value={formData.sprint_id}

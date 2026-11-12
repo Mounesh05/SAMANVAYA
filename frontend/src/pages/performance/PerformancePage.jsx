@@ -17,6 +17,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { Play, Sparkles, Shield, UserCheck, Award, BookOpen } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { ROLES } from '../../utils/constants';
+import { hasPermission, hasAnyPermission, PERMISSIONS } from '../../auth/permissions';
 import { useToast } from '../../components/common/Toast';
 
 function getCurrentQuarterLabel(date = new Date()) {
@@ -35,9 +36,17 @@ export function PerformancePage() {
   const role = user?.role?.toUpperCase();
   const isHR = role === ROLES.HR;
   const isCEO = role === ROLES.CEO;
-  const isLead = role === ROLES.LEAD;
   const isDeveloperUser = role === ROLES.DEVELOPER;
-  const canTriggerEvaluation = isCEO || isLead || user?.is_admin;
+  // Same rule as the backend: TRIGGER_AI_EVALUATION (Lead, CEO, admins).
+  const canTriggerEvaluation = hasPermission(user, PERMISSIONS.TRIGGER_AI_EVALUATION);
+  // CR-001: without a team/project/organisation performance permission a user
+  // sees only their own record, whatever the URL asks for.
+  const ownRecordOnly = !hasAnyPermission(user, [
+    PERMISSIONS.VIEW_TEAM_PERFORMANCE,
+    PERMISSIONS.VIEW_PROJECT_PERFORMANCE,
+    PERMISSIONS.VIEW_ORGANIZATION_PERFORMANCE,
+    PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES,
+  ]);
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const requestedDevId = searchParams.get('developer');
@@ -47,6 +56,7 @@ export function PerformancePage() {
   const { data: employees = [] } = useQuery({
     queryKey: ['employees', 'list'],
     queryFn: () => employeesApi.list(),
+    enabled: !ownRecordOnly,
   });
 
   // Filter out non-evaluatable roles (CEO and HR) and limit strictly to engineering contributors.
@@ -79,6 +89,9 @@ export function PerformancePage() {
   // Selected developer ID: default to developer themselves if engineer,
   // or requested from URL query param (if not HR/CEO), or empty until evaluatable list loads.
   const [selectedDevId, setSelectedDevId] = useState(() => {
+    if (ownRecordOnly) {
+      return user?.employee_id || '';
+    }
     if (requestedDevId && requestedDevId !== 'DEMO-HR' && requestedDevId !== 'DEMO-CEO') {
       return requestedDevId;
     }
@@ -89,7 +102,7 @@ export function PerformancePage() {
   });
 
   useEffect(() => {
-    if (visibleEmployees.length === 0) return;
+    if (ownRecordOnly || visibleEmployees.length === 0) return;
 
     if (requestedDevId && requestedDevId !== 'DEMO-HR' && requestedDevId !== 'DEMO-CEO' && visibleEmployees.some((e) => e.employee_id === requestedDevId)) {
       setSelectedDevId(requestedDevId);
@@ -100,16 +113,18 @@ export function PerformancePage() {
     if (!selectedDevId || !visibleEmployees.some((e) => e.employee_id === selectedDevId)) {
       setSelectedDevId(visibleEmployees[0].employee_id);
     }
-  }, [visibleEmployees, requestedDevId, selectedDevId]);
+  }, [visibleEmployees, requestedDevId, selectedDevId, ownRecordOnly]);
+
+  const shownDevId = ownRecordOnly ? user?.employee_id || '' : selectedDevId;
 
   const {
     data: dashboardData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['developer-performance', selectedDevId],
-    queryFn: () => performanceApi.getDeveloperDashboard(selectedDevId),
-    enabled: Boolean(selectedDevId) && selectedDevId !== 'DEMO-HR' && selectedDevId !== 'DEMO-CEO',
+    queryKey: ['developer-performance', shownDevId],
+    queryFn: () => performanceApi.getDeveloperDashboard(shownDevId),
+    enabled: Boolean(shownDevId) && shownDevId !== 'DEMO-HR' && shownDevId !== 'DEMO-CEO',
     retry: 1,
   });
 

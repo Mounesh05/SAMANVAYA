@@ -5,12 +5,13 @@ Returns sprint/project items grouped into status columns.
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 from core.authorization import (
     verify_project_access,
     verify_task_access,
     verify_task_status_update_access,
-    verify_story_access,
+    verify_story_status_update_access,
 )
 from repositories.task_repository import TaskRepository
 from repositories.story_repository import StoryRepository
@@ -123,7 +124,8 @@ async def get_project_board(
 @router.patch("/move")
 async def move_item(
     body: MoveItemRequest,
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "PM", "QA", "DEVOPS")),
+    # TRANSITION_TASK is held by exactly DEVELOPER, LEAD, PM, QA and DEVOPS.
+    user: dict = Depends(require_permission(Permission.TRANSITION_TASK)),
 ):
     """
     Move a task or story to a new status column.
@@ -134,7 +136,9 @@ async def move_item(
     if body.item_type == "task":
         await verify_task_status_update_access(user, body.item_id)
     elif body.item_type == "story":
-        await verify_story_access(user, body.item_id)
+        # Same rules as PATCH /stories/{id}/status: drafts need a backlog
+        # owner, developers move only their own stories.
+        await verify_story_status_update_access(user, body.item_id, body.target_status)
     else:
         raise HTTPException(
             status_code=400, detail="item_type must be 'task' or 'story'"

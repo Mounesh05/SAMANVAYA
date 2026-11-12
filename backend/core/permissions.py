@@ -72,13 +72,19 @@ class Permission(str, Enum):
     CREATE_TEAM = "CREATE_TEAM"
     CREATE_BUG = "CREATE_BUG"
     CREATE_INCIDENT = "CREATE_INCIDENT"
+    VIEW_INCIDENTS = "VIEW_INCIDENTS"  # read all incidents in accessible projects
     
     # Task Management
     MOVE_TASK = "MOVE_TASK"
     TRANSITION_TASK = "TRANSITION_TASK"
+    # Accept a contributor's draft story into the backlog (backlog owners).
+    ACCEPT_STORY = "ACCEPT_STORY"
     
     # Code Analysis & Integration
     TRIGGER_CODE_ANALYSIS = "TRIGGER_CODE_ANALYSIS"
+    # Rule-based analysis helpers for engineers (were role-name checks).
+    ANALYZE_CICD_LOGS = "ANALYZE_CICD_LOGS"
+    ANALYZE_PR_RISK = "ANALYZE_PR_RISK"
     SYNC_PR = "SYNC_PR"
 
     # Administration (ADMIN only)
@@ -112,14 +118,24 @@ class SystemAccess(str, Enum):
 
 # Role permissions mapping
 ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
+    # CR-001: Developers work only inside their assigned projects.
+    # - CREATE_TASK: sub-tasks for themselves (assignee must be self)
+    # - CREATE_STORY: proposes a DRAFT story; a Lead/PM accepts it (ACCEPT_STORY)
+    # - CREATE_BUG: reports defects; QA owns verification and closure
+    # - CREATE_INCIDENT: reports incidents; DevOps triages them (CR-003)
+    # - REQUEST_TRANSFER: their own transfer only
     OrganizationalRole.DEVELOPER: {
         Permission.VIEW_OWN_DATA,
+        Permission.ANALYZE_CICD_LOGS,
+        Permission.ANALYZE_PR_RISK,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
         Permission.TRANSITION_TASK,
         # CRUD permissions
+        Permission.CREATE_TASK,
         Permission.CREATE_BUG,
         Permission.CREATE_STORY,
+        Permission.CREATE_INCIDENT,  # report only; DevOps triages
         # Integration
         Permission.SYNC_PR,
         # Transfer
@@ -128,6 +144,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.LEAD: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_INCIDENTS,
+        Permission.ANALYZE_CICD_LOGS,
+        Permission.ANALYZE_PR_RISK,
         Permission.VIEW_TEAM_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_TEAM_PERFORMANCE,
@@ -138,6 +157,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.CREATE_TASK,
         Permission.CREATE_STORY,
         Permission.CREATE_BUG,
+        Permission.ACCEPT_STORY,
         # Task management
         Permission.MOVE_TASK,
         Permission.TRANSITION_TASK,
@@ -161,6 +181,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.CREATE_TASK,
         Permission.CREATE_SPRINT,
         Permission.CREATE_STORY,
+        Permission.ACCEPT_STORY,
         # Task management
         Permission.MOVE_TASK,
         Permission.TRANSITION_TASK,
@@ -173,6 +194,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.QA: {
         Permission.VIEW_OWN_DATA,
+        Permission.ANALYZE_CICD_LOGS,
+        Permission.ANALYZE_PR_RISK,
         Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PROJECT_PERFORMANCE,
@@ -190,6 +213,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.DEVOPS: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_INCIDENTS,
+        Permission.ANALYZE_CICD_LOGS,
+        Permission.ANALYZE_PR_RISK,
         Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PROJECT_PERFORMANCE,
@@ -243,6 +269,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.CEO: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_INCIDENTS,
         Permission.VIEW_ALL_DATA,
         Permission.VIEW_ORGANIZATION_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
@@ -259,6 +286,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AUDIT_LOGS,
         # CRUD permissions
         Permission.CREATE_INCIDENT,
+        Permission.ACCEPT_STORY,
         Permission.CREATE_TEAM,
         Permission.MANAGE_TEAMS,
         Permission.ASSIGN_PROJECT,

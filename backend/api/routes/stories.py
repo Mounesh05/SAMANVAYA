@@ -11,6 +11,8 @@ from core.authorization import (
     verify_story_access,
     verify_project_access,
     verify_can_view_user_tasks,
+    verify_story_status_update_access,
+    verify_work_item_creation,
 )
 from repositories.sprint_repository import SprintRepository
 
@@ -27,14 +29,19 @@ async def create_story(
     """
     Create a new user story.
     Requires CREATE_STORY permission (DEVELOPER, LEAD, PM roles by default).
-    User must have write access to the target project.
+
+    Project managers (write access) add the story straight to the backlog.
+    Contributors (e.g. DEVELOPER) can only propose a DRAFT story assigned to
+    themselves in an assigned project; a Lead/PM accepts it (ACCEPT_STORY).
     """
-    # Verify user has write access to the target project
-    await verify_project_access(user, story_data.project_id, require_write=True)
-    
+    is_manager = await verify_work_item_creation(user, story_data.project_id, story_data.assignee_id)
+
     try:
-        story = await story_service.create_story(story_data)
-        return story
+        return await story_service.create_story(
+            story_data,
+            draft=not is_manager,
+            proposed_by=None if is_manager else user.get("employee_id"),
+        )
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -93,10 +100,15 @@ async def update_story_status(
     status: str = Query(..., pattern="^(todo|in_progress|review|done)$"),
     user: dict = Depends(get_current_user),
 ):
-    """Update story status. User must have access to the story's project."""
-    # Verify user has access to this story before updating
-    await verify_story_access(user, story_id)
-    
+    """
+    Update story status. User must have access to the story's project.
+
+    - A DRAFT story can only be accepted (moved to todo) by a backlog owner:
+      ACCEPT_STORY permission plus write access to the project.
+    - Developers can move only stories assigned to them.
+    """
+    await verify_story_status_update_access(user, story_id, status)
+
     success = await story_service.update_story_status(story_id, status)
     
     if not success:

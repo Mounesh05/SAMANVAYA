@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ROLES } from '../../utils/constants';
+import { permissionsFor } from '../../tests/utils/roleUser';
 
 describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
   beforeEach(() => {
@@ -28,6 +29,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       employee_id: 'DEMO-HR',
       name: 'HR Director',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, false),
       is_admin: false,
     });
 
@@ -207,22 +209,27 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/board',
           '/code-quality',
           '/pull-requests',
-          '/github/sync',
           '/bugs',
           '/cicd-logs',
-          '/evaluation',
           '/performance',
+          // CR-001: Developers request and follow their own transfers.
+          '/transfers',
+          // CR-001: Developers report incidents and see their own reports.
+          '/incidents',
         ],
-        // Developers do NOT have feedback link
+        // Developers do NOT have feedback link.
+        // CR-001: GitHub Sync (integration setup) and AI Evaluation (their own
+        // evaluation lives on Performance) left the Developer menu. Without a
+        // team_id there is no "My Team" link, and the team list stays hidden.
         forbiddenRoutes: [
           '/feedback',
           '/employees',
-          '/transfers',
+          '/github/sync',
+          '/evaluation',
           '/teams',
           '/tests',
           '/pipelines',
           '/deployments',
-          '/incidents',
           '/reports',
           '/audit',
           '/quality',
@@ -310,6 +317,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
         employee_id: `DEMO-${spec.role}`,
         name: `User ${spec.role}`,
         role: spec.role,
+        permissions: permissionsFor(spec.role, false),
         is_admin: false,
       });
 
@@ -372,6 +380,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       employee_id: 'DEMO-HR-LOWER',
       name: 'Lowercase HR',
       role: 'hr',
+      permissions: permissionsFor('hr', false),
       is_admin: false,
     });
 
@@ -392,6 +401,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       employee_id: 'DEMO-UNKNOWN',
       name: 'Unknown Role User',
       role: 'CONTRACTOR',
+      permissions: permissionsFor('CONTRACTOR', false),
       is_admin: false,
     });
 
@@ -412,6 +422,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, false),
       is_admin: false,
     });
 
@@ -436,6 +447,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       employee_id: 'DEMO-ADMIN-HR',
       name: 'Admin HR',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, true),
       is_admin: true,
     });
 

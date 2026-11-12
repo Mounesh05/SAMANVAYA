@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Sidebar } from './Sidebar';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ROLES } from '../../utils/constants';
+import { permissionsFor } from '../../tests/utils/roleUser';
 
 describe('Sidebar HR Navigation', () => {
   beforeEach(() => {
@@ -15,6 +16,7 @@ describe('Sidebar HR Navigation', () => {
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, false),
       is_admin: false,
     });
 
@@ -38,6 +40,7 @@ describe('Sidebar HR Navigation', () => {
       employee_id: 'DEMO-DEV',
       name: 'Developer',
       role: ROLES.DEVELOPER,
+      permissions: permissionsFor(ROLES.DEVELOPER, false),
       is_admin: false,
     });
 
@@ -60,6 +63,7 @@ describe('Sidebar HR Navigation', () => {
       employee_id: 'DEMO-LEAD',
       name: 'Lead Developer',
       role: ROLES.LEAD,
+      permissions: permissionsFor(ROLES.LEAD, false),
       is_admin: false,
     });
 

@@ -315,7 +315,8 @@ describe('Numeric sorting benchmark', () => {
   });
 
   it('keeps the benchmark and existing quality analysis flow independent on the quality screen', async () => {
-    useAuthStore.setState({ user: { role: 'QA' } });
+    // Permissions come from /api/auth/me; QA holds TRIGGER_CODE_ANALYSIS.
+    useAuthStore.setState({ user: { role: 'QA', permissions: ['TRIGGER_CODE_ANALYSIS'] } });
     const analyze = vi.spyOn(codeQualityApi, 'startAnalysis').mockResolvedValue({});
     client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(<MemoryRouter><QueryClientProvider client={client}><CodeQualityPage /></QueryClientProvider></MemoryRouter>);

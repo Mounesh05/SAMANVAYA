@@ -30,7 +30,14 @@ HR_AUDIT_ACTIONS = {
     AuditAction.TEAM_MEMBER_ADDED,
     AuditAction.TEAM_MEMBER_REMOVED,
     AuditAction.TEAM_LEAD_ASSIGNED,
-    
+
+    # Transfers (HR reviews and executes them)
+    AuditAction.TRANSFER_CREATED,
+    AuditAction.TRANSFER_APPROVED,
+    AuditAction.TRANSFER_REJECTED,
+    AuditAction.TRANSFER_FLAGGED,
+    AuditAction.TRANSFER_EXECUTED,
+
     # Performance management (outcomes only, not raw evaluations)
     AuditAction.FEEDBACK_SUBMITTED,
 }

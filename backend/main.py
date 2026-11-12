@@ -291,6 +291,10 @@ app.include_router(activity.router, prefix="/api/activity", tags=["Activity Feed
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 
+# Incident reporting (CR-001); triage arrives with CR-003
+from api.routes import incidents
+app.include_router(incidents.router, prefix="/api/incidents", tags=["Incidents"])
+
 # Code Quality & Multi-Language Intelligence Engine
 app.include_router(code_quality.router, prefix="/api/code-quality", tags=["Code Quality"])
 

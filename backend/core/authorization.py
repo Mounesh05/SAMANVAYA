@@ -12,6 +12,7 @@ Authorization hierarchy (highest to lowest access):
 """
 
 from fastapi import HTTPException
+from core.permissions import Permission, get_user_permissions
 from repositories.task_repository import TaskRepository
 from repositories.project_repository import ProjectRepository
 from repositories.story_repository import StoryRepository
@@ -164,6 +165,35 @@ async def verify_project_access(
     )
 
 
+async def verify_work_item_creation(user: dict, project_id: str, assignee_id: str | None) -> bool:
+    """
+    Authorize creating a task or story in a project.
+
+    Returns True for project managers (write access to the project), who may
+    assign the item to anyone. Contributors (read access to an assigned or team
+    project, e.g. DEVELOPER) may create items only for themselves; the caller
+    decides what a contributor-created item looks like (e.g. a draft story).
+
+    Raises:
+        HTTPException 403: outside the project, or assigning to someone else
+        HTTPException 404: project not found
+    """
+    try:
+        await verify_project_access(user, project_id, require_write=True)
+        return True
+    except HTTPException as error:
+        if error.status_code != 403:
+            raise
+    # Contributor path: read access is required (assigned or team project).
+    await verify_project_access(user, project_id)
+    if assignee_id != user.get("employee_id"):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only create work items assigned to yourself",
+        )
+    return False
+
+
 async def verify_task_access(
     user: dict,
     task_id: str,
@@ -279,6 +309,41 @@ async def verify_story_access(
     await verify_project_access(user, project_id, require_write=require_write)
     
     return project_id
+
+
+async def verify_story_status_update_access(user: dict, story_id: str, new_status: str) -> dict:
+    """
+    Authorize changing a story's status (Stories page and board drag-and-drop).
+
+    - A DRAFT story can only be accepted into "todo", and only by a backlog
+      owner: ACCEPT_STORY permission plus write access to the project.
+    - Developers can move only stories assigned to them.
+    - Everyone else keeps project-level access, as before.
+
+    Returns the story document.
+    """
+    project_id = await verify_story_access(user, story_id)
+    story = await _story_repo.find_by_id(story_id)
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+
+    if story.get("status") == "draft":
+        permissions = get_user_permissions(
+            user.get("role", user.get("organizational_role", "")),
+            user.get("is_admin", False),
+            user.get("designation"),
+        )
+        if Permission.ACCEPT_STORY not in permissions:
+            raise HTTPException(status_code=403, detail="Only a Lead or PM can accept a draft story")
+        await verify_project_access(user, project_id, require_write=True)
+        if new_status != "todo":
+            raise HTTPException(status_code=409, detail="A draft story must be accepted into todo first")
+    elif (
+        (user.get("role") or user.get("organizational_role") or "").upper() == "DEVELOPER"
+        and story.get("assignee_id") != user.get("employee_id")
+    ):
+        raise HTTPException(status_code=403, detail="You can only update stories assigned to you")
+    return story
 
 
 async def verify_team_access(user: dict, team_id: str) -> None:

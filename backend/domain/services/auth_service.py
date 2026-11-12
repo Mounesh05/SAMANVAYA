@@ -6,6 +6,7 @@ Handles user registration, login, and authentication logic.
 from datetime import datetime, timezone
 from typing import Optional
 from core.security import hash_password, verify_password, create_access_token
+from core.permissions import get_user_permissions
 from repositories.user_repository import UserRepository
 from domain.models.user import UserCreate, UserOut, LoginResponse
 
@@ -99,6 +100,12 @@ class AuthService:
 
     @staticmethod
     def _user_out(user: dict) -> UserOut:
+        # The permission list is computed by the backend so the frontend never
+        # keeps its own copy of the role matrix (CR-001 single source of truth).
+        is_admin = bool(user.get("is_admin", False))
+        permissions = get_user_permissions(
+            user.get("role") or "", is_admin, user.get("designation")
+        )
         return UserOut(
             employee_id=user.get("employee_id", ""),
             name=user.get("name", "Unknown"),
@@ -109,6 +116,9 @@ class AuthService:
             is_active=user.get("is_active", True),
             github_username=user.get("github_username"),
             team_id=user.get("team_id"),
+            is_admin=is_admin,
+            designation=user.get("designation"),
+            permissions=sorted(permission.value for permission in permissions),
         )
 
     def _login_response(self, user: dict) -> LoginResponse:
@@ -202,14 +212,4 @@ class AuthService:
         if not user:
             return None
 
-        return UserOut(
-            employee_id=user.get("employee_id", ""),
-            name=user.get("name", "Unknown"),
-            email=user.get("email", ""),
-            role=user.get("role", "DEVELOPER"),
-            dept=user.get("dept", "Engineering"),
-            avatar=user.get("avatar"),
-            is_active=user.get("is_active", True),
-            github_username=user.get("github_username"),
-            team_id=user.get("team_id"),
-        )
+        return self._user_out(user)

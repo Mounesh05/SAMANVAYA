@@ -10,10 +10,27 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { Users, UserCheck, ArrowLeft, MessageSquareQuote, Award } from 'lucide-react';
 import { ROLE_LABELS } from '../../utils/constants';
+import { useAuthStore } from '../../store/useAuthStore';
+import { canOpenPage } from '../../routes/access';
+import {
+  hasAnyPermission,
+  FEEDBACK_SUBMIT_PERMISSIONS,
+  PERMISSIONS,
+} from '../../auth/permissions';
 
 export function TeamDetailPage() {
   const { teamId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  // Only show actions the backend will accept for this user.
+  const canViewMemberPerformance = hasAnyPermission(user, [
+    PERMISSIONS.VIEW_TEAM_PERFORMANCE,
+    PERMISSIONS.VIEW_PROJECT_PERFORMANCE,
+    PERMISSIONS.VIEW_ORGANIZATION_PERFORMANCE,
+    PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES,
+  ]);
+  const canSubmitFeedback = hasAnyPermission(user, FEEDBACK_SUBMIT_PERMISSIONS);
+  const canListTeams = canOpenPage(user, 'teams');
 
   const {
     data: team,
@@ -81,23 +98,27 @@ export function TeamDetailPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '1rem' }}>
-        <Button variant="ghost" size="sm" leftIcon={<ArrowLeft size={16} />} onClick={() => navigate('/teams')}>
-          Back to Teams
-        </Button>
-      </div>
+      {canListTeams && (
+        <div style={{ marginBottom: '1rem' }}>
+          <Button variant="ghost" size="sm" leftIcon={<ArrowLeft size={16} />} onClick={() => navigate('/teams')}>
+            Back to Teams
+          </Button>
+        </div>
+      )}
 
       <PageHeader
         title={team?.name || 'Team Details'}
         subtitle={team?.description || `Team ID: ${team?.team_id}`}
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<MessageSquareQuote size={16} />}
-            onClick={() => navigate('/feedback')}
-          >
-            Submit Feedback
-          </Button>
+          canSubmitFeedback && (
+            <Button
+              variant="primary"
+              leftIcon={<MessageSquareQuote size={16} />}
+              onClick={() => navigate('/feedback')}
+            >
+              Submit Feedback
+            </Button>
+          )
         }
       />
 
@@ -142,7 +163,9 @@ export function TeamDetailPage() {
 
       {/* Team Members Table */}
       <Card title="Team Members" subtitle="Engineers currently assigned to this team unit">
-        <Table columns={memberColumns} data={members} emptyMessage="No members assigned to this team." />
+        <Table
+          columns={canViewMemberPerformance ? memberColumns : memberColumns.filter((column) => column.key !== 'actions')}
+          data={members} emptyMessage="No members assigned to this team." />
       </Card>
     </div>
   );

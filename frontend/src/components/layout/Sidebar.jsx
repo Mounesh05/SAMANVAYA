@@ -29,6 +29,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { authApi } from '../../api/auth.api';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ROLES, ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
+import { showInMenu } from '../../routes/access';
 
 export function Sidebar() {
   const { user, logout } = useAuthStore();
@@ -38,209 +39,50 @@ export function Sidebar() {
   const role = user?.role?.toUpperCase();
   const isAdmin = user?.is_admin || false;
 
-  // Define navigation sections based on role
+  // Menu entries in display order. Who sees each one comes from the shared
+  // page-access table (routes/access.js), the same table the router enforces.
   const getNavItems = () => {
-    // 1. Dashboard based on role
+    const isHR = role === ROLES.HR;
     const items = [
-      {
-        to: `/${(role || 'developer').toLowerCase()}/dashboard`,
-        icon: <LayoutDashboard size={19} />,
-        label: 'Dashboard',
-        roles: Object.values(ROLES),
-      },
+      { page: 'dashboard', to: `/${(role || 'developer').toLowerCase()}/dashboard`, icon: <LayoutDashboard size={19} />, label: 'Dashboard' },
+      { page: 'projects', to: '/projects', icon: <FolderGit2 size={19} />, label: 'Projects' },
+      { page: 'sprints', to: '/sprints', icon: <Layers size={19} />, label: 'Sprints' },
+      { page: 'stories', to: '/stories', icon: <BookOpen size={19} />, label: 'Stories' },
+      { page: 'tasks', to: '/tasks', icon: <ListTodo size={19} />, label: 'Tasks' },
+      { page: 'board', to: '/board', icon: <KanbanSquare size={19} />, label: 'Board' },
+      { page: 'employees', to: '/employees', icon: <Users size={19} />, label: 'Employees' },
+      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: isHR || isAdmin ? 'Transfer Requests' : 'My Transfers' },
+      { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: role === ROLES.LEAD && !isAdmin ? 'My Team' : 'Teams' },
+      // Developers cannot list teams; "My Team" opens their own team directly.
+      ...(role === ROLES.DEVELOPER && user?.team_id && !isAdmin
+        ? [{ page: 'teamDetail', to: `/teams/${user.team_id}`, icon: <Building2 size={19} />, label: 'My Team' }]
+        : []),
+      { page: 'codeQuality', to: '/code-quality', icon: <ShieldCheck size={19} />, label: 'Code Quality' },
+      { page: 'pullRequests', to: '/pull-requests', icon: <GitPullRequest size={19} />, label: 'Pull Requests' },
+      { page: 'githubSync', to: '/github/sync', icon: <GitPullRequest size={19} />, label: 'GitHub Sync' },
+      { page: 'tests', to: '/tests', icon: <FlaskConical size={19} />, label: 'Tests' },
+      { page: 'bugs', to: '/bugs', icon: <Bug size={19} />, label: 'Bugs' },
+      { page: 'pipelines', to: '/pipelines', icon: <Terminal size={19} />, label: 'Pipelines' },
+      { page: 'deployments', to: '/deployments', icon: <Rocket size={19} />, label: 'Deployments' },
+      { page: 'incidents', to: '/incidents', icon: <AlertTriangle size={19} />, label: 'Incidents' },
+      { page: 'cicdLogs', to: '/cicd-logs', icon: <Terminal size={19} />, label: 'CI/CD Log AI' },
+      { page: 'evaluation', to: '/evaluation', icon: <Cpu size={19} />, label: 'AI Evaluation' },
+      { page: 'performance', to: '/performance', icon: <Award size={19} />, label: isHR ? 'Performance Outcomes' : 'Performance' },
+      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={19} />, label: isHR ? 'Workplace Assessment' : 'Role Feedback' },
+      { page: 'reports', to: '/reports', icon: <FileBarChart size={19} />, label: 'Reports & Trends' },
+      { page: 'audit', to: '/audit', icon: <History size={19} />, label: 'Audit Logs' },
+      { page: 'ceoQuality', to: '/quality', icon: <ShieldCheck size={19} />, label: 'Quality' },
+      { page: 'ceoRisk', to: '/risk', icon: <ShieldAlert size={19} />, label: 'Risk' },
+      { page: 'ceoOrganization', to: '/organization', icon: <Building2 size={19} />, label: 'Organization' },
     ];
 
-    // 2. Work management
-    items.push(
-      {
-        to: '/projects',
-        icon: <FolderGit2 size={19} />,
-        label: 'Projects',
-        roles: [ROLES.PM, ROLES.CEO, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/sprints',
-        icon: <Layers size={19} />,
-        label: 'Sprints',
-        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/stories',
-        icon: <BookOpen size={19} />,
-        label: 'Stories',
-        roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/tasks',
-        icon: <ListTodo size={19} />,
-        label: 'Tasks',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/board',
-        icon: <KanbanSquare size={19} />,
-        label: 'Board',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM],
-      }
+    // Executive pages stay in the CEO's menu only (admins can still open them).
+    const ceoOnlyMenu = new Set(['ceoQuality', 'ceoRisk', 'ceoOrganization']);
+    const knownRole = Object.values(ROLES).includes(role);
+    return items.filter((item) =>
+      (item.page === 'dashboard' && (knownRole || isAdmin))
+      || (ceoOnlyMenu.has(item.page) ? role === ROLES.CEO : showInMenu(user, item.page))
     );
-
-    // 3. Organization & People (HR, CEO, Leads)
-    if (role === ROLES.HR || role === ROLES.CEO || isAdmin) {
-      items.push(
-        {
-          to: '/employees',
-          icon: <Users size={19} />,
-          label: 'Employees',
-          roles: [ROLES.HR, ROLES.CEO],
-        }
-      );
-    }
-
-    // HR-specific: Transfer Requests
-    if (role === ROLES.HR || isAdmin) {
-      items.push({
-        to: '/transfers',
-        icon: <GitPullRequest size={19} />,
-        label: 'Transfer Requests',
-        roles: [ROLES.HR],
-      });
-    }
-
-    // CEO and Leads: Teams
-    if (role === ROLES.CEO || isAdmin) {
-      items.push({
-        to: '/teams',
-        icon: <Building2 size={19} />,
-        label: 'Teams',
-        roles: [ROLES.CEO],
-      });
-    } else if (role === ROLES.LEAD) {
-      items.push({
-        to: '/teams',
-        icon: <Building2 size={19} />,
-        label: 'My Team',
-        roles: [ROLES.LEAD],
-      });
-    }
-
-    // 4. Engineering & Intelligence
-    items.push(
-      {
-        to: '/code-quality',
-        icon: <ShieldCheck size={19} />,
-        label: 'Code Quality',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/pull-requests',
-        icon: <GitPullRequest size={19} />,
-        label: 'Pull Requests',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/github/sync',
-        icon: <GitPullRequest size={19} />,
-        label: 'GitHub Sync',
-        roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.DEVOPS],
-      },
-      {
-        to: '/tests',
-        icon: <FlaskConical size={19} />,
-        label: 'Tests',
-        roles: [ROLES.QA],
-      },
-      {
-        to: '/bugs',
-        icon: <Bug size={19} />,
-        label: 'Bugs',
-        roles: [ROLES.QA, ROLES.DEVELOPER, ROLES.DEVOPS, ROLES.LEAD, ROLES.PM, ROLES.CEO],
-      },
-      {
-        to: '/pipelines',
-        icon: <Terminal size={19} />,
-        label: 'Pipelines',
-        roles: [ROLES.DEVOPS, ROLES.QA, ROLES.LEAD],
-      },
-      {
-        to: '/deployments',
-        icon: <Rocket size={19} />,
-        label: 'Deployments',
-        roles: [ROLES.DEVOPS, ROLES.LEAD],
-      },
-      {
-        to: '/incidents',
-        icon: <AlertTriangle size={19} />,
-        label: 'Incidents',
-        roles: [ROLES.DEVOPS, ROLES.LEAD, ROLES.CEO],
-      },
-      {
-        to: '/cicd-logs',
-        icon: <Terminal size={19} />,
-        label: 'CI/CD Log AI',
-        roles: [ROLES.DEVOPS, ROLES.QA, ROLES.LEAD, ROLES.DEVELOPER],
-      },
-      {
-        to: '/evaluation',
-        icon: <Cpu size={19} />,
-        label: 'AI Evaluation',
-        roles: [ROLES.CEO, ROLES.LEAD, ROLES.DEVELOPER],
-      }
-    );
-
-    // 5. Performance & Feedback
-    items.push(
-      {
-        to: '/performance',
-        icon: <Award size={19} />,
-        label: role === ROLES.HR ? 'Performance Outcomes' : 'Performance',
-        roles: [ROLES.HR, ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS],
-      },
-      {
-        to: '/feedback',
-        icon: <MessageSquareQuote size={19} />,
-        label: role === ROLES.HR ? 'Workplace Assessment' : 'Role Feedback',
-        roles: [ROLES.HR, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS, ROLES.CEO],
-      },
-      {
-        to: '/reports',
-        icon: <FileBarChart size={19} />,
-        label: 'Reports & Trends',
-        roles: [ROLES.CEO, ROLES.PM],
-      },
-      {
-        to: '/audit',
-        icon: <History size={19} />,
-        label: 'Audit Logs',
-        roles: [ROLES.HR, ROLES.CEO],
-      }
-    );
-
-    // CEO-only executive pages
-    if (role === ROLES.CEO) {
-      items.push(
-        {
-          to: '/quality',
-          icon: <ShieldCheck size={19} />,
-          label: 'Quality',
-          roles: [ROLES.CEO],
-        },
-        {
-          to: '/risk',
-          icon: <ShieldAlert size={19} />,
-          label: 'Risk',
-          roles: [ROLES.CEO],
-        },
-        {
-          to: '/organization',
-          icon: <Building2 size={19} />,
-          label: 'Organization',
-          roles: [ROLES.CEO],
-        }
-      );
-    }
-
-    // Filter items according to current role
-    return items.filter((item) => isAdmin || item.roles.includes(role));
   };
 
   const navItems = getNavItems();

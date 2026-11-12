@@ -73,7 +73,11 @@ class SprintService:
             return {"error": "Sprint not found"}
 
         # Get all stories in this sprint
-        stories = await self.story_repo.find_by_sprint(sprint_id)
+        # Draft stories are proposals, not committed sprint scope.
+        stories = [
+            story for story in await self.story_repo.find_by_sprint(sprint_id)
+            if story.get("status") != "draft"
+        ]
         tasks = await self.task_repo.find_by_sprint(sprint_id)
 
         # Tasks without a story are sprint work items in their own right.

@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, FolderGit2, ListTodo, Users, ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
-import { ROLES } from '../../utils/constants';
+import { canOpenPage } from '../../routes/access';
 
 export function GlobalSearchModal({ isOpen, onClose, onOpen }) {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -26,24 +25,21 @@ export function GlobalSearchModal({ isOpen, onClose, onOpen }) {
 
   if (!isOpen) return null;
 
-  // Search items list based on permissions
+  // Each entry names its page in the shared access table (routes/access.js),
+  // so search never offers a page the router would refuse.
   const searchItems = [
-    { title: 'Projects Portfolio', category: 'Projects', to: '/projects', icon: <FolderGit2 size={16} /> },
-    { title: 'Active Sprints', category: 'Sprints', to: '/sprints', icon: <FolderGit2 size={16} /> },
-    { title: 'Tasks & Backlog', category: 'Work', to: '/tasks', icon: <ListTodo size={16} /> },
-    { title: 'Interactive Kanban Board', category: 'Work', to: '/board', icon: <ListTodo size={16} /> },
-    { title: 'Code Quality Analysis', category: 'Intelligence', to: '/code-quality', icon: <ShieldCheck size={16} /> },
-    { title: 'GitHub PR Synchronizer', category: 'Engineering', to: '/github/sync', icon: <ShieldCheck size={16} /> },
-    { title: 'CI/CD Log Analyzer AI', category: 'Engineering', to: '/cicd-logs', icon: <ShieldCheck size={16} /> },
-    { title: 'Performance Dashboard', category: 'Performance', to: '/performance', icon: <ShieldCheck size={16} /> },
-    { title: 'Reports & Analytics', category: 'Reports', to: '/reports', icon: <FolderGit2 size={16} /> },
-    ...(role === ROLES.HR || role === ROLES.CEO
-      ? [
-          { title: 'Employees Directory', category: 'People', to: '/employees', icon: <Users size={16} /> },
-          { title: 'Teams Management', category: 'People', to: '/teams', icon: <Users size={16} /> },
-        ]
-      : []),
-  ];
+    { page: 'projects', title: 'Projects Portfolio', category: 'Projects', to: '/projects', icon: <FolderGit2 size={16} /> },
+    { page: 'sprints', title: 'Active Sprints', category: 'Sprints', to: '/sprints', icon: <FolderGit2 size={16} /> },
+    { page: 'tasks', title: 'Tasks & Backlog', category: 'Work', to: '/tasks', icon: <ListTodo size={16} /> },
+    { page: 'board', title: 'Interactive Kanban Board', category: 'Work', to: '/board', icon: <ListTodo size={16} /> },
+    { page: 'codeQuality', title: 'Code Quality Analysis', category: 'Intelligence', to: '/code-quality', icon: <ShieldCheck size={16} /> },
+    { page: 'githubSync', title: 'GitHub PR Synchronizer', category: 'Engineering', to: '/github/sync', icon: <ShieldCheck size={16} /> },
+    { page: 'cicdLogs', title: 'CI/CD Log Analyzer AI', category: 'Engineering', to: '/cicd-logs', icon: <ShieldCheck size={16} /> },
+    { page: 'performance', title: 'Performance Dashboard', category: 'Performance', to: '/performance', icon: <ShieldCheck size={16} /> },
+    { page: 'reports', title: 'Reports & Analytics', category: 'Reports', to: '/reports', icon: <FolderGit2 size={16} /> },
+    { page: 'employees', title: 'Employees Directory', category: 'People', to: '/employees', icon: <Users size={16} /> },
+    { page: 'teams', title: 'Teams Management', category: 'People', to: '/teams', icon: <Users size={16} /> },
+  ].filter((item) => canOpenPage(user, item.page));
 
   const filtered = query
     ? searchItems.filter(

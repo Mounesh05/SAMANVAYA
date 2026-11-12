@@ -7,6 +7,7 @@ import uuid
 from fastapi import HTTPException
 
 from core.config import settings
+from core.permissions import Permission, get_user_permissions
 from domain.models.qa import (
     DefectCreate,
     DefectUpdate,
@@ -364,14 +365,21 @@ class QAService:
         query = {"project_id": {"$in": project_ids}}
         if status:
             query["status"] = status
-        if _role(user) in {"DEVELOPER", "DEVOPS"}:
+        if _role(user) == "DEVELOPER":
+            # Defects assigned to them, plus the ones they reported.
+            query["$or"] = [{"assignee_id": _identity(user)}, {"reporter_id": _identity(user)}]
+        elif _role(user) == "DEVOPS":
             query["assignee_id"] = _identity(user)
         return await self.repo.list_documents(
             self.repo.defects, query, skip=skip, limit=limit
         )
 
     async def create_defect(self, user, data: DefectCreate):
-        await self._role_for(user, {"QA"})
+        # Anyone holding CREATE_BUG (QA, Developer, Lead) can report a defect;
+        # QA still owns assignment, verification and closure via update_defect.
+        if Permission.CREATE_BUG not in get_user_permissions(
+                _role(user), user.get("is_admin", False), user.get("designation")):
+            raise HTTPException(status_code=403, detail="Insufficient permissions to report a defect")
         project = await self.accessible_project(user, data.project_id)
         case, execution, story_id, task_id = await self._validate_defect_links(
             data.project_id,
@@ -407,7 +415,10 @@ class QAService:
         if not defect:
             raise HTTPException(status_code=404, detail="Defect not found")
         await self.accessible_project(user, defect["project_id"])
-        if _role(user) in {"DEVELOPER", "DEVOPS"} and defect.get("assignee_id") != _identity(user):
+        identity = _identity(user)
+        if _role(user) == "DEVELOPER" and identity not in {defect.get("assignee_id"), defect.get("reporter_id")}:
+            raise HTTPException(status_code=403, detail="You can only view defects assigned to you or reported by you")
+        if _role(user) == "DEVOPS" and defect.get("assignee_id") != identity:
             raise HTTPException(status_code=403, detail="You can only view defects assigned to you")
         return defect
 

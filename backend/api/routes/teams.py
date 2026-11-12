@@ -237,6 +237,26 @@ async def list_teams(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+class TeamDirectoryEntry(BaseModel):
+    """Minimal team identity for pickers (no members, leads or projects)."""
+    team_id: str
+    name: str
+
+
+@router.get("/directory", response_model=List[TeamDirectoryEntry])
+async def team_directory(user: dict = Depends(require_permission(Permission.REQUEST_TRANSFER))):
+    """
+    Active team ids and names, for choosing a target team in a transfer request.
+
+    Every employee may request their own transfer, so they need to know which
+    teams exist; nothing beyond the id and name is exposed.
+    """
+    teams = await col("teams").find(
+        {"is_active": {"$ne": False}}, {"_id": 0, "team_id": 1, "name": 1}
+    ).sort("name", 1).to_list(1000)
+    return [TeamDirectoryEntry(**team) for team in teams if team.get("team_id") and team.get("name")]
+
+
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: str,

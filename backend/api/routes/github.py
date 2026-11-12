@@ -294,11 +294,14 @@ async def sync_pull_request(
     project = await col("projects").find_one({"id": project_id})
     if not project or not user.get("org_id") or project.get("org_id") != user["org_id"]:
         raise HTTPException(status_code=403, detail="Repository project is unavailable in this organization")
-    await verify_project_access(user, project_id, require_write=True)
-    
+    # CR-001: SYNC_PR holders (developers) sync PRs for projects they are
+    # assigned to. Requiring project *write* access here made the endpoint
+    # unusable: no role holding SYNC_PR has write access.
+    await verify_project_access(user, project_id)
+
     try:
         github_service = GitHubSyncService()
-        
+
         result = await github_service.sync_pull_request(
             owner=request.owner,
             repo=request.repo,

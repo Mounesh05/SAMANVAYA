@@ -52,7 +52,8 @@ function renderBugsPage() {
 describe('BugsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useAuthStore.mockReturnValue({ user: { role: 'QA' } });
+    // Permissions come from /api/auth/me (backend ROLE_PERMISSIONS for QA).
+    useAuthStore.mockReturnValue({ user: { role: 'QA', permissions: ['CREATE_BUG', 'TRANSITION_TASK', 'TRIGGER_CODE_ANALYSIS'] } });
     qaApi.getProjects.mockResolvedValue([{ id: 'PRJ-1', name: 'CampusConnect' }]);
     qaApi.getDefects.mockResolvedValue([defect]);
     qaApi.getDefect.mockResolvedValue(defect);

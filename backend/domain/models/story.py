@@ -23,7 +23,9 @@ class Story(StoryCreate):
     """Complete story model with status and AI-calculated fields."""
     
     id: str
-    status: str = "todo"  # todo|in_progress|review|done
+    # draft = proposed by a contributor, waiting for a Lead/PM to accept it.
+    status: str = "todo"  # draft|todo|in_progress|review|done
+    proposed_by: Optional[str] = None
     risk: str = "low"  # low|medium|high|critical
     alignment_score: Optional[int] = None  # 0-100, AI-calculated
     created_at: str = ""

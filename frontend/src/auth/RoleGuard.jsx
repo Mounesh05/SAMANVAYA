@@ -1,8 +1,13 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { canOpenPage } from '../routes/access';
 
-export function RoleGuard({ allowedRoles = [], children }) {
+/**
+ * Guards a route using the shared page-access table (routes/access.js).
+ * `allowedRoles` is kept only for callers outside the main router.
+ */
+export function RoleGuard({ page, allowedRoles = [], children }) {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
   const isAdmin = user?.is_admin || false;
@@ -11,12 +16,13 @@ export function RoleGuard({ allowedRoles = [], children }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Admin has access to all roles, otherwise check allowed roles list
-  if (isAdmin || allowedRoles.length === 0 || allowedRoles.includes(role)) {
+  const allowed = page
+    ? canOpenPage(user, page)
+    : isAdmin || allowedRoles.length === 0 || allowedRoles.includes(role);
+  if (allowed) {
     return children;
   }
 
   // Redirect to user's appropriate role dashboard
-  const defaultDashboard = `/${role.toLowerCase()}/dashboard`;
-  return <Navigate to={defaultDashboard} replace />;
+  return <Navigate to={`/${role.toLowerCase()}/dashboard`} replace />;
 }

@@ -17,6 +17,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GitPullRequest, ExternalLink, RefreshCw, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { ROLES } from '../../utils/constants';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { formatDate, timeAgo } from '../../utils/dates';
 import { PRAlgorithmIntelligencePanel } from '../code-quality/PRAlgorithmIntelligencePanel';
 
@@ -31,8 +32,9 @@ export function PullRequestsPage() {
   const queryClient = useQueryClient();
   const role = user?.role?.toUpperCase();
   const isLead = role === ROLES.LEAD;
-  const isDeveloper = role === ROLES.DEVELOPER;
-  const canLoadPersonalPRs = isLead || isDeveloper;
+  // Sync is offered to SYNC_PR holders (backend: assigned projects only).
+  const canSyncPr = hasPermission(user, PERMISSIONS.SYNC_PR);
+  const canLoadPersonalPRs = isLead || canSyncPr;
 
   const { data: prData, isLoading, error, refetch } = useQuery({
     queryKey: ['pull-requests', role],
@@ -163,7 +165,7 @@ export function PullRequestsPage() {
           : 'Track your pull requests, reviews, and CI status.'
         }
         actions={
-          isDeveloper ? (
+          canSyncPr ? (
             <Button
               variant="primary"
               leftIcon={<RefreshCw size={16} />}

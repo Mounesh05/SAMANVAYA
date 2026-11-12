@@ -18,9 +18,11 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { BookOpen, Plus, ArrowRight } from 'lucide-react';
 import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { PermissionGuard } from '../../auth/PermissionGuard';
-import { PERMISSIONS } from '../../auth/permissions';
+import { PERMISSIONS, hasPermission } from '../../auth/permissions';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const STORY_STATUS = {
+  DRAFT: 'draft',
   TODO: 'todo',
   IN_PROGRESS: 'in_progress',
   REVIEW: 'review',
@@ -28,6 +30,11 @@ const STORY_STATUS = {
 };
 
 export function StoriesPage() {
+  const { user } = useAuthStore();
+  // Backlog owners (Lead/PM) add stories directly and accept drafts.
+  // Everyone else with CREATE_STORY proposes a draft assigned to themselves.
+  const canAcceptDrafts = hasPermission(user, PERMISSIONS.ACCEPT_STORY);
+  const proposesDrafts = !canAcceptDrafts;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -61,6 +68,7 @@ export function StoriesPage() {
   const { data: employees = [] } = useQuery({
     queryKey: ['employees', 'list'],
     queryFn: () => employeesApi.list(),
+    enabled: !proposesDrafts,
   });
 
   const activeSprintId = selectedSprintId || sprints[0]?.id || '';
@@ -87,6 +95,22 @@ export function StoriesPage() {
       });
     },
   });
+
+  const acceptMutation = useMutation({
+    mutationFn: (storyId) => storiesApi.updateStatus(storyId, 'todo'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stories'] }),
+  });
+
+  const submitStory = () => {
+    const points = Number.parseInt(formData.points, 10);
+    createMutation.mutate({
+      ...formData,
+      project_id: formData.project_id || activeProjectId,
+      sprint_id: formData.sprint_id || activeSprintId,
+      assignee_id: proposesDrafts ? user?.employee_id : formData.assignee_id,
+      points: Number.isFinite(points) && points > 0 ? points : 3,
+    });
+  };
 
   const filteredStories = stories.filter((story) => {
     const matchesSearch = !search ||
@@ -137,10 +161,22 @@ export function StoriesPage() {
     {
       key: 'actions',
       header: 'Actions',
-      render: () => (
-        <Button variant="secondary" size="sm">
-          Details <ArrowRight size={14} />
-        </Button>
+      render: (story) => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {story.status === STORY_STATUS.DRAFT && canAcceptDrafts && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => acceptMutation.mutate(story.id)}
+              isLoading={acceptMutation.isPending && acceptMutation.variables === story.id}
+            >
+              Accept
+            </Button>
+          )}
+          <Button variant="secondary" size="sm">
+            Details <ArrowRight size={14} />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -160,7 +196,7 @@ export function StoriesPage() {
               leftIcon={<Plus size={16} />}
               onClick={() => setIsCreateModalOpen(true)}
             >
-              Create Story
+              {proposesDrafts ? 'Propose Story' : 'Create Story'}
             </Button>
           </PermissionGuard>
         }
@@ -212,15 +248,19 @@ export function StoriesPage() {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create Story"
-        subtitle="Add a user story to the sprint backlog"
+        title={proposesDrafts ? 'Propose Story' : 'Create Story'}
+        subtitle={
+          proposesDrafts
+            ? 'Your story is saved as a draft until a Lead or PM accepts it into the backlog.'
+            : 'Add a user story to the sprint backlog'
+        }
         footer={
           <>
             <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={() => createMutation.mutate(formData)} isLoading={createMutation.isPending}>
-              Create Story
+            <Button variant="primary" onClick={submitStory} isLoading={createMutation.isPending}>
+              {proposesDrafts ? 'Submit Draft' : 'Create Story'}
             </Button>
           </>
         }
@@ -254,13 +294,17 @@ export function StoriesPage() {
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-            <Select
-              label="Assignee"
-              value={formData.assignee_id}
-              onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
-              placeholder="No assignee selected"
-              options={employees.map((e) => ({ value: e.employee_id, label: e.name }))}
-            />
+            {proposesDrafts ? (
+              <Input label="Assignee" value={user?.name || user?.employee_id || ''} readOnly />
+            ) : (
+              <Select
+                label="Assignee"
+                value={formData.assignee_id}
+                onChange={(e) => setFormData({ ...formData, assignee_id: e.target.value })}
+                placeholder="No assignee selected"
+                options={employees.map((e) => ({ value: e.employee_id, label: e.name }))}
+              />
+            )}
             <Input
               label="Story Points"
               type="number"

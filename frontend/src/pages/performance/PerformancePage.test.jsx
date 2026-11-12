@@ -8,6 +8,7 @@ import { employeesApi } from '../../api/employees.api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ToastProvider } from '../../components/common/Toast';
 import { ROLES } from '../../utils/constants';
+import { permissionsFor } from '../../tests/utils/roleUser';
 
 vi.mock('../../api/performance.api', () => ({
   performanceApi: {
@@ -75,6 +76,7 @@ describe('PerformancePage Evaluation Eligibility & Auto-Defaulting', () => {
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, false),
       is_admin: false,
     });
 
@@ -97,6 +99,7 @@ describe('PerformancePage Evaluation Eligibility & Auto-Defaulting', () => {
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, false),
       is_admin: false,
     });
 
@@ -125,6 +128,7 @@ describe('PerformancePage Evaluation Eligibility & Auto-Defaulting', () => {
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
       role: ROLES.HR,
+      permissions: permissionsFor(ROLES.HR, false),
       is_admin: false,
     });
 

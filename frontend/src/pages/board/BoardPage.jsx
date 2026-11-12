@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import {
   DndContext,
   closestCorners,
@@ -24,7 +25,7 @@ import { Select } from '../../components/common/Select';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GripVertical, AlertCircle } from 'lucide-react';
-import { DEFAULT_ORG_ID, ROLES } from '../../utils/constants';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { canUpdateTask } from '../../utils/taskPermissions';
 
 // Sortable Task Card Component
@@ -156,14 +157,8 @@ function KanbanColumn({ title, count, items = [], onItemClick, user }) {
 
 export function BoardPage() {
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase();
-  const canMoveTasks = [
-    ROLES.DEVELOPER,
-    ROLES.LEAD,
-    ROLES.PM,
-    ROLES.QA,
-    ROLES.DEVOPS,
-  ].includes(role);
+  // Same rule as PATCH /api/boards/move.
+  const canMoveTasks = hasPermission(user, PERMISSIONS.TRANSITION_TASK);
 
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [activeItem, setActiveItem] = useState(null);

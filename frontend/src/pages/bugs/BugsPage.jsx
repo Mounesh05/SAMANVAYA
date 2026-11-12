@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { qaApi } from '../../api/qa.api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Table } from '../../components/common/Table';
@@ -46,6 +47,8 @@ export function BugsPage() {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
   const isQA = role === 'QA';
+  // Anyone with CREATE_BUG reports defects; QA still assigns, verifies and closes.
+  const canReportDefect = hasPermission(user, PERMISSIONS.CREATE_BUG);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -152,7 +155,7 @@ export function BugsPage() {
             <div style={{ width: 240 }}>
               <Select aria-label="QA project" value={projectId} onChange={(event) => setSelectedProjectId(event.target.value)} options={projects.map((project) => ({ value: project.id, label: project.name }))} placeholder="Select project" />
             </div>
-            {isQA && <Button onClick={() => { setForm(EMPTY_DEFECT); setFeedback(''); setModal('create'); }}>Report Defect</Button>}
+            {canReportDefect && <Button onClick={() => { setForm(EMPTY_DEFECT); setFeedback(''); setModal('create'); }}>Report Defect</Button>}
           </div>
         }
       />
@@ -186,7 +189,7 @@ export function BugsPage() {
           <Input label="Actual result" value={form.actual_result} onChange={(event) => setForm({ ...form, actual_result: event.target.value })} />
           <Input label="Story ID (optional)" value={form.story_id || ''} onChange={(event) => setForm({ ...form, story_id: event.target.value })} />
           <Input label="Task ID (optional)" value={form.task_id || ''} onChange={(event) => setForm({ ...form, task_id: event.target.value })} />
-          <Input label="Test Case ID (optional)" value={form.test_case_id || ''} onChange={(event) => setForm({ ...form, test_case_id: event.target.value })} />
+          {isQA && <Input label="Test Case ID (optional)" value={form.test_case_id || ''} onChange={(event) => setForm({ ...form, test_case_id: event.target.value })} />}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <Select label="Severity" value={form.severity} onChange={(event) => setForm({ ...form, severity: event.target.value })} options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />
             <Select label="Priority" value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })} options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />

@@ -3,7 +3,7 @@ User/Employee domain models.
 Users represent employees with roles in the organization.
 """
 
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional
 from core.security import validate_password_strength
 
@@ -50,6 +50,10 @@ class UserOut(BaseModel):
     is_active: bool = True
     github_username: Optional[str] = None
     team_id: Optional[str] = None
+    is_admin: bool = False
+    designation: Optional[str] = None
+    # Effective permissions computed server-side; the frontend's only source.
+    permissions: list[str] = Field(default_factory=list)
 
 
 class LoginRequest(BaseModel):

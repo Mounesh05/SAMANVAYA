@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { incidentsApi } from '../../api/incidents.api';
+import { projectsApi } from '../../api/projects.api';
+import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
@@ -29,29 +34,67 @@ const INCIDENT_SEVERITY = {
   CRITICAL: 'critical',
 };
 
+const EMPTY_INCIDENT = {
+  project_id: '',
+  title: '',
+  description: '',
+  severity: 'medium',
+  service: '',
+};
+
 export function IncidentsPage() {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+  // DevOps/Lead/CEO see every incident in their projects; reporters such as
+  // developers see only the incidents they reported.
+  const canViewAll = hasPermission(user, PERMISSIONS.VIEW_INCIDENTS);
+  const canReport = hasPermission(user, PERMISSIONS.CREATE_INCIDENT);
+  const [submitError, setSubmitError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    severity: 'medium',
-    service: '',
-    assignee_id: '',
-  });
+  const [formData, setFormData] = useState(EMPTY_INCIDENT);
 
   const { data: incidentData, isLoading, error, refetch } = useQuery({
     queryKey: ['incidents'],
-    queryFn: async () => {
-      // Placeholder - will be replaced with real API when backend implements incidents
-      return { incidents: [], total: 0 };
-    },
+    queryFn: () => incidentsApi.list(),
     retry: 1,
   });
 
-  const incidents = incidentData?.incidents || [];
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects', 'list'],
+    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    enabled: canReport,
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: (data) => incidentsApi.report(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      setIsCreateModalOpen(false);
+      setFormData(EMPTY_INCIDENT);
+    },
+    onError: (err) => setSubmitError(err.message || 'The incident could not be reported.'),
+  });
+
+  const submitIncident = () => {
+    const projectId = formData.project_id || projects[0]?.id || '';
+    if (!projectId || !formData.title.trim() || !formData.description.trim()) {
+      setSubmitError('Choose a project and enter a title and description.');
+      return;
+    }
+    setSubmitError('');
+    reportMutation.mutate({
+      ...formData,
+      project_id: projectId,
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      service: formData.service.trim() || null,
+    });
+  };
+
+  const incidents = Array.isArray(incidentData) ? incidentData : incidentData?.incidents || [];
 
   const filteredIncidents = incidents.filter((incident) => {
     const matchesSearch = !search ||
@@ -107,7 +150,7 @@ export function IncidentsPage() {
       render: (inc) => <StatusBadge status={inc.status} />,
     },
     { key: 'service', header: 'Service', render: (inc) => inc.service || '—' },
-    { key: 'assignee_id', header: 'Assignee', render: (inc) => inc.assignee_id || 'Unassigned' },
+    { key: 'reporter_name', header: 'Reported by', render: (inc) => inc.reporter_name || inc.reporter_id || '—' },
     {
       key: 'created_at',
       header: 'Reported',
@@ -136,16 +179,22 @@ export function IncidentsPage() {
   return (
     <div>
       <PageHeader
-        title="Incidents"
-        subtitle="Track, manage, and resolve production incidents."
+        title={canViewAll ? 'Incidents' : 'My Reported Incidents'}
+        subtitle={
+          canViewAll
+            ? 'Track, manage, and resolve production incidents.'
+            : 'Report a production problem. DevOps triages and resolves it.'
+        }
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<Plus size={16} />}
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            Report Incident
-          </Button>
+          canReport && (
+            <Button
+              variant="primary"
+              leftIcon={<Plus size={16} />}
+              onClick={() => { setSubmitError(''); setIsCreateModalOpen(true); }}
+            >
+              Report Incident
+            </Button>
+          )
         }
       />
 
@@ -212,7 +261,7 @@ export function IncidentsPage() {
       <Table
         columns={columns}
         data={filteredIncidents}
-        emptyMessage="No active incidents. All systems operational."
+        emptyMessage={canViewAll ? 'No active incidents. All systems operational.' : 'You have not reported any incidents.'}
       />
 
       {/* Create Incident Modal */}
@@ -226,13 +275,19 @@ export function IncidentsPage() {
             <Button variant="secondary" onClick={() => setIsCreateModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={() => setIsCreateModalOpen(false)}>
+            <Button variant="primary" onClick={submitIncident} isLoading={reportMutation.isPending}>
               Report Incident
             </Button>
           </>
         }
       >
         <form style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <Select
+            label="Project"
+            value={formData.project_id || projects[0]?.id || ''}
+            onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
+            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+          />
           <Input
             label="Incident Title"
             value={formData.title}
@@ -263,6 +318,7 @@ export function IncidentsPage() {
               placeholder="Enter the affected service or component"
             />
           </div>
+          {submitError && <p role="alert" style={{ color: 'var(--danger)', margin: 0 }}>{submitError}</p>}
         </form>
       </Modal>
     </div>

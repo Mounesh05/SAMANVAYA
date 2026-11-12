@@ -32,7 +32,15 @@ class AuditAction(str, Enum):
     TEAM_MEMBER_ADDED = "TEAM_MEMBER_ADDED"
     TEAM_MEMBER_REMOVED = "TEAM_MEMBER_REMOVED"
     TEAM_LEAD_ASSIGNED = "TEAM_LEAD_ASSIGNED"
-    
+
+    # Transfers (used by api/routes/transfers.py; missing values made every
+    # transfer action fail with 500 after its database write)
+    TRANSFER_CREATED = "TRANSFER_CREATED"
+    TRANSFER_APPROVED = "TRANSFER_APPROVED"
+    TRANSFER_REJECTED = "TRANSFER_REJECTED"
+    TRANSFER_FLAGGED = "TRANSFER_FLAGGED"
+    TRANSFER_EXECUTED = "TRANSFER_EXECUTED"
+
     # Performance evaluations
     EVALUATION_TRIGGERED = "EVALUATION_TRIGGERED"
     BULK_EVALUATION_TRIGGERED = "BULK_EVALUATION_TRIGGERED"

@@ -299,7 +299,7 @@ export function AppRoutes() {
           <Route
             path="developer/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.DEVELOPER]}>
+              <RoleGuard page="developerDashboard">
                 <DeveloperDashboardPage />
               </RoleGuard>
             }
@@ -307,7 +307,7 @@ export function AppRoutes() {
           <Route
             path="lead/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.LEAD]}>
+              <RoleGuard page="leadDashboard">
                 <LeadDashboardPage />
               </RoleGuard>
             }
@@ -315,7 +315,7 @@ export function AppRoutes() {
           <Route
             path="pm/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.PM]}>
+              <RoleGuard page="pmDashboard">
                 <PMDashboardPage />
               </RoleGuard>
             }
@@ -323,7 +323,7 @@ export function AppRoutes() {
           <Route
             path="qa/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA, ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVOPS]}>
+              <RoleGuard page="qaDashboard">
                 <QADashboardPage />
               </RoleGuard>
             }
@@ -331,7 +331,7 @@ export function AppRoutes() {
           <Route
             path="devops/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.DEVOPS]}>
+              <RoleGuard page="devopsDashboard">
                 <DevOpsDashboardPage />
               </RoleGuard>
             }
@@ -339,7 +339,7 @@ export function AppRoutes() {
           <Route
             path="hr/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.HR]}>
+              <RoleGuard page="hrDashboard">
                 <HRDashboardPage />
               </RoleGuard>
             }
@@ -347,7 +347,7 @@ export function AppRoutes() {
           <Route
             path="ceo/dashboard"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO]}>
+              <RoleGuard page="ceoDashboard">
                 <CEODashboardPage />
               </RoleGuard>
             }
@@ -355,7 +355,7 @@ export function AppRoutes() {
           <Route
             path="quality"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO]}>
+              <RoleGuard page="ceoQuality">
                 <CEOQualityPage />
               </RoleGuard>
             }
@@ -363,7 +363,7 @@ export function AppRoutes() {
           <Route
             path="risk"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO]}>
+              <RoleGuard page="ceoRisk">
                 <CEORiskPage />
               </RoleGuard>
             }
@@ -371,21 +371,21 @@ export function AppRoutes() {
           <Route
             path="organization"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO]}>
+              <RoleGuard page="ceoOrganization">
                 <CEOOrganizationPage />
               </RoleGuard>
             }
           />
 
           {/* Work Management */}
-          <Route path="projects" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS, ROLES.CEO, ROLES.HR]}><ProjectsPage /></RoleGuard>} />
-          <Route path="projects/:projectId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS, ROLES.CEO, ROLES.HR]}><ProjectDetailPage /></RoleGuard>} />
-          <Route path="teams" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.HR, ROLES.CEO]}><TeamsPage /></RoleGuard>} />
-          <Route path="teams/:teamId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.HR, ROLES.CEO]}><TeamDetailPage /></RoleGuard>} />
+          <Route path="projects" element={<RoleGuard page="projects"><ProjectsPage /></RoleGuard>} />
+          <Route path="projects/:projectId" element={<RoleGuard page="projects"><ProjectDetailPage /></RoleGuard>} />
+          <Route path="teams" element={<RoleGuard page="teams"><TeamsPage /></RoleGuard>} />
+          <Route path="teams/:teamId" element={<RoleGuard page="teamDetail"><TeamDetailPage /></RoleGuard>} />
           <Route
             path="employees"
             element={
-              <RoleGuard allowedRoles={[ROLES.HR, ROLES.CEO]}>
+              <RoleGuard page="employees">
                 <EmployeesPage />
               </RoleGuard>
             }
@@ -393,7 +393,7 @@ export function AppRoutes() {
           <Route
             path="transfers"
             element={
-              <RoleGuard allowedRoles={[ROLES.HR, ROLES.LEAD]}>
+              <RoleGuard page="transfers">
                 <TransferRequestsPage />
               </RoleGuard>
             }
@@ -401,7 +401,7 @@ export function AppRoutes() {
           <Route
             path="transfers/new"
             element={
-              <RoleGuard allowedRoles={[ROLES.HR, ROLES.LEAD]}>
+              <RoleGuard page="transfers">
                 <TransferRequestForm />
               </RoleGuard>
             }
@@ -409,26 +409,26 @@ export function AppRoutes() {
           <Route
             path="transfers/:transferId"
             element={
-              <RoleGuard allowedRoles={[ROLES.HR, ROLES.LEAD]}>
+              <RoleGuard page="transfers">
                 <TransferDetailPage />
               </RoleGuard>
             }
           />
-          <Route path="sprints" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><SprintsPage /></RoleGuard>} />
-          <Route path="sprints/:sprintId" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><SprintsPage /></RoleGuard>} />
-          <Route path="tasks" element={<RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}><TasksPage /></RoleGuard>} />
-          <Route path="board" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.LEAD, ROLES.PM, ROLES.QA, ROLES.DEVOPS]}><BoardPage /></RoleGuard>} />
+          <Route path="sprints" element={<RoleGuard page="sprints"><SprintsPage /></RoleGuard>} />
+          <Route path="sprints/:sprintId" element={<RoleGuard page="sprints"><SprintsPage /></RoleGuard>} />
+          <Route path="tasks" element={<RoleGuard page="tasks"><TasksPage /></RoleGuard>} />
+          <Route path="board" element={<RoleGuard page="board"><BoardPage /></RoleGuard>} />
 
           {/* Intelligence & Engineering */}
-          <Route path="code-quality" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><CodeQualityPage /></RoleGuard>} />
-          <Route path="code-quality/runs/:runId" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><RunDetailPage /></RoleGuard>} />
-          <Route path="github/sync" element={<RoleGuard allowedRoles={[ROLES.CEO, ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.DEVOPS]}><GitHubSyncPage /></RoleGuard>} />
-          <Route path="pull-requests" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.LEAD, ROLES.QA, ROLES.DEVOPS]}><PullRequestsPage /></RoleGuard>} />
-          <Route path="cicd-logs" element={<RoleGuard allowedRoles={[ROLES.DEVELOPER, ROLES.QA, ROLES.LEAD, ROLES.DEVOPS]}><CicdLogsPage /></RoleGuard>} />
+          <Route path="code-quality" element={<RoleGuard page="codeQuality"><CodeQualityPage /></RoleGuard>} />
+          <Route path="code-quality/runs/:runId" element={<RoleGuard page="codeQuality"><RunDetailPage /></RoleGuard>} />
+          <Route path="github/sync" element={<RoleGuard page="githubSync"><GitHubSyncPage /></RoleGuard>} />
+          <Route path="pull-requests" element={<RoleGuard page="pullRequests"><PullRequestsPage /></RoleGuard>} />
+          <Route path="cicd-logs" element={<RoleGuard page="cicdLogs"><CicdLogsPage /></RoleGuard>} />
           <Route
             path="evaluation"
             element={
-              <RoleGuard allowedRoles={[ROLES.CEO, ROLES.HR, ROLES.LEAD, ROLES.DEVELOPER]}>
+              <RoleGuard page="evaluation">
                 <AIEvaluationPage />
               </RoleGuard>
             }
@@ -438,7 +438,7 @@ export function AppRoutes() {
           <Route
             path="tests"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA]}>
+              <RoleGuard page="tests">
                 <TestsPage />
               </RoleGuard>
             }
@@ -446,7 +446,7 @@ export function AppRoutes() {
           <Route
             path="bugs"
             element={
-              <RoleGuard allowedRoles={[ROLES.QA, ROLES.DEVELOPER, ROLES.DEVOPS, ROLES.LEAD, ROLES.PM, ROLES.CEO]}>
+              <RoleGuard page="bugs">
                 <BugsPage />
               </RoleGuard>
             }
@@ -456,7 +456,7 @@ export function AppRoutes() {
           <Route
             path="stories"
             element={
-              <RoleGuard allowedRoles={[ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS]}>
+              <RoleGuard page="stories">
                 <StoriesPage />
               </RoleGuard>
             }
@@ -466,7 +466,7 @@ export function AppRoutes() {
           <Route
             path="pipelines"
             element={
-              <RoleGuard allowedRoles={[ROLES.DEVOPS, ROLES.QA, ROLES.LEAD]}>
+              <RoleGuard page="pipelines">
                 <PipelinesPage />
               </RoleGuard>
             }
@@ -474,7 +474,7 @@ export function AppRoutes() {
           <Route
             path="deployments"
             element={
-              <RoleGuard allowedRoles={[ROLES.DEVOPS, ROLES.LEAD]}>
+              <RoleGuard page="deployments">
                 <DeploymentsPage />
               </RoleGuard>
             }
@@ -482,7 +482,7 @@ export function AppRoutes() {
           <Route
             path="incidents"
             element={
-              <RoleGuard allowedRoles={[ROLES.DEVOPS, ROLES.LEAD, ROLES.CEO]}>
+              <RoleGuard page="incidents">
                 <IncidentsPage />
               </RoleGuard>
             }
@@ -492,33 +492,24 @@ export function AppRoutes() {
           <Route
             path="audit"
             element={
-              <RoleGuard allowedRoles={[ROLES.HR, ROLES.CEO]}>
+              <RoleGuard page="audit">
                 <AuditLogsPage />
               </RoleGuard>
             }
           />
 
           {/* Performance, Feedback & Analytics */}
-          <Route path="performance" element={<PerformancePage />} />
+          <Route path="performance" element={<RoleGuard page="performance"><PerformancePage /></RoleGuard>} />
           <Route
             path="feedback"
             element={
-              <RoleGuard
-                allowedRoles={[
-                  ROLES.LEAD,
-                  ROLES.PM,
-                  ROLES.QA,
-                  ROLES.DEVOPS,
-                  ROLES.HR,
-                  ROLES.CEO,
-                ]}
-              >
+              <RoleGuard page="feedback">
                 <FeedbackPage />
               </RoleGuard>
             }
           />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="reports" element={<RoleGuard page="reports"><ReportsPage /></RoleGuard>} />
+          <Route path="profile" element={<RoleGuard page="profile"><ProfilePage /></RoleGuard>} />
 
           {/* 404 Route */}
           <Route path="*" element={<NotFoundPage />} />

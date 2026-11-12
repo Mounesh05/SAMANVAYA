@@ -15,13 +15,22 @@ class StoryService:
     def __init__(self):
         self.story_repo = StoryRepository()
 
-    async def create_story(self, story_data: StoryCreate) -> Story:
+    async def create_story(
+        self,
+        story_data: StoryCreate,
+        *,
+        draft: bool = False,
+        proposed_by: Optional[str] = None,
+    ) -> Story:
         """
         Create a new user story.
-        
+
         Args:
             story_data: Story creation data
-        
+            draft: True when a contributor proposes the story; it stays out of
+                the backlog until a Lead/PM accepts it.
+            proposed_by: employee_id of the contributor who proposed it
+
         Returns:
             Created story
         """
@@ -34,7 +43,8 @@ class StoryService:
             "assignee_id": story_data.assignee_id,
             "points": story_data.points,
             "priority": story_data.priority,
-            "status": "todo",
+            "status": "draft" if draft else "todo",
+            "proposed_by": proposed_by,
             "risk": "low",
             "alignment_score": None,
             "created_at": datetime.now(timezone.utc).isoformat(),

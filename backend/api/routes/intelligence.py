@@ -4,7 +4,8 @@ Exposes Layer 5 (Intelligence Engine) capabilities for testing and use.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body
-from core.dependencies import require_roles
+from core.dependencies import require_permission, require_roles
+from core.permissions import Permission
 from intelligence.risk_engine import RiskEngine
 
 router = APIRouter()
@@ -15,7 +16,7 @@ risk_engine = RiskEngine()
 async def analyze_pr(
     pr_id: str,
     data: dict = Body(...),
-    user: dict = Depends(require_roles("DEVELOPER", "LEAD", "QA", "DEVOPS")),
+    user: dict = Depends(require_permission(Permission.ANALYZE_PR_RISK)),
 ):
     """
     Analyze a pull request for risk.

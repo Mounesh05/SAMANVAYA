@@ -129,7 +129,7 @@ export function DeveloperDashboardPage() {
           subtitle="In review pipeline"
           icon={<GitPullRequest size={20} />}
           color="purple"
-          onClick={() => navigate('/github/sync')}
+          onClick={() => navigate('/pull-requests')}
         />
       </div>
 
@@ -233,7 +233,7 @@ export function DeveloperDashboardPage() {
           title="My Open Pull Requests"
           subtitle="Pull requests undergoing review and risk checks"
           action={
-            <Button variant="ghost" size="sm" onClick={() => navigate('/github/sync')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/pull-requests')}>
               View All
             </Button>
           }
@@ -242,7 +242,7 @@ export function DeveloperDashboardPage() {
             columns={prColumns}
             data={myPrs.slice(0, 5)}
             emptyMessage="No open pull requests found."
-            onRowClick={() => navigate('/github/sync')}
+            onRowClick={() => navigate('/pull-requests')}
           />
         </Card>
       </div>

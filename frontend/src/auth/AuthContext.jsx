@@ -8,14 +8,23 @@ export function AuthProvider({ children }) {
   const { token, user, isAuthenticated, setAuth, setUser, logout } = useAuthStore();
 
   useEffect(() => {
-    // If token exists but user profile is missing, fetch current user
-    if (token && !user) {
-      authApi
-        .getMe()
-        .then((userData) => setUser(userData))
-        .catch(() => logout());
-    }
-  }, [token, user, setUser, logout]);
+    // Refresh the profile from the backend on every session start: it carries
+    // the current role and permission list, so a saved copy can never grant
+    // stale access in the UI.
+    if (!token) return;
+    let cancelled = false;
+    authApi
+      .getMe()
+      .then((userData) => {
+        if (!cancelled) setUser(userData);
+      })
+      .catch(() => {
+        if (!cancelled && !useAuthStore.getState().user) logout();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, setUser, logout]);
 
   return (
     <AuthContext.Provider

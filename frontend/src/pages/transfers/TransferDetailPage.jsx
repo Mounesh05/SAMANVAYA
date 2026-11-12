@@ -91,7 +91,7 @@ export function TransferDetailPage() {
   return (
     <div>
       <PageHeader
-        title={`Transfer Request: ${transfer.transfer_id}`}
+        title={`Transfer Request: ${transfer.id}`}
         subtitle={`Employee: ${transfer.employee_id}`}
         actions={
           <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={() => navigate('/transfers')}>
@@ -104,28 +104,28 @@ export function TransferDetailPage() {
       <Card title="Transfer Information" subtitle="Details of the transfer request" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '1rem', fontSize: '0.875rem' }}>
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>Transfer ID:</div>
-          <div style={{ fontWeight: '600', fontFamily: 'monospace' }}>{transfer.transfer_id}</div>
+          <div style={{ fontWeight: '600', fontFamily: 'monospace' }}>{transfer.id}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>Employee:</div>
           <div style={{ fontWeight: '600' }}>{transfer.employee_id}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>From Team:</div>
-          <div>{transfer.from_team_id || 'Unassigned'}</div>
+          <div>{transfer.current_team_id || 'Unassigned'}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>To Team:</div>
-          <div style={{ fontWeight: '600' }}>{transfer.to_team_id}</div>
+          <div style={{ fontWeight: '600' }}>{transfer.requested_team_id}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>Status:</div>
           <div>{getStatusBadge(transfer.status)}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>Requested By:</div>
-          <div>{transfer.requested_by}</div>
+          <div>{transfer.initiated_by}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>Requested At:</div>
-          <div>{new Date(transfer.requested_at).toLocaleString()}</div>
+          <div>{transfer.created_at ? new Date(transfer.created_at).toLocaleString() : 'N/A'}</div>
 
           <div style={{ fontWeight: '600', color: 'var(--text-muted)' }}>Reason:</div>
-          <div style={{ whiteSpace: 'pre-wrap' }}>{transfer.reason || 'N/A'}</div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{[transfer.reason?.replace(/_/g, ' '), transfer.justification].filter(Boolean).join(' — ') || 'N/A'}</div>
 
           {transfer.hr_comment && (
             <>
