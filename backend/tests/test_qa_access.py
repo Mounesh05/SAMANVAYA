@@ -304,3 +304,60 @@ def test_ci_request_validation(repository, branch, valid):
     else:
         with pytest.raises(ValidationError):
             CIProvisionRequest(repository=repository, branch=branch)
+
+
+# ── Enable CI: linked repository only, clear errors ─────────────────────────
+
+@pytest.mark.asyncio
+class TestEnableCi:
+    LINK = {"project_id": "PRJ-A", "repository_owner": "acme", "repository_name": "shop"}
+
+    async def _enable(self, request, *, link=LINK, token="ghp_test", provision=None):
+        from api.routes import qa_ci_provisioning as ci
+        from domain.models.qa_ci_config import CIProvisionRequest
+        links = AsyncMock()
+        links.find_one = AsyncMock(return_value=link)
+        service = type("Provision", (), {"provision": provision or AsyncMock(return_value={"workflow_url": "https://github.com/acme/shop/actions"})})()
+        with patch.object(ci.qa_service, "accessible_project", new=AsyncMock(return_value={"id": "PRJ-A"})), \
+                patch.object(ci, "col", side_effect=lambda name: links), \
+                patch.object(ci.settings, "GITHUB_TOKEN", token), \
+                patch.object(ci, "QAWorkflowProvisioningService", return_value=service), \
+                patch.object(ci.qa_repo, "save_ci_config", new=AsyncMock()) as saved:
+            result = await ci.enable_ci_integration("PRJ-A", CIProvisionRequest(**request), user=QA)
+            return result, service.provision, saved
+
+    async def test_uses_the_projects_linked_repository(self):
+        result, provision, saved = await self._enable({"branch": "main"})
+        assert provision.await_args.kwargs == {"owner": "acme", "repo": "shop", "project_id": "PRJ-A", "branch": "main"}
+        assert result["repository"] == "acme/shop"
+        assert saved.await_args.args[0]["repository"] == "acme/shop"
+
+    async def test_refuses_a_repository_other_than_the_linked_one(self):
+        with pytest.raises(HTTPException) as error:
+            await self._enable({"repository": "someone-else/private-repo", "branch": "main"})
+        assert error.value.status_code == 400 and "acme/shop" in error.value.detail
+
+    async def test_needs_a_linked_repository(self):
+        with pytest.raises(HTTPException) as error:
+            await self._enable({"branch": "main"}, link=None)
+        assert error.value.status_code == 400 and "GitHub Sync" in error.value.detail
+
+    async def test_needs_a_github_token(self):
+        with pytest.raises(HTTPException) as error:
+            await self._enable({"branch": "main"}, token="")
+        assert error.value.status_code == 400 and "GITHUB_TOKEN" in error.value.detail
+
+    async def test_github_refusal_is_explained_without_echoing_github(self):
+        import httpx
+        response = httpx.Response(403, request=httpx.Request("PUT", "https://api.github.com/x"), text="secret-ish details")
+        failing = AsyncMock(side_effect=httpx.HTTPStatusError("forbidden", request=response.request, response=response))
+        with pytest.raises(HTTPException) as error:
+            await self._enable({"branch": "main"}, provision=failing)
+        assert error.value.status_code == 502
+        assert "GITHUB_TOKEN" in error.value.detail and "secret-ish" not in error.value.detail
+
+    async def test_unexpected_failures_do_not_leak_internals(self):
+        failing = AsyncMock(side_effect=RuntimeError("connection string mongodb://user:pass@host"))
+        with pytest.raises(HTTPException) as error:
+            await self._enable({"branch": "main"}, provision=failing)
+        assert error.value.status_code == 502 and "mongodb" not in error.value.detail

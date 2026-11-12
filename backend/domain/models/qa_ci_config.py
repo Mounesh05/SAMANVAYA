@@ -14,7 +14,9 @@ BRANCH_PATTERN = r"^[A-Za-z0-9._/-]{1,200}$"
 
 
 class CIProvisionRequest(BaseModel):
-    repository: str = Field(..., pattern=REPOSITORY_PATTERN, description="GitHub repository as owner/name")
+    # Optional: CI always targets the repository linked to the project. If sent,
+    # it must match that link (the endpoint refuses anything else).
+    repository: str | None = Field(default=None, pattern=REPOSITORY_PATTERN, description="GitHub repository as owner/name")
     branch: str = Field(default="main", pattern=BRANCH_PATTERN)
 
     @field_validator("branch")

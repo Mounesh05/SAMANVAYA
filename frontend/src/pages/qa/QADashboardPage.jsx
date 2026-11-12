@@ -61,8 +61,8 @@ export function QADashboardPage() {
     mutationFn: ({ projectId, repository, branch }) =>
       qaApi.enableCIIntegration(projectId, repository, branch),
     onSuccess: () => {
-      queryClient.invalidateQueries(['qa-ci-configs', projectId]);
-      queryClient.invalidateQueries(['qa-test-runs', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['qa-ci-configs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['qa-test-runs', projectId] });
     },
   });
 
@@ -71,8 +71,8 @@ export function QADashboardPage() {
     mutationFn: ({ projectId, branch }) =>
       qaApi.disableCIIntegration(projectId, branch),
     onSuccess: () => {
-      queryClient.invalidateQueries(['qa-ci-configs', projectId]);
-      queryClient.invalidateQueries(['qa-test-runs', projectId]);
+      queryClient.invalidateQueries({ queryKey: ['qa-ci-configs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['qa-test-runs', projectId] });
     },
   });
 
@@ -102,8 +102,9 @@ export function QADashboardPage() {
     { title: 'Awaiting Retest', value: data.awaiting_retest ?? 0, icon: <Clock3 size={20} />, color: 'warning' },
   ];
 
-  const handleProvision = async (projectId, repository, branch) => {
-    return await provisionMutation.mutateAsync({ projectId, repository, branch });
+  // The dialog passes only the branch; the backend uses the project's linked repository.
+  const handleProvision = async ({ branch }) => {
+    return await provisionMutation.mutateAsync({ projectId, repository: undefined, branch });
   };
 
   const handleDisable = async (branch) => {

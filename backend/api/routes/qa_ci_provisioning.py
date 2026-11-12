@@ -1,9 +1,13 @@
 """CI Integration provisioning endpoints for QA."""
 
+import logging
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
+from core.config import settings
+from core.database import col
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from domain.models.qa_ci_config import CIProvisionRequest
@@ -11,7 +15,46 @@ from domain.services.qa_workflow_provisioning_service import QAWorkflowProvision
 from domain.services.qa_service import QAService
 from repositories.qa_repository import QARepository
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["QA CI Provisioning"])
+
+# Same collection GitHub Sync uses to link a project to its repository.
+GITHUB_PROJECT_CONFIGS = "github_project_configs"
+
+
+async def _linked_repository(project_id: str, requested: str | None) -> tuple[str, str]:
+    """The repository linked to this project. CI writes a workflow file and
+    repository secrets with the organisation's GitHub token, so it may only
+    target the project's own repository, never one typed in by the user."""
+    link = await col(GITHUB_PROJECT_CONFIGS).find_one({"project_id": project_id}, {"_id": 0})
+    if not link or not link.get("repository_owner") or not link.get("repository_name"):
+        raise HTTPException(
+            status_code=400,
+            detail="Link this project to its GitHub repository (GitHub Sync settings) before enabling CI",
+        )
+    owner, repo = link["repository_owner"], link["repository_name"]
+    if requested and requested.lower() != f"{owner}/{repo}".lower():
+        raise HTTPException(
+            status_code=400,
+            detail=f"CI can only be enabled for this project's repository ({owner}/{repo})",
+        )
+    return owner, repo
+
+
+def _github_failure(error: httpx.HTTPStatusError) -> HTTPException:
+    """Explain GitHub refusals without echoing GitHub's raw response."""
+    status = error.response.status_code if error.response is not None else None
+    if status in (401, 403):
+        return HTTPException(
+            status_code=502,
+            detail="GitHub refused the request. Check that GITHUB_TOKEN can write workflows, contents and Actions secrets for this repository",
+        )
+    if status == 404:
+        return HTTPException(
+            status_code=400,
+            detail="GitHub repository or branch not found, or GITHUB_TOKEN has no access to it",
+        )
+    return HTTPException(status_code=502, detail="GitHub could not complete CI provisioning. Try again later")
 qa_service = QAService()
 qa_repo = QARepository()
 
@@ -35,15 +78,9 @@ async def enable_ci_integration(
     """
     # Validate project access
     await qa_service.accessible_project(user, project_id)
-    
-    # Parse repository owner/name
-    try:
-        owner, repo = request.repository.split("/")
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="Repository must be in format 'owner/repo'"
-        )
+    owner, repo = await _linked_repository(project_id, request.repository)
+    if not settings.GITHUB_TOKEN:
+        raise HTTPException(status_code=400, detail="GITHUB_TOKEN must be configured on the server before enabling CI")
     
     # Provision workflow via existing service
     try:
@@ -55,18 +92,20 @@ async def enable_ci_integration(
             branch=request.branch
         )
     except ValueError as e:
+        # Configuration problems with a safe, specific message (missing URL/token).
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Provisioning failed: {str(e)}"
-        )
+    except httpx.HTTPStatusError as e:
+        logger.warning("CI provisioning refused by GitHub for project %s: %s", project_id, e.response.status_code)
+        raise _github_failure(e)
+    except Exception:
+        logger.exception("CI provisioning failed for project %s", project_id)
+        raise HTTPException(status_code=502, detail="CI provisioning failed. Check the server logs for details")
     
     # Store CI configuration
     now = datetime.now(timezone.utc)
     ci_config = {
         "project_id": project_id,
-        "repository": request.repository,
+        "repository": f"{owner}/{repo}",
         "branch": request.branch,
         "enabled": True,
         "provisioned_at": now.isoformat(),
@@ -76,12 +115,12 @@ async def enable_ci_integration(
     
     return {
         "project_id": project_id,
-        "repository": request.repository,
+        "repository": f"{owner}/{repo}",
         "branch": request.branch,
         "status": "provisioned",
         "workflow_url": result.get("workflow_url"),
         "provisioned_at": now.isoformat(),
-        "message": f"CI integration enabled for {request.repository}"
+        "message": f"CI integration enabled for {owner}/{repo}"
     }
 
 
