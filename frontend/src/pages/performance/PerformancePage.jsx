@@ -41,9 +41,10 @@ export function PerformancePage() {
   const canTriggerEvaluation = hasPermission(user, PERMISSIONS.TRIGGER_AI_EVALUATION);
   // CR-001: without a team/project/organisation performance permission a user
   // sees only their own record, whatever the URL asks for.
+  // CR-005: VIEW_PROJECT_PERFORMANCE (PM) means project delivery metrics,
+  // not individual records, so it doesn't open other people's records here.
   const ownRecordOnly = !hasAnyPermission(user, [
     PERMISSIONS.VIEW_TEAM_PERFORMANCE,
-    PERMISSIONS.VIEW_PROJECT_PERFORMANCE,
     PERMISSIONS.VIEW_ORGANIZATION_PERFORMANCE,
     PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES,
   ]);

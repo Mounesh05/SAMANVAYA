@@ -70,7 +70,9 @@ class PerformanceAccessService:
         subject = await col("users").find_one({"employee_id": employee_id, "org_id": current["org_id"]}, {"_id": 0})
         if not subject:
             raise HTTPException(403, "Historical assessment scope is unavailable or unauthorized")
-        if current["employee_id"] != employee_id and current.get("role") not in {"LEAD", "PM", "HR", "CEO"}:
+        # CR-005: PMs see delivery metrics, not individual records; they review
+        # people only through assigned review workflows.
+        if current["employee_id"] != employee_id and current.get("role") not in {"LEAD", "HR", "CEO"}:
             raise HTTPException(403, "Current role cannot inspect this employee assessment")
         if current.get("role") == "HR" and Permission.VIEW_PERFORMANCE_OUTCOMES not in get_user_permissions(
                 "HR", current.get("is_admin", False), current.get("designation")):
@@ -152,7 +154,7 @@ class PerformanceAccessService:
 
     async def team(self, project_id, period_label, actor):
         current = await _current(actor)
-        if current.get("role") not in {"LEAD", "PM", "HR", "CEO"}:
+        if current.get("role") not in {"LEAD", "HR", "CEO"}:  # CR-005: not PM
             raise HTTPException(403, "Current role cannot read team performance summaries")
         projects = await col("projects").find({"org_id": current["org_id"]}).limit(1001).to_list(1001)
         if len(projects) > 1000:
@@ -252,7 +254,7 @@ class PerformanceAccessService:
 
     async def shadow(self, employee_id, actor):
         current, records = await self._records(employee_id, actor, 1)
-        if current.get("role") not in {"LEAD", "PM"}:
+        if current.get("role") != "LEAD":  # CR-005: not PM
             raise HTTPException(403, "Scoped engineering management is required for a shadow discrepancy inspection")
         if not records:
             raise HTTPException(404, "No historical assessment is available")

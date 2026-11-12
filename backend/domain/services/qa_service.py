@@ -477,9 +477,10 @@ class QAService:
                     raise HTTPException(status_code=400, detail="Invalid QA defect transition")
             elif role not in {"PM", "LEAD", "CEO"}:
                 raise HTTPException(status_code=403, detail="Insufficient permissions to change defect status")
-            elif role == "LEAD" and current == "READY_FOR_RETEST":
-                # CR-004: QA verifies fixes; Leads assign and prioritise.
-                raise HTTPException(status_code=403, detail="QA verifies and closes defects; Leads can assign and prioritise them")
+            elif role in {"LEAD", "PM"} and current == "READY_FOR_RETEST":
+                # CR-004 (Lead) and CR-005 (PM): QA verifies fixes; managers
+                # assign and prioritise.
+                raise HTTPException(status_code=403, detail="QA verifies and closes defects; Leads and PMs can assign and prioritise them")
             else:
                 allowed = {
                     "OPEN": {"ASSIGNED"},

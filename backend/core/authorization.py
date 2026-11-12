@@ -430,7 +430,12 @@ async def verify_can_view_user_tasks(user: dict, target_user_id: str) -> None:
     # CEO and PM can view anyone's tasks
     if has_org_access(user):
         return
-    
+
+    # CR-005 (Decision 4): Leads can view the tasks of the people they manage.
+    role = user.get("role", user.get("organizational_role", "")).upper()
+    if role == "LEAD" and target_user_id in await team_member_ids(user):
+        return
+
     # Others cannot view other users' tasks
     raise HTTPException(
         status_code=403,

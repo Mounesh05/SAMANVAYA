@@ -9,6 +9,7 @@ import { Badge } from '../../components/common/Badge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { CheckCircle, XCircle, Flag, Play, ArrowLeft } from 'lucide-react';
 
 export function TransferDetailPage() {
@@ -81,18 +82,22 @@ export function TransferDetailPage() {
   };
 
   const isHR = user?.role === 'HR';
-  const isPMorCEO = user?.role === 'PM' || user?.role === 'CEO';
   // CR-004: a Lead acts only at their own stage, as the backend checks
   // (services/transfer_service.py _can_approve_at_stage).
   const isManagerStage = Boolean(user?.employee_id) && (
     (transfer.status === 'pending_current_manager_release' && transfer.current_manager_id === user.employee_id)
     || (transfer.status === 'pending_receiving_manager_acceptance' && transfer.receiving_manager_id === user.employee_id)
   );
-  // HR and PM/CEO stages are reviewed in CR-005/CR-006.
-  const canApprove = isManagerStage || (isHR && transfer.status === 'pending');
-  const canReject = isManagerStage || (isHR && transfer.status === 'pending');
+  // CR-005: PM and CEO act at the management-approval stage.
+  const isManagementStage = transfer.status === 'pending_management_approval'
+    && hasPermission(user, PERMISSIONS.APPROVE_TRANSFER_AS_MANAGEMENT);
+  // HR stages are reviewed in CR-006.
+  const canApprove = isManagerStage || isManagementStage || (isHR && transfer.status === 'pending');
+  const canReject = isManagerStage || isManagementStage || (isHR && transfer.status === 'pending');
   const canFlag = isHR && transfer.status === 'pending';
-  const canExecute = isPMorCEO && transfer.status === 'approved';
+  // CR-005: Execute only for EXECUTE_TRANSFER holders (CEO); PMs were shown a
+  // button the backend always refused.
+  const canExecute = hasPermission(user, PERMISSIONS.EXECUTE_TRANSFER) && transfer.status === 'approved';
 
   return (
     <div>

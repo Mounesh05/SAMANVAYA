@@ -25,7 +25,6 @@ export function TeamDetailPage() {
   // Only show actions the backend will accept for this user.
   const canViewMemberPerformance = hasAnyPermission(user, [
     PERMISSIONS.VIEW_TEAM_PERFORMANCE,
-    PERMISSIONS.VIEW_PROJECT_PERFORMANCE,
     PERMISSIONS.VIEW_ORGANIZATION_PERFORMANCE,
     PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES,
   ]);
