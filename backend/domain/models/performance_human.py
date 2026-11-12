@@ -8,7 +8,7 @@ from pydantic import Field, field_validator, model_validator
 
 from domain.models.performance_claims import Text
 from domain.models.performance_evidence import utc_time
-from domain.models.performance_scoring import FrozenContract, NonEmpty, Number, ScoreCalculation, SubjectRole
+from domain.models.performance_scoring import Digest, FrozenContract, NonEmpty, Number, ScoreCalculation, SubjectRole
 
 HUMAN_METHOD_VERSION = "human-aggregation-v1"
 ReviewerRole = Literal["LEAD", "PM", "QA", "DEVOPS", "HR"]
@@ -155,6 +155,12 @@ class HumanReviewRequest(FrozenContract):
         if len({o.dimension for o in self.observations}) != len(self.observations):
             raise ValueError("One observation per assigned dimension is required")
         return self
+
+
+class HumanReviewRevisionRequest(HumanReviewRequest):
+    expected_digest: Digest
+    request_id: NonEmpty
+    reason: Text
 
 
 class EligibleHumanReview(FrozenContract):

@@ -8,9 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Union, Dict
-from datetime import datetime
 from domain.services.performance_service import PerformanceService, PeriodScoringPending
-from domain.services.hr_performance_service import HRPerformanceService
 from domain.models.developer_performance import (
     DeveloperPerformance,
 )
@@ -20,19 +18,82 @@ from domain.models.hr_performance import (
     HumanEvaluationPolicy,
     HumanEvaluationCompleteness,
 )
-from domain.schemas.hr_views import PerformanceOutcomeHR, HRDashboardPerformanceView
-from domain.models.performance_scoring import legacy_metadata_for_record
+from domain.schemas.hr_views import PerformanceOutcomeHR
 from domain.models.performance_evidence import EvidencePreview, EvidencePreviewRequest
 from domain.models.performance_claims import (
     ClaimReview, ClaimReviewRequest, InterpretationDetails, InterpretationRun, ReviewerAssignmentRequest,
 )
-from domain.models.performance_human import HumanPolicyDraftRequest, HumanReviewerAssignmentRequest, HumanReviewRequest
+from domain.models.performance_human import HumanPolicyDraftRequest, HumanReviewerAssignmentRequest, HumanReviewRequest, HumanReviewRevisionRequest
 from core.dependencies import get_current_user
 from core.permissions import Permission, get_user_permissions
-from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
-from core.audit import log_audit, AuditAction
 
 router = APIRouter()
+
+
+from domain.models.performance_lifecycle import (
+    ApproverAssignmentRequest, AssessmentActionRequest, AssessmentAppealRequest, AssessmentCreateRequest, PolicyReviewRequest,
+)
+from domain.services.performance_access_service import ExportRequest
+
+
+@router.post("/assessments", status_code=201)
+async def create_scoped_assessment(body: AssessmentCreateRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().create(body, user)
+
+
+@router.get("/assessments/{assessment_id}/history")
+async def get_scoped_assessment_history(assessment_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().get(assessment_id, user)
+
+
+@router.get("/assessments/{assessment_id}/revisions/{revision}/replay")
+async def replay_scoped_assessment(assessment_id: str, revision: int, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().replay(assessment_id, revision, user)
+
+
+@router.post("/assessments/{assessment_id}/actions", status_code=201)
+async def transition_scoped_assessment(assessment_id: str, body: AssessmentActionRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().transition(assessment_id, body, user)
+
+
+@router.post("/assessments/{assessment_id}/appeals", status_code=201)
+async def appeal_scoped_assessment(assessment_id: str, body: AssessmentAppealRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().appeal(assessment_id, body, user)
+
+
+@router.post("/assessments/{assessment_id}/approvers", status_code=201)
+async def assign_scoped_approver(assessment_id: str, body: ApproverAssignmentRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().assign_approver(assessment_id, body, user)
+
+
+@router.post("/human/policy-drafts/{draft_id}/reviews", status_code=201)
+async def review_scoped_policy(draft_id: str, body: PolicyReviewRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().review_policy(draft_id, body, user)
+
+
+@router.get("/human/policy-drafts/{draft_id}")
+async def inspect_scoped_policy_draft(draft_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().policy_detail(draft_id, user)
+
+
+@router.post("/developer/{employee_id}/export")
+async def export_scoped_summary(employee_id: str, body: ExportRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().export(employee_id, body, user)
+
+
+@router.get("/developer/{employee_id}/shadow")
+async def inspect_scoped_shadow(employee_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().shadow(employee_id, user)
 
 
 def pending_human_response(ceo=False):
@@ -64,6 +125,12 @@ async def submit_assigned_hr_review(assignment_id: str, body: HumanReviewRequest
 async def get_own_human_review(assignment_id: str, user: dict = Depends(get_current_user)):
     from domain.services.performance_human_service import HumanFeedbackService
     return await HumanFeedbackService().get_review(assignment_id, user)
+
+
+@router.post("/human-reviews/{assignment_id}/revisions", status_code=201)
+async def revise_own_human_review(assignment_id: str, body: HumanReviewRevisionRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().revise(assignment_id, body, user)
 
 
 @router.get("/human/{run_id}/completeness")
@@ -126,34 +193,9 @@ async def appeal_credit(
     body: CreditAppealRequest,
     user: dict = Depends(get_current_user),
 ):
-    """Record a developer's appeal without overwriting the original score."""
-    from repositories.performance_repository import PerformanceRepository
-
-    repository = PerformanceRepository()
-    performance = await repository.get_by_id(performance_id)
-    if not performance:
-        raise HTTPException(status_code=404, detail="Performance evaluation not found")
-
-    developer_id = performance.get("developer_id")
-    if developer_id != user.get("employee_id") and not user.get("is_admin", False):
-        raise HTTPException(status_code=403, detail="Only the developer or an administrator can appeal")
-
-    appeal = {
-        "submitted_by": user.get("employee_id", user.get("id", "")),
-        "reason": body.reason,
-        "evidence": body.evidence,
-        "submitted_at": datetime.utcnow().isoformat(),
-        "status": "pending",
-    }
-    await repository.update(performance_id, {"appeal": appeal, "credit_status": "appealed"})
-    await log_audit(
-        action=AuditAction.CREDIT_APPEALED,
-        actor=user,
-        resource_type="performance",
-        resource_id=performance_id,
-        details={"evidence_count": len(body.evidence)},
-    )
-    return {"performance_id": performance_id, "credit_status": "appealed", "appeal": appeal}
+    """Append an immutable scoped appeal without mutating the historical assessment."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().appeal_legacy(performance_id, body.model_dump(), user)
 
 
 @router.post("/evaluate/bulk", status_code=202, deprecated=True)
@@ -245,76 +287,9 @@ async def get_developer_performance(
     period_label: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    """
-    Get performance evaluation for a developer.
-    
-    **Permission Check:** 
-    - Own data: Requires VIEW_OWN_PERFORMANCE
-    - Team data: Requires VIEW_TEAM_PERFORMANCE (LEAD)
-    - Any data: ADMIN or CEO
-    - HR: Requires VIEW_PERFORMANCE_OUTCOMES (filtered view, no technical details)
-    
-    Args:
-        developer_id: Developer's user ID
-        period_label: Specific period (optional, returns latest if not specified)
-    
-    Returns:
-        Complete performance evaluation with scores and recommendations.
-        **HR users receive filtered outcome without technical evidence.**
-    """
-    # Check if user can view this developer's performance
-    user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
-        user.get('is_admin', False),
-        user.get('designation')
-    )
-    
-    # Determine if HR user
-    is_hr_user = user.get('role', '').upper() == 'HR'
-    
-    # Admin can view anyone
-    if not user.get('is_admin', False):
-        # Check if viewing own data
-        if developer_id == user.get('employee_id'):
-            if Permission.VIEW_OWN_PERFORMANCE not in user_permissions:
-                raise HTTPException(status_code=403, detail="Cannot view own performance")
-        # Check if HR viewing performance outcomes
-        elif is_hr_user and Permission.VIEW_PERFORMANCE_OUTCOMES in user_permissions:
-            pass  # HR can view, but will get filtered data
-        # Check if viewing team data (LEAD must be same team)
-        elif Permission.VIEW_TEAM_PERFORMANCE in user_permissions:
-            # Verify user has access to the developer's data (same team for LEAD)
-            await verify_can_view_user_tasks(user, developer_id)
-        # Check if has organization-wide view
-        elif Permission.VIEW_ORGANIZATION_PERFORMANCE not in user_permissions:
-            raise HTTPException(
-                status_code=403,
-                detail="Insufficient permissions to view this developer's performance"
-            )
-    
-    try:
-        service = PerformanceService()
-        performance = await service.get_developer_performance(developer_id, period_label)
-        
-        if not performance:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No performance data found for developer {developer_id}"
-            )
-        
-        # Convert to dict if needed
-        perf_dict = performance if isinstance(performance, dict) else performance.dict() if hasattr(performance, 'dict') else performance.__dict__
-        
-        # Return filtered view for HR users
-        if is_hr_user:
-            return PerformanceOutcomeHR.from_performance(perf_dict)
-        
-        return performance
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    """Current-account scoped historical view; HR/CEO receive allowlisted summaries."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().detail(developer_id, user, period_label)
 
 
 @router.get("/developer/{developer_id}/trend")
@@ -323,82 +298,9 @@ async def get_performance_trend(
     limit: int = 10,
     user: dict = Depends(get_current_user),
 ):
-    """
-    Get historical performance trend for a developer.
-    
-    Returns last N evaluations with scores and trends.
-    Perfect for displaying performance graphs.
-    
-    Args:
-        developer_id: Developer's user ID
-        limit: Number of periods to return (default: 10)
-    
-    Returns:
-        ```json
-        {
-          "developer_id": "dev123",
-          "current_score": 85.2,
-          "trend": "improving",
-          "history": [
-            {
-              "period_label": "Sprint-23",
-              "final_score": 85.2,
-              "grade": "B+",
-              "period_start": "2024-01-01"
-            },
-            ...
-          ]
-        }
-        ```
-    """
-    # Authorization: verify user can view this developer's performance
-    user_role = user.get('role', user.get('organizational_role', '')).upper()
-    if user_role == "HR":
-        user_permissions = get_user_permissions(
-            user_role,
-            user.get('is_admin', False),
-            user.get('designation')
-        )
-        if (
-            Permission.VIEW_PERFORMANCE_OUTCOMES not in user_permissions
-            and Permission.VIEW_HR_PERFORMANCE_ASSESSMENT not in user_permissions
-        ):
-            raise HTTPException(
-                status_code=403,
-                detail="Insufficient permissions to view developer performance outcomes"
-            )
-    else:
-        await verify_can_view_user_tasks(user, developer_id)
-
-    try:
-        service = PerformanceService()
-        trend_data = await service.get_performance_trend(developer_id, limit)
-        
-        if not trend_data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No performance history found for developer {developer_id}"
-            )
-        
-        # Calculate trend
-        if len(trend_data) >= 2:
-            recent = trend_data[0]['final_score']
-            previous = trend_data[1]['final_score']
-            trend = "improving" if recent > previous else "declining" if recent < previous else "stable"
-        else:
-            trend = "insufficient_data"
-        
-        return {
-            "developer_id": developer_id,
-            "current_score": trend_data[0]['final_score'] if trend_data else 0,
-            "trend": trend,
-            "history": trend_data
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    """Preserve historical numbers without claiming verified comparable trends."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().trend(developer_id, user, limit)
 
 
 
@@ -578,28 +480,9 @@ async def get_hr_assessment(
     performance_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """
-    Get HR assessment record for a developer's evaluation (draft or submitted).
-    Returns null with 200 OK if no HR assessment has been created yet for this developer.
-    Required Permission: VIEW_HR_PERFORMANCE_ASSESSMENT or VIEW_PERFORMANCE_OUTCOMES
-    """
-    user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
-        user.get('is_admin', False),
-        user.get('designation')
-    )
-    if (
-        Permission.VIEW_HR_PERFORMANCE_ASSESSMENT not in user_permissions
-        and Permission.VIEW_PERFORMANCE_OUTCOMES not in user_permissions
-        and not user.get('is_admin', False)
-    ):
-        raise HTTPException(status_code=403, detail="Insufficient permissions to view HR performance assessment")
-
-    hr_service = HRPerformanceService()
-    assessment = await hr_service.assessment_repo.get_by_performance_id(performance_id)
-    if not assessment:
-        return None
-    return assessment
+    """Only current HR authors may retrieve their scoped confidential case detail."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().hr_case(performance_id, user)
 
 
 @router.post("/assessment/hr/{performance_id}", deprecated=True)
@@ -657,29 +540,9 @@ async def check_human_evaluation_completeness(
     performance_id: str,
     user: dict = Depends(get_current_user),
 ):
-    """
-    Review completeness of human evaluations across configured roles.
-    Required Permission: REVIEW_HUMAN_EVALUATION_COMPLETENESS or VIEW_PERFORMANCE_OUTCOMES
-    """
-    user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
-        user.get('is_admin', False),
-        user.get('designation')
-    )
-    if (
-        Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS not in user_permissions
-        and Permission.VIEW_PERFORMANCE_OUTCOMES not in user_permissions
-        and not user.get('is_admin', False)
-    ):
-        raise HTTPException(status_code=403, detail="Insufficient permissions to review evaluation completeness")
-
-    hr_service = HRPerformanceService()
-    try:
-        return await hr_service.check_human_evaluation_completeness(performance_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to check evaluation completeness: {e}")
+    """Scoped historical completeness; legacy presence cannot establish canonical H."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().completeness(performance_id, user)
 
 
 @router.get("/policy")
@@ -689,8 +552,10 @@ async def get_human_evaluation_policy(
     """
     Get active human evaluation policy defining weights across human roles.
     """
-    hr_service = HRPerformanceService()
-    return await hr_service.get_or_create_policy()
+    from domain.services.performance_access_service import PerformanceAccessService
+    history = await PerformanceAccessService().policy_history(user, 1)
+    return {"status": "POLICY_PENDING", "is_active": False, "role_weights": {}, "ceo_weight": 0,
+            "legacy_policy": history[0] if history else None}
 
 
 @router.post("/policy", response_model=HumanEvaluationPolicy, deprecated=True)
@@ -725,8 +590,8 @@ async def get_human_evaluation_policy_history(
     """
     Get version history of human evaluation policies.
     """
-    hr_service = HRPerformanceService()
-    return await hr_service.policy_repo.get_policy_history(limit)
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().policy_history(user, limit)
 
 
 @router.get("/team/{project_id}/{period_label}")
@@ -735,125 +600,9 @@ async def get_team_performance(
     period_label: str,
     user: dict = Depends(get_current_user),
 ):
-    """
-    Get performance summary for all developers in a project/period.
-    
-    Special values:
-    - project_id="all" - Get from all projects
-    - period_label="current" - Get latest period
-    
-    Perfect for team dashboards and comparative analysis.
-    """
-    # Authorization: verify user has appropriate access
-    user_role = user.get('role', '').upper()
-    if user_role == 'DEVELOPER':
-        raise HTTPException(
-            status_code=403,
-            detail="Developers cannot view team performance data"
-        )
-
-    try:
-        service = PerformanceService()
-        
-        # Handle special case: "all" project and "current" period
-        # Get latest evaluations for all developers
-        if project_id == "all" and period_label == "current":
-            from repositories.performance_repository import PerformanceRepository
-            repo = PerformanceRepository()
-            
-            # Authorization: filter by accessible projects for non-admin users
-            accessible_projects = await get_accessible_project_ids(user)
-            
-            # Get all unique developers and their latest evaluation
-            developers_data = []
-            
-            # Query to get latest evaluation for each developer
-            pipeline = [
-                {"$sort": {"created_at": -1}},
-                {"$group": {
-                    "_id": "$developer_id",
-                    "latest": {"$first": "$$ROOT"}
-                }}
-            ]
-            
-            async for doc in repo.collection.aggregate(pipeline):
-                latest = doc['latest']
-                
-                # Filter by accessible projects for non-admin users
-                if not has_org_access(user):
-                    if latest.get('project_id') not in accessible_projects:
-                        continue
-                
-                # Map trend to frontend format
-                trend_map = {
-                    'improving': 'up',
-                    'declining': 'down',
-                    'stable': 'stable'
-                }
-                
-                developers_data.append({
-                    "developer_id": latest['developer_id'],
-                    "developer_name": latest['developer_name'],
-                    "overall_score": latest['final_score'],  # Map final_score to overall_score
-                    "grade": latest['grade'],
-                    "trend": trend_map.get(latest.get('trend', 'stable'), 'stable'),
-                    "last_evaluated": latest['created_at'].isoformat(),
-                    "scoring": legacy_metadata_for_record(latest).model_dump(mode="json"),
-                })
-            
-            if not developers_data:
-                raise HTTPException(
-                    status_code=404,
-                    detail="No performance data found. Run an evaluation first."
-                )
-            
-            # Calculate team stats
-            return developers_data
-        
-        # Original behavior for specific project/period
-        team_data = await service.get_team_performance(project_id, period_label)
-        
-        if not team_data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No performance data for project {project_id}, period {period_label}"
-            )
-        
-        # Transform to match frontend TeamMember interface
-        trend_map = {
-            'improving': 'up',
-            'declining': 'down',
-            'stable': 'stable'
-        }
-        
-        transformed_data = []
-        for member in team_data:
-            created_at = member.get('created_at')
-            if created_at:
-                # If it's a datetime object, convert to ISO string
-                if hasattr(created_at, 'isoformat'):
-                    last_eval = created_at.isoformat()
-                else:
-                    last_eval = str(created_at)
-            else:
-                last_eval = datetime.now().isoformat()
-            
-            transformed_data.append({
-                "developer_id": member['developer_id'],
-                "developer_name": member['developer_name'],
-                "overall_score": member['final_score'],  # Map to overall_score
-                "grade": member['grade'],
-                "trend": trend_map.get(member.get('trend', 'stable'), 'stable'),
-                "last_evaluated": last_eval,
-                "scoring": member.get("scoring") or legacy_metadata_for_record(member).model_dump(mode="json"),
-            })
-        
-        return transformed_data
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    """Scoped historical summaries; do not rank unverifiable cross-role values."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().team(project_id, period_label, user)
 
 
 @router.get("/dashboard/{developer_id}")
@@ -862,181 +611,6 @@ async def get_developer_dashboard(
     periods: int = 6,
     user: dict = Depends(get_current_user),
 ):
-    """
-    Complete developer dashboard data - matches frontend DashboardData interface.
-    
-    Scope enforcement:
-    - DEVELOPER: own dashboard only
-    - LEAD/PM/QA/DEVOPS: authorized scope
-    - HR/CEO: organization-wide
-    """
-    # Scope enforcement: DEVELOPER can only view own dashboard
-    user_role = user.get('role', '').upper()
-    user_id = user.get('employee_id', '')
-    if user_role == 'DEVELOPER' and developer_id != user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="Developers can only view their own performance dashboard"
-        )
-
-    # Protect executive and administrative non-evaluatee roles (CEO, HR)
-    try:
-        from repositories.user_repository import UserRepository
-        user_repo = UserRepository()
-        target_user = await user_repo.find_by_employee_id(developer_id)
-        if target_user:
-            target_role = target_user.get("role", "").upper()
-            if target_role == "CEO":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Employee {developer_id} has the CEO role. The CEO is an executive and is not evaluated under the developer performance evaluation framework."
-                )
-            if target_role == "HR":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Employee {developer_id} has the HR role. HR personnel are evaluators and are not evaluated under the developer performance evaluation framework."
-                )
-    except HTTPException:
-        raise
-    except Exception:
-        pass
-
-    try:
-        service = PerformanceService()
-        
-        # Get latest performance
-        current = await service.get_developer_performance(developer_id)
-        
-        if not current:
-            return {
-                "current_performance": None,
-                "historical_trend": [],
-                "peer_comparison": None,
-                "hr_assessment": None,
-                "is_hr_view": user_role == 'HR',
-                "developer_id": developer_id,
-            }
-        
-        # Get trend
-        trend_data = await service.get_performance_trend(developer_id, periods)
-        
-        # Check if HR user: return sanitized HR-safe dashboard view
-        if user_role == 'HR':
-            hr_assessment_dict = None
-            if current.hr_assessment:
-                hr_assessment_dict = (
-                    current.hr_assessment.model_dump()
-                    if hasattr(current.hr_assessment, "model_dump")
-                    else current.hr_assessment
-                )
-            
-            hr_current_performance = {
-                "developer_id": current.developer_id,
-                "developer_name": current.developer_name,
-                "period": current.period_label,
-                "overall_score": current.final_score,
-                "grade": current.grade,
-                "scoring": legacy_metadata_for_record(current).model_dump(mode="json"),
-                "rating": PerformanceOutcomeHR._score_to_rating(current.final_score),
-                "contribution_credit": None,  # Suppressed for HR (contains LOC, commits, PR metrics)
-                "ai_evaluation": {
-                    "overall_score": current.ai_evaluation.score if current.ai_evaluation else None,
-                    "confidence_score": (
-                        85.0 if current.ai_evaluation and current.ai_evaluation.confidence == "high"
-                        else 70.0 if current.ai_evaluation and current.ai_evaluation.confidence == "medium"
-                        else 50.0
-                    ),
-                    "evaluation_summary": (current.ai_evaluation.reasoning if current.ai_evaluation else "") or "Performance evaluation summary",
-                    "recommendations": current.ai_evaluation.recommendations if current.ai_evaluation else [],
-                    "dimension_scores": {},  # Technical scores suppressed
-                    "strengths": [],
-                    "weaknesses": []
-                },
-                "human_evaluation_summary": {
-                    "average_score": current.role_evaluation.average_score if current.role_evaluation else None,
-                    "roles_evaluated": [
-                        r for r in ("pm", "lead", "qa", "devops", "ceo", "hr")
-                        if getattr(current.role_evaluation, r, None) is not None
-                    ] if current.role_evaluation else [],
-                },
-                "last_evaluated": current.created_at.isoformat() if current.created_at else None,
-                "evaluation_count": len(trend_data) if trend_data else 1
-            }
-            
-            historical_trend = []
-            if trend_data:
-                for item in trend_data:
-                    historical_trend.append({
-                        "period": item.get('period_label', ''),
-                        "score": item.get('final_score', 0),
-                        "grade": item.get('grade', 'N/A'),
-                        "scoring": item.get("scoring") or legacy_metadata_for_record(item).model_dump(mode="json"),
-                    })
-            
-            return HRDashboardPerformanceView(
-                current_performance=hr_current_performance,
-                historical_trend=historical_trend,
-                peer_comparison=None,
-                hr_assessment=hr_assessment_dict,
-                is_hr_view=True
-            ).model_dump()
-
-        # Transform to frontend format for Engineering / Leadership
-        current_performance = {
-            "developer_id": current.developer_id,
-            "developer_name": current.developer_name,
-            "period": current.period_label,
-            "overall_score": current.final_score,
-            "grade": current.grade,
-            "scoring": legacy_metadata_for_record(current).model_dump(mode="json"),
-            "contribution_credit": (
-                current.contribution_credit.model_dump()
-                if current.contribution_credit
-                else None
-            ),
-            "ai_evaluation": {
-                "overall_score": current.ai_evaluation.score,
-                "dimension_scores": {
-                    "code_quality": current.ai_evaluation.breakdown.code_quality,
-                    "delivery_speed": current.ai_evaluation.breakdown.delivery,
-                    "collaboration": current.ai_evaluation.breakdown.collaboration,
-                    "reliability": current.ai_evaluation.breakdown.reliability,
-                    "business_impact": current.ai_evaluation.breakdown.engineering_impact,
-                    "technical_judgment": current.ai_evaluation.breakdown.engineering_judgment
-                },
-                "strengths": current.ai_evaluation.strengths,
-                "weaknesses": current.ai_evaluation.weaknesses,
-                "recommendations": current.ai_evaluation.recommendations,
-                "confidence_score": 85.0 if current.ai_evaluation.confidence == "high" else 70.0 if current.ai_evaluation.confidence == "medium" else 50.0,
-                "evaluation_summary": current.ai_evaluation.reasoning or "AI evaluation completed successfully"
-            },
-            "role_evaluations": [],  # Can be expanded to include role feedback details
-            "trend_data": [],
-            "last_evaluated": current.created_at.isoformat(),
-            "evaluation_count": len(trend_data) if trend_data else 1
-        }
-        
-        # Transform trend data to frontend format
-        historical_trend = []
-        if trend_data:
-            for item in trend_data:
-                historical_trend.append({
-                    "period": item.get('period_label', ''),
-                    "score": item.get('final_score', 0),
-                    "grade": item.get('grade', 'N/A'),
-                    "scoring": item.get("scoring") or legacy_metadata_for_record(item).model_dump(mode="json"),
-                })
-        
-        # Build dashboard response matching frontend DashboardData interface
-        dashboard = {
-            "current_performance": current_performance,
-            "historical_trend": historical_trend,
-            "peer_comparison": None  # Will be None if no team data available
-        }
-        
-        return dashboard
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
+    """Preserve dashboard fields with scoped redaction and legacy comparison caveats."""
+    from domain.services.performance_access_service import PerformanceAccessService
+    return await PerformanceAccessService().dashboard(developer_id, user, periods)

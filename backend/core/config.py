@@ -4,6 +4,7 @@ All settings are typed. SECRET_KEY has no default — must be set.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List, Optional
 
 
@@ -21,6 +22,10 @@ class Settings(BaseSettings):
 
     # ── Auth ──────────────────────────────────────────────────────
     SECRET_KEY: str  # no default — required in .env
+    # Retained performance-artifact verification keys; never expose in APIs/logs.
+    PERFORMANCE_SIGNING_KEY_ID: str = "application-secret"
+    PERFORMANCE_SIGNING_KEYS: dict[str, str] = Field(default_factory=dict, repr=False)
+    PERFORMANCE_LEGACY_SIGNING_KEY: str = Field(default="", repr=False)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # Changed from 1440 to 60
     SECURE_COOKIES: bool = False  # Set to True in production

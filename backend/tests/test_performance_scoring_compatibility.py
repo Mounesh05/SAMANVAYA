@@ -77,7 +77,9 @@ def test_hr_serializer_preserves_values_and_excludes_raw_evidence():
 async def stored(mock_db, monkeypatch):
     monkeypatch.setattr(database, "get_db", lambda: mock_db)
     monkeypatch.setattr(audit.audit_logger, "collection", mock_db.audit_logs)
-    await mock_db.users.insert_one({"employee_id": "AUDIT-DEV", "role": "DEVELOPER", "team_id": "T1", "org_id": "O1"})
+    await mock_db.users.insert_one({"employee_id": "AUDIT-DEV", "role": "DEVELOPER", "team_id": "T1", "org_id": "O1", "is_active": True})
+    await mock_db.users.insert_one({"employee_id": "HR-1", "role": "HR", "designation": "HR_MANAGER", "org_id": "O1", "is_active": True})
+    await mock_db.projects.insert_one({"id": "AUDIT-PROJECT", "org_id": "O1", "team_id": "T1"})
     # Emulate an old stored document, not a reserialized new model.
     record = assessment().model_dump()
     record.pop("scoring", None)

@@ -253,3 +253,22 @@ async def test_wrong_period_and_fabricated_interaction_references_do_not_assign(
         with pytest.raises(HTTPException) as error:
             await service().assign(HumanReviewerAssignmentRequest(**data), {"employee_id": "A"})
         assert error.value.status_code == 422
+
+
+async def test_human_correction_appends_revision_without_overwriting_original(stored):
+    from domain.models.performance_evidence import canonical_digest
+    db, run = stored
+    assigned = await service().assign(assignment(run), {"employee_id": "A"})
+    original = await service().submit(assigned["assignment_id"], body(), {"employee_id": "R"})
+    saved = copy.deepcopy(await db.ai_runs.find_one({"id": original["review_id"]}))
+    changed = body().model_dump()
+    changed["observations"][0]["rating"] = 3
+    request = {**changed, "expected_digest": canonical_digest(saved["output_data"]), "request_id": "correction-1",
+               "reason": "Correcting my earlier observation against its source revision"}
+    assert hasattr(service(), "revise"), "Phase 5 human feedback revisions are missing"
+    revised = await service().revise(assigned["assignment_id"], request, {"employee_id": "R"})
+    assert revised["revision"] == 2 and revised["human_score"] is None
+    assert await service().revise(assigned["assignment_id"], request, {"employee_id": "R"}) == revised
+    current = await service().get_review(assigned["assignment_id"], {"employee_id": "R"})
+    assert current["observations"][0]["rating"] == 3
+    assert await db.ai_runs.find_one({"id": original["review_id"]}) == saved

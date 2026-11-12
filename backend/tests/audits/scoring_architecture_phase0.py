@@ -80,8 +80,9 @@ async def store(mock_db, monkeypatch):
     # AuditLogger is instantiated at import time; isolate that cached collection
     # too, while retaining the real audit-writing code.
     monkeypatch.setattr(audit.audit_logger, "collection", mock_db.audit_logs)
-    await mock_db.users.insert_one({"employee_id": "AUDIT-DEV", "role": "DEVELOPER", "org_id": "ORG-B"})
-    await mock_db.users.insert_one({"employee_id": "AUDIT-HR", "role": "HR", "designation": "HR_MANAGER", "org_id": "ORG-A"})
+    await mock_db.users.insert_one({"employee_id": "AUDIT-DEV", "role": "DEVELOPER", "org_id": "ORG-B", "is_active": True})
+    await mock_db.users.insert_one({"employee_id": "AUDIT-HR", "role": "HR", "designation": "HR_MANAGER", "org_id": "ORG-A", "is_active": True})
+    await mock_db.projects.insert_one({"id": "AUDIT-PROJECT", "org_id": "ORG-B"})
     return mock_db
 
 
@@ -277,7 +278,7 @@ async def test_f13_http_cross_org_read_and_self_hr_submission(store):
     app.dependency_overrides[get_current_user] = lambda: user
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://audit") as client:
         foreign = await client.get("/api/performance/developer/AUDIT-DEV")
-        assert foreign.status_code == 200 and foreign.json()["employee_id"] == "AUDIT-DEV"
+        assert foreign.status_code == 403  # Phase 5 checks current account and exact organization scope.
         # A former engineering contributor now works in HR and has a historical
         # engineering assessment. Keep the synthetic principal consistent with
         # the current account; the route has no independent self-review guard.

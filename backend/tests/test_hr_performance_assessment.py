@@ -14,7 +14,6 @@ Verifies:
 
 import pytest
 from unittest.mock import AsyncMock, patch
-from datetime import datetime, timezone
 from fastapi import HTTPException
 
 from domain.models.hr_performance import (
@@ -22,12 +21,6 @@ from domain.models.hr_performance import (
     HRAssessmentCreate,
 )
 from domain.services.hr_performance_service import HRPerformanceService
-from domain.models.developer_performance import (
-    DeveloperPerformance,
-    AIEvaluation,
-    PerformanceBreakdown,
-    RoleEvaluation,
-)
 from core.dependencies import require_roles
 
 
@@ -62,7 +55,7 @@ class TestEvaluationPolicy:
     def setup_method(self):
         self.service = HRPerformanceService()
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_policy_weights_must_sum_to_one(self):
         """Policy configuration must enforce sum(weights) == 1.0."""
         invalid_weights = {
@@ -77,7 +70,7 @@ class TestEvaluationPolicy:
                 configured_by="CEO001",
             )
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_policy_rejects_negative_weights(self):
         """Policy must reject negative weights."""
         invalid_weights = {
@@ -91,7 +84,7 @@ class TestEvaluationPolicy:
                 configured_by="CEO001",
             )
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_valid_legacy_weights_cannot_activate_without_governance(self):
         from domain.services.performance_human_service import HumanScoringPending
         with patch.object(self.service.policy_repo, "save_policy", new=AsyncMock()) as save:
@@ -103,7 +96,7 @@ class TestEvaluationPolicy:
 class TestNinetyTenEvaluationAggregation:
     """Historical AI0–90 values cannot be double-weighted by HR submission."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_legacy_hr_submit_cannot_rewrite_performance(self):
         from domain.services.performance_human_service import HumanScoringPending
         service = HRPerformanceService()
@@ -113,7 +106,7 @@ class TestNinetyTenEvaluationAggregation:
                                                    {"employee_id": "HR001", "role": "HR"})
             update.assert_not_awaited()
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_unapproved_legacy_completeness_is_unknown(self):
         service = HRPerformanceService()
         with patch.object(service.performance_repo, "get_by_id", new=AsyncMock(return_value={
@@ -127,7 +120,7 @@ class TestNinetyTenEvaluationAggregation:
 class TestHREvaluationAPISecurityAndFiltering:
     """Tests that HR cannot access raw engineering data or trigger PR-level evaluations."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_hr_blocked_by_role_guard_on_pr_level_evaluation(self):
         """HR users must be blocked (403) from triggering PR evaluation."""
         hr_user = {
@@ -140,7 +133,7 @@ class TestHREvaluationAPISecurityAndFiltering:
             await check_role(user=hr_user)
         assert exc_info.value.status_code == 403
 
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_hr_blocked_from_pr_evaluation_by_employee(self):
         """HR users must be blocked (403) from accessing PR-level evaluation diffs for employees."""
         from api.routes import evaluation
@@ -154,88 +147,32 @@ class TestHREvaluationAPISecurityAndFiltering:
             await evaluation.list_employee_evaluations(employee_id="EMP001", user=hr_user)
         assert exc_info.value.status_code == 403
 
-    @pytest.mark.asyncio
-    async def test_hr_dashboard_suppresses_technical_details(self):
-        """
-        Calling get_developer_dashboard as HR must return HRDashboardPerformanceView:
-        - contribution_credit is None
-        - dimension_scores in ai_evaluation is empty
-        - is_hr_view is True
-        """
+    @pytest.mark.anyio
+    async def test_hr_dashboard_suppresses_technical_details(self, mock_db, monkeypatch):
+        from core import database
         from api.routes import performance
-        from domain.services.performance_service import PerformanceService
+        from test_performance_scoring_compatibility import assessment
+        monkeypatch.setattr(database, "get_db", lambda: mock_db)
+        await mock_db.users.insert_many([
+            dict(employee_id="AUDIT-DEV", role="DEVELOPER", org_id="O", is_active=True),
+            dict(employee_id="H", role="HR", org_id="O", is_active=True, designation="HR_MANAGER")])
+        await mock_db.projects.insert_one(dict(id="AUDIT-PROJECT", org_id="O"))
+        await mock_db.developer_performances.insert_one(assessment().model_dump())
+        result = await performance.get_developer_dashboard("AUDIT-DEV", periods=6, user={"employee_id": "H"})
+        assert result["is_hr_view"] is True and result["hr_assessment"] is None
+        current = result["current_performance"]
+        assert current["contribution_credit"] is None
+        assert current["ai_evaluation"]["dimension_scores"] == {}
+        assert current["ai_evaluation"]["confidence_score"] is None
+        assert current["overall_score"] == 85.4 and current["grade"] == "B+"
+        assert current["rating"] is None  # No new, uncalibrated outcome band is invented.
 
-        hr_user = {
-            "employee_id": "HR001",
-            "role": "HR",
-            "is_admin": False,
-            "designation": "HRBP",
-        }
-
-        mock_perf = DeveloperPerformance(
-            developer_id="EMP001",
-            developer_name="Engineer Bob",
-            project_id="PROJ1",
-            period_type="quarter",
-            period_start=datetime(2024, 1, 1, tzinfo=timezone.utc),
-            period_end=datetime(2024, 3, 31, tzinfo=timezone.utc),
-            period_label="2024-Q1",
-            final_score=88.5,
-            grade="A",
-            ai_evaluation=AIEvaluation(
-                score=85.0,
-                breakdown=PerformanceBreakdown(
-                    code_quality=24.0,
-                    delivery=19.0,
-                    collaboration=14.0,
-                    reliability=14.0,
-                    engineering_impact=9.0,
-                    engineering_judgment=5.0,
-                ),
-                reasoning="Exemplary engineering performance",
-                confidence="high",
-            ),
-            role_evaluation=RoleEvaluation(average_score=90.0, contribution=9.0),
-            confidence_level="high",
-            confidence_reason="Comprehensive commit history",
-            evaluated_by="LEAD001",
-        )
-
-        mock_service = AsyncMock(spec=PerformanceService)
-        mock_service.get_developer_performance = AsyncMock(return_value=mock_perf)
-        mock_service.get_performance_trend = AsyncMock(return_value=[
-            {"period_label": "2024-Q1", "final_score": 88.5, "grade": "A"}
-        ])
-
-        with patch.object(performance, "PerformanceService", return_value=mock_service):
-            result = await performance.get_developer_dashboard("EMP001", periods=6, user=hr_user)
-
-            assert result["is_hr_view"] is True
-            curr = result["current_performance"]
-            # Technical metrics must be stripped
-            assert curr["contribution_credit"] is None
-            assert curr["ai_evaluation"]["dimension_scores"] == {}
-            assert curr["ai_evaluation"]["strengths"] == []
-            assert curr["ai_evaluation"]["weaknesses"] == []
-            # High-level outcome is preserved
-            assert curr["overall_score"] == 88.5
-            assert curr["grade"] == "A"
-            assert curr["rating"] == "Meets Expectations"
-
-    @pytest.mark.asyncio
-    async def test_get_hr_assessment_returns_none_when_no_assessment(self):
-        """When no HR assessment exists for a developer, get_hr_assessment returns None (200 OK) without 404."""
+    @pytest.mark.anyio
+    async def test_get_hr_assessment_returns_none_when_no_authorized_case(self, mock_db, monkeypatch):
+        from core import database
         from api.routes import performance
-        hr_user = {
-            "employee_id": "DEMO-HR",
-            "role": "HR",
-            "is_admin": False,
-            "designation": "HR_OFFICER",
-        }
-        with patch("api.routes.performance.HRPerformanceService") as MockHRService:
-            mock_inst = AsyncMock()
-            mock_inst.assessment_repo.get_by_performance_id = AsyncMock(return_value=None)
-            MockHRService.return_value = mock_inst
-
-            res = await performance.get_hr_assessment("DEMO-LEAD", user=hr_user)
-            assert res is None
+        monkeypatch.setattr(database, "get_db", lambda: mock_db)
+        await mock_db.users.insert_many([
+            dict(employee_id="D", role="DEVELOPER", org_id="O", is_active=True),
+            dict(employee_id="H", role="HR", org_id="O", is_active=True, designation="HR_MANAGER")])
+        assert await performance.get_hr_assessment("D", user={"employee_id": "H"}) is None

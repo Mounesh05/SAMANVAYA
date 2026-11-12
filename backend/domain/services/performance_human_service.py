@@ -14,7 +14,7 @@ from core.permissions import Permission, get_user_permissions
 from domain.models.performance_claims import InterpretationRun
 from domain.models.performance_evidence import canonical_digest
 from domain.models.performance_human import (
-    EligibleHumanReview, HumanPolicyDraftRequest, HumanReviewerAssignmentRequest, HumanReviewRequest,
+    EligibleHumanReview, HumanPolicyDraftRequest, HumanReviewerAssignmentRequest, HumanReviewRequest, HumanReviewRevisionRequest,
 )
 from domain.services.performance_artifact_store import _context, _read, _verify, _write
 from intelligence.performance_human import aggregate_human_reviews
@@ -44,7 +44,7 @@ def _technical_admin(current):
     return current.get("role") in {"LEAD", "PM"} and current.get("is_admin") is True
 
 
-async def _scoped_run(run_id, current):
+async def _scoped_run(run_id, current, historical=False):
     record = await _read(run_id, "performance_interpretation")
     run = InterpretationRun.model_validate(record["payload"])
     scope = run.evidence.snapshot.scope
@@ -52,8 +52,8 @@ async def _scoped_run(run_id, current):
         raise HTTPException(403, "Human assessment scope is unavailable or unauthorized")
     project = await col("projects").find_one({"id": scope.project_id, "org_id": scope.organization_id}, {"_id": 0})
     subject = await col("users").find_one({"employee_id": scope.employee_id, "org_id": scope.organization_id}, {"_id": 0})
-    if (not project or not subject or subject.get("is_active") is not True
-            or subject.get("role") not in {"DEVELOPER", "QA", "DEVOPS", "LEAD", "PM"} or not _assigned(subject, project)):
+    if (not project or not subject or not historical and (subject.get("is_active") is not True
+            or subject.get("role") not in {"DEVELOPER", "QA", "DEVOPS", "LEAD", "PM"} or not _assigned(subject, project))):
         raise HTTPException(403, "Current engineering subject and project membership are required")
     return run, project
 
@@ -66,6 +66,24 @@ def _reviewer_matches(reviewer, request, project, scope):
         return Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT in get_user_permissions(
             reviewer["role"], reviewer.get("is_admin", False), reviewer.get("designation"))
     return _assigned(reviewer, project)
+
+
+async def human_review_history(assignment_id):
+    base = "PH-R-" + canonical_digest({"assignment_id": assignment_id})
+    docs = await col("ai_runs").find({"agent_type": "performance_human_review",
+        "output_data.payload.assignment_id": assignment_id}).limit(101).to_list(101)
+    if not docs:
+        raise HTTPException(404, "No submitted human review is available")
+    if len(docs) > 100:
+        raise HTTPException(409, "Human review history requires archival review")
+    records = sorted((_verify(d, "performance_human_review") for d in docs), key=lambda r: r["payload"].get("revision", 1))
+    for index, record in enumerate(records):
+        key = base if index == 0 else f"{base}:{index + 1:06d}"
+        if (record["id"] != key or record["context"] != records[0]["context"] or record["created_by"] != records[0]["created_by"]
+                or record["payload"].get("revision", 1) != index + 1
+                or (index and record["payload"].get("predecessor_digest") != canonical_digest(records[index - 1]))):
+            raise HTTPException(409, "Human review history integrity failed")
+    return records
 
 
 class HumanFeedbackService:
@@ -165,11 +183,44 @@ class HumanFeedbackService:
     async def get_review(self, assignment_id, actor):
         current = await _current(actor)
         await self._assignment(assignment_id, current)
-        key = "PH-R-" + canonical_digest({"assignment_id": assignment_id})
-        record = await _read(key, "performance_human_review")
+        record = (await human_review_history(assignment_id))[-1]
         if record["created_by"] != current["employee_id"]:
             raise HTTPException(403, "Private reviewer observations are unavailable")
-        return record["payload"]
+        return {**record["payload"], "revision": record["payload"].get("revision", 1), "revision_digest": canonical_digest(record)}
+
+    async def revise(self, assignment_id, body, actor):
+        body = HumanReviewRevisionRequest.model_validate(body)
+        current = await _current(actor)
+        assignment, run = await self._assignment(assignment_id, current)
+        scope = run.evidence.snapshot.scope
+        if ({o.dimension for o in body.observations} != set(assignment.dimensions)
+                or any(not scope.period_start <= e.observed_at < scope.period_end for o in body.observations for e in o.evidence)):
+            raise HTTPException(422, "Corrections must retain assigned dimensions and assessed period")
+        records = await human_review_history(assignment_id)
+        digest = canonical_digest(body.model_dump(mode="json"))
+        for record in records:
+            if record["payload"].get("correction_request_id") == body.request_id:
+                if record["payload"]["correction_digest"] != digest:
+                    raise HTTPException(409, "Correction idempotency key was already used")
+                return {**self._receipt(record), "revision": record["payload"]["revision"]}
+        head = records[-1]
+        if canonical_digest(head) != body.expected_digest:
+            raise HTTPException(409, "Human observation changed; use its latest digest")
+        revision = len(records) + 1
+        payload = {**head["payload"], "revision": revision, "predecessor_digest": body.expected_digest,
+            "correction_request_id": body.request_id, "correction_digest": digest, "correction_reason": body.reason,
+            "observations": [o.model_dump(mode="json") for o in body.observations],
+            "evidence_status": "ATTESTED_NOT_INDEPENDENTLY_VERIFIED"}
+        key = f"{records[0]['id']}:{revision:06d}"
+        try:
+            record = await _write("performance_human_review", payload, _context(scope), current["employee_id"], key)
+        except HTTPException as error:
+            if error.status_code != 409:
+                raise
+            record = await _read(key, "performance_human_review")
+            if record["payload"].get("correction_digest") != digest:
+                raise HTTPException(409, "A concurrent different correction created this revision") from None
+        return {**self._receipt(record), "revision": revision}
 
     async def summary(self, run_id, actor):
         current = await _current(actor)
@@ -200,7 +251,7 @@ class HumanFeedbackService:
             document = await col("ai_runs").find_one({"id": key, "agent_type": "performance_human_review"})
             state = "REVOKED" if not eligible else "PENDING"
             if document:
-                review = _verify(document, "performance_human_review")
+                review = (await human_review_history(record["id"]))[-1]
                 if review["context"] != _context(scope) or review["created_by"] != request.reviewer_id:
                     raise HTTPException(409, "Human review scope integrity failed")
                 inputs.append(EligibleHumanReview(assignment_id=record["id"], reviewer_id=request.reviewer_id,

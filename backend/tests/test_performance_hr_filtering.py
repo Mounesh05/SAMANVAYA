@@ -8,7 +8,6 @@ Verifies:
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
 from datetime import datetime
 from domain.schemas.hr_views import PerformanceOutcomeHR
 
@@ -127,111 +126,35 @@ class TestPerformanceHRFiltering:
         assert "criterion_1" not in str(hr_dict)
         assert "criterion_2" not in str(hr_dict)
     
-    @pytest.mark.asyncio
-    async def test_get_developer_performance_filters_for_hr(self, monkeypatch):
-        """Get developer performance endpoint should return filtered data for HR users."""
+    @pytest.mark.anyio
+    async def test_get_developer_performance_filters_for_hr(self, mock_db, monkeypatch):
+        from core import database
         from api.routes import performance
-        from domain.services.performance_service import PerformanceService
-        
-        hr_user = {
-            "employee_id": "HR001",
-            "role": "HR",
-            "is_admin": False,
-            "designation": "HR_MANAGER",
-        }
-        
-        mock_performance = {
-            "_id": "PERF001",
-            "developer_id": "EMP001",
-            "developer_name": "Developer One",
-            "period_label": "2024-Q1",
-            "final_score": 82.0,
-            "grade": "B",
-            "dimension_scores": {"code_quality": 20.0},
-            "raw_evidence": {"pr_diffs": "SENSITIVE"},  # Should be filtered
-            "github_data": {"commits": 40},  # Should be filtered
-        }
-        
-        mock_service = AsyncMock(spec=PerformanceService)
-        mock_service.get_developer_performance = AsyncMock(return_value=mock_performance)
-        
-        with patch.object(performance, 'PerformanceService', return_value=mock_service):
-            result = await performance.get_developer_performance("EMP001", user=hr_user)
-        
-        # Should return PerformanceOutcomeHR
+        from test_performance_scoring_compatibility import assessment
+        monkeypatch.setattr(database, "get_db", lambda: mock_db)
+        await mock_db.users.insert_many([dict(employee_id="AUDIT-DEV", role="DEVELOPER", org_id="O", is_active=True),
+            dict(employee_id="H", role="HR", designation="HR_MANAGER", org_id="O", is_active=True)])
+        await mock_db.projects.insert_one(dict(id="AUDIT-PROJECT", org_id="O"))
+        record = assessment().model_dump()
+        record["ai_evaluation"]["reasoning"] = "SENSITIVE ENGINEERING SOURCE"
+        await mock_db.developer_performances.insert_one(record)
+        result = await performance.get_developer_performance("AUDIT-DEV", user={"employee_id": "H"})
         assert isinstance(result, PerformanceOutcomeHR)
-        assert result.evaluation_id == "PERF001"
-        assert result.overall_score == 82.0
-        
-        # Technical fields should not be in the response
-        result_dict = result.model_dump()
-        assert "raw_evidence" not in result_dict
-        assert "github_data" not in result_dict
-        assert "pr_diffs" not in result_dict
-    
-    @pytest.mark.asyncio
-    async def test_get_developer_performance_full_data_for_engineering(self, monkeypatch):
-        """Get developer performance should return complete data for engineering users."""
+        assert result.overall_score == 85.4 and "SENSITIVE" not in str(result.model_dump())
+
+    @pytest.mark.anyio
+    async def test_get_developer_performance_full_data_for_engineering(self, mock_db, monkeypatch):
+        from core import database
         from api.routes import performance
-        from domain.services.performance_service import PerformanceService
-        from domain.models.developer_performance import (
-            DeveloperPerformance,
-            AIEvaluation,
-            PerformanceBreakdown,
-            RoleEvaluation
-        )
-        from datetime import datetime
-        
-        lead_user = {
-            "employee_id": "LEAD001",
-            "role": "LEAD",
-            "is_admin": False,
-            "team_id": "TEAM001",
-        }
-        
-        mock_performance = DeveloperPerformance(
-            developer_id="EMP001",
-            developer_name="Developer One",
-            project_id="PROJ001",
-            period_type="quarter",
-            period_start=datetime.utcnow(),
-            period_end=datetime.utcnow(),
-            period_label="2024-Q1",
-            final_score=82.0,
-            grade="B",
-            ai_evaluation=AIEvaluation(
-                score=75.0,
-                breakdown=PerformanceBreakdown(
-                    code_quality=20.0,
-                    delivery=15.0,
-                    collaboration=12.0,
-                    reliability=13.0,
-                    engineering_impact=10.0,
-                    engineering_judgment=5.0,
-                ),
-                reasoning="Solid engineering delivery",
-                confidence="high",
-            ),
-            role_evaluation=RoleEvaluation(average_score=70.0, contribution=7.0),
-            confidence_level="high",
-            confidence_reason="Comprehensive data points",
-            evaluated_by="LEAD001",
-        )
-        
-        mock_service = AsyncMock(spec=PerformanceService)
-        mock_service.get_developer_performance = AsyncMock(return_value=mock_performance)
-        
-        # Mock verify_can_view_user_tasks
-        async def mock_verify(*args, **kwargs):
-            pass
-        
-        with patch.object(performance, 'PerformanceService', return_value=mock_service), \
-             patch.object(performance, 'verify_can_view_user_tasks', new=mock_verify):
-            result = await performance.get_developer_performance("EMP001", user=lead_user)
-        
-        # Should return full DeveloperPerformance object
-        assert isinstance(result, DeveloperPerformance)
-        assert result.developer_id == "EMP001"
+        from domain.models.developer_performance import DeveloperPerformance
+        from test_performance_scoring_compatibility import assessment
+        monkeypatch.setattr(database, "get_db", lambda: mock_db)
+        await mock_db.users.insert_many([dict(employee_id="AUDIT-DEV", role="DEVELOPER", org_id="O", is_active=True),
+            dict(employee_id="L", role="LEAD", org_id="O", is_active=True, project_ids=["AUDIT-PROJECT"])])
+        await mock_db.projects.insert_one(dict(id="AUDIT-PROJECT", org_id="O"))
+        await mock_db.developer_performances.insert_one(assessment().model_dump())
+        result = await performance.get_developer_performance("AUDIT-DEV", user={"employee_id": "L"})
+        assert isinstance(result, DeveloperPerformance) and result.developer_id == "AUDIT-DEV"
 
 
 class TestPerformanceTechnicalFieldExclusions:
@@ -301,51 +224,20 @@ class TestPerformanceTechnicalFieldExclusions:
         
         assert "code_review_comments" not in hr_dict
 
-    @pytest.mark.asyncio
-    async def test_get_developer_dashboard_rejects_ceo(self, monkeypatch):
-        """get_developer_dashboard rejects requests for CEO with 400 Bad Request."""
+    @pytest.mark.anyio
+    @pytest.mark.parametrize("subject_role", ["CEO", "HR"])
+    async def test_nonengineering_history_does_not_fabricate_a_current_rating(self, mock_db, monkeypatch, subject_role):
+        from core import database
         from api.routes import performance
-        from repositories.user_repository import UserRepository
-        from fastapi import HTTPException
+        monkeypatch.setattr(database, "get_db", lambda: mock_db)
+        await mock_db.users.insert_many([
+            dict(employee_id="SUBJECT", role=subject_role, org_id="O", is_active=True),
+            dict(employee_id="H", role="HR", designation="HR_MANAGER", org_id="O", is_active=True)])
+        result = await performance.get_developer_dashboard("SUBJECT", periods=6, user={"employee_id": "H"})
+        assert result["current_performance"] is None and result["historical_trend"] == []
+        assert await mock_db.developer_performances.count_documents({}) == 0
 
-        async def mock_find_by_employee_id(self, emp_id):
-            if emp_id == "DEMO-CEO":
-                return {"employee_id": "DEMO-CEO", "role": "CEO"}
-            return None
-
-        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
-
-        caller = {"employee_id": "DEMO-HR", "role": "HR", "is_admin": False}
-
-        with pytest.raises(HTTPException) as exc_info:
-            await performance.get_developer_dashboard("DEMO-CEO", periods=6, user=caller)
-
-        assert exc_info.value.status_code == 400
-        assert "CEO is an executive and is not evaluated" in exc_info.value.detail
-
-    @pytest.mark.asyncio
-    async def test_get_developer_dashboard_rejects_hr(self, monkeypatch):
-        """get_developer_dashboard rejects requests for HR with 400 Bad Request."""
-        from api.routes import performance
-        from repositories.user_repository import UserRepository
-        from fastapi import HTTPException
-
-        async def mock_find_by_employee_id(self, emp_id):
-            if emp_id == "DEMO-HR":
-                return {"employee_id": "DEMO-HR", "role": "HR"}
-            return None
-
-        monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
-
-        caller = {"employee_id": "DEMO-HR", "role": "HR", "is_admin": False}
-
-        with pytest.raises(HTTPException) as exc_info:
-            await performance.get_developer_dashboard("DEMO-HR", periods=6, user=caller)
-
-        assert exc_info.value.status_code == 400
-        assert "HR personnel are evaluators and are not evaluated" in exc_info.value.detail
-
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_evaluate_developer_rejects_ceo_and_hr(self, monkeypatch):
         """evaluate_developer_performance rejects evaluations targeting CEO or HR."""
         from api.routes import performance

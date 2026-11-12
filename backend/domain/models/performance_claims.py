@@ -9,7 +9,9 @@ from domain.models.performance_evidence import Count, EvidencePreview, utc_time
 from domain.models.performance_scoring import Digest, DimensionId, FrozenContract, NonEmpty, nonblank
 
 PROTECTED_RUN_TYPES = ("performance_interpretation", "performance_claim_assignment", "performance_claim_review",
-    "performance_human_assignment", "performance_human_review", "performance_human_policy_draft")
+    "performance_human_assignment", "performance_human_review", "performance_human_policy_draft",
+    "performance_assessment_event", "performance_assessment_approver", "performance_policy_review",
+    "performance_scoring_release", "performance_measurement", "performance_access_audit", "performance_legacy_appeal")
 
 ClaimType = Literal["recorded_status", "recorded_test_outcome", "possible_regression_fixed",
     "possible_benchmark_improvement", "possible_architecture_tradeoff", "possible_mentoring_contribution",
