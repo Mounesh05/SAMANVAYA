@@ -25,12 +25,19 @@ from domain.models.developer_performance import (
     HRFeedback
 )
 from repositories.performance_repository import PerformanceRepository
+from domain.models.performance_scoring import legacy_metadata_for_record
 from intelligence.contribution_credit import (
-    calculate_contribution_credit,
     combine_hybrid_credit,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class PeriodScoringPending(ValueError):
+    def __init__(self):
+        super().__init__("Canonical period scoring is pending; use scoped advisory interpretations")
+        self.detail = {"status": "POLICY_PENDING", "message": str(self),
+                       "interpretation_endpoint": "/api/performance/interpretations"}
 
 
 class PerformanceService:
@@ -54,7 +61,68 @@ class PerformanceService:
     @property
     def repository(self) -> PerformanceRepository:
         return self.performance_repo
-    
+
+    @staticmethod
+    async def authorize_evidence(request, actor):
+        """Resolve current-account and exact scope checks without collecting data."""
+        import re
+        from fastapi import HTTPException
+        from core.database import col
+        from core.permissions import Permission, get_user_permissions
+        from domain.models.performance_evidence import EvidencePreviewRequest, EvidenceScope
+
+        request = EvidencePreviewRequest.model_validate(request)
+        projection = {"_id": 0, "employee_id": 1, "role": 1, "org_id": 1, "is_active": 1,
+                      "project_ids": 1, "team_id": 1, "github_username": 1}
+        current = await col("users").find_one({"employee_id": actor.get("employee_id")}, projection)
+        engineering_roles = {"DEVELOPER", "QA", "DEVOPS", "LEAD", "PM"}
+        if (not current or current.get("is_active") is not True or current.get("role") not in engineering_roles
+                or not current.get("org_id") or Permission.VIEW_AI_EVALUATION not in get_user_permissions(current["role"], False)):
+            raise HTTPException(403, "Current account is not permitted to inspect engineering evidence")
+        project = await col("projects").find_one({"id": request.project_id, "org_id": current["org_id"]},
+            {"_id": 0, "id": 1, "org_id": 1, "team_id": 1})
+        subject = await col("users").find_one({"employee_id": request.employee_id, "org_id": current["org_id"]}, projection)
+        if not project or not subject:
+            raise HTTPException(403, "Evidence scope is unavailable or unauthorized")
+
+        def assigned(account):
+            projects = account.get("project_ids")
+            return ((isinstance(projects, list) and request.project_id in projects)
+                    or bool(account.get("team_id") and account.get("team_id") == project.get("team_id")))
+
+        if (not assigned(current) or not assigned(subject) or subject.get("role") not in engineering_roles
+                or (current["employee_id"] != subject["employee_id"] and current["role"] not in {"LEAD", "PM"})):
+            raise HTTPException(403, "Evidence scope is unavailable or unauthorized")
+        config_unavailable = False
+        try:
+            configs = await col("github_project_configs").find({"project_id": request.project_id,
+                "$or": [{"org_id": current["org_id"]}, {"org_id": {"$exists": False}}]},
+                {"_id": 0, "repository_owner": 1, "repository_name": 1}).limit(3).to_list(3)
+        except Exception:
+            configs, config_unavailable = [], True
+        repositories = {f"{c.get('repository_owner', '')}/{c.get('repository_name', '')}" for c in configs}
+        repository = next(iter(repositories)) if len(repositories) == 1 and len(configs) < 3 else None
+        if repository and not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}", repository):
+            repository = None
+        scope = EvidenceScope(organization_id=current["org_id"], employee_id=subject["employee_id"],
+            project_id=request.project_id, repository=repository,
+            repository_mapping_status="UNAVAILABLE" if config_unavailable else "AVAILABLE" if repository
+                else "AMBIGUOUS" if configs else "MISSING",
+            period_start=request.period_start, period_end=request.period_end)
+        return scope, subject, current
+
+    @staticmethod
+    async def inspect_evidence(request, actor):
+        from datetime import timezone
+        from domain.models.performance_evidence import EvidencePreview
+        from domain.services.period_evidence import validated_period_manifest
+        from intelligence.performance_evidence import evidence_digest
+
+        scope, subject, _ = await PerformanceService.authorize_evidence(request, actor)
+        candidates, connectors = await DeveloperDataAggregator().collect_scoring_evidence(scope, subject)
+        snapshot = validated_period_manifest(scope, candidates, captured_at=datetime.now(timezone.utc), connectors=connectors)
+        return EvidencePreview(snapshot=snapshot, digest=evidence_digest(snapshot))
+
     async def evaluate_developer(
         self,
         request: DeveloperPerformanceCreate,
@@ -64,143 +132,9 @@ class PerformanceService:
         repo_name: Optional[str] = None,
         evaluated_by: str = "system"
     ) -> DeveloperPerformance:
-        """
-        Complete developer performance evaluation.
-        
-        This is the main entry point that:
-        1. Collects all developer data
-        2. Sends evidence to AI for an advisory explanation
-        3. Calculates deterministic contribution credit
-        4. Applies optional role feedback
-        5. Stores and returns result
-        
-        Args:
-            request: Evaluation request with period info
-            developer_name: Developer's name
-            developer_email: Developer's email for GitHub matching
-            repo_owner: GitHub repo owner (optional)
-            repo_name: GitHub repo name (optional)
-            evaluated_by: Who triggered the evaluation
-        
-        Returns:
-            Complete DeveloperPerformance with scores and insights
-        """
-        
-        # Step 1: Collect all developer data
-        logger.info(
-            "Collecting performance data for %s (%s)",
-            developer_name,
-            request.period_label,
-        )
-        developer_data = await self.data_aggregator.aggregate_developer_data(
-            developer_id=request.developer_id,
-            developer_email=developer_email,
-            project_id=request.project_id,
-            period_start=request.period_start,
-            period_end=request.period_end,
-            repo_owner=repo_owner,
-            repo_name=repo_name
-        )
-        
-        # Step 2: AI explanation (advisory only)
-        logger.info("Evaluating performance with the advisory AI service")
-        ai_evaluation = await self.evaluation_agent.evaluate_performance(
-            developer_data=developer_data,
-            developer_name=developer_name,
-            period_label=request.period_label
-        )
-        
-        # Step 3: Human feedback is collected separately via API.
-        role_evaluation = RoleEvaluation(
-            average_score=0,
-            contribution=0
-        )
-        
-        # Step 4: Calculate the authoritative contribution signal from evidence.
-        # AI remains advisory and explains observed work; it does not award credit.
-        objective_credit = calculate_contribution_credit(developer_data)
-        credit_data = combine_hybrid_credit(
-            objective_credit,
-            ai_score=ai_evaluation.score,
-            ai_available=not ai_evaluation.data_quality.get("ai_evaluation_failed", False),
-        )
-        final_score_percentage = credit_data["score"]
-        
-        # Step 5: Calculate confidence
-        days_of_data = (request.period_end - request.period_start).days
-        confidence_level, confidence_reason = self.evaluation_agent.calculate_confidence_level(
-            developer_data, days_of_data
-        )
-        
-        # Step 6: Get grade
-        grade = self.evaluation_agent.determine_grade(final_score_percentage)
-        
-        # Step 7: Get previous score for trend analysis
-        previous_performance = await self.performance_repo.get_previous_performance(
-            request.developer_id,
-            request.period_start
-        )
-        
-        previous_score = None
-        score_change = None
-        trend = None
-        
-        if previous_performance:
-            previous_score = previous_performance.get("final_score", 0)
-            score_change = final_score_percentage - previous_score
-            
-            if score_change > 5:
-                trend = "improving"
-            elif score_change < -5:
-                trend = "declining"
-            else:
-                trend = "stable"
-        
-        # Step 8: Build complete performance object
-        performance = DeveloperPerformance(
-            developer_id=request.developer_id,
-            developer_name=developer_name,
-            project_id=request.project_id,
-            period_type=request.period_type,
-            period_start=request.period_start,
-            period_end=request.period_end,
-            period_label=request.period_label,
-            ai_evaluation=ai_evaluation,
-            role_evaluation=role_evaluation,
-            contribution_credit=credit_data,
-            credit_history=[{
-                "score": credit_data["score"],
-                "methodology_version": credit_data["methodology_version"],
-                "recorded_at": datetime.utcnow().isoformat(),
-                "reason": "evaluation_created",
-            }],
-            final_score=final_score_percentage,
-            grade=grade,
-            previous_score=previous_score,
-            score_change=score_change,
-            trend=trend,
-            confidence_level=confidence_level,
-            confidence_reason=confidence_reason,
-            data_points={
-                "commits": developer_data['summary']['total_commits'],
-                "prs": developer_data['summary']['total_prs'],
-                "tasks": developer_data['summary']['total_tasks'],
-                "days": days_of_data
-            },
-            evaluated_by=evaluated_by
-        )
-        
-        # Step 9: Store in database
-        await self.performance_repo.create(performance.model_dump())
-        
-        logger.info(
-            "Evaluation complete: %.1f/100 (%s)",
-            final_score_percentage,
-            grade,
-        )
-        
-        return performance
-    
+        """Retired numeric entry point; no model output can create a period rating."""
+        raise PeriodScoringPending()
+
     async def add_role_feedback(
         self,
         performance_id: str,
@@ -476,6 +410,7 @@ class PerformanceService:
                 "grade": perf_data.get("grade"),
                 "ai_score": perf_data.get("ai_evaluation", {}).get("score", 0),
                 "role_score": perf_data.get("role_evaluation", {}).get("contribution", 0),
+                "scoring": legacy_metadata_for_record(perf_data).model_dump(mode="json"),
             })
         
         return trend_data
@@ -510,6 +445,7 @@ class PerformanceService:
                 "created_at": perf_data.get("created_at"),  # Add this for last_evaluated
                 "strengths": perf_data.get("ai_evaluation", {}).get("strengths", []),
                 "weaknesses": perf_data.get("ai_evaluation", {}).get("weaknesses", []),
+                "scoring": legacy_metadata_for_record(perf_data).model_dump(mode="json"),
             })
         
         # Sort by score descending

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from .base import BaseRepository
 from core.database import col
 from domain.models.ai_run import AIRun
+from domain.models.performance_claims import PROTECTED_RUN_TYPES
 import uuid
 
 
@@ -35,7 +36,7 @@ class AIRunRepository(BaseRepository):
 
     async def get_by_id(self, run_id: str) -> Optional[AIRun]:
         """Find AI run by ID."""
-        doc = await self.find_one({"id": run_id})
+        doc = await self.find_one({"id": run_id, "agent_type": {"$nin": list(PROTECTED_RUN_TYPES)}})
         return AIRun(**doc) if doc else None
 
     async def list(
@@ -45,7 +46,7 @@ class AIRunRepository(BaseRepository):
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[AIRun]:
         """List AI runs with optional filtering."""
-        query = filters or {}
+        query = {"$and": [filters or {}, {"agent_type": {"$nin": list(PROTECTED_RUN_TYPES)}}]}
         result = await self.find_many(
             query=query,
             limit=limit,
@@ -57,6 +58,8 @@ class AIRunRepository(BaseRepository):
 
     async def find_by_agent_type(self, agent_type: str, limit: int = 50) -> List[AIRun]:
         """Find runs by specific agent type."""
+        if agent_type in PROTECTED_RUN_TYPES:
+            return []
         result = await self.find_many(
             query={"agent_type": agent_type},
             limit=limit,
@@ -68,7 +71,7 @@ class AIRunRepository(BaseRepository):
     async def find_by_user(self, user_email: str, limit: int = 50) -> List[AIRun]:
         """Find runs triggered by specific user."""
         result = await self.find_many(
-            query={"triggered_by": user_email},
+            query={"triggered_by": user_email, "agent_type": {"$nin": list(PROTECTED_RUN_TYPES)}},
             limit=limit,
             sort_field="created_at",
             sort_dir=-1,
@@ -78,7 +81,7 @@ class AIRunRepository(BaseRepository):
     async def get_recent(self, limit: int = 20) -> List[AIRun]:
         """Get most recent AI runs."""
         result = await self.find_many(
-            query={},
+            query={"agent_type": {"$nin": list(PROTECTED_RUN_TYPES)}},
             limit=limit,
             sort_field="created_at",
             sort_dir=-1,

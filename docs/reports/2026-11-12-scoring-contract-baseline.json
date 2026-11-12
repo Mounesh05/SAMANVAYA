@@ -1,0 +1,6085 @@
+{
+  "additional_storage_schemas": {
+    "DeveloperEvaluation": {
+      "description": "A completed or failed evaluation for one developer contribution.",
+      "properties": {
+        "ai_provider": {
+          "title": "Ai Provider",
+          "type": "string"
+        },
+        "analysis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Analysis"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "dimensions": {
+          "additionalProperties": {
+            "type": "object"
+          },
+          "title": "Dimensions",
+          "type": "object"
+        },
+        "duplicate_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duplicate Key"
+        },
+        "employee_id": {
+          "title": "Employee Id",
+          "type": "string"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        },
+        "evaluation_focus": {
+          "title": "Evaluation Focus",
+          "type": "string"
+        },
+        "evaluation_id": {
+          "title": "Evaluation Id",
+          "type": "string"
+        },
+        "evidence_coverage": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Evidence Coverage",
+          "type": "object"
+        },
+        "evidence_coverage_reasons": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Evidence Coverage Reasons",
+          "type": "object"
+        },
+        "evidence_manifest": {
+          "title": "Evidence Manifest",
+          "type": "object"
+        },
+        "evidence_references": {
+          "items": {
+            "type": "object"
+          },
+          "title": "Evidence References",
+          "type": "array"
+        },
+        "evidence_validated": {
+          "default": false,
+          "title": "Evidence Validated",
+          "type": "boolean"
+        },
+        "github_username": {
+          "title": "Github Username",
+          "type": "string"
+        },
+        "head_commit_sha": {
+          "title": "Head Commit Sha",
+          "type": "string"
+        },
+        "human_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Human Score"
+        },
+        "is_preliminary": {
+          "default": true,
+          "title": "Is Preliminary",
+          "type": "boolean"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "model_name": {
+          "title": "Model Name",
+          "type": "string"
+        },
+        "overall_score": {
+          "anyOf": [
+            {
+              "maximum": 10,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overall Score"
+        },
+        "pr_number": {
+          "title": "Pr Number",
+          "type": "integer"
+        },
+        "recommendations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "repo_info": {
+          "title": "Repo Info",
+          "type": "object"
+        },
+        "repo_name": {
+          "title": "Repo Name",
+          "type": "string"
+        },
+        "repo_owner": {
+          "title": "Repo Owner",
+          "type": "string"
+        },
+        "schema_validated": {
+          "default": false,
+          "title": "Schema Validated",
+          "type": "boolean"
+        },
+        "score_coverage": {
+          "title": "Score Coverage",
+          "type": "object"
+        },
+        "score_dimensions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Score Dimensions",
+          "type": "array"
+        },
+        "score_weights": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Score Weights",
+          "type": "object"
+        },
+        "status": {
+          "default": "completed",
+          "title": "Status",
+          "type": "string"
+        },
+        "strengths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Strengths",
+          "type": "array"
+        },
+        "unsupported_references": {
+          "items": {
+            "type": "object"
+          },
+          "title": "Unsupported References",
+          "type": "array"
+        },
+        "weaknesses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Weaknesses",
+          "type": "array"
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "employee_id",
+        "github_username",
+        "repo_owner",
+        "repo_name",
+        "pr_number",
+        "head_commit_sha",
+        "evaluation_focus",
+        "ai_provider",
+        "model_name"
+      ],
+      "title": "DeveloperEvaluation",
+      "type": "object"
+    },
+    "DeveloperPerformanceCreate": {
+      "description": "Request to create performance evaluation",
+      "properties": {
+        "developer_id": {
+          "title": "Developer Id",
+          "type": "string"
+        },
+        "include_role_feedback": {
+          "default": true,
+          "title": "Include Role Feedback",
+          "type": "boolean"
+        },
+        "period_end": {
+          "format": "date-time",
+          "title": "Period End",
+          "type": "string"
+        },
+        "period_label": {
+          "title": "Period Label",
+          "type": "string"
+        },
+        "period_start": {
+          "format": "date-time",
+          "title": "Period Start",
+          "type": "string"
+        },
+        "period_type": {
+          "default": "sprint",
+          "title": "Period Type",
+          "type": "string"
+        },
+        "project_id": {
+          "title": "Project Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "developer_id",
+        "project_id",
+        "period_start",
+        "period_end",
+        "period_label"
+      ],
+      "title": "DeveloperPerformanceCreate",
+      "type": "object"
+    }
+  },
+  "collection_map": {
+    "audit_logs": "AuditLogger",
+    "developer_evaluations": "EvaluationRepository",
+    "developer_performances": "PerformanceRepository",
+    "evaluation_policies": "EvaluationPolicyRepository",
+    "hr_assessments": "HRAssessmentRepository"
+  },
+  "constraints": [
+    "Phase 0 only; no runtime edits",
+    "Synthetic test data; no production HR record export",
+    "AST calls are name-based inventory, not proof of every dynamic call edge",
+    "OpenAPI is composed from the same three routers and prefixes registered in main.py; no server started"
+  ],
+  "frontend_consumers": [
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.test.jsx",
+      "line": 5,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.test.jsx",
+      "line": 10,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.test.jsx",
+      "line": 141,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.test.jsx",
+      "line": 169,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.test.jsx",
+      "line": 183,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.jsx",
+      "line": 3,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.jsx",
+      "line": 54,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/evaluation/AIEvaluationPage.jsx",
+      "line": 65,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 5,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 48,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 148,
+      "matched_fields": [
+        "final_score"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 150,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 151,
+      "matched_fields": [
+        "role_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 152,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 189,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 190,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 196,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/developer/DeveloperDashboardPage.jsx",
+      "line": 198,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/api/performance.api.js",
+      "line": 3,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/api/evaluation.api.js",
+      "line": 3,
+      "matched_fields": [
+        "evaluationApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 6,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 13,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 39,
+      "matched_fields": [
+        "final_score"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 70,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 85,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 89,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.test.jsx",
+      "line": 137,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 4,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 111,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 118,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 138,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 234,
+      "matched_fields": [
+        "final_score"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 238,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 252,
+      "matched_fields": [
+        "ai_evaluation"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.jsx",
+      "line": 347,
+      "matched_fields": [
+        "final_score"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 6,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 13,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 62,
+      "matched_fields": [
+        "final_score"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 93,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 111,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 115,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 138,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 141,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 157,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 160,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 176,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 179,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 195,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 198,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 221,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 228,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 231,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 252,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 272,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 342,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    },
+    {
+      "file": "../frontend/src/pages/performance/PerformancePage.stress.test.jsx",
+      "line": 345,
+      "matched_fields": [
+        "performanceApi"
+      ]
+    }
+  ],
+  "inspected_revision": "28de5f935d41ae12c3e055e29d17c8ab1603e9cc",
+  "model_names": [
+    "DeveloperPerformance",
+    "DeveloperPerformanceCreate",
+    "AIEvaluation",
+    "PerformanceBreakdown",
+    "RoleEvaluation",
+    "ContributionCredit",
+    "HumanEvaluationPolicy",
+    "HRAssessment",
+    "HRAssessmentCreate",
+    "HumanEvaluationCompleteness",
+    "DeveloperEvaluation"
+  ],
+  "openapi": {
+    "components": {
+      "schemas": {
+        "AIEvaluation": {
+          "description": "AI-generated evaluation of developer performance",
+          "properties": {
+            "breakdown": {
+              "$ref": "#/components/schemas/PerformanceBreakdown"
+            },
+            "confidence": {
+              "description": "Confidence level: low, medium, high",
+              "title": "Confidence",
+              "type": "string"
+            },
+            "data_quality": {
+              "description": "Quality of input data",
+              "title": "Data Quality",
+              "type": "object"
+            },
+            "reasoning": {
+              "description": "AI's reasoning for the scores",
+              "title": "Reasoning",
+              "type": "string"
+            },
+            "recommendations": {
+              "description": "Actionable recommendations",
+              "items": {
+                "type": "string"
+              },
+              "title": "Recommendations",
+              "type": "array"
+            },
+            "score": {
+              "description": "Total AI evaluation score (0-90)",
+              "maximum": 90,
+              "minimum": 0,
+              "title": "Score",
+              "type": "number"
+            },
+            "strengths": {
+              "description": "Identified strengths",
+              "items": {
+                "type": "string"
+              },
+              "title": "Strengths",
+              "type": "array"
+            },
+            "weaknesses": {
+              "description": "Areas for improvement",
+              "items": {
+                "type": "string"
+              },
+              "title": "Weaknesses",
+              "type": "array"
+            }
+          },
+          "required": [
+            "score",
+            "breakdown",
+            "reasoning",
+            "confidence"
+          ],
+          "title": "AIEvaluation",
+          "type": "object"
+        },
+        "AIRun": {
+          "description": "Complete AI run record with evidence and LLM results.\nStores the full agent execution for audit and analysis.",
+          "example": {
+            "agent_type": "code_review",
+            "execution_time_ms": 1250.5,
+            "input_data": {
+              "context": {
+                "pr_title": "Add auth"
+              },
+              "evidence": {
+                "complexity_score": 45,
+                "risk_level": "medium"
+              }
+            },
+            "model_name": "ollama/llama3.2",
+            "output_data": {
+              "analysis": "Code complexity is moderate...",
+              "confidence": 0.85,
+              "recommendations": [
+                "Add unit tests",
+                "Refactor auth logic"
+              ],
+              "risk_level": "medium"
+            },
+            "status": "completed",
+            "triggered_by": "dev@example.com"
+          },
+          "properties": {
+            "agent_type": {
+              "description": "code_review|qa_analysis|devops_risk|meeting_insights|cicd_analysis",
+              "title": "Agent Type",
+              "type": "string"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "execution_time_ms": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Execution Time Ms"
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Id"
+            },
+            "input_data": {
+              "description": "Evidence + context",
+              "title": "Input Data",
+              "type": "object"
+            },
+            "model_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "ollama",
+              "description": "LLM provider/model",
+              "title": "Model Name"
+            },
+            "output_data": {
+              "description": "Analysis + recommendations",
+              "title": "Output Data",
+              "type": "object"
+            },
+            "status": {
+              "default": "pending",
+              "description": "pending|running|completed|failed",
+              "title": "Status",
+              "type": "string"
+            },
+            "triggered_by": {
+              "description": "User email who triggered",
+              "title": "Triggered By",
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent_type",
+            "triggered_by"
+          ],
+          "title": "AIRun",
+          "type": "object"
+        },
+        "AgentRequest": {
+          "description": "Request to invoke an AI agent.",
+          "properties": {
+            "context": {
+              "description": "Additional context",
+              "title": "Context",
+              "type": "object"
+            },
+            "evidence": {
+              "description": "Evidence from Intelligence Engine",
+              "title": "Evidence",
+              "type": "object"
+            },
+            "save_run": {
+              "default": true,
+              "description": "Save run to database",
+              "title": "Save Run",
+              "type": "boolean"
+            },
+            "task_type": {
+              "enum": [
+                "code_review",
+                "qa_analysis",
+                "devops_risk",
+                "meeting_insights",
+                "cicd_analysis",
+                "hr_assistant"
+              ],
+              "title": "Task Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task_type",
+            "evidence"
+          ],
+          "title": "AgentRequest",
+          "type": "object"
+        },
+        "AgentResponse": {
+          "description": "AI agent execution result.",
+          "properties": {
+            "agent_history": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Agent History",
+              "type": "array"
+            },
+            "analysis": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Analysis"
+            },
+            "confidence": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Confidence"
+            },
+            "errors": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Errors",
+              "type": "array"
+            },
+            "execution_time_ms": {
+              "title": "Execution Time Ms",
+              "type": "number"
+            },
+            "recommendations": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recommendations"
+            },
+            "risk_level": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk Level"
+            },
+            "run_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            },
+            "task_type": {
+              "title": "Task Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "run_id",
+            "task_type",
+            "analysis",
+            "recommendations",
+            "risk_level",
+            "confidence",
+            "agent_history",
+            "errors",
+            "execution_time_ms"
+          ],
+          "title": "AgentResponse",
+          "type": "object"
+        },
+        "Body_add_ceo_feedback_api_performance_feedback__performance_id__ceo_post": {
+          "properties": {
+            "business_impact": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Business Impact",
+              "type": "integer"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "company_alignment": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Company Alignment",
+              "type": "integer"
+            },
+            "innovation": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Innovation",
+              "type": "integer"
+            },
+            "leadership_potential": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Leadership Potential",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "business_impact",
+            "innovation",
+            "company_alignment",
+            "leadership_potential"
+          ],
+          "title": "Body_add_ceo_feedback_api_performance_feedback__performance_id__ceo_post",
+          "type": "object"
+        },
+        "Body_add_devops_feedback_api_performance_feedback__performance_id__devops_post": {
+          "properties": {
+            "ci_cd_compliance": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Ci Cd Compliance",
+              "type": "integer"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "deployment_quality": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Deployment Quality",
+              "type": "integer"
+            },
+            "incident_response": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Incident Response",
+              "type": "integer"
+            },
+            "monitoring_awareness": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Monitoring Awareness",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "deployment_quality",
+            "ci_cd_compliance",
+            "monitoring_awareness",
+            "incident_response"
+          ],
+          "title": "Body_add_devops_feedback_api_performance_feedback__performance_id__devops_post",
+          "type": "object"
+        },
+        "Body_add_hr_feedback_api_performance_feedback__performance_id__hr_post": {
+          "properties": {
+            "collaboration": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Collaboration",
+              "type": "integer"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "communication_skills": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Communication Skills",
+              "type": "integer"
+            },
+            "cultural_fit": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Cultural Fit",
+              "type": "integer"
+            },
+            "professionalism": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Professionalism",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "collaboration",
+            "professionalism",
+            "communication_skills",
+            "cultural_fit"
+          ],
+          "title": "Body_add_hr_feedback_api_performance_feedback__performance_id__hr_post",
+          "type": "object"
+        },
+        "Body_add_lead_feedback_api_performance_feedback__performance_id__lead_post": {
+          "properties": {
+            "code_quality": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Code Quality",
+              "type": "integer"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "mentoring": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Mentoring",
+              "type": "integer"
+            },
+            "technical_ownership": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Technical Ownership",
+              "type": "integer"
+            },
+            "technical_skill": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Technical Skill",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "technical_skill",
+            "code_quality",
+            "mentoring",
+            "technical_ownership"
+          ],
+          "title": "Body_add_lead_feedback_api_performance_feedback__performance_id__lead_post",
+          "type": "object"
+        },
+        "Body_add_pm_feedback_api_performance_feedback__performance_id__pm_post": {
+          "properties": {
+            "business_alignment": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Business Alignment",
+              "type": "integer"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "communication": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Communication",
+              "type": "integer"
+            },
+            "delivery_reliability": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Delivery Reliability",
+              "type": "integer"
+            },
+            "requirement_understanding": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Requirement Understanding",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "requirement_understanding",
+            "delivery_reliability",
+            "communication",
+            "business_alignment"
+          ],
+          "title": "Body_add_pm_feedback_api_performance_feedback__performance_id__pm_post",
+          "type": "object"
+        },
+        "Body_add_qa_feedback_api_performance_feedback__performance_id__qa_post": {
+          "properties": {
+            "bug_response": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Bug Response",
+              "type": "integer"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "quality_focus": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Quality Focus",
+              "type": "integer"
+            },
+            "regression_awareness": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Regression Awareness",
+              "type": "integer"
+            },
+            "test_coverage": {
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Test Coverage",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "quality_focus",
+            "test_coverage",
+            "bug_response",
+            "regression_awareness"
+          ],
+          "title": "Body_add_qa_feedback_api_performance_feedback__performance_id__qa_post",
+          "type": "object"
+        },
+        "Body_bulk_evaluate_developers_api_performance_evaluate_bulk_post": {
+          "properties": {
+            "developer_ids": {
+              "description": "List of developer IDs to evaluate",
+              "items": {
+                "type": "string"
+              },
+              "title": "Developer Ids",
+              "type": "array"
+            },
+            "period": {
+              "description": "Evaluation period (e.g., '2026-Q3')",
+              "title": "Period",
+              "type": "string"
+            },
+            "period_type": {
+              "default": "quarter",
+              "description": "Period type: sprint, month, quarter",
+              "title": "Period Type",
+              "type": "string"
+            },
+            "project_id": {
+              "default": "default-project",
+              "description": "Project ID",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "developer_ids",
+            "period"
+          ],
+          "title": "Body_bulk_evaluate_developers_api_performance_evaluate_bulk_post",
+          "type": "object"
+        },
+        "Body_configure_human_evaluation_policy_api_performance_policy_post": {
+          "properties": {
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Reason or notes for policy change",
+              "title": "Notes"
+            },
+            "role_weights": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "description": "Map of role name to weight, summing to 1.0",
+              "title": "Role Weights",
+              "type": "object"
+            }
+          },
+          "required": [
+            "role_weights"
+          ],
+          "title": "Body_configure_human_evaluation_policy_api_performance_policy_post",
+          "type": "object"
+        },
+        "Body_evaluate_developer_performance_api_performance_evaluate_post": {
+          "properties": {
+            "developer_email": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Developer's email for GitHub matching",
+              "title": "Developer Email"
+            },
+            "developer_id": {
+              "description": "Developer's user ID",
+              "title": "Developer Id",
+              "type": "string"
+            },
+            "developer_name": {
+              "description": "Developer's name",
+              "title": "Developer Name",
+              "type": "string"
+            },
+            "evaluated_by": {
+              "default": "api",
+              "description": "Who triggered the evaluation",
+              "title": "Evaluated By",
+              "type": "string"
+            },
+            "period": {
+              "description": "Evaluation period (e.g., '2026-Q3')",
+              "title": "Period",
+              "type": "string"
+            },
+            "period_type": {
+              "default": "quarter",
+              "description": "Period type: sprint, month, quarter",
+              "title": "Period Type",
+              "type": "string"
+            },
+            "project_id": {
+              "default": "default-project",
+              "description": "Project ID",
+              "title": "Project Id",
+              "type": "string"
+            },
+            "repo_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "GitHub repo name",
+              "title": "Repo Name"
+            },
+            "repo_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "GitHub repo owner",
+              "title": "Repo Owner"
+            }
+          },
+          "required": [
+            "developer_id",
+            "developer_name",
+            "period"
+          ],
+          "title": "Body_evaluate_developer_performance_api_performance_evaluate_post",
+          "type": "object"
+        },
+        "CEOFeedback": {
+          "description": "CEO feedback",
+          "properties": {
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "criterion_1": {
+              "description": "Business impact",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 1",
+              "type": "integer"
+            },
+            "criterion_2": {
+              "description": "Innovation",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 2",
+              "type": "integer"
+            },
+            "criterion_3": {
+              "description": "Company alignment",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 3",
+              "type": "integer"
+            },
+            "criterion_4": {
+              "description": "Leadership potential",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 4",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "criterion_1",
+            "criterion_2",
+            "criterion_3",
+            "criterion_4"
+          ],
+          "title": "CEOFeedback",
+          "type": "object"
+        },
+        "ComplianceStatus": {
+          "description": "Status tracking for organizational policy & compliance requirements.",
+          "enum": [
+            "completed",
+            "pending",
+            "exempted",
+            "not_applicable",
+            "under_review"
+          ],
+          "title": "ComplianceStatus",
+          "type": "string"
+        },
+        "ContributionCredit": {
+          "description": "Hybrid contribution signal with evidence, AI, and limitations.",
+          "properties": {
+            "components": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": "Components",
+              "type": "object"
+            },
+            "confidence": {
+              "title": "Confidence",
+              "type": "string"
+            },
+            "evidence_counts": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "title": "Evidence Counts",
+              "type": "object"
+            },
+            "is_advisory_only": {
+              "default": true,
+              "title": "Is Advisory Only",
+              "type": "boolean"
+            },
+            "methodology_version": {
+              "title": "Methodology Version",
+              "type": "string"
+            },
+            "missing_evidence": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Missing Evidence",
+              "type": "array"
+            },
+            "score": {
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Score",
+              "type": "number"
+            }
+          },
+          "required": [
+            "methodology_version",
+            "score",
+            "confidence"
+          ],
+          "title": "ContributionCredit",
+          "type": "object"
+        },
+        "CreditAppealRequest": {
+          "properties": {
+            "evidence": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "title": "Evidence",
+              "type": "array"
+            },
+            "reason": {
+              "maxLength": 2000,
+              "minLength": 20,
+              "title": "Reason",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason"
+          ],
+          "title": "CreditAppealRequest",
+          "type": "object"
+        },
+        "DevOpsFeedback": {
+          "description": "DevOps Engineer feedback",
+          "properties": {
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "criterion_1": {
+              "description": "Deployment quality",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 1",
+              "type": "integer"
+            },
+            "criterion_2": {
+              "description": "CI/CD compliance",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 2",
+              "type": "integer"
+            },
+            "criterion_3": {
+              "description": "Monitoring awareness",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 3",
+              "type": "integer"
+            },
+            "criterion_4": {
+              "description": "Incident response",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 4",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "criterion_1",
+            "criterion_2",
+            "criterion_3",
+            "criterion_4"
+          ],
+          "title": "DevOpsFeedback",
+          "type": "object"
+        },
+        "DeveloperPerformance": {
+          "description": "Complete developer performance evaluation",
+          "properties": {
+            "ai_evaluation": {
+              "$ref": "#/components/schemas/AIEvaluation"
+            },
+            "appeal": {
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Appeal"
+            },
+            "confidence_level": {
+              "description": "low, medium, high",
+              "title": "Confidence Level",
+              "type": "string"
+            },
+            "confidence_reason": {
+              "description": "Reason for confidence level",
+              "title": "Confidence Reason",
+              "type": "string"
+            },
+            "contribution_credit": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ContributionCredit"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "credit_history": {
+              "items": {
+                "type": "object"
+              },
+              "title": "Credit History",
+              "type": "array"
+            },
+            "credit_status": {
+              "default": "advisory",
+              "description": "advisory, appealed, reviewed",
+              "title": "Credit Status",
+              "type": "string"
+            },
+            "data_points": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "description": "Amount of data analyzed",
+              "title": "Data Points",
+              "type": "object"
+            },
+            "developer_id": {
+              "description": "User ID of the developer",
+              "title": "Developer Id",
+              "type": "string"
+            },
+            "developer_name": {
+              "description": "Name of the developer",
+              "title": "Developer Name",
+              "type": "string"
+            },
+            "evaluated_by": {
+              "default": "system",
+              "description": "Who triggered the evaluation",
+              "title": "Evaluated By",
+              "type": "string"
+            },
+            "final_score": {
+              "description": "Total performance score (0-100)",
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Final Score",
+              "type": "number"
+            },
+            "grade": {
+              "description": "A+, A, B+, B, C+, C, D, F",
+              "title": "Grade",
+              "type": "string"
+            },
+            "hr_assessment": {
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hr Assessment"
+            },
+            "human_evaluation_policy_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Human Evaluation Policy Version"
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Id"
+            },
+            "period_end": {
+              "format": "date-time",
+              "title": "Period End",
+              "type": "string"
+            },
+            "period_label": {
+              "description": "e.g., 'Sprint-23', 'Q1-2024'",
+              "title": "Period Label",
+              "type": "string"
+            },
+            "period_start": {
+              "format": "date-time",
+              "title": "Period Start",
+              "type": "string"
+            },
+            "period_type": {
+              "description": "sprint, month, quarter",
+              "title": "Period Type",
+              "type": "string"
+            },
+            "previous_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Previous Score"
+            },
+            "project_id": {
+              "description": "Project ID",
+              "title": "Project Id",
+              "type": "string"
+            },
+            "role_evaluation": {
+              "$ref": "#/components/schemas/RoleEvaluation"
+            },
+            "score_change": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Score Change"
+            },
+            "trend": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "improving, declining, stable",
+              "title": "Trend"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "developer_id",
+            "developer_name",
+            "project_id",
+            "period_type",
+            "period_start",
+            "period_end",
+            "period_label",
+            "ai_evaluation",
+            "role_evaluation",
+            "final_score",
+            "grade",
+            "confidence_level",
+            "confidence_reason"
+          ],
+          "title": "DeveloperPerformance",
+          "type": "object"
+        },
+        "EvaluationResult": {
+          "description": "API representation of a persisted evaluation.",
+          "properties": {
+            "ai_analysis": {
+              "title": "Ai Analysis",
+              "type": "object"
+            },
+            "ai_provider": {
+              "title": "Ai Provider",
+              "type": "string"
+            },
+            "duplicate": {
+              "default": false,
+              "title": "Duplicate",
+              "type": "boolean"
+            },
+            "employee_id": {
+              "title": "Employee Id",
+              "type": "string"
+            },
+            "evaluation_focus": {
+              "default": "code_quality",
+              "title": "Evaluation Focus",
+              "type": "string"
+            },
+            "evaluation_id": {
+              "title": "Evaluation Id",
+              "type": "string"
+            },
+            "evidence_coverage": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {},
+              "title": "Evidence Coverage",
+              "type": "object"
+            },
+            "evidence_coverage_reasons": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "default": {},
+              "title": "Evidence Coverage Reasons",
+              "type": "object"
+            },
+            "evidence_manifest": {
+              "default": {},
+              "title": "Evidence Manifest",
+              "type": "object"
+            },
+            "evidence_references": {
+              "items": {
+                "type": "object"
+              },
+              "title": "Evidence References",
+              "type": "array"
+            },
+            "github_username": {
+              "title": "Github Username",
+              "type": "string"
+            },
+            "head_commit_sha": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Head Commit Sha"
+            },
+            "human_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Human Score"
+            },
+            "is_preliminary": {
+              "default": true,
+              "title": "Is Preliminary",
+              "type": "boolean"
+            },
+            "limitations": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Limitations",
+              "type": "array"
+            },
+            "model_name": {
+              "title": "Model Name",
+              "type": "string"
+            },
+            "overall_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Overall Score"
+            },
+            "pr_number": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pr Number"
+            },
+            "recommendations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Recommendations",
+              "type": "array"
+            },
+            "repo_info": {
+              "title": "Repo Info",
+              "type": "object"
+            },
+            "repo_name": {
+              "title": "Repo Name",
+              "type": "string"
+            },
+            "repo_owner": {
+              "title": "Repo Owner",
+              "type": "string"
+            },
+            "score_coverage": {
+              "default": {},
+              "title": "Score Coverage",
+              "type": "object"
+            },
+            "score_dimensions": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Score Dimensions",
+              "type": "array"
+            },
+            "score_weights": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "default": {},
+              "title": "Score Weights",
+              "type": "object"
+            },
+            "status": {
+              "title": "Status",
+              "type": "string"
+            },
+            "timestamp": {
+              "title": "Timestamp",
+              "type": "string"
+            },
+            "unsupported_references": {
+              "default": [],
+              "items": {
+                "type": "object"
+              },
+              "title": "Unsupported References",
+              "type": "array"
+            }
+          },
+          "required": [
+            "evaluation_id",
+            "employee_id",
+            "github_username",
+            "repo_info",
+            "repo_owner",
+            "repo_name",
+            "pr_number",
+            "head_commit_sha",
+            "human_score",
+            "ai_provider",
+            "model_name",
+            "ai_analysis",
+            "overall_score",
+            "recommendations",
+            "evidence_references",
+            "status",
+            "timestamp"
+          ],
+          "title": "EvaluationResult",
+          "type": "object"
+        },
+        "HRAssessment": {
+          "description": "Persisted HR performance assessment record.\nTracks workplace conduct, compliance, reviewer identity, audit trail.",
+          "properties": {
+            "assessment_id": {
+              "title": "Assessment Id",
+              "type": "string"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "developer_id": {
+              "title": "Developer Id",
+              "type": "string"
+            },
+            "dimensions": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/HRAssessmentDimensionItem"
+              },
+              "title": "Dimensions",
+              "type": "object"
+            },
+            "evaluator_id": {
+              "title": "Evaluator Id",
+              "type": "string"
+            },
+            "evaluator_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Evaluator Name"
+            },
+            "evaluator_role": {
+              "default": "HR",
+              "title": "Evaluator Role",
+              "type": "string"
+            },
+            "general_comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "General Comments"
+            },
+            "overall_hr_score": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Normalized 0-100 score",
+              "title": "Overall Hr Score"
+            },
+            "performance_id": {
+              "title": "Performance Id",
+              "type": "string"
+            },
+            "policy_version": {
+              "default": "1.0.0",
+              "title": "Policy Version",
+              "type": "string"
+            },
+            "status": {
+              "default": "draft",
+              "description": "draft | submitted | approved | revised",
+              "title": "Status",
+              "type": "string"
+            },
+            "submitted_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitted At"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "assessment_id",
+            "performance_id",
+            "developer_id",
+            "evaluator_id",
+            "dimensions"
+          ],
+          "title": "HRAssessment",
+          "type": "object"
+        },
+        "HRAssessmentCreate": {
+          "description": "Request model for creating or updating an HR assessment.",
+          "properties": {
+            "dimensions": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/HRAssessmentDimensionItem"
+              },
+              "title": "Dimensions",
+              "type": "object"
+            },
+            "general_comments": {
+              "anyOf": [
+                {
+                  "maxLength": 3000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "General Comments"
+            }
+          },
+          "required": [
+            "dimensions"
+          ],
+          "title": "HRAssessmentCreate",
+          "type": "object"
+        },
+        "HRAssessmentDimensionItem": {
+          "description": "Individual HR assessment dimension with evidence-based rubric scoring.\nRubric scale:\n  4 — Exceeds Expectations\n  3 — Meets Expectations\n  2 — Needs Improvement (requires evidence)\n  1 — Unsatisfactory (requires evidence)\n  N/O — Not Observed (is_not_observed=True, rating=None)",
+          "properties": {
+            "comments": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "compliance_status": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ComplianceStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "For compliance & training items"
+            },
+            "dimension": {
+              "title": "Dimension",
+              "type": "string"
+            },
+            "evidence_description": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required for ratings 1 and 2",
+              "title": "Evidence Description"
+            },
+            "evidence_reference": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional doc/link reference",
+              "title": "Evidence Reference"
+            },
+            "is_not_observed": {
+              "default": false,
+              "description": "True if insufficient evidence or not observed",
+              "title": "Is Not Observed",
+              "type": "boolean"
+            },
+            "rating": {
+              "anyOf": [
+                {
+                  "maximum": 4,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Numeric rating 1-4, or None if Not Observed",
+              "title": "Rating"
+            }
+          },
+          "required": [
+            "dimension"
+          ],
+          "title": "HRAssessmentDimensionItem",
+          "type": "object"
+        },
+        "HRFeedback": {
+          "description": "HR feedback with enterprise rubric support",
+          "properties": {
+            "assessment_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assessment Id"
+            },
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "criterion_1": {
+              "anyOf": [
+                {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Professional conduct (1-5 or 1-4)",
+              "title": "Criterion 1"
+            },
+            "criterion_2": {
+              "anyOf": [
+                {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workplace ethics (1-5 or 1-4)",
+              "title": "Criterion 2"
+            },
+            "criterion_3": {
+              "anyOf": [
+                {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Policy compliance (1-5 or 1-4)",
+              "title": "Criterion 3"
+            },
+            "criterion_4": {
+              "anyOf": [
+                {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workplace accountability (1-5 or 1-4)",
+              "title": "Criterion 4"
+            },
+            "dimensions": {
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dimensions"
+            },
+            "evaluator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Evaluator Id"
+            },
+            "evaluator_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Evaluator Name"
+            },
+            "normalized_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Normalized Score"
+            },
+            "policy_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Policy Version"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "submitted",
+              "title": "Status"
+            },
+            "submitted_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitted At"
+            }
+          },
+          "title": "HRFeedback",
+          "type": "object"
+        },
+        "HTTPValidationError": {
+          "properties": {
+            "detail": {
+              "items": {
+                "$ref": "#/components/schemas/ValidationError"
+              },
+              "title": "Detail",
+              "type": "array"
+            }
+          },
+          "title": "HTTPValidationError",
+          "type": "object"
+        },
+        "HumanEvaluationCompleteness": {
+          "description": "Human evaluation completeness report across authorized roles.",
+          "properties": {
+            "details": {
+              "default": {},
+              "title": "Details",
+              "type": "object"
+            },
+            "developer_id": {
+              "title": "Developer Id",
+              "type": "string"
+            },
+            "human_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Human Score"
+            },
+            "is_complete": {
+              "title": "Is Complete",
+              "type": "boolean"
+            },
+            "pending_roles": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Pending Roles",
+              "type": "array"
+            },
+            "performance_id": {
+              "title": "Performance Id",
+              "type": "string"
+            },
+            "period_label": {
+              "title": "Period Label",
+              "type": "string"
+            },
+            "policy_version": {
+              "title": "Policy Version",
+              "type": "string"
+            },
+            "required_roles": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Required Roles",
+              "type": "array"
+            },
+            "role_scores": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "default": {},
+              "title": "Role Scores",
+              "type": "object"
+            },
+            "submitted_roles": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Submitted Roles",
+              "type": "array"
+            }
+          },
+          "required": [
+            "performance_id",
+            "developer_id",
+            "period_label",
+            "policy_version",
+            "required_roles",
+            "submitted_roles",
+            "pending_roles",
+            "is_complete"
+          ],
+          "title": "HumanEvaluationCompleteness",
+          "type": "object"
+        },
+        "HumanEvaluationPolicy": {
+          "description": "Configurable Human Evaluation Policy for the 10% human component.\nPreserves the overall 90% AI + 10% Human model.",
+          "properties": {
+            "ai_weight": {
+              "default": 0.9,
+              "description": "Weight of AI component (fixed at 0.90)",
+              "title": "Ai Weight",
+              "type": "number"
+            },
+            "configured_by": {
+              "title": "Configured By",
+              "type": "string"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "human_weight": {
+              "default": 0.1,
+              "description": "Weight of Human component (fixed at 0.10)",
+              "title": "Human Weight",
+              "type": "number"
+            },
+            "is_active": {
+              "default": true,
+              "title": "Is Active",
+              "type": "boolean"
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Notes"
+            },
+            "policy_id": {
+              "title": "Policy Id",
+              "type": "string"
+            },
+            "role_dimensions": {
+              "additionalProperties": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "title": "Role Dimensions",
+              "type": "object"
+            },
+            "role_weights": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "description": "Weights of eligible human evaluators summing to 1.0",
+              "title": "Role Weights",
+              "type": "object"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            },
+            "version": {
+              "default": "1.0.0",
+              "title": "Version",
+              "type": "string"
+            }
+          },
+          "required": [
+            "policy_id",
+            "configured_by"
+          ],
+          "title": "HumanEvaluationPolicy",
+          "type": "object"
+        },
+        "LeadFeedback": {
+          "description": "Team Lead feedback",
+          "properties": {
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "criterion_1": {
+              "description": "Technical skill",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 1",
+              "type": "integer"
+            },
+            "criterion_2": {
+              "description": "Code quality",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 2",
+              "type": "integer"
+            },
+            "criterion_3": {
+              "description": "Mentoring",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 3",
+              "type": "integer"
+            },
+            "criterion_4": {
+              "description": "Technical ownership",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 4",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "criterion_1",
+            "criterion_2",
+            "criterion_3",
+            "criterion_4"
+          ],
+          "title": "LeadFeedback",
+          "type": "object"
+        },
+        "PMFeedback": {
+          "description": "Product Manager feedback",
+          "properties": {
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "criterion_1": {
+              "description": "Requirement understanding",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 1",
+              "type": "integer"
+            },
+            "criterion_2": {
+              "description": "Delivery reliability",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 2",
+              "type": "integer"
+            },
+            "criterion_3": {
+              "description": "Communication",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 3",
+              "type": "integer"
+            },
+            "criterion_4": {
+              "description": "Business alignment",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 4",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "criterion_1",
+            "criterion_2",
+            "criterion_3",
+            "criterion_4"
+          ],
+          "title": "PMFeedback",
+          "type": "object"
+        },
+        "PerformanceBreakdown": {
+          "description": "Dimensional breakdown of performance score",
+          "properties": {
+            "code_quality": {
+              "description": "Code quality score (0-25)",
+              "maximum": 25,
+              "minimum": 0,
+              "title": "Code Quality",
+              "type": "number"
+            },
+            "collaboration": {
+              "description": "PR & collaboration score (0-15)",
+              "maximum": 15,
+              "minimum": 0,
+              "title": "Collaboration",
+              "type": "number"
+            },
+            "delivery": {
+              "description": "Delivery & execution score (0-20)",
+              "maximum": 20,
+              "minimum": 0,
+              "title": "Delivery",
+              "type": "number"
+            },
+            "engineering_impact": {
+              "description": "Engineering impact score (0-10)",
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Engineering Impact",
+              "type": "number"
+            },
+            "engineering_judgment": {
+              "description": "Engineering judgment score (0-5)",
+              "maximum": 5,
+              "minimum": 0,
+              "title": "Engineering Judgment",
+              "type": "number"
+            },
+            "reliability": {
+              "description": "Testing & reliability score (0-15)",
+              "maximum": 15,
+              "minimum": 0,
+              "title": "Reliability",
+              "type": "number"
+            }
+          },
+          "required": [
+            "code_quality",
+            "delivery",
+            "collaboration",
+            "reliability",
+            "engineering_impact",
+            "engineering_judgment"
+          ],
+          "title": "PerformanceBreakdown",
+          "type": "object"
+        },
+        "PerformanceOutcomeHR": {
+          "description": "HR-approved performance outcome - NO raw technical evidence.",
+          "properties": {
+            "ai_score_summary": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ai Score Summary"
+            },
+            "development_recommendations": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Development Recommendations"
+            },
+            "dimension_scores": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dimension Scores"
+            },
+            "employee_id": {
+              "title": "Employee Id",
+              "type": "string"
+            },
+            "employee_name": {
+              "title": "Employee Name",
+              "type": "string"
+            },
+            "evaluation_id": {
+              "title": "Evaluation Id",
+              "type": "string"
+            },
+            "final_feedback": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Final Feedback"
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Grade"
+            },
+            "hr_assessment": {
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hr Assessment"
+            },
+            "human_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Human Score"
+            },
+            "manager_recommendation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Manager Recommendation"
+            },
+            "overall_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Overall Score"
+            },
+            "period": {
+              "title": "Period",
+              "type": "string"
+            },
+            "period_end": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period End"
+            },
+            "period_start": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Start"
+            },
+            "promotion_consideration": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Promotion Consideration"
+            },
+            "rating": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rating"
+            },
+            "review_date": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review Date"
+            },
+            "reviewed_by": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reviewed By"
+            },
+            "role_feedback_summary": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role Feedback Summary"
+            }
+          },
+          "required": [
+            "evaluation_id",
+            "employee_id",
+            "employee_name",
+            "period"
+          ],
+          "title": "PerformanceOutcomeHR",
+          "type": "object"
+        },
+        "QAFeedback": {
+          "description": "QA Engineer feedback",
+          "properties": {
+            "comments": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comments"
+            },
+            "criterion_1": {
+              "description": "Quality focus",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 1",
+              "type": "integer"
+            },
+            "criterion_2": {
+              "description": "Test coverage",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 2",
+              "type": "integer"
+            },
+            "criterion_3": {
+              "description": "Bug response",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 3",
+              "type": "integer"
+            },
+            "criterion_4": {
+              "description": "Regression awareness",
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Criterion 4",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "criterion_1",
+            "criterion_2",
+            "criterion_3",
+            "criterion_4"
+          ],
+          "title": "QAFeedback",
+          "type": "object"
+        },
+        "RoleEvaluation": {
+          "description": "Combined role feedback evaluation",
+          "properties": {
+            "average_score": {
+              "default": 0,
+              "description": "Average role score (0-100)",
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Average Score",
+              "type": "number"
+            },
+            "ceo": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CEOFeedback"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contribution": {
+              "default": 0,
+              "description": "Role contribution (0-10)",
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Contribution",
+              "type": "number"
+            },
+            "devops": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DevOpsFeedback"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hr": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/HRFeedback"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lead": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LeadFeedback"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pm": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PMFeedback"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "qa": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/QAFeedback"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "title": "RoleEvaluation",
+          "type": "object"
+        },
+        "SimpleEvalRequest": {
+          "description": "Request for one developer evaluation.",
+          "properties": {
+            "employee_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Employee Id"
+            },
+            "evaluation_focus": {
+              "default": "code_quality",
+              "title": "Evaluation Focus",
+              "type": "string"
+            },
+            "github_username": {
+              "title": "Github Username",
+              "type": "string"
+            },
+            "human_score": {
+              "anyOf": [
+                {
+                  "maximum": 10,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Human Score"
+            },
+            "pr_number": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pr Number"
+            },
+            "repo_name": {
+              "title": "Repo Name",
+              "type": "string"
+            },
+            "repo_owner": {
+              "title": "Repo Owner",
+              "type": "string"
+            }
+          },
+          "required": [
+            "github_username",
+            "repo_owner",
+            "repo_name"
+          ],
+          "title": "SimpleEvalRequest",
+          "type": "object"
+        },
+        "ValidationError": {
+          "properties": {
+            "ctx": {
+              "title": "Context",
+              "type": "object"
+            },
+            "input": {
+              "title": "Input"
+            },
+            "loc": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "title": "Location",
+              "type": "array"
+            },
+            "msg": {
+              "title": "Message",
+              "type": "string"
+            },
+            "type": {
+              "title": "Error Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "loc",
+            "msg",
+            "type"
+          ],
+          "title": "ValidationError",
+          "type": "object"
+        }
+      }
+    },
+    "info": {
+      "title": "FastAPI",
+      "version": "0.1.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+      "/api/ai/health": {
+        "get": {
+          "description": "Check AI agent system health (Ollama connection).",
+          "operationId": "ai_health_check_api_ai_health_get",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            }
+          },
+          "summary": "Ai Health Check",
+          "tags": [
+            "AI Agents"
+          ]
+        }
+      },
+      "/api/ai/invoke": {
+        "post": {
+          "description": "Invoke AI agent to interpret Intelligence Engine evidence.",
+          "operationId": "invoke_agent_endpoint_api_ai_invoke_post",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AgentResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Invoke Agent Endpoint",
+          "tags": [
+            "AI Agents"
+          ]
+        }
+      },
+      "/api/ai/runs": {
+        "get": {
+          "description": "List recent AI agent runs with optional filtering. Only returns runs for accessible projects.\n\n**HR users receive filtered runs without technical evidence.**",
+          "operationId": "list_ai_runs_api_ai_runs_get",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "default": 50,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "query",
+              "name": "agent_type",
+              "required": false,
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Agent Type"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "items": {
+                      "$ref": "#/components/schemas/AIRun"
+                    },
+                    "title": "Response List Ai Runs Api Ai Runs Get",
+                    "type": "array"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List Ai Runs",
+          "tags": [
+            "AI Agents"
+          ]
+        }
+      },
+      "/api/ai/runs/{run_id}": {
+        "get": {
+          "description": "Get specific AI run by ID. User must have access to the run's project if applicable.\n\n**HR users receive filtered run without technical evidence.**",
+          "operationId": "get_ai_run_api_ai_runs__run_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "run_id",
+              "required": true,
+              "schema": {
+                "title": "Run Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AIRun"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Ai Run",
+          "tags": [
+            "AI Agents"
+          ]
+        }
+      },
+      "/api/evaluation/employee/{employee_id}": {
+        "get": {
+          "operationId": "list_employee_evaluations_api_evaluation_employee__employee_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "employee_id",
+              "required": true,
+              "schema": {
+                "title": "Employee Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "items": {
+                      "$ref": "#/components/schemas/EvaluationResult"
+                    },
+                    "title": "Response List Employee Evaluations Api Evaluation Employee  Employee Id  Get",
+                    "type": "array"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List Employee Evaluations"
+        }
+      },
+      "/api/evaluation/evaluate": {
+        "post": {
+          "description": "Evaluate one attributable PR and persist the completed result.",
+          "operationId": "evaluate_developer_ai_api_evaluation_evaluate_post",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleEvalRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/EvaluationResult"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Evaluate Developer Ai"
+        }
+      },
+      "/api/evaluation/health": {
+        "get": {
+          "description": "Check evaluation dependencies without running an evaluation.",
+          "operationId": "evaluation_health_api_evaluation_health_get",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            }
+          },
+          "summary": "Evaluation Health"
+        }
+      },
+      "/api/evaluation/latest": {
+        "get": {
+          "operationId": "get_latest_evaluation_api_evaluation_latest_get",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/EvaluationResult"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Response Get Latest Evaluation Api Evaluation Latest Get"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Latest Evaluation"
+        }
+      },
+      "/api/evaluation/repository/{owner}/{repo}/pr/{pr_number}": {
+        "get": {
+          "operationId": "list_pr_evaluations_api_evaluation_repository__owner___repo__pr__pr_number__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "owner",
+              "required": true,
+              "schema": {
+                "title": "Owner",
+                "type": "string"
+              }
+            },
+            {
+              "in": "path",
+              "name": "repo",
+              "required": true,
+              "schema": {
+                "title": "Repo",
+                "type": "string"
+              }
+            },
+            {
+              "in": "path",
+              "name": "pr_number",
+              "required": true,
+              "schema": {
+                "title": "Pr Number",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "items": {
+                      "$ref": "#/components/schemas/EvaluationResult"
+                    },
+                    "title": "Response List Pr Evaluations Api Evaluation Repository  Owner   Repo  Pr  Pr Number  Get",
+                    "type": "array"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List Pr Evaluations"
+        }
+      },
+      "/api/evaluation/{evaluation_id}": {
+        "get": {
+          "operationId": "get_evaluation_api_evaluation__evaluation_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "evaluation_id",
+              "required": true,
+              "schema": {
+                "title": "Evaluation Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/EvaluationResult"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Evaluation"
+        }
+      },
+      "/api/performance/assessment/hr/{performance_id}": {
+        "get": {
+          "description": "Get HR assessment record for a developer's evaluation (draft or submitted).\nReturns null with 200 OK if no HR assessment has been created yet for this developer.\nRequired Permission: VIEW_HR_PERFORMANCE_ASSESSMENT or VIEW_PERFORMANCE_OUTCOMES",
+          "operationId": "get_hr_assessment_api_performance_assessment_hr__performance_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/HRAssessment"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "title": "Response Get Hr Assessment Api Performance Assessment Hr  Performance Id  Get"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Hr Assessment"
+        },
+        "post": {
+          "description": "Save HR assessment draft without affecting the final evaluation score.\nRequired Permission: CREATE_HR_PERFORMANCE_ASSESSMENT or SUBMIT_HR_PERFORMANCE_ASSESSMENT",
+          "operationId": "save_hr_assessment_draft_api_performance_assessment_hr__performance_id__post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HRAssessmentCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Save Hr Assessment Draft"
+        }
+      },
+      "/api/performance/assessment/hr/{performance_id}/submit": {
+        "post": {
+          "description": "Submit finalized HR performance assessment with enterprise rubric.\nEnforces documented evidence requirement for negative ratings (1 or 2).\nRecalculates human component and the overall 90% AI + 10% Human final score.\nRequired Permission: SUBMIT_HR_PERFORMANCE_ASSESSMENT",
+          "operationId": "submit_hr_assessment_api_performance_assessment_hr__performance_id__submit_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HRAssessmentCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Submit Hr Assessment"
+        }
+      },
+      "/api/performance/assessments/{performance_id}/completeness": {
+        "get": {
+          "description": "Review completeness of human evaluations across configured roles.\nRequired Permission: REVIEW_HUMAN_EVALUATION_COMPLETENESS or VIEW_PERFORMANCE_OUTCOMES",
+          "operationId": "check_human_evaluation_completeness_api_performance_assessments__performance_id__completeness_get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HumanEvaluationCompleteness"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Check Human Evaluation Completeness"
+        }
+      },
+      "/api/performance/credit/{performance_id}/appeal": {
+        "post": {
+          "description": "Record a developer's appeal without overwriting the original score.",
+          "operationId": "appeal_credit_api_performance_credit__performance_id__appeal_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditAppealRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Appeal Credit"
+        }
+      },
+      "/api/performance/dashboard/{developer_id}": {
+        "get": {
+          "description": "Complete developer dashboard data - matches frontend DashboardData interface.\n\nScope enforcement:\n- DEVELOPER: own dashboard only\n- LEAD/PM/QA/DEVOPS: authorized scope\n- HR/CEO: organization-wide",
+          "operationId": "get_developer_dashboard_api_performance_dashboard__developer_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "developer_id",
+              "required": true,
+              "schema": {
+                "title": "Developer Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "periods",
+              "required": false,
+              "schema": {
+                "default": 6,
+                "title": "Periods",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Developer Dashboard"
+        }
+      },
+      "/api/performance/developer/{developer_id}": {
+        "get": {
+          "description": "Get performance evaluation for a developer.\n\n**Permission Check:** \n- Own data: Requires VIEW_OWN_PERFORMANCE\n- Team data: Requires VIEW_TEAM_PERFORMANCE (LEAD)\n- Any data: ADMIN or CEO\n- HR: Requires VIEW_PERFORMANCE_OUTCOMES (filtered view, no technical details)\n\nArgs:\n    developer_id: Developer's user ID\n    period_label: Specific period (optional, returns latest if not specified)\n\nReturns:\n    Complete performance evaluation with scores and recommendations.\n    **HR users receive filtered outcome without technical evidence.**",
+          "operationId": "get_developer_performance_api_performance_developer__developer_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "developer_id",
+              "required": true,
+              "schema": {
+                "title": "Developer Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "period_label",
+              "required": false,
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Period Label"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/DeveloperPerformance"
+                      },
+                      {
+                        "$ref": "#/components/schemas/PerformanceOutcomeHR"
+                      }
+                    ],
+                    "title": "Response Get Developer Performance Api Performance Developer  Developer Id  Get"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Developer Performance"
+        }
+      },
+      "/api/performance/developer/{developer_id}/trend": {
+        "get": {
+          "description": "Get historical performance trend for a developer.\n\nReturns last N evaluations with scores and trends.\nPerfect for displaying performance graphs.\n\nArgs:\n    developer_id: Developer's user ID\n    limit: Number of periods to return (default: 10)\n\nReturns:\n    ```json\n    {\n      \"developer_id\": \"dev123\",\n      \"current_score\": 85.2,\n      \"trend\": \"improving\",\n      \"history\": [\n        {\n          \"period_label\": \"Sprint-23\",\n          \"final_score\": 85.2,\n          \"grade\": \"B+\",\n          \"period_start\": \"2024-01-01\"\n        },\n        ...\n      ]\n    }\n    ```",
+          "operationId": "get_performance_trend_api_performance_developer__developer_id__trend_get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "developer_id",
+              "required": true,
+              "schema": {
+                "title": "Developer Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "default": 10,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Performance Trend"
+        }
+      },
+      "/api/performance/evaluate": {
+        "post": {
+          "description": "Evaluate developer performance using AI.\n\n**Required Permission:** TRIGGER_AI_EVALUATION (CEO or ADMIN only)\n\nThis endpoint:\n1. Collects all developer data (commits, PRs, tasks, etc.)\n2. Sends to AI for evaluation across 6 dimensions\n3. Calculates performance score (0-100)\n4. Returns detailed breakdown with recommendations\n\n**AI evaluates:**\n- Code Quality (25 pts) - Reads actual code diffs\n- Delivery (20 pts) - Evaluates task completion quality\n- Collaboration (15 pts) - Analyzes PR conversations\n- Reliability (15 pts) - Checks tests and bugs\n- Engineering Impact (10 pts) - Assesses business value\n- Engineering Judgment (5 pts) - Pattern analysis\n\n**Total: 90 pts from AI + 10 pts from role feedback**",
+          "operationId": "evaluate_developer_performance_api_performance_evaluate_post",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_evaluate_developer_performance_api_performance_evaluate_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Evaluate Developer Performance"
+        }
+      },
+      "/api/performance/evaluate/bulk": {
+        "post": {
+          "description": "Bulk evaluate multiple developers at once.\n\n**Required Permission:** TRIGGER_BULK_EVALUATION (ADMIN only)\n\nThis is an async operation that triggers evaluations for multiple developers.\nReturns immediately with a status message. Evaluations run in background.\n\nUseful for:\n- End of quarter evaluations\n- Bulk processing after data sync\n- Team-wide evaluations\n\nExample:\n```json\n{\n  \"developer_ids\": [\"dev001\", \"dev002\", \"dev003\"],\n  \"period\": \"2026-Q3\",\n  \"project_id\": \"default-project\",\n  \"period_type\": \"quarter\"\n}\n```\n\nReturns:\n```json\n{\n  \"message\": \"Bulk evaluation started\",\n  \"developer_count\": 3,\n  \"period\": \"2026-Q3\",\n  \"status\": \"processing\"\n}\n```",
+          "operationId": "bulk_evaluate_developers_api_performance_evaluate_bulk_post",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_bulk_evaluate_developers_api_performance_evaluate_bulk_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "202": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Bulk Evaluate Developers"
+        }
+      },
+      "/api/performance/feedback/{performance_id}/ceo": {
+        "post": {
+          "description": "Add CEO feedback (structured 1-5 ratings).\n\n**Required Permission:** SUBMIT_CEO_FEEDBACK (CEO role only)",
+          "operationId": "add_ceo_feedback_api_performance_feedback__performance_id__ceo_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_add_ceo_feedback_api_performance_feedback__performance_id__ceo_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Add Ceo Feedback"
+        }
+      },
+      "/api/performance/feedback/{performance_id}/devops": {
+        "post": {
+          "description": "Add DevOps Engineer feedback (structured 1-5 ratings).\n\n**Required Permission:** SUBMIT_DEVOPS_FEEDBACK (DEVOPS role only)",
+          "operationId": "add_devops_feedback_api_performance_feedback__performance_id__devops_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_add_devops_feedback_api_performance_feedback__performance_id__devops_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Add Devops Feedback"
+        }
+      },
+      "/api/performance/feedback/{performance_id}/hr": {
+        "post": {
+          "description": "Add HR feedback (structured 1-5 ratings).\n\n**Required Permission:** SUBMIT_HR_FEEDBACK (HR role only)",
+          "operationId": "add_hr_feedback_api_performance_feedback__performance_id__hr_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_add_hr_feedback_api_performance_feedback__performance_id__hr_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Add Hr Feedback"
+        }
+      },
+      "/api/performance/feedback/{performance_id}/lead": {
+        "post": {
+          "description": "Add Team Lead feedback (structured 1-5 ratings).\n\n**Required Permission:** SUBMIT_LEAD_FEEDBACK (LEAD role only)",
+          "operationId": "add_lead_feedback_api_performance_feedback__performance_id__lead_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_add_lead_feedback_api_performance_feedback__performance_id__lead_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Add Lead Feedback"
+        }
+      },
+      "/api/performance/feedback/{performance_id}/pm": {
+        "post": {
+          "description": "Add Product Manager feedback (structured 1-5 ratings).\n\n**Required Permission:** SUBMIT_PM_FEEDBACK (PM role only)",
+          "operationId": "add_pm_feedback_api_performance_feedback__performance_id__pm_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_add_pm_feedback_api_performance_feedback__performance_id__pm_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Add Pm Feedback"
+        }
+      },
+      "/api/performance/feedback/{performance_id}/qa": {
+        "post": {
+          "description": "Add QA Engineer feedback (structured 1-5 ratings).\n\n**Required Permission:** SUBMIT_QA_FEEDBACK (QA role only)",
+          "operationId": "add_qa_feedback_api_performance_feedback__performance_id__qa_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "performance_id",
+              "required": true,
+              "schema": {
+                "title": "Performance Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_add_qa_feedback_api_performance_feedback__performance_id__qa_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/DeveloperPerformance"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Add Qa Feedback"
+        }
+      },
+      "/api/performance/policy": {
+        "get": {
+          "description": "Get active human evaluation policy defining weights across human roles.",
+          "operationId": "get_human_evaluation_policy_api_performance_policy_get",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Human Evaluation Policy"
+        },
+        "post": {
+          "description": "Configure human evaluation role weights for the 10% human component.\nPreserves 90% AI + 10% Human model.\nRequired Permission: MANAGE_EVALUATION_POLICY (CEO or ADMIN)",
+          "operationId": "configure_human_evaluation_policy_api_performance_policy_post",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Body_configure_human_evaluation_policy_api_performance_policy_post"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HumanEvaluationPolicy"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Configure Human Evaluation Policy"
+        }
+      },
+      "/api/performance/policy/history": {
+        "get": {
+          "description": "Get version history of human evaluation policies.",
+          "operationId": "get_human_evaluation_policy_history_api_performance_policy_history_get",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "default": 20,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Human Evaluation Policy History"
+        }
+      },
+      "/api/performance/team/{project_id}/{period_label}": {
+        "get": {
+          "description": "Get performance summary for all developers in a project/period.\n\nSpecial values:\n- project_id=\"all\" - Get from all projects\n- period_label=\"current\" - Get latest period\n\nPerfect for team dashboards and comparative analysis.",
+          "operationId": "get_team_performance_api_performance_team__project_id___period_label__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "project_id",
+              "required": true,
+              "schema": {
+                "title": "Project Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "path",
+              "name": "period_label",
+              "required": true,
+              "schema": {
+                "title": "Period Label",
+                "type": "string"
+              }
+            },
+            {
+              "in": "header",
+              "name": "authorization",
+              "required": true,
+              "schema": {
+                "title": "Authorization",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Team Performance"
+        }
+      }
+    }
+  },
+  "route_inventory": [
+    {
+      "file": "api/routes/performance.py",
+      "line": 39,
+      "path": "/api/performance/credit/{performance_id}/appeal",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.appeal_credit",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 75,
+      "path": "/api/performance/evaluate/bulk",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.bulk_evaluate_developers",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 256,
+      "path": "/api/performance/evaluate",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.evaluate_developer_performance",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 390,
+      "path": "/api/performance/developer/{developer_id}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_developer_performance",
+      "response_model": "Union[DeveloperPerformance, PerformanceOutcomeHR]",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 468,
+      "path": "/api/performance/developer/{developer_id}/trend",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_performance_trend",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 572,
+      "path": "/api/performance/feedback/{performance_id}/pm",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.add_pm_feedback",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 617,
+      "path": "/api/performance/feedback/{performance_id}/lead",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.add_lead_feedback",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 655,
+      "path": "/api/performance/feedback/{performance_id}/qa",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.add_qa_feedback",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 693,
+      "path": "/api/performance/feedback/{performance_id}/devops",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.add_devops_feedback",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 731,
+      "path": "/api/performance/feedback/{performance_id}/ceo",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.add_ceo_feedback",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 769,
+      "path": "/api/performance/feedback/{performance_id}/hr",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.add_hr_feedback",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 813,
+      "path": "/api/performance/assessment/hr/{performance_id}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_hr_assessment",
+      "response_model": "Optional[HRAssessment]",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 842,
+      "path": "/api/performance/assessment/hr/{performance_id}",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.save_hr_assessment_draft",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 873,
+      "path": "/api/performance/assessment/hr/{performance_id}/submit",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.submit_hr_assessment",
+      "response_model": "DeveloperPerformance",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 905,
+      "path": "/api/performance/assessments/{performance_id}/completeness",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.check_human_evaluation_completeness",
+      "response_model": "HumanEvaluationCompleteness",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 935,
+      "path": "/api/performance/policy",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_human_evaluation_policy",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 946,
+      "path": "/api/performance/policy",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.performance.configure_human_evaluation_policy",
+      "response_model": "HumanEvaluationPolicy",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 978,
+      "path": "/api/performance/policy/history",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_human_evaluation_policy_history",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 990,
+      "path": "/api/performance/team/{project_id}/{period_label}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_team_performance",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/performance.py",
+      "line": 1115,
+      "path": "/api/performance/dashboard/{developer_id}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.performance.get_developer_dashboard",
+      "response_model": null,
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/evaluation.py",
+      "line": 1258,
+      "path": "/api/evaluation/evaluate",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.evaluation.evaluate_developer_ai",
+      "response_model": "EvaluationResult",
+      "dependencies": [
+        "require_roles('CEO', 'LEAD')"
+      ]
+    },
+    {
+      "file": "api/routes/evaluation.py",
+      "line": 1417,
+      "path": "/api/evaluation/latest",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.evaluation.get_latest_evaluation",
+      "response_model": "Optional[EvaluationResult]",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/evaluation.py",
+      "line": 1425,
+      "path": "/api/evaluation/employee/{employee_id}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.evaluation.list_employee_evaluations",
+      "response_model": "List[EvaluationResult]",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/evaluation.py",
+      "line": 1434,
+      "path": "/api/evaluation/repository/{owner}/{repo}/pr/{pr_number}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.evaluation.list_pr_evaluations",
+      "response_model": "List[EvaluationResult]",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/evaluation.py",
+      "line": 1452,
+      "path": "/api/evaluation/health",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.evaluation.evaluation_health",
+      "response_model": null,
+      "dependencies": []
+    },
+    {
+      "file": "api/routes/evaluation.py",
+      "line": 1472,
+      "path": "/api/evaluation/{evaluation_id}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.evaluation.get_evaluation",
+      "response_model": "EvaluationResult",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/ai.py",
+      "line": 44,
+      "path": "/api/ai/health",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.ai.ai_health_check",
+      "response_model": null,
+      "dependencies": []
+    },
+    {
+      "file": "api/routes/ai.py",
+      "line": 56,
+      "path": "/api/ai/invoke",
+      "methods": [
+        "POST"
+      ],
+      "endpoint": "api.routes.ai.invoke_agent_endpoint",
+      "response_model": "AgentResponse",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/ai.py",
+      "line": 147,
+      "path": "/api/ai/runs",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.ai.list_ai_runs",
+      "response_model": "list[AIRun]",
+      "dependencies": [
+        "get_current_user"
+      ]
+    },
+    {
+      "file": "api/routes/ai.py",
+      "line": 199,
+      "path": "/api/ai/runs/{run_id}",
+      "methods": [
+        "GET"
+      ],
+      "endpoint": "api.routes.ai.get_ai_run",
+      "response_model": "AIRun",
+      "dependencies": [
+        "get_current_user"
+      ]
+    }
+  ],
+  "static_scoring_call_sites": [
+    {
+      "callee": "HRPerformanceService().submit_hr_assessment",
+      "caller": "test_first_hr_assessment_creates_role_evaluation",
+      "category": "test",
+      "file": "tests/test_review_regressions.py",
+      "line": 20
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "test_first_hr_assessment_creates_role_evaluation",
+      "category": "test",
+      "file": "tests/test_review_regressions.py",
+      "line": 20
+    },
+    {
+      "callee": "HRPerformanceService().check_human_evaluation_completeness",
+      "caller": "test_completeness_before_first_performance_returns_pending_roles",
+      "category": "test",
+      "file": "tests/test_review_regressions.py",
+      "line": 28
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "test_completeness_before_first_performance_returns_pending_roles",
+      "category": "test",
+      "file": "tests/test_review_regressions.py",
+      "line": 28
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "TestHRAssessmentScoring.setup_method",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 45
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "TestEvaluationPolicy.setup_method",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 188
+    },
+    {
+      "callee": "self.service.configure_policy",
+      "caller": "TestEvaluationPolicy.test_policy_weights_must_sum_to_one",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 199
+    },
+    {
+      "callee": "self.service.configure_policy",
+      "caller": "TestEvaluationPolicy.test_policy_rejects_negative_weights",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 213
+    },
+    {
+      "callee": "self.service.configure_policy",
+      "caller": "TestEvaluationPolicy.test_valid_policy_increments_version",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 233
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "TestNinetyTenEvaluationAggregation.setup_method",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 247
+    },
+    {
+      "callee": "self.service.submit_hr_assessment",
+      "caller": "TestNinetyTenEvaluationAggregation.test_formula_aggregation_exactness",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 336
+    },
+    {
+      "callee": "self.service.check_human_evaluation_completeness",
+      "caller": "TestNinetyTenEvaluationAggregation.test_completeness_check",
+      "category": "test",
+      "file": "tests/test_hr_performance_assessment.py",
+      "line": 387
+    },
+    {
+      "callee": "evaluation._calculate_focus_score",
+      "caller": "_persistable_evaluation",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 139
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "_run_model_response",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 157
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_ai_prompt_contains_actual_pr_evidence",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 172
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_oversized_manifest_is_rejected_before_model_call",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 214
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_oversized_prompt_is_rejected_before_model_call",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 231
+    },
+    {
+      "callee": "evaluation._calculate_focus_score",
+      "caller": "test_score_aggregation_excludes_unsupported_dimensions",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 394
+    },
+    {
+      "callee": "evaluation._calculate_focus_score",
+      "caller": "test_overall_score_unavailable_when_no_dimensions_are_eligible",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 402
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_missing_evidence_stops_before_model",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 533
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_invalid_model_json_is_rejected",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 550
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_ollama_connection_closed_is_reported_without_persistence",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 572
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_ollama_timeout_is_reported",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 591
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_backend_path_remains_usable_after_model_failure",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 607
+    },
+    {
+      "callee": "evaluation._run_ai_evaluation",
+      "caller": "test_backend_path_remains_usable_after_model_failure",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 616
+    },
+    {
+      "callee": "evaluation._calculate_focus_score",
+      "caller": "test_score_uses_only_assessable_dimensions",
+      "category": "test",
+      "file": "tests/test_evaluation_engine.py",
+      "line": 927
+    },
+    {
+      "callee": "calculate_contribution_credit",
+      "caller": "test_credit_is_deterministic_and_uses_observable_evidence",
+      "category": "test",
+      "file": "tests/test_contribution_credit.py",
+      "line": 17
+    },
+    {
+      "callee": "calculate_contribution_credit",
+      "caller": "test_missing_sources_are_reported_instead_of_being_scored_as_success",
+      "category": "test",
+      "file": "tests/test_contribution_credit.py",
+      "line": 28
+    },
+    {
+      "callee": "calculate_contribution_credit",
+      "caller": "test_introduced_bugs_reduce_reliability_points",
+      "category": "test",
+      "file": "tests/test_contribution_credit.py",
+      "line": 50
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_hybrid_credit_uses_ai_and_normalizes_missing_human_feedback",
+      "category": "test",
+      "file": "tests/test_contribution_credit.py",
+      "line": 67
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_hybrid_credit_includes_human_feedback_when_available",
+      "category": "test",
+      "file": "tests/test_contribution_credit.py",
+      "line": 79
+    },
+    {
+      "callee": "PerformanceEvaluationAgent",
+      "caller": "TestPerformanceAgentFiltering.test_performance_agent_filters_for_hr",
+      "category": "test",
+      "file": "tests/test_ai_authorization.py",
+      "line": 373
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_f1_formula_and_missing_human_denominator",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 90
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_f1_formula_and_missing_human_denominator",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 91
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_f1_formula_and_missing_human_denominator",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 92
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_f1_formula_and_missing_human_denominator",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 94
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_f2_model_numeric_input_changes_aggregate",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 105
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_f2_model_numeric_input_changes_aggregate",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 106
+    },
+    {
+      "callee": "period_manifest",
+      "caller": "test_f3_actual_manifest_cannot_supply_required_citations",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 120
+    },
+    {
+      "callee": "agent._parse_ai_response",
+      "caller": "test_f3_actual_manifest_cannot_supply_required_citations",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 123
+    },
+    {
+      "callee": "agent._parse_ai_response",
+      "caller": "test_f3_isolated_registry_lookup_is_incompatible",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 134
+    },
+    {
+      "callee": "agent._parse_ai_response",
+      "caller": "test_f3_isolated_breakdown_rejects_partial_registry",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 144
+    },
+    {
+      "callee": "calculate_contribution_credit",
+      "caller": "test_f4_duplicate_activity_receives_additional_points",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 152
+    },
+    {
+      "callee": "calculate_contribution_credit",
+      "caller": "test_f4_duplicate_activity_receives_additional_points",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 153
+    },
+    {
+      "callee": "PerformanceService.__new__(PerformanceService)._calculate_role_scores",
+      "caller": "test_f5_equal_and_policy_weighted_human_aggregates_differ",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 160
+    },
+    {
+      "callee": "HRPerformanceService.__new__(HRPerformanceService).calculate_aggregated_human_score",
+      "caller": "test_f5_equal_and_policy_weighted_human_aggregates_differ",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 161
+    },
+    {
+      "callee": "PerformanceService.__new__(PerformanceService)._calculate_role_scores",
+      "caller": "test_f6_ceo_remains_numeric_reviewer_and_policy_option",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 168
+    },
+    {
+      "callee": "HRPerformanceService().configure_policy",
+      "caller": "test_f6_ceo_remains_numeric_reviewer_and_policy_option",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 169
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "test_f6_ceo_remains_numeric_reviewer_and_policy_option",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 169
+    },
+    {
+      "callee": "HRPerformanceService().submit_hr_assessment",
+      "caller": "test_f7_empty_hr_submission_creates_zero_score_and_grade",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 176
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "test_f7_empty_hr_submission_creates_zero_score_and_grade",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 176
+    },
+    {
+      "callee": "HRPerformanceService().submit_hr_assessment",
+      "caller": "test_f8_hr_path_applies_ninety_percent_to_legacy_ninety_point_score",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 185
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "test_f8_hr_path_applies_ninety_percent_to_legacy_ninety_point_score",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 185
+    },
+    {
+      "callee": "HRPerformanceService().submit_hr_assessment",
+      "caller": "test_f9_not_observed_compatibility_fields_are_fabricated",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 192
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "test_f9_not_observed_compatibility_fields_are_fabricated",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 192
+    },
+    {
+      "callee": "period_manifest",
+      "caller": "test_f10_duplicates_and_invalid_period_still_establish_eligibility",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 203
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "test_f12_typed_ai_success_publishes_grade_before_human_feedback",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 221
+    },
+    {
+      "callee": "service.evaluate_developer",
+      "caller": "test_f12_typed_ai_success_publishes_grade_before_human_feedback",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 225
+    },
+    {
+      "callee": "period_manifest",
+      "caller": "test_additional_aggregator_manifest_contract_mismatch",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 241
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "test_additional_feedback_retry_reuses_prior_composite_as_objective",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 246
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "test_additional_feedback_retry_reuses_prior_composite_as_objective",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 248
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "test_additional_feedback_retry_reuses_prior_composite_as_objective",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 249
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "test_additional_feedback_retry_reuses_prior_composite_as_objective",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 250
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "test_f13_concurrent_feedback_loses_one_completed_submission",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 257
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "test_f13_concurrent_feedback_loses_one_completed_submission",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 257
+    },
+    {
+      "callee": "services[0].add_role_feedback",
+      "caller": "test_f13_concurrent_feedback_loses_one_completed_submission",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 271
+    },
+    {
+      "callee": "services[1].add_role_feedback",
+      "caller": "test_f13_concurrent_feedback_loses_one_completed_submission",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 272
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "test_additional_ollama_outage_blocks_objective_calculation",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 301
+    },
+    {
+      "callee": "service.evaluate_developer",
+      "caller": "test_additional_ollama_outage_blocks_objective_calculation",
+      "category": "audit",
+      "file": "tests/audits/scoring_architecture_phase0.py",
+      "line": 307
+    },
+    {
+      "callee": "aggregate_multi_period_scores",
+      "caller": "aggregate_multi_period_scores",
+      "category": "runtime",
+      "file": "intelligence/evaluation_scoring.py",
+      "line": 258
+    },
+    {
+      "callee": "self._parse_ai_response",
+      "caller": "PerformanceEvaluationAgent.evaluate_performance",
+      "category": "runtime",
+      "file": "agents/performance_agent.py",
+      "line": 47
+    },
+    {
+      "callee": "period_manifest",
+      "caller": "PerformanceEvaluationAgent._build_evaluation_prompt",
+      "category": "runtime",
+      "file": "agents/performance_agent.py",
+      "line": 50
+    },
+    {
+      "callee": "period_manifest",
+      "caller": "PerformanceEvaluationAgent._parse_ai_response",
+      "category": "runtime",
+      "file": "agents/performance_agent.py",
+      "line": 74
+    },
+    {
+      "callee": "period_manifest",
+      "caller": "PerformanceEvaluationAgent._get_performance_summary_for_hr",
+      "category": "runtime",
+      "file": "agents/performance_agent.py",
+      "line": 169
+    },
+    {
+      "callee": "PerformanceEvaluationAgent",
+      "caller": "PerformanceService.__init__",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 51
+    },
+    {
+      "callee": "self.evaluation_agent.evaluate_performance",
+      "caller": "PerformanceService.evaluate_developer",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 107
+    },
+    {
+      "callee": "calculate_contribution_credit",
+      "caller": "PerformanceService.evaluate_developer",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 121
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "PerformanceService.evaluate_developer",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 122
+    },
+    {
+      "callee": "self.evaluation_agent.calculate_confidence_level",
+      "caller": "PerformanceService.evaluate_developer",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 131
+    },
+    {
+      "callee": "self.evaluation_agent.determine_grade",
+      "caller": "PerformanceService.evaluate_developer",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 136
+    },
+    {
+      "callee": "self._calculate_role_scores",
+      "caller": "PerformanceService.add_role_feedback",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 282
+    },
+    {
+      "callee": "combine_hybrid_credit",
+      "caller": "PerformanceService.add_role_feedback",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 302
+    },
+    {
+      "callee": "self.evaluation_agent.determine_grade",
+      "caller": "PerformanceService.add_role_feedback",
+      "category": "runtime",
+      "file": "domain/services/performance_service.py",
+      "line": 319
+    },
+    {
+      "callee": "PerformanceEvaluationAgent",
+      "caller": "HRPerformanceService.__init__",
+      "category": "runtime",
+      "file": "domain/services/hr_performance_service.py",
+      "line": 40
+    },
+    {
+      "callee": "self.evaluation_agent.determine_grade",
+      "caller": "HRPerformanceService.submit_hr_assessment",
+      "category": "runtime",
+      "file": "domain/services/hr_performance_service.py",
+      "line": 420
+    },
+    {
+      "callee": "self.calculate_aggregated_human_score",
+      "caller": "HRPerformanceService.submit_hr_assessment",
+      "category": "runtime",
+      "file": "domain/services/hr_performance_service.py",
+      "line": 469
+    },
+    {
+      "callee": "self.evaluation_agent.determine_grade",
+      "caller": "HRPerformanceService.submit_hr_assessment",
+      "category": "runtime",
+      "file": "domain/services/hr_performance_service.py",
+      "line": 485
+    },
+    {
+      "callee": "self.calculate_aggregated_human_score",
+      "caller": "HRPerformanceService.check_human_evaluation_completeness",
+      "category": "runtime",
+      "file": "domain/services/hr_performance_service.py",
+      "line": 547
+    },
+    {
+      "callee": "_run_ai_evaluation",
+      "caller": "evaluate_developer_ai",
+      "category": "runtime",
+      "file": "api/routes/evaluation.py",
+      "line": 1297
+    },
+    {
+      "callee": "_calculate_focus_score",
+      "caller": "evaluate_developer_ai",
+      "category": "runtime",
+      "file": "api/routes/evaluation.py",
+      "line": 1326
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "bulk_evaluate_developers",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 207
+    },
+    {
+      "callee": "service.evaluate_developer",
+      "caller": "bulk_evaluate_developers",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 212
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "evaluate_developer_performance",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 355
+    },
+    {
+      "callee": "service.evaluate_developer",
+      "caller": "evaluate_developer_performance",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 358
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "get_developer_performance",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 443
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "get_performance_trend",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 521
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "add_pm_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 599
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "add_pm_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 611
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "add_lead_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 637
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "add_lead_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 649
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "add_qa_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 675
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "add_qa_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 687
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "add_devops_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 713
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "add_devops_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 725
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "add_ceo_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 751
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "add_ceo_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 763
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "add_hr_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 796
+    },
+    {
+      "callee": "service.add_role_feedback",
+      "caller": "add_hr_feedback",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 807
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "get_hr_assessment",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 834
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "save_hr_assessment_draft",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 863
+    },
+    {
+      "callee": "hr_service.save_hr_assessment_draft",
+      "caller": "save_hr_assessment_draft",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 865
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "submit_hr_assessment",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 895
+    },
+    {
+      "callee": "hr_service.submit_hr_assessment",
+      "caller": "submit_hr_assessment",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 897
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "check_human_evaluation_completeness",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 925
+    },
+    {
+      "callee": "hr_service.check_human_evaluation_completeness",
+      "caller": "check_human_evaluation_completeness",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 927
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "get_human_evaluation_policy",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 941
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "configure_human_evaluation_policy",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 967
+    },
+    {
+      "callee": "hr_service.configure_policy",
+      "caller": "configure_human_evaluation_policy",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 970
+    },
+    {
+      "callee": "HRPerformanceService",
+      "caller": "get_human_evaluation_policy_history",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 985
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "get_team_performance",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 1013
+    },
+    {
+      "callee": "PerformanceService",
+      "caller": "get_developer_dashboard",
+      "category": "runtime",
+      "file": "api/routes/performance.py",
+      "line": 1160
+    }
+  ]
+}

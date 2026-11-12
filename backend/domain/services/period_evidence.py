@@ -9,6 +9,12 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, date
 
 
+def validated_period_manifest(scope, candidates, *, captured_at, connectors=()):
+    """Canonical manifest; legacy count thresholds are not performance proof."""
+    from intelligence.performance_evidence import build_evidence_snapshot
+    return build_evidence_snapshot(scope, candidates, captured_at=captured_at, connectors=connectors)
+
+
 # Minimum evidence thresholds for dimension eligibility
 EVIDENCE_THRESHOLDS = {
     'code_quality': {'commits': 5, 'pull_requests': 2},

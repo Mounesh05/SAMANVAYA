@@ -5,14 +5,14 @@ Protected with RBAC permissions.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict
 from datetime import datetime
-from domain.services.performance_service import PerformanceService
+from domain.services.performance_service import PerformanceService, PeriodScoringPending
 from domain.services.hr_performance_service import HRPerformanceService
 from domain.models.developer_performance import (
     DeveloperPerformance,
-    DeveloperPerformanceCreate
 )
 from domain.models.hr_performance import (
     HRAssessment,
@@ -21,13 +21,54 @@ from domain.models.hr_performance import (
     HumanEvaluationCompleteness,
 )
 from domain.schemas.hr_views import PerformanceOutcomeHR, HRDashboardPerformanceView
-from core.config import settings
+from domain.models.performance_scoring import legacy_metadata_for_record
+from domain.models.performance_evidence import EvidencePreview, EvidencePreviewRequest
+from domain.models.performance_claims import (
+    ClaimReview, ClaimReviewRequest, InterpretationDetails, InterpretationRun, ReviewerAssignmentRequest,
+)
 from core.dependencies import get_current_user
 from core.permissions import Permission, get_user_permissions
 from core.authorization import verify_can_view_user_tasks, get_accessible_project_ids, has_org_access
 from core.audit import log_audit, AuditAction
 
 router = APIRouter()
+
+
+def pending_period_response():
+    detail = PeriodScoringPending().detail
+    return JSONResponse(status_code=409, content={"detail": detail["message"], "status": detail["status"],
+        "interpretation_endpoint": detail["interpretation_endpoint"]})
+
+
+@router.post("/evidence/preview", response_model=EvidencePreview)
+async def preview_performance_evidence(body: EvidencePreviewRequest, user: dict = Depends(get_current_user)):
+    """Inspect scoped, redacted evidence without creating an employee rating."""
+    return await PerformanceService.inspect_evidence(body, user)
+
+
+@router.post("/interpretations", response_model=InterpretationRun, status_code=201)
+async def create_performance_interpretation(body: EvidencePreviewRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_claim_service import PerformanceClaimService
+    return await PerformanceClaimService().create(body, user)
+
+
+@router.get("/interpretations/{run_id}", response_model=InterpretationDetails)
+async def get_performance_interpretation(run_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_claim_service import PerformanceClaimService
+    return await PerformanceClaimService().get(run_id, user)
+
+
+@router.post("/claim-reviewers", status_code=201)
+async def assign_performance_claim_reviewer(body: ReviewerAssignmentRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_claim_service import PerformanceClaimService
+    return await PerformanceClaimService().assign_reviewer(body, user)
+
+
+@router.post("/interpretations/{run_id}/claims/{claim_id}/reviews", response_model=ClaimReview, status_code=201)
+async def review_performance_claim(run_id: str, claim_id: str, body: ClaimReviewRequest,
+                                   user: dict = Depends(get_current_user)):
+    from domain.services.performance_claim_service import PerformanceClaimService
+    return await PerformanceClaimService().review(run_id, claim_id, body, user)
 
 
 class CreditAppealRequest(BaseModel):
@@ -71,7 +112,7 @@ async def appeal_credit(
     return {"performance_id": performance_id, "credit_status": "appealed", "appeal": appeal}
 
 
-@router.post("/evaluate/bulk", status_code=202)
+@router.post("/evaluate/bulk", status_code=202, deprecated=True)
 async def bulk_evaluate_developers(
     developer_ids: List[str] = Body(..., description="List of developer IDs to evaluate"),
     period: str = Body(..., description="Evaluation period (e.g., '2026-Q3')"),
@@ -79,39 +120,7 @@ async def bulk_evaluate_developers(
     period_type: str = Body("quarter", description="Period type: sprint, month, quarter"),
     user: dict = Depends(get_current_user)
 ):
-    """
-    Bulk evaluate multiple developers at once.
-    
-    **Required Permission:** TRIGGER_BULK_EVALUATION (ADMIN only)
-    
-    This is an async operation that triggers evaluations for multiple developers.
-    Returns immediately with a status message. Evaluations run in background.
-    
-    Useful for:
-    - End of quarter evaluations
-    - Bulk processing after data sync
-    - Team-wide evaluations
-    
-    Example:
-    ```json
-    {
-      "developer_ids": ["dev001", "dev002", "dev003"],
-      "period": "2026-Q3",
-      "project_id": "default-project",
-      "period_type": "quarter"
-    }
-    ```
-    
-    Returns:
-    ```json
-    {
-      "message": "Bulk evaluation started",
-      "developer_count": 3,
-      "period": "2026-Q3",
-      "status": "processing"
-    }
-    ```
-    """
+    """Deprecated numeric bulk workflow: returns POLICY_PENDING without writing scores."""
     # Check permission - ADMIN only
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
@@ -136,123 +145,10 @@ async def bulk_evaluate_developers(
             detail="Maximum 100 developers per bulk evaluation"
         )
 
-    # Disallow evaluating executive or administrative roles (CEO, HR)
-    try:
-        from repositories.user_repository import UserRepository
-        user_repo = UserRepository()
-        for d_id in developer_ids:
-            t_user = await user_repo.find_by_employee_id(d_id)
-            if t_user and t_user.get("role", "").upper() in ("CEO", "HR"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot evaluate employee {d_id} with role {t_user.get('role')}. Performance evaluations only apply to engineering contributors."
-                )
-    except HTTPException:
-        raise
-    except Exception:
-        pass
-    
-    try:
-        # Parse period to dates
-        from datetime import datetime, timedelta
-        
-        if 'Q' in period:
-            year_str, quarter_str = period.split('-Q')
-            year = int(year_str)
-            quarter = int(quarter_str)
-            
-            month_start = (quarter - 1) * 3 + 1
-            month_end = month_start + 2
-            
-            period_start = datetime(year, month_start, 1)
-            if month_end == 12:
-                period_end = datetime(year, 12, 31, 23, 59, 59)
-            else:
-                next_month = datetime(year, month_end + 1, 1)
-                period_end = next_month - timedelta(seconds=1)
-        else:
-            period_end = datetime.now()
-            period_start = period_end - timedelta(days=30)
-        
-        # Get developer details from repository
-        from repositories.user_repository import UserRepository
-        user_repo = UserRepository()
-        
-        successful = []
-        failed = []
-        
-        # Process each developer
-        for dev_id in developer_ids:
-            try:
-                # Get developer info
-                developer = await user_repo.find_by_employee_id(dev_id)
-                if not developer:
-                    failed.append({"developer_id": dev_id, "reason": "Not found"})
-                    continue
-                
-                developer_name = developer.get("name", "Unknown")
-                developer_email = developer.get("email", f"{dev_id}@example.com")
-                
-                # Create request
-                request = DeveloperPerformanceCreate(
-                    developer_id=dev_id,
-                    project_id=project_id,
-                    period_type=period_type,
-                    period_start=period_start,
-                    period_end=period_end,
-                    period_label=period
-                )
-                
-                # Initialize service
-                service = PerformanceService(
-                    github_token=settings.GITHUB_TOKEN if hasattr(settings, 'GITHUB_TOKEN') else None
-                )
-                
-                # Evaluate (this could be made async with background tasks)
-                performance = await service.evaluate_developer(
-                    request=request,
-                    developer_name=developer_name,
-                    developer_email=developer_email,
-                    evaluated_by=f"bulk_eval_by_{user.get('employee_id')}"
-                )
-                
-                successful.append({
-                    "developer_id": dev_id,
-                    "developer_name": developer_name,
-                    "score": performance.final_score,
-                    "grade": performance.grade
-                })
-                
-            except Exception as e:
-                failed.append({
-                    "developer_id": dev_id,
-                    "reason": str(e)
-                })
-        
-        return {
-            "message": "Bulk evaluation completed",
-            "total": len(developer_ids),
-            "successful": len(successful),
-            "failed": len(failed),
-            "period": period,
-            "period_type": period_type,
-            "results": {
-                "successful": successful,
-                "failed": failed
-            },
-            "status": "completed" if len(failed) == 0 else "partial"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+    return pending_period_response()
 
 
-@router.post("/evaluate", response_model=DeveloperPerformance, status_code=201)
+@router.post("/evaluate", response_model=DeveloperPerformance, status_code=201, deprecated=True)
 async def evaluate_developer_performance(
     developer_id: str = Body(..., description="Developer's user ID"),
     developer_name: str = Body(..., description="Developer's name"),
@@ -265,27 +161,7 @@ async def evaluate_developer_performance(
     evaluated_by: str = Body("api", description="Who triggered the evaluation"),
     user: dict = Depends(get_current_user)
 ):
-    """
-    Evaluate developer performance using AI.
-    
-    **Required Permission:** TRIGGER_AI_EVALUATION (CEO or ADMIN only)
-    
-    This endpoint:
-    1. Collects all developer data (commits, PRs, tasks, etc.)
-    2. Sends to AI for evaluation across 6 dimensions
-    3. Calculates performance score (0-100)
-    4. Returns detailed breakdown with recommendations
-    
-    **AI evaluates:**
-    - Code Quality (25 pts) - Reads actual code diffs
-    - Delivery (20 pts) - Evaluates task completion quality
-    - Collaboration (15 pts) - Analyzes PR conversations
-    - Reliability (15 pts) - Checks tests and bugs
-    - Engineering Impact (10 pts) - Assesses business value
-    - Engineering Judgment (5 pts) - Pattern analysis
-    
-    **Total: 90 pts from AI + 10 pts from role feedback**
-    """
+    """Deprecated numeric workflow. Use scoped advisory interpretations while policy is pending."""
     # Check permission
     from core.permissions import get_user_permissions
     user_permissions = get_user_permissions(
@@ -316,74 +192,7 @@ async def evaluate_developer_performance(
     except Exception:
         pass
     
-    try:
-        # Parse period to dates (simple quarter parsing)
-        # Format: "2026-Q3" or "2024-Jan" or custom range
-        from datetime import datetime, timedelta
-        
-        if 'Q' in period:
-            # Quarter format: "2026-Q3"
-            year_str, quarter_str = period.split('-Q')
-            year = int(year_str)
-            quarter = int(quarter_str)
-            
-            month_start = (quarter - 1) * 3 + 1
-            month_end = month_start + 2
-            
-            period_start = datetime(year, month_start, 1)
-            if month_end == 12:
-                period_end = datetime(year, 12, 31, 23, 59, 59)
-            else:
-                next_month = datetime(year, month_end + 1, 1)
-                period_end = next_month - timedelta(seconds=1)
-        else:
-            # Default to last 30 days
-            period_end = datetime.now()
-            period_start = period_end - timedelta(days=30)
-        
-        # Create request
-        request = DeveloperPerformanceCreate(
-            developer_id=developer_id,
-            project_id=project_id,
-            period_type=period_type,
-            period_start=period_start,
-            period_end=period_end,
-            period_label=period
-        )
-        
-        # Initialize service
-        service = PerformanceService(github_token=settings.GITHUB_TOKEN if hasattr(settings, 'GITHUB_TOKEN') else None)
-        
-        # Evaluate
-        performance = await service.evaluate_developer(
-            request=request,
-            developer_name=developer_name,
-            developer_email=developer_email or f"{developer_id}@example.com",
-            repo_owner=repo_owner,
-            repo_name=repo_name,
-            evaluated_by=evaluated_by
-        )
-        
-        # Check if AI evaluation failed
-        if performance.ai_evaluation.data_quality.get("ai_evaluation_failed", False):
-            raise HTTPException(
-                status_code=503,
-                detail="AI evaluation service unavailable. The evaluation was saved but AI insights are missing. Please retry when Ollama is running."
-            )
-        
-        # Audit log
-        await log_audit(
-            action=AuditAction.EVALUATION_TRIGGERED,
-            actor=user,
-            resource_type="performance",
-            resource_id=developer_id,
-            details={"period": period, "project_id": project_id}
-        )
-        
-        return performance
-        
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return pending_period_response()
 
 
 @router.get("/developer/{developer_id}", response_model=Union[DeveloperPerformance, PerformanceOutcomeHR])
@@ -1054,7 +863,8 @@ async def get_team_performance(
                     "overall_score": latest['final_score'],  # Map final_score to overall_score
                     "grade": latest['grade'],
                     "trend": trend_map.get(latest.get('trend', 'stable'), 'stable'),
-                    "last_evaluated": latest['created_at'].isoformat()
+                    "last_evaluated": latest['created_at'].isoformat(),
+                    "scoring": legacy_metadata_for_record(latest).model_dump(mode="json"),
                 })
             
             if not developers_data:
@@ -1100,7 +910,8 @@ async def get_team_performance(
                 "overall_score": member['final_score'],  # Map to overall_score
                 "grade": member['grade'],
                 "trend": trend_map.get(member.get('trend', 'stable'), 'stable'),
-                "last_evaluated": last_eval
+                "last_evaluated": last_eval,
+                "scoring": member.get("scoring") or legacy_metadata_for_record(member).model_dump(mode="json"),
             })
         
         return transformed_data
@@ -1191,6 +1002,7 @@ async def get_developer_dashboard(
                 "period": current.period_label,
                 "overall_score": current.final_score,
                 "grade": current.grade,
+                "scoring": legacy_metadata_for_record(current).model_dump(mode="json"),
                 "rating": PerformanceOutcomeHR._score_to_rating(current.final_score),
                 "contribution_credit": None,  # Suppressed for HR (contains LOC, commits, PR metrics)
                 "ai_evaluation": {
@@ -1223,7 +1035,8 @@ async def get_developer_dashboard(
                     historical_trend.append({
                         "period": item.get('period_label', ''),
                         "score": item.get('final_score', 0),
-                        "grade": item.get('grade', 'N/A')
+                        "grade": item.get('grade', 'N/A'),
+                        "scoring": item.get("scoring") or legacy_metadata_for_record(item).model_dump(mode="json"),
                     })
             
             return HRDashboardPerformanceView(
@@ -1241,6 +1054,7 @@ async def get_developer_dashboard(
             "period": current.period_label,
             "overall_score": current.final_score,
             "grade": current.grade,
+            "scoring": legacy_metadata_for_record(current).model_dump(mode="json"),
             "contribution_credit": (
                 current.contribution_credit.model_dump()
                 if current.contribution_credit
@@ -1275,7 +1089,8 @@ async def get_developer_dashboard(
                 historical_trend.append({
                     "period": item.get('period_label', ''),
                     "score": item.get('final_score', 0),
-                    "grade": item.get('grade', 'N/A')
+                    "grade": item.get('grade', 'N/A'),
+                    "scoring": item.get("scoring") or legacy_metadata_for_record(item).model_dump(mode="json"),
                 })
         
         # Build dashboard response matching frontend DashboardData interface

@@ -2,7 +2,8 @@
 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+from domain.models.performance_scoring import LegacyScoringMetadata, legacy_metadata_for_record
 
 
 class PerformanceBreakdown(BaseModel):
@@ -159,6 +160,12 @@ class DeveloperPerformance(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     evaluated_by: str = Field(default="system", description="Who triggered the evaluation")
+
+    @computed_field(return_type=LegacyScoringMetadata)
+    @property
+    def scoring(self) -> LegacyScoringMetadata:
+        """Read-only compatibility metadata; legacy numbers are never canonical evidence."""
+        return legacy_metadata_for_record(self)
 
 
 class DeveloperPerformanceCreate(BaseModel):

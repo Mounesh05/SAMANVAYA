@@ -3,7 +3,8 @@ HR-Safe Data Views
 Filtered response models that exclude technical/engineering data from HR users.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from domain.models.performance_scoring import LegacyScoringMetadata, legacy_metadata_for_record
 from typing import Optional, Dict, List, Any
 from datetime import date, datetime
 
@@ -84,6 +85,7 @@ class PerformanceOutcomeHR(BaseModel):
     hr_assessment: Optional[Dict[str, Any]] = None  # HR workplace assessment summary
     human_score: Optional[float] = None
     ai_score_summary: Optional[float] = None
+    scoring: LegacyScoringMetadata = Field(default_factory=LegacyScoringMetadata)
     
     # EXCLUDED from HR view:
     # - raw_evidence (technical details)
@@ -158,6 +160,7 @@ class PerformanceOutcomeHR(BaseModel):
             hr_assessment=hr_assessment,
             human_score=human_score,
             ai_score_summary=ai_score,
+            scoring=legacy_metadata_for_record(performance),
         )
     
     @staticmethod

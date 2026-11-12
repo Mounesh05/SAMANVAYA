@@ -25,6 +25,11 @@ class DeveloperDataAggregator:
         self.pr_repo = PRRepository()
         self.task_repo = TaskRepository()
         self.sprint_repo = SprintRepository()
+
+    async def collect_scoring_evidence(self, scope, subject):
+        """Additive canonical collection; never invokes the lossy legacy/AI pipeline."""
+        from intelligence.performance_evidence_collection import collect_local_evidence
+        return await collect_local_evidence(scope, subject)
     
     async def aggregate_developer_data(
         self,

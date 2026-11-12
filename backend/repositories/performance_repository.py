@@ -16,7 +16,9 @@ class PerformanceRepository:
     
     async def create(self, performance_data: Dict[str, Any]) -> str:
         """Create new performance record."""
-        result = await self.collection.insert_one(performance_data)
+        document = dict(performance_data)
+        document.pop("scoring", None)  # Derived read metadata is not a historical backfill.
+        result = await self.collection.insert_one(document)
         return str(result.inserted_id)
     
     async def get_by_id(self, performance_id: str) -> Optional[Dict[str, Any]]:
@@ -42,6 +44,8 @@ class PerformanceRepository:
     async def update(self, performance_id: str, data: Dict[str, Any]) -> bool:
         """Update performance record by ObjectId, string _id, or developer ID."""
         from bson import ObjectId, errors
+        data = dict(data)
+        data.pop("scoring", None)
         data["updated_at"] = datetime.now(timezone.utc)
         
         query = None
