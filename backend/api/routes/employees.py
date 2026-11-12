@@ -115,10 +115,26 @@ async def create_employee(
             status_code=403,
             detail="Insufficient permissions. Only HR or ADMIN can create employees."
         )
-    
+
+    # Policy checks run before any lookup so a forbidden request never reveals
+    # whether an employee ID or email already exists.
+    # Protect CEO role from creation through employee administration
+    if employee.role.upper() == "CEO":
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot create a CEO account through employee administration."
+        )
+
+    # Only admins can create admins
+    if employee.is_admin and not user.get('is_admin', False):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can create admin accounts"
+        )
+
     try:
         repo = UserRepository()
-        
+
         # Check if employee_id or email already exists
         existing = await repo.find_by_employee_id(employee.employee_id)
         if existing:
@@ -126,28 +142,14 @@ async def create_employee(
                 status_code=400,
                 detail=f"Employee ID {employee.employee_id} already exists"
             )
-        
+
         existing = await repo.find_by_email(employee.email)
         if existing:
             raise HTTPException(
                 status_code=400,
                 detail=f"Email {employee.email} already exists"
             )
-        
-        # Protect CEO role from creation through employee administration
-        if employee.role.upper() == "CEO":
-            raise HTTPException(
-                status_code=403,
-                detail="Cannot create a CEO account through employee administration."
-            )
-        
-        # Only admins can create admins
-        if employee.is_admin and not user.get('is_admin', False):
-            raise HTTPException(
-                status_code=403,
-                detail="Only admins can create admin accounts"
-            )
-        
+
         # Create employee document
         employee_doc = {
             "employee_id": employee.employee_id,
