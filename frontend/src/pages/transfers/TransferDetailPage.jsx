@@ -26,7 +26,7 @@ export function TransferDetailPage() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (comment) => transfersApi.approveTransfer(transferId, { hr_comment: comment }),
+    mutationFn: (comment) => transfersApi.approveTransfer(transferId, { comments: comment || null }),
     onSuccess: () => {
       queryClient.invalidateQueries(['transfer', transferId]);
       queryClient.invalidateQueries(['transfers']);
@@ -36,7 +36,7 @@ export function TransferDetailPage() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (comment) => transfersApi.rejectTransfer(transferId, { hr_comment: comment }),
+    mutationFn: (comment) => transfersApi.rejectTransfer(transferId, { comments: comment || null }),
     onSuccess: () => {
       queryClient.invalidateQueries(['transfer', transferId]);
       queryClient.invalidateQueries(['transfers']);
@@ -81,11 +81,17 @@ export function TransferDetailPage() {
   };
 
   const isHR = user?.role === 'HR';
-  const isManager = user?.role === 'Lead';
   const isPMorCEO = user?.role === 'PM' || user?.role === 'CEO';
-  const canApprove = isHR && transfer.status === 'pending';
-  const canReject = isHR && transfer.status === 'pending';
-  const canFlag = isManager && transfer.status === 'pending';
+  // CR-004: a Lead acts only at their own stage, as the backend checks
+  // (services/transfer_service.py _can_approve_at_stage).
+  const isManagerStage = Boolean(user?.employee_id) && (
+    (transfer.status === 'pending_current_manager_release' && transfer.current_manager_id === user.employee_id)
+    || (transfer.status === 'pending_receiving_manager_acceptance' && transfer.receiving_manager_id === user.employee_id)
+  );
+  // HR and PM/CEO stages are reviewed in CR-005/CR-006.
+  const canApprove = isManagerStage || (isHR && transfer.status === 'pending');
+  const canReject = isManagerStage || (isHR && transfer.status === 'pending');
+  const canFlag = isHR && transfer.status === 'pending';
   const canExecute = isPMorCEO && transfer.status === 'approved';
 
   return (

@@ -4,7 +4,7 @@ Exposes Layer 5 (Intelligence Engine) capabilities for testing and use.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body
-from core.dependencies import require_permission, require_roles
+from core.dependencies import require_permission
 from core.permissions import Permission
 from intelligence.risk_engine import RiskEngine
 
@@ -63,7 +63,7 @@ async def analyze_pr(
 async def analyze_sprint(
     sprint_id: str,
     data: dict = Body(default={}),
-    user: dict = Depends(require_roles("LEAD", "PM")),
+    user: dict = Depends(require_permission(Permission.ANALYZE_SPRINT_RISK)),
 ):
     """
     Analyze sprint health: Plan vs Reality.

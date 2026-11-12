@@ -438,6 +438,45 @@ async def verify_can_view_user_tasks(user: dict, target_user_id: str) -> None:
     )
 
 
+async def team_member_ids(user: dict) -> set[str]:
+    """
+    CR-004: the people a Lead manages: their team, plus anyone assigned to a
+    project the Lead can access. Always includes the Lead themselves.
+    """
+    from core.database import col  # local import keeps this module's imports light
+
+    own_id = user.get("employee_id", user.get("id", ""))
+    clauses = []
+    if user.get("team_id"):
+        clauses.append({"team_id": user["team_id"]})
+    project_ids = await get_accessible_project_ids(user)
+    if project_ids:
+        clauses.append({"project_ids": {"$in": project_ids}})
+    ids = {own_id} if own_id else set()
+    if clauses:
+        rows = await col("users").find({"$or": clauses}, {"_id": 0, "employee_id": 1}).to_list(5000)
+        ids.update(row["employee_id"] for row in rows if row.get("employee_id"))
+    return ids
+
+
+async def verify_can_view_person_evaluations(user: dict, employee_id: str) -> None:
+    """
+    CR-004: who may read or run AI evaluations about a person.
+
+    - Everyone: their own.
+    - CEO: anyone (organisation-wide).
+    - Lead: members of their team or of projects they can access.
+    - Others: no one else.
+    """
+    own_id = user.get("employee_id", user.get("id", ""))
+    if employee_id == own_id or has_global_access(user):
+        return
+    role = user.get("role", user.get("organizational_role", "")).upper()
+    if role == "LEAD" and employee_id in await team_member_ids(user):
+        return
+    raise HTTPException(status_code=403, detail="You can only see evaluations of your own team")
+
+
 async def get_accessible_project_ids(user: dict) -> list[str]:
     """
     Get list of project IDs that the user can access.

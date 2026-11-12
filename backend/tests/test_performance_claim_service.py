@@ -212,7 +212,8 @@ async def test_http_interpretation_is_scoped_and_legacy_numeric_route_is_pending
         assert fetched.status_code == 200
         forged = await client.post("/api/performance/interpretations", json={**request().model_dump(mode="json"), "score": 100})
         assert forged.status_code == 422
-        actor.update(employee_id="A", role="LEAD", is_admin=True)
+        # CR-004: a Lead may only target their own team, so use the org-wide CEO here.
+        actor.update(employee_id="A", role="CEO", is_admin=True)
         pending = await client.post("/api/performance/evaluate", json={"developer_id": "D", "developer_name": "D", "period": "2026-Q3", "project_id": "P"})
         assert pending.status_code == 409 and pending.json()["status"] == "POLICY_PENDING"
         assert isinstance(pending.json()["detail"], str)  # Existing frontend error handlers call .includes().

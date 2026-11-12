@@ -653,7 +653,7 @@ async def test_evaluation_persists_employee_and_pr_association(monkeypatch):
             repo_name="repo",
             pr_number=1,
         ),
-        {"employee_id": "DEMO-LEAD", "role": "LEAD"},
+        {"employee_id": "DEMO-CEO", "role": "CEO"}  # CR-004: Leads are team-scoped; the pipeline is tested org-wide,
     )
 
     assert result.employee_id == "DEMO-DEV"
@@ -704,7 +704,7 @@ async def test_evaluation_rejects_scores_for_dimensions_without_evidence(monkeyp
                 repo_name="repo",
                 pr_number=1,
             ),
-            {"employee_id": "DEMO-LEAD", "role": "LEAD"},
+            {"employee_id": "DEMO-CEO", "role": "CEO"}  # CR-004: Leads are team-scoped; the pipeline is tested org-wide,
         )
     assert error.value.status_code == 502
     assert persisted == []
@@ -728,7 +728,7 @@ async def test_author_mismatch_is_not_a_successful_evaluation(monkeypatch):
                 repo_name="repo",
                 pr_number=1,
             ),
-            {"employee_id": "DEMO-LEAD", "role": "LEAD"},
+            {"employee_id": "DEMO-CEO", "role": "CEO"}  # CR-004: Leads are team-scoped; the pipeline is tested org-wide,
         )
     assert error.value.status_code == 422
 

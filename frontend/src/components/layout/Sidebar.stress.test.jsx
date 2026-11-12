@@ -184,10 +184,11 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/evaluation',
           '/performance',
           '/feedback',
+          // CR-004: Leads approve transfers at their manager stage.
+          '/transfers',
         ],
         forbiddenRoutes: [
           '/employees',
-          '/transfers',
           '/tests',
           '/reports',
           '/audit',

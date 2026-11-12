@@ -80,10 +80,11 @@ export const PAGE_ACCESS = Object.freeze({
   teams: { roles: [PM, LEAD, HR, CEO], menuRoles: [CEO, LEAD], convertIn: 'CR-004 (Lead)' },
   teamDetail: { roles: [PM, LEAD, DEVELOPER, HR, CEO], menuRoles: [DEVELOPER], convertIn: 'CR-004 (Lead)' },
   // CR-001: Developers request and follow their own transfers.
-  transfers: { roles: [HR, LEAD, DEVELOPER], menuRoles: [HR, DEVELOPER], convertIn: 'CR-006 (HR)' },
-  // CR-001/002/003: blocked for Developers, QA and DevOps. Its CSV exports are
+  // CR-004: Leads approve transfers at their manager stage, so it's in their menu.
+  transfers: { roles: [HR, LEAD, DEVELOPER], menuRoles: [HR, DEVELOPER, LEAD], convertIn: 'CR-006 (HR)' },
+  // CR-001..004: blocked for Developers, QA, DevOps and Leads. Its CSV exports are
   // made-up numbers until real reporting arrives in CR-007.
-  reports: { roles: ALL.filter((role) => ![DEVELOPER, QA, DEVOPS].includes(role)), menuRoles: [CEO, PM], convertIn: 'CR-007 (CEO)' },
+  reports: { roles: ALL.filter((role) => ![DEVELOPER, QA, DEVOPS, LEAD].includes(role)), menuRoles: [CEO, PM], convertIn: 'CR-007 (CEO)' },
 });
 
 function roleOf(user) {

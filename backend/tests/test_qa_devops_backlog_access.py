@@ -248,7 +248,7 @@ def test_lead_permissions_are_preserved():
     assert Permission.CREATE_TASK in permissions
     assert Permission.CREATE_STORY in permissions
     assert Permission.TRANSITION_TASK in permissions
-    assert Permission.CREATE_SPRINT not in permissions
+    assert Permission.CREATE_SPRINT in permissions  # CR-004 Decision 1: Leads run team sprints
 
 
 @pytest.mark.parametrize("role", ["QA", "DEVOPS"])

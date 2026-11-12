@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from agents.llm_provider import check_ollama_connection, get_ollama_llm
 from core.config import settings
 from core.dependencies import get_current_user, require_roles
+from core.authorization import has_global_access, team_member_ids, verify_can_view_person_evaluations
 from domain.models.developer_evaluation import DeveloperEvaluation
 from domain.services.github_api_service import GitHubAPIService
 from repositories.evaluation_repository import EvaluationRepository
@@ -1248,9 +1249,8 @@ async def _authorized_evaluation(
     evaluation = await EvaluationRepository().get_by_id(evaluation_id)
     if not evaluation:
         raise HTTPException(status_code=404, detail="Evaluation not found")
-    role = user.get("role", user.get("organizational_role", "")).upper()
-    if role not in {"CEO", "LEAD"} and user.get("employee_id") != evaluation.employee_id:
-        raise HTTPException(status_code=403, detail="You cannot view this evaluation")
+    # CR-004: own, the CEO, or a Lead for their team members.
+    await verify_can_view_person_evaluations(user, evaluation.employee_id)
     return evaluation
 
 
@@ -1263,6 +1263,8 @@ async def evaluate_developer_ai(
     employee_id = request.employee_id or user.get("employee_id")
     if not employee_id:
         raise HTTPException(status_code=400, detail="Employee ID is required")
+    # CR-004: Leads evaluate only their team members; the CEO anyone.
+    await verify_can_view_person_evaluations(user, employee_id)
 
     evaluation_id = f"EVAL-{uuid.uuid4().hex[:8].upper()}"
     try:
@@ -1416,18 +1418,36 @@ async def evaluate_developer_ai(
 @router.get("/latest", response_model=Optional[EvaluationResult])
 async def get_latest_evaluation(user: dict = Depends(get_current_user)):
     role = user.get("role", user.get("organizational_role", "")).upper()
-    query = {} if role in {"CEO", "LEAD"} else {"employee_id": user.get("employee_id")}
+    # CR-004: the CEO sees the latest in the organisation; a Lead the latest
+    # in their team; everyone else their own.
+    if has_global_access(user):
+        query = {}
+    elif role == "LEAD":
+        query = {"employee_id": {"$in": sorted(await team_member_ids(user))}}
+    else:
+        query = {"employee_id": user.get("employee_id")}
     evaluation = await EvaluationRepository().latest(query)
     return _result_from_evaluation(evaluation) if evaluation else None
 
 
 @router.get("/employee/{employee_id}", response_model=List[EvaluationResult])
 async def list_employee_evaluations(employee_id: str, user: dict = Depends(get_current_user)):
-    role = user.get("role", user.get("organizational_role", "")).upper()
-    if role not in {"CEO", "LEAD"} and user.get("employee_id") != employee_id:
-        raise HTTPException(status_code=403, detail="You cannot view these evaluations")
+    await verify_can_view_person_evaluations(user, employee_id)
     evaluations = await EvaluationRepository().list({"employee_id": employee_id})
     return [_result_from_evaluation(item) for item in evaluations]
+
+
+async def _verify_repository_in_scope(user: dict, owner: str, repo: str) -> None:
+    from core.authorization import get_accessible_project_ids
+    from core.database import col
+    project_ids = await get_accessible_project_ids(user)
+    link = await col("github_project_configs").find_one({
+        "project_id": {"$in": project_ids},
+        "repository_owner": {"$regex": f"^{re.escape(owner)}$", "$options": "i"},
+        "repository_name": {"$regex": f"^{re.escape(repo)}$", "$options": "i"},
+    }, {"_id": 0, "project_id": 1})
+    if not link:
+        raise HTTPException(status_code=403, detail="This repository is not linked to one of your projects")
 
 
 @router.get("/repository/{owner}/{repo}/pr/{pr_number}", response_model=List[EvaluationResult])
@@ -1440,6 +1460,9 @@ async def list_pr_evaluations(
     role = user.get("role", user.get("organizational_role", "")).upper()
     if role not in {"CEO", "LEAD"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if not has_global_access(user):
+        # CR-004: a Lead only for repositories linked to their projects.
+        await _verify_repository_in_scope(user, owner, repo)
     evaluations = await EvaluationRepository().list({
         "repo_owner": owner,
         "repo_name": repo,

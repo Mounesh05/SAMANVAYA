@@ -260,6 +260,9 @@ async def evaluate_developer_performance(
             status_code=403,
             detail="Insufficient permissions. Only CEO or ADMIN can trigger evaluations."
         )
+    # CR-004: Leads evaluate only their team members; the CEO anyone.
+    from core.authorization import verify_can_view_person_evaluations
+    await verify_can_view_person_evaluations(user, developer_id)
 
     # Disallow evaluating executive or administrative roles (CEO, HR)
     try:

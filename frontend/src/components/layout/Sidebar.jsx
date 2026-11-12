@@ -51,7 +51,7 @@ export function Sidebar() {
       { page: 'tasks', to: '/tasks', icon: <ListTodo size={19} />, label: 'Tasks' },
       { page: 'board', to: '/board', icon: <KanbanSquare size={19} />, label: 'Board' },
       { page: 'employees', to: '/employees', icon: <Users size={19} />, label: 'Employees' },
-      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: isHR || isAdmin ? 'Transfer Requests' : 'My Transfers' },
+      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: isHR || isAdmin || role === ROLES.LEAD ? 'Transfer Requests' : 'My Transfers' },
       { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: role === ROLES.LEAD && !isAdmin ? 'My Team' : 'Teams' },
       // Developers cannot list teams; "My Team" opens their own team directly.
       ...(role === ROLES.DEVELOPER && user?.team_id && !isAdmin

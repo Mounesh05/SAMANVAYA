@@ -80,7 +80,10 @@ class QAService:
         if user_team and project_team and user_team == project_team:
             return project
 
-        if role in {"PM", "LEAD"} and user_org and project_org == user_org:
+        # CR-004: Leads use the same project scope as the rest of the app (team
+        # and assigned projects, checked above). PM keeps organisation-wide QA
+        # access until CR-005.
+        if role == "PM" and user_org and project_org == user_org:
             return project
 
         raise HTTPException(status_code=403, detail="You don't have access to this project")
@@ -474,6 +477,9 @@ class QAService:
                     raise HTTPException(status_code=400, detail="Invalid QA defect transition")
             elif role not in {"PM", "LEAD", "CEO"}:
                 raise HTTPException(status_code=403, detail="Insufficient permissions to change defect status")
+            elif role == "LEAD" and current == "READY_FOR_RETEST":
+                # CR-004: QA verifies fixes; Leads assign and prioritise.
+                raise HTTPException(status_code=403, detail="QA verifies and closes defects; Leads can assign and prioritise them")
             else:
                 allowed = {
                     "OPEN": {"ASSIGNED"},

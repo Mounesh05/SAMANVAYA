@@ -4,7 +4,7 @@ Allows manual PR sync and repository management.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from core.dependencies import get_current_user, require_permission, require_roles
+from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from core.authorization import verify_project_access
 from domain.services.github_sync_service import GitHubSyncService
@@ -377,7 +377,7 @@ async def sync_pull_request(
 @router.post("/sync-repository-prs")
 async def sync_repository_prs(
     request: RepoSyncRequest,
-    user: dict = Depends(require_roles("LEAD", "PM")),
+    user: dict = Depends(require_permission(Permission.SYNC_REPOSITORY_PRS)),
 ):
     """
     Sync multiple PRs from a repository.

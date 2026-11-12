@@ -94,6 +94,9 @@ class Permission(str, Enum):
     MANAGE_RISK_CONFIG = "MANAGE_RISK_CONFIG"              # project risk weights (own projects)
     MANAGE_GLOBAL_RISK_CONFIG = "MANAGE_GLOBAL_RISK_CONFIG"  # organisation-wide risk defaults
     CLEAR_RISK_CACHE = "CLEAR_RISK_CACHE"                  # operational cache reset
+    # Lead (CR-004)
+    SYNC_REPOSITORY_PRS = "SYNC_REPOSITORY_PRS"            # sync every PR of a project's repository
+    ANALYZE_SPRINT_RISK = "ANALYZE_SPRINT_RISK"            # rule-based sprint risk analysis
     
     # Code Analysis & Integration
     TRIGGER_CODE_ANALYSIS = "TRIGGER_CODE_ANALYSIS"
@@ -159,8 +162,13 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.REQUEST_TRANSFER,
     },
 
+    # CR-004: a Lead manages one team. People data (performance, evaluations,
+    # feedback) is team-scoped; work is scoped to the team's projects.
     OrganizationalRole.LEAD: {
         Permission.VIEW_OWN_DATA,
+        Permission.SYNC_REPOSITORY_PRS,
+        Permission.ANALYZE_SPRINT_RISK,
+        Permission.CREATE_SPRINT,
         Permission.VIEW_DEPLOYMENTS,
         Permission.ANALYZE_DEPLOYMENT_RISK,
         Permission.VIEW_PIPELINES,
@@ -195,6 +203,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.PM: {
         Permission.VIEW_OWN_DATA,
+        Permission.SYNC_REPOSITORY_PRS,
+        Permission.ANALYZE_SPRINT_RISK,
         Permission.MANAGE_REPOSITORY_LINK,
         Permission.MANAGE_RISK_CONFIG,
         Permission.MANAGE_TEST_AUTOMATION,
