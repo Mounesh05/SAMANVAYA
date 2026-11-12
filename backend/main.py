@@ -282,6 +282,9 @@ app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])
 app.include_router(cicd_logs.router, prefix="/api/cicd-logs", tags=["CI/CD Logs"])
 app.include_router(qa_test_runs.router, prefix="/api/qa", tags=["QA Test Results"])
 app.include_router(qa_management.router, prefix="/api/qa", tags=["QA Management"])
+# QA CI test automation (CR-002): was never registered, so Enable CI had no endpoint
+from api.routes import qa_ci_provisioning
+app.include_router(qa_ci_provisioning.router, prefix="/api/qa", tags=["QA CI Provisioning"])
 app.include_router(performance.router, prefix="/api/performance", tags=["Developer Performance"])
 
 # ━━ New Features ━━

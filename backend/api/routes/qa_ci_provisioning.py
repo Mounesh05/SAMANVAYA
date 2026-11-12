@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 from domain.models.qa_ci_config import CIProvisionRequest
 from domain.services.qa_workflow_provisioning_service import QAWorkflowProvisioningService
 from domain.services.qa_service import QAService
@@ -19,7 +20,7 @@ qa_repo = QARepository()
 async def enable_ci_integration(
     project_id: str,
     request: CIProvisionRequest,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.MANAGE_TEST_AUTOMATION)),
 ):
     """
     Enable CI integration for a project by provisioning GitHub Actions workflow.
@@ -30,16 +31,8 @@ async def enable_ci_integration(
     3. Stores CI configuration in database
     4. Returns provisioning status and workflow URL
     
-    Requires QA, PM, LEAD, or CEO role.
+    Requires MANAGE_TEST_AUTOMATION (QA, PM, LEAD, CEO by default).
     """
-    # Check role authorization
-    role = str(user.get("role", user.get("organizational_role", ""))).upper()
-    if role not in {"QA", "PM", "LEAD", "CEO"}:
-        raise HTTPException(
-            status_code=403,
-            detail="Only QA, PM, LEAD, or CEO roles can provision CI integration"
-        )
-    
     # Validate project access
     await qa_service.accessible_project(user, project_id)
     
@@ -131,15 +124,9 @@ async def get_ci_configs(
 async def disable_ci_integration(
     project_id: str,
     branch: str,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.MANAGE_TEST_AUTOMATION)),
 ):
     """Disable CI integration for a specific branch (branch passed as query param)."""
-    role = str(user.get("role", user.get("organizational_role", ""))).upper()
-    if role not in {"QA", "PM", "LEAD", "CEO"}:
-        raise HTTPException(
-            status_code=403,
-            detail="Only QA, PM, LEAD, or CEO roles can disable CI integration"
-        )
     
     await qa_service.accessible_project(user, project_id)
     

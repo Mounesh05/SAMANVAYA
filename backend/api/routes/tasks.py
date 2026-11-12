@@ -146,7 +146,7 @@ async def update_task_status(
     Update task status using the workflow engine and task ownership rules.
     """
     # Verify user has write access to this task
-    await verify_task_status_update_access(user, task_id)
+    await verify_task_status_update_access(user, task_id, status)
     
     user_id = user.get("employee_id", user.get("id", ""))
     user_name = user.get("name", "Unknown")
@@ -175,7 +175,7 @@ async def transition_task(
     User must have access to the task's project.
     """
     # Verify user has write access to this task
-    await verify_task_status_update_access(user, task_id)
+    await verify_task_status_update_access(user, task_id, body.status)
     
     user_id = user.get("employee_id", user.get("id", ""))
     user_name = user.get("name", "Unknown")

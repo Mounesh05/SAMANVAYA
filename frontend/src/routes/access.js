@@ -44,12 +44,18 @@ export const PAGE_ACCESS = Object.freeze({
   sprints: { anyOf: [P.TRANSITION_TASK] },
   stories: { anyOf: [P.TRANSITION_TASK] },
   tasks: { anyOf: [P.TRANSITION_TASK] },
-  board: { anyOf: [P.TRANSITION_TASK], menuRoles: [DEVELOPER, LEAD, PM] },
+  // CR-002: QA works the Review column, so the Board is in their menu.
+  board: { anyOf: [P.TRANSITION_TASK], menuRoles: [DEVELOPER, LEAD, PM, QA] },
 
   // CR-001: reporters (Developers) see their own reports; DevOps/Lead/CEO see all.
   incidents: { anyOf: [P.VIEW_INCIDENTS, P.CREATE_INCIDENT] },
   cicdLogs: { anyOf: [P.ANALYZE_CICD_LOGS] },
   pullRequests: { anyOf: [P.ANALYZE_PR_RISK] },
+
+  // Quality (CR-002).
+  codeQuality: { anyOf: [P.VIEW_CODE_QUALITY] },
+  tests: { anyOf: [P.MANAGE_TEST_CASES] },
+  bugs: { anyOf: [P.VIEW_DEFECTS] },
 
   // People data.
   employees: { anyOf: [P.VIEW_EMPLOYEE_DIRECTORY, P.VIEW_ORGANIZATION_DATA, P.MANAGE_EMPLOYEES] },
@@ -63,9 +69,6 @@ export const PAGE_ACCESS = Object.freeze({
 
   // Not yet expressed as permissions.
   projects: { roles: [...DELIVERY, CEO, HR], menuRoles: [...DELIVERY, CEO], convertIn: 'CR-005 (PM)' },
-  codeQuality: { roles: [DEVELOPER, QA, LEAD, DEVOPS], convertIn: 'CR-002 (QA)' },
-  tests: { roles: [QA], convertIn: 'CR-002 (QA)' },
-  bugs: { roles: [QA, DEVELOPER, DEVOPS, LEAD, PM, CEO], convertIn: 'CR-002 (QA)' },
   pipelines: { roles: [DEVOPS, QA, LEAD], convertIn: 'CR-003 (DevOps)' },
   deployments: { roles: [DEVOPS, LEAD], convertIn: 'CR-003 (DevOps)' },
   // CR-001: integration setup is not a Developer task; "Sync PR" stays on Pull Requests.
@@ -75,8 +78,9 @@ export const PAGE_ACCESS = Object.freeze({
   teamDetail: { roles: [PM, LEAD, DEVELOPER, HR, CEO], menuRoles: [DEVELOPER], convertIn: 'CR-004 (Lead)' },
   // CR-001: Developers request and follow their own transfers.
   transfers: { roles: [HR, LEAD, DEVELOPER], menuRoles: [HR, DEVELOPER], convertIn: 'CR-006 (HR)' },
-  // CR-001: org-level exports are blocked for Developers (was open by URL to everyone).
-  reports: { roles: ALL.filter((role) => role !== DEVELOPER), menuRoles: [CEO, PM], convertIn: 'CR-007 (CEO)' },
+  // CR-001/CR-002: blocked for Developers and QA. Its CSV exports are made-up
+  // numbers until real reporting arrives in CR-007.
+  reports: { roles: ALL.filter((role) => role !== DEVELOPER && role !== QA), menuRoles: [CEO, PM], convertIn: 'CR-007 (CEO)' },
 });
 
 function roleOf(user) {

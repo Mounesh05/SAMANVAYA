@@ -26,7 +26,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GripVertical, AlertCircle } from 'lucide-react';
 import { DEFAULT_ORG_ID } from '../../utils/constants';
-import { canUpdateTask } from '../../utils/taskPermissions';
+import { canUpdateTask, isSignOffOnly, SIGN_OFF_TARGETS } from '../../utils/taskPermissions';
 
 // Sortable Task Card Component
 function SortableCard({ item, onClick, canDrag }) {
@@ -231,6 +231,15 @@ export function BoardPage() {
         targetStatus = col.id;
         break;
       }
+    }
+
+    if (
+      targetStatus
+      && isSignOffOnly(user, active.data.current?.item)
+      && !SIGN_OFF_TARGETS.includes(targetStatus)
+    ) {
+      setErrorMessage('QA sign-off can only pass a task (Done) or fail it (In Progress).');
+      return;
     }
 
     if (targetStatus && targetStatus !== active.data.current?.item?.status) {

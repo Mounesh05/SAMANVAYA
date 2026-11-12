@@ -18,7 +18,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { Plus, KanbanSquare } from 'lucide-react';
 import { TASK_STATUS, STATUS_LABELS, DEFAULT_ORG_ID } from '../../utils/constants';
-import { canUpdateTask } from '../../utils/taskPermissions';
+import { canUpdateTask, isSignOffOnly, SIGN_OFF_TARGETS } from '../../utils/taskPermissions';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS, hasPermission } from '../../auth/permissions';
 
@@ -322,7 +322,9 @@ export function TasksPage() {
                   </p>
                 ) : availableTransitions.length > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {availableTransitions.map((status) => (
+                    {availableTransitions
+                      .filter((status) => !isSignOffOnly(user, taskDetail) || SIGN_OFF_TARGETS.includes(status))
+                      .map((status) => (
                       <Button
                         key={status}
                         variant="secondary"

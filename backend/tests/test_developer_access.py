@@ -49,6 +49,7 @@ class TestPermissionMatrix:
             Permission.CREATE_STORY, Permission.SYNC_PR, Permission.REQUEST_TRANSFER,
             Permission.CREATE_INCIDENT,  # report only
             Permission.ANALYZE_CICD_LOGS, Permission.ANALYZE_PR_RISK,  # were role-name checks
+            Permission.VIEW_DEFECTS, Permission.VIEW_CODE_QUALITY,     # CR-002 page conversions
         }
 
     def test_developer_cannot_manage_backlog_sprints_or_others(self):
@@ -290,7 +291,7 @@ class TestConvertedRouteGuards:
         (Permission.ANALYZE_CICD_LOGS, {"DEVELOPER", "LEAD", "QA", "DEVOPS"}),      # CI/CD log analysis
         (Permission.ANALYZE_PR_RISK, {"DEVELOPER", "LEAD", "QA", "DEVOPS"}),        # PR risk analysis
         (Permission.VIEW_INCIDENTS, {"DEVOPS", "LEAD", "CEO"}),                     # former Incidents page roles
-        (Permission.CREATE_INCIDENT, {"DEVELOPER", "DEVOPS", "CEO"}),
+        (Permission.CREATE_INCIDENT, {"DEVELOPER", "DEVOPS", "CEO", "QA"}),  # QA added in CR-002
     ])
     def test_permission_holders(self, permission, roles):
         holders = {role.value for role, granted in ROLE_PERMISSIONS.items() if permission in granted}
@@ -430,7 +431,7 @@ async def test_roles_without_incident_rights_are_refused():
     with pytest.raises(HTTPException) as error:
         await incidents.list_incidents(project_id=None, user=make_user("HR-1", "HR"))
     assert error.value.status_code == 403
-    assert Permission.CREATE_INCIDENT not in get_user_permissions("QA")
+    assert Permission.CREATE_INCIDENT not in get_user_permissions("PM")
 
 
 # ── Performance: own record only ────────────────────────────────────────────

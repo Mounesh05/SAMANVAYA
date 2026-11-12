@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { qaApi } from '../../api/qa.api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { roleUser } from '../../tests/utils/roleUser';
 import { BugsPage } from './BugsPage';
 
 vi.mock('../../api/qa.api', () => ({
@@ -53,7 +54,7 @@ describe('BugsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Permissions come from /api/auth/me (backend ROLE_PERMISSIONS for QA).
-    useAuthStore.mockReturnValue({ user: { role: 'QA', permissions: ['CREATE_BUG', 'TRANSITION_TASK', 'TRIGGER_CODE_ANALYSIS'] } });
+    useAuthStore.mockReturnValue({ user: roleUser('QA') });
     qaApi.getProjects.mockResolvedValue([{ id: 'PRJ-1', name: 'CampusConnect' }]);
     qaApi.getDefects.mockResolvedValue([defect]);
     qaApi.getDefect.mockResolvedValue(defect);

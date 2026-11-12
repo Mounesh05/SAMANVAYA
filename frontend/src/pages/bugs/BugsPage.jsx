@@ -46,7 +46,9 @@ const TRANSITIONS = {
 export function BugsPage() {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
-  const isQA = role === 'QA';
+  // CR-002: QA actions follow permissions, as on the backend.
+  const canVerifyDefects = hasPermission(user, PERMISSIONS.VERIFY_DEFECTS);
+  const canLinkTestCases = hasPermission(user, PERMISSIONS.MANAGE_TEST_CASES);
   // Anyone with CREATE_BUG reports defects; QA still assigns, verifies and closes.
   const canReportDefect = hasPermission(user, PERMISSIONS.CREATE_BUG);
   const queryClient = useQueryClient();
@@ -189,7 +191,7 @@ export function BugsPage() {
           <Input label="Actual result" value={form.actual_result} onChange={(event) => setForm({ ...form, actual_result: event.target.value })} />
           <Input label="Story ID (optional)" value={form.story_id || ''} onChange={(event) => setForm({ ...form, story_id: event.target.value })} />
           <Input label="Task ID (optional)" value={form.task_id || ''} onChange={(event) => setForm({ ...form, task_id: event.target.value })} />
-          {isQA && <Input label="Test Case ID (optional)" value={form.test_case_id || ''} onChange={(event) => setForm({ ...form, test_case_id: event.target.value })} />}
+          {canLinkTestCases && <Input label="Test Case ID (optional)" value={form.test_case_id || ''} onChange={(event) => setForm({ ...form, test_case_id: event.target.value })} />}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <Select label="Severity" value={form.severity} onChange={(event) => setForm({ ...form, severity: event.target.value })} options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />
             <Select label="Priority" value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })} options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />
@@ -210,14 +212,14 @@ export function BugsPage() {
             <p><strong>Story / Task / Test:</strong> {[defectDetail.story_id, defectDetail.task_id, defectDetail.test_case_id].filter(Boolean).join(' / ') || '—'}</p>
             <p><strong>Reporter:</strong> {defectDetail.reporter_name} · <strong>Assignee:</strong> {defectDetail.assignee_id || 'Unassigned'}</p>
 
-            {isQA && (
+            {canVerifyDefects && (
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
                 <Input label="Assign to employee ID" value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} />
                 <Button variant="secondary" onClick={() => updateMutation.mutate({ defectId: defectDetail.id, data: { assignee_id: assigneeId || null } })}>Assign</Button>
               </div>
             )}
 
-            {defectDetail.status === 'READY_FOR_RETEST' && isQA && defectDetail.test_case_id && (
+            {defectDetail.status === 'READY_FOR_RETEST' && canVerifyDefects && defectDetail.test_case_id && (
               <Button onClick={() => navigate(`/tests?caseId=${encodeURIComponent(defectDetail.test_case_id)}&defectId=${encodeURIComponent(defectDetail.id)}`)}>Retest linked case</Button>
             )}
 

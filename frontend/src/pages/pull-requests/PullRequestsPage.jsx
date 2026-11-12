@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/useAuthStore';
 import { rolesApi } from '../../api/roles.api';
 import { githubApi } from '../../api/github.api';
+import { projectsApi } from '../../api/projects.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Table } from '../../components/common/Table';
@@ -16,7 +17,7 @@ import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GitPullRequest, ExternalLink, RefreshCw, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
-import { ROLES } from '../../utils/constants';
+import { ROLES, DEFAULT_ORG_ID } from '../../utils/constants';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { formatDate, timeAgo } from '../../utils/dates';
 import { PRAlgorithmIntelligencePanel } from '../code-quality/PRAlgorithmIntelligencePanel';
@@ -35,6 +36,24 @@ export function PullRequestsPage() {
   // Sync is offered to SYNC_PR holders (backend: assigned projects only).
   const canSyncPr = hasPermission(user, PERMISSIONS.SYNC_PR);
   const canLoadPersonalPRs = isLead || canSyncPr;
+  // CR-002: reviewers and testers who don't author PRs (QA, DevOps) browse a
+  // project's pull requests instead of "my PRs".
+  const browsesProjects = !canLoadPersonalPRs;
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects', 'list'],
+    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    enabled: browsesProjects,
+  });
+  const activeProjectId = selectedProjectId || projects[0]?.id || '';
+
+  const projectPrQuery = useQuery({
+    queryKey: ['pull-requests', 'project', activeProjectId],
+    queryFn: () => githubApi.listProjectPullRequests(activeProjectId),
+    enabled: browsesProjects && Boolean(activeProjectId),
+    retry: 1,
+  });
 
   const { data: prData, isLoading, error, refetch } = useQuery({
     queryKey: ['pull-requests', role],
@@ -56,9 +75,11 @@ export function PullRequestsPage() {
     },
   });
 
-  const prs = !canLoadPersonalPRs ? [] : isLead
-    ? (prData?.pending_review || [])
-    : (prData?.pull_requests || []);
+  const prs = browsesProjects
+    ? (projectPrQuery.data?.pull_requests || [])
+    : isLead
+      ? (prData?.pending_review || [])
+      : (prData?.pull_requests || []);
 
   const filteredPrs = prs.filter((pr) => {
     const matchesSearch = !search ||
@@ -153,16 +174,22 @@ export function PullRequestsPage() {
     },
   ];
 
-  if (isLoading) return <LoadingState message="Loading pull requests..." />;
-  if (error) return <ErrorState message={error.message} onRetry={refetch} />;
+  const listLoading = browsesProjects ? projectPrQuery.isLoading : isLoading;
+  const listError = browsesProjects ? projectPrQuery.error : error;
+  if (listLoading) return <LoadingState message="Loading pull requests..." />;
+  if (listError) {
+    return <ErrorState message={listError.message} onRetry={browsesProjects ? projectPrQuery.refetch : refetch} />;
+  }
 
   return (
     <div>
       <PageHeader
-        title={isLead ? 'PR Review Queue' : 'My Pull Requests'}
+        title={isLead ? 'PR Review Queue' : browsesProjects ? 'Project Pull Requests' : 'My Pull Requests'}
         subtitle={isLead
           ? 'Review pull requests from your team members.'
-          : 'Track your pull requests, reviews, and CI status.'
+          : browsesProjects
+            ? 'Pull requests in your projects, for testing and review.'
+            : 'Track your pull requests, reviews, and CI status.'
         }
         actions={
           canSyncPr ? (
@@ -205,6 +232,17 @@ export function PullRequestsPage() {
 
       {/* Filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        {browsesProjects && (
+          <div style={{ width: '220px' }}>
+            <Select
+              aria-label="Project"
+              value={activeProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              placeholder="Select Project"
+              options={projects.map((p) => ({ value: p.id, label: p.name }))}
+            />
+          </div>
+        )}
         <SearchInput
           value={search}
           onChange={setSearch}

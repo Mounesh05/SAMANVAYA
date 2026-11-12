@@ -79,7 +79,10 @@ async def start_analysis(
         raise HTTPException(status_code=422, detail="A real repository or project ID is required")
     if not changed_files:
         raise HTTPException(status_code=422, detail="At least one real changed file is required")
-    await verify_project_access(user, repository_id, require_write=True)
+    # CR-002: TRIGGER_CODE_ANALYSIS holders (QA, DevOps) analyse projects they
+    # are assigned to. Requiring project *write* access made this unusable:
+    # no role holding the permission ever has write access.
+    await verify_project_access(user, repository_id)
     normalized_body = body.model_copy(
         update={"repository_id": repository_id, "changed_files": changed_files}
     )

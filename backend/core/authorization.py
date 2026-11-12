@@ -242,8 +242,31 @@ async def verify_task_access(
     return project_id
 
 
-async def verify_task_status_update_access(user: dict, task_id: str) -> str:
-    """Allow management roles or an assignee in an engineering role to update it."""
+def _permissions(user: dict):
+    return get_user_permissions(
+        user.get("role", user.get("organizational_role", "")),
+        user.get("is_admin", False),
+        user.get("designation"),
+    )
+
+
+# CR-002: QA sign-off. Work waiting in Review can be passed (done) or failed
+# (back to in_progress) by SIGN_OFF_WORK holders in their projects.
+SIGN_OFF_FROM = "review"
+SIGN_OFF_TO = frozenset({"done", "in_progress"})
+
+
+def _is_sign_off(user: dict, current_status: str | None, new_status: str | None) -> bool:
+    return (
+        Permission.SIGN_OFF_WORK in _permissions(user)
+        and current_status == SIGN_OFF_FROM
+        and new_status in SIGN_OFF_TO
+    )
+
+
+async def verify_task_status_update_access(user: dict, task_id: str, new_status: str | None = None) -> str:
+    """Allow management roles, the assignee in an engineering role, or a QA
+    sign-off (Review -> Done/In Progress) to update a task's status."""
     role = user.get("role", user.get("organizational_role", "")).upper()
     task = await _task_repo.find_by_id(task_id)
     if not task:
@@ -251,7 +274,7 @@ async def verify_task_status_update_access(user: dict, task_id: str) -> str:
 
     employee_id = user.get("employee_id", user.get("id"))
     if role in {"DEVELOPER", "QA", "DEVOPS"}:
-        if task.get("assignee_id") != employee_id:
+        if task.get("assignee_id") != employee_id and not _is_sign_off(user, task.get("status"), new_status):
             raise HTTPException(
                 status_code=403,
                 detail="You can only update tasks assigned to you",
@@ -328,12 +351,7 @@ async def verify_story_status_update_access(user: dict, story_id: str, new_statu
         raise HTTPException(status_code=404, detail="Story not found")
 
     if story.get("status") == "draft":
-        permissions = get_user_permissions(
-            user.get("role", user.get("organizational_role", "")),
-            user.get("is_admin", False),
-            user.get("designation"),
-        )
-        if Permission.ACCEPT_STORY not in permissions:
+        if Permission.ACCEPT_STORY not in _permissions(user):
             raise HTTPException(status_code=403, detail="Only a Lead or PM can accept a draft story")
         await verify_project_access(user, project_id, require_write=True)
         if new_status != "todo":
@@ -343,6 +361,18 @@ async def verify_story_status_update_access(user: dict, story_id: str, new_statu
         and story.get("assignee_id") != user.get("employee_id")
     ):
         raise HTTPException(status_code=403, detail="You can only update stories assigned to you")
+    elif (
+        # CR-002: sign-off holders who don't own the backlog (QA) may only pass
+        # or fail stories waiting in Review, unless the story is theirs.
+        Permission.SIGN_OFF_WORK in _permissions(user)
+        and Permission.ACCEPT_STORY not in _permissions(user)
+        and story.get("assignee_id") != user.get("employee_id")
+        and not _is_sign_off(user, story.get("status"), new_status)
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="QA can only pass (Review -> Done) or fail (Review -> In Progress) a story",
+        )
     return story
 
 

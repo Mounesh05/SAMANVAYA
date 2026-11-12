@@ -69,10 +69,12 @@ describe('CR-001 page access table', () => {
     }
   });
 
-  it('keeps other roles on Reports as before', () => {
+  it('keeps Reports for the roles that still have it', () => {
     expect(canOpenPage({ role: 'CEO' }, 'reports')).toBe(true);
-    expect(canOpenPage({ role: 'QA' }, 'reports')).toBe(true);
-    expect(showInMenu({ role: 'QA' }, 'reports')).toBe(false);
+    expect(canOpenPage({ role: 'DEVOPS' }, 'reports')).toBe(true);
+    expect(showInMenu({ role: 'DEVOPS' }, 'reports')).toBe(false);
+    // CR-002: blocked for QA as for Developers (its export is made-up data).
+    expect(canOpenPage({ role: 'QA' }, 'reports')).toBe(false);
   });
 
   it('never lists a role in the menu for a page that role cannot open', () => {
@@ -109,12 +111,15 @@ describe('CR-001 page access table', () => {
       feedback: ['LEAD', 'PM', 'QA', 'DEVOPS', 'HR', 'CEO'],
       evaluation: ['CEO', 'HR', 'LEAD', 'DEVELOPER'],
     };
-    // Intended CR-001 changes, Developer only.
-    const developerChanges = { incidents: true, evaluation: false };
+    // Intended changes: CR-001 (Developer) and CR-002 (QA).
+    const intended = {
+      DEVELOPER: { incidents: true, evaluation: false },
+      QA: { incidents: true },
+    };
     for (const [page, roles] of Object.entries(before)) {
       for (const role of Object.keys(rolePermissions).filter((r) => !r.startsWith('_'))) {
-        const expected = role === 'DEVELOPER' && page in developerChanges
-          ? developerChanges[page]
+        const expected = page in (intended[role] || {})
+          ? intended[role][page]
           : roles.includes(role);
         expect(canOpenPage(roleUser(role), page), `${role} on ${page}`).toBe(expected);
       }

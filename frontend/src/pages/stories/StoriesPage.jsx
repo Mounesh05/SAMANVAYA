@@ -35,6 +35,8 @@ export function StoriesPage() {
   // Everyone else with CREATE_STORY proposes a draft assigned to themselves.
   const canAcceptDrafts = hasPermission(user, PERMISSIONS.ACCEPT_STORY);
   const proposesDrafts = !canAcceptDrafts;
+  // CR-002: QA passes (Review -> Done) or fails (Review -> In Progress) work.
+  const canSignOff = hasPermission(user, PERMISSIONS.SIGN_OFF_WORK);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -101,6 +103,11 @@ export function StoriesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stories'] }),
   });
 
+  const signOffMutation = useMutation({
+    mutationFn: ({ storyId, status }) => storiesApi.updateStatus(storyId, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stories'] }),
+  });
+
   const submitStory = () => {
     const points = Number.parseInt(formData.points, 10);
     createMutation.mutate({
@@ -163,6 +170,24 @@ export function StoriesPage() {
       header: 'Actions',
       render: (story) => (
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {story.status === STORY_STATUS.REVIEW && canSignOff && (
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => signOffMutation.mutate({ storyId: story.id, status: STORY_STATUS.DONE })}
+              >
+                Pass
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => signOffMutation.mutate({ storyId: story.id, status: STORY_STATUS.IN_PROGRESS })}
+              >
+                Fail
+              </Button>
+            </>
+          )}
           {story.status === STORY_STATUS.DRAFT && canAcceptDrafts && (
             <Button
               variant="primary"

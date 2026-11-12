@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { qaApi } from '../../api/qa.api';
+import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { MetricCard } from '../../components/common/MetricCard';
 import { Card } from '../../components/common/Card';
@@ -16,6 +18,9 @@ import { CheckCircle2, Bug, FlaskConical, Clock3, XCircle, CircleSlash, GitBranc
 const EMPTY_LIST = [];
 
 export function QADashboardPage() {
+  const { user } = useAuthStore();
+  // Enable/disable CI is MANAGE_TEST_AUTOMATION (QA, PM, Lead, CEO), as on the backend.
+  const canManageCi = hasPermission(user, PERMISSIONS.MANAGE_TEST_AUTOMATION);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isProvisioningModalOpen, setIsProvisioningModalOpen] = useState(false);
   const [testRunsFilter, setTestRunsFilter] = useState('github_actions'); // 'manual', 'github_actions', 'all'
@@ -196,37 +201,45 @@ export function QADashboardPage() {
                           View Workflow →
                         </a>
                       )}
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDisable(config.branch)}
-                        disabled={disableMutation.isPending}
-                      >
-                        Disable
-                      </Button>
+                      {canManageCi && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDisable(config.branch)}
+                          disabled={disableMutation.isPending}
+                        >
+                          Disable
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
                 
                 {/* Add Another Branch Button */}
-                <Button 
-                  variant="secondary"
-                  onClick={() => setIsProvisioningModalOpen(true)}
-                  style={{ alignSelf: 'flex-start' }}
-                >
-                  <GitBranch size={16} />
-                  Enable CI for Another Branch
-                </Button>
+                {canManageCi && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setIsProvisioningModalOpen(true)}
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    <GitBranch size={16} />
+                    Enable CI for Another Branch
+                  </Button>
+                )}
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Enable CI integration to automatically run tests on every push and pull request.
                 </p>
-                <Button onClick={() => setIsProvisioningModalOpen(true)}>
-                  <GitBranch size={16} />
-                  Enable CI Integration
-                </Button>
+                {canManageCi ? (
+                  <Button onClick={() => setIsProvisioningModalOpen(true)}>
+                    <GitBranch size={16} />
+                    Enable CI Integration
+                  </Button>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Ask QA or your Lead to enable it.</span>
+                )}
               </div>
             )}
           </Card>

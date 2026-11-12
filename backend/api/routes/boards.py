@@ -134,7 +134,7 @@ async def move_item(
     """
     # Verify user has access to the item before moving it
     if body.item_type == "task":
-        await verify_task_status_update_access(user, body.item_id)
+        await verify_task_status_update_access(user, body.item_id, body.target_status)
     elif body.item_type == "story":
         # Same rules as PATCH /stories/{id}/status: drafts need a backlog
         # owner, developers move only their own stories.

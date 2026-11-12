@@ -79,6 +79,13 @@ class Permission(str, Enum):
     TRANSITION_TASK = "TRANSITION_TASK"
     # Accept a contributor's draft story into the backlog (backlog owners).
     ACCEPT_STORY = "ACCEPT_STORY"
+    # QA (CR-002)
+    SIGN_OFF_WORK = "SIGN_OFF_WORK"                 # pass/fail work waiting in Review
+    MANAGE_TEST_CASES = "MANAGE_TEST_CASES"         # test suites, cases, executions
+    VERIFY_DEFECTS = "VERIFY_DEFECTS"               # verify, reopen, close defects
+    VIEW_DEFECTS = "VIEW_DEFECTS"                   # defect lists and the Bugs page
+    VIEW_CODE_QUALITY = "VIEW_CODE_QUALITY"         # the Code Quality page
+    MANAGE_TEST_AUTOMATION = "MANAGE_TEST_AUTOMATION"  # enable/disable the CI test workflow
     
     # Code Analysis & Integration
     TRIGGER_CODE_ANALYSIS = "TRIGGER_CODE_ANALYSIS"
@@ -126,6 +133,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # - REQUEST_TRANSFER: their own transfer only
     OrganizationalRole.DEVELOPER: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_CODE_QUALITY,
+        Permission.VIEW_DEFECTS,
         Permission.ANALYZE_CICD_LOGS,
         Permission.ANALYZE_PR_RISK,
         Permission.VIEW_OWN_PERFORMANCE,
@@ -144,6 +153,9 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.LEAD: {
         Permission.VIEW_OWN_DATA,
+        Permission.MANAGE_TEST_AUTOMATION,
+        Permission.VIEW_CODE_QUALITY,
+        Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,
         Permission.ANALYZE_CICD_LOGS,
         Permission.ANALYZE_PR_RISK,
@@ -170,6 +182,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.PM: {
         Permission.VIEW_OWN_DATA,
+        Permission.MANAGE_TEST_AUTOMATION,
+        Permission.VIEW_DEFECTS,
         Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
         Permission.VIEW_PROJECT_PERFORMANCE,
@@ -192,13 +206,21 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         # Note: EXECUTE_TRANSFER removed - PM manages projects, not permanent team membership
     },
 
+    # CR-002: QA owns testing, the defect lifecycle and sign-off in assigned
+    # projects; sees only their own performance.
     OrganizationalRole.QA: {
         Permission.VIEW_OWN_DATA,
+        Permission.SIGN_OFF_WORK,
+        Permission.MANAGE_TEST_CASES,
+        Permission.VERIFY_DEFECTS,
+        Permission.VIEW_DEFECTS,
+        Permission.VIEW_CODE_QUALITY,
+        Permission.MANAGE_TEST_AUTOMATION,
+        Permission.CREATE_INCIDENT,
         Permission.ANALYZE_CICD_LOGS,
         Permission.ANALYZE_PR_RISK,
         Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
-        Permission.VIEW_PROJECT_PERFORMANCE,
         Permission.VIEW_AI_EVALUATION,
         Permission.SUBMIT_QA_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
@@ -213,6 +235,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.DEVOPS: {
         Permission.VIEW_OWN_DATA,
+        Permission.VIEW_CODE_QUALITY,
+        Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,
         Permission.ANALYZE_CICD_LOGS,
         Permission.ANALYZE_PR_RISK,
@@ -269,6 +293,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
 
     OrganizationalRole.CEO: {
         Permission.VIEW_OWN_DATA,
+        Permission.MANAGE_TEST_AUTOMATION,
+        Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,
         Permission.VIEW_ALL_DATA,
         Permission.VIEW_ORGANIZATION_DATA,

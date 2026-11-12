@@ -262,6 +262,26 @@ async def provision_qa_workflow(
         )
 
 
+@router.get("/projects/{project_id}/pull-requests")
+async def list_project_pull_requests(
+    project_id: str,
+    user: dict = Depends(require_permission(Permission.ANALYZE_PR_RISK)),
+):
+    """
+    Pull requests of one project, read only (CR-002).
+
+    For people who review or test a project's changes without authoring them
+    (QA, DevOps). Same project scope as the rest of the project's data.
+    """
+    await verify_project_access(user, project_id)
+    from repositories.pr_repository import PRRepository
+    prs = await PRRepository().find_by_project(project_id)
+    for pr in prs:
+        pr.pop("_id", None)
+    prs.sort(key=lambda pr: str(pr.get("updated_at") or pr.get("created_at") or ""), reverse=True)
+    return {"project_id": project_id, "pull_requests": prs, "total": len(prs)}
+
+
 @router.post("/sync-pr")
 async def sync_pull_request(
     request: PRSyncRequest,

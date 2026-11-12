@@ -29,6 +29,10 @@ def _role(user):
     return str(user.get("role", user.get("organizational_role", ""))).upper()
 
 
+def _permissions(user):
+    return get_user_permissions(_role(user), user.get("is_admin", False), user.get("designation"))
+
+
 def _identity(user):
     return user.get("employee_id") or user.get("id") or user.get("sub") or ""
 
@@ -97,8 +101,8 @@ class QAService:
                     raise
         return allowed
 
-    async def _role_for(self, user, allowed):
-        if _role(user) not in allowed:
+    async def _require(self, user, permission):
+        if permission not in _permissions(user):
             raise HTTPException(status_code=403, detail="Insufficient permissions for this QA operation")
 
     async def _linked_document(self, collection, record_id, project_id, label):
@@ -132,7 +136,7 @@ class QAService:
         )
 
     async def create_suite(self, user, data: TestSuiteCreate):
-        await self._role_for(user, {"QA"})
+        await self._require(user, Permission.MANAGE_TEST_CASES)
         await self.accessible_project(user, data.project_id)
         await self._linked_document(self.repo.stories, data.story_id, data.project_id, "Story")
         timestamp = _now()
@@ -147,7 +151,7 @@ class QAService:
         return await self.repo.insert(self.repo.suites, document)
 
     async def update_suite(self, user, suite_id, updates: TestSuiteUpdate):
-        await self._role_for(user, {"QA"})
+        await self._require(user, Permission.MANAGE_TEST_CASES)
         suite = await self.repo.find_one(self.repo.suites, {"id": suite_id})
         if not suite:
             raise HTTPException(status_code=404, detail="Test suite not found")
@@ -184,7 +188,7 @@ class QAService:
         )
 
     async def create_case(self, user, data: TestCaseCreate):
-        await self._role_for(user, {"QA"})
+        await self._require(user, Permission.MANAGE_TEST_CASES)
         await self.accessible_project(user, data.project_id)
         story_id = await self._validate_case_links(
             data.project_id, data.suite_id, data.story_id, data.task_id
@@ -209,7 +213,7 @@ class QAService:
         return case
 
     async def update_case(self, user, case_id, updates: TestCaseUpdate):
-        await self._role_for(user, {"QA"})
+        await self._require(user, Permission.MANAGE_TEST_CASES)
         case = await self.get_case(user, case_id)
         if case.get("is_archived"):
             raise HTTPException(status_code=409, detail="Archived test cases cannot be edited")
@@ -231,7 +235,7 @@ class QAService:
         return case
 
     async def clone_case(self, user, case_id):
-        await self._role_for(user, {"QA"})
+        await self._require(user, Permission.MANAGE_TEST_CASES)
         original = await self.get_case(user, case_id)
         if original.get("is_archived"):
             raise HTTPException(status_code=409, detail="Archived test cases cannot be cloned")
@@ -251,7 +255,7 @@ class QAService:
         return await self.repo.insert(self.repo.cases, clone)
 
     async def create_execution(self, user, data: TestExecutionCreate):
-        await self._role_for(user, {"QA"})
+        await self._require(user, Permission.MANAGE_TEST_CASES)
         case = await self.get_case(user, data.test_case_id)
         if case.get("is_archived"):
             raise HTTPException(status_code=409, detail="Archived test cases cannot be executed")
@@ -356,6 +360,7 @@ class QAService:
         return case, execution, story_id, task_id
 
     async def list_defects(self, user, project_id=None, *, status=None, skip=0, limit=100):
+        await self._require(user, Permission.VIEW_DEFECTS)
         if project_id:
             project = await self.accessible_project(user, project_id)
             project_ids = [project_id]
@@ -377,8 +382,7 @@ class QAService:
     async def create_defect(self, user, data: DefectCreate):
         # Anyone holding CREATE_BUG (QA, Developer, Lead) can report a defect;
         # QA still owns assignment, verification and closure via update_defect.
-        if Permission.CREATE_BUG not in get_user_permissions(
-                _role(user), user.get("is_admin", False), user.get("designation")):
+        if Permission.CREATE_BUG not in _permissions(user):
             raise HTTPException(status_code=403, detail="Insufficient permissions to report a defect")
         project = await self.accessible_project(user, data.project_id)
         case, execution, story_id, task_id = await self._validate_defect_links(
@@ -411,6 +415,7 @@ class QAService:
         return await self.repo.insert(self.repo.defects, document)
 
     async def get_defect(self, user, defect_id):
+        await self._require(user, Permission.VIEW_DEFECTS)
         defect = await self.repo.find_one(self.repo.defects, {"id": defect_id})
         if not defect:
             raise HTTPException(status_code=404, detail="Defect not found")
@@ -460,7 +465,7 @@ class QAService:
                 }
                 if new_status not in allowed.get(current, set()):
                     raise HTTPException(status_code=400, detail="Invalid developer defect transition")
-            elif role == "QA":
+            elif Permission.VERIFY_DEFECTS in _permissions(user):  # QA (CR-002)
                 allowed = {
                     "OPEN": {"ASSIGNED"},
                     "ASSIGNED": {"IN_PROGRESS"},

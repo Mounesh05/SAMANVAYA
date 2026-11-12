@@ -255,12 +255,13 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/cicd-logs',
           '/performance',
           '/feedback',
+          // CR-002: QA works the Review column and can report incidents.
+          '/board',
+          '/incidents',
         ],
         forbiddenRoutes: [
-          '/board',
           '/github/sync',
           '/deployments',
-          '/incidents',
           '/evaluation',
           '/employees',
           '/transfers',

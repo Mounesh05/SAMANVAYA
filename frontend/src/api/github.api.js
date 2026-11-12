@@ -29,6 +29,11 @@ export const githubApi = {
     return apiClient.post('/github/sync-pr', data);
   },
 
+  // A project's pull requests, read only (CR-002: QA and DevOps).
+  listProjectPullRequests: async (projectId) => {
+    return apiClient.get(`/github/projects/${projectId}/pull-requests`);
+  },
+
   syncRepositoryPRs: async (data) => {
     return apiClient.post('/github/sync-repository-prs', data);
   },
