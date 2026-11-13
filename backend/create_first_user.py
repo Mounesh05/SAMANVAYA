@@ -1,181 +1,122 @@
 """
-Create First HR/Admin User - Production Mode
+Create the first accounts of a production install (CR-012).
 
-Run this script ONCE during deployment to bootstrap Samanvaya with the first HR admin.
-After this, use the HR account to create other users via the API or UI.
+Creates two separate accounts, using existing roles only:
+- the Chief Executive (CEO role, no admin rights);
+- the platform administrator (DevOps role with admin rights).
 
-PRODUCTION MODE:
-- No default values
-- No sample/dummy data
-- All fields are required
-- Password minimum 8 characters
-- Email validation
+Run once, after deployment, before anyone else signs in:
 
-Usage:
     python create_first_user.py
+
+The script uses the configured database (MONGO_URI / DB_NAME), asks for
+passwords without showing them, applies the project's password rules, never
+prints a password, and refuses to run when any account already exists.
 """
 
 import asyncio
+import getpass
 import sys
-from motor.motor_asyncio import AsyncIOMotorClient
-from core.security import hash_password
-from datetime import datetime, timezone
 
-# MongoDB connection (update if needed)
-MONGODB_URI = "mongodb://localhost:27017"
-DATABASE_NAME = "samanvaya"
+from domain.services.first_accounts import FirstAccount, build_accounts, validate_pair
 
 
-async def create_first_hr_user():
-    """Create the first HR/Admin user to bootstrap the system."""
-    
-    print("\n" + "="*60)
-    print(" SAMANVAYA - CREATE FIRST HR USER")
-    print("="*60 + "\n")
-    
-    # Connect to MongoDB
+def _ask(prompt: str) -> str:
+    while True:
+        value = input(prompt).strip()
+        if value:
+            return value
+        print("  This field is required.")
+
+
+def _ask_password(prompt: str) -> str:
+    while True:
+        first = getpass.getpass(prompt)
+        if first and first == getpass.getpass("  Repeat to confirm: "):
+            return first
+        print("  The passwords did not match (or were empty). Try again.")
+
+
+def ask_account(label: str) -> FirstAccount:
+    print(f"\n{label}")
+    print("-" * len(label))
+    return FirstAccount(
+        employee_id=_ask("  Employee ID: "),
+        name=_ask("  Full name: "),
+        email=_ask("  Email: "),
+        organisation_password=_ask_password("  Organisation password: "),
+        employee_password=_ask_password("  Employee password: "),
+    )
+
+
+def summary(records: list) -> str:
+    """What will be created, without any password or hash."""
+    lines = []
+    for record in records:
+        lines.append(f"  {record['employee_id']:<14} {record['name']:<24} {record['email']:<32} "
+                     f"role={record['role']} admin={'yes' if record['is_admin'] else 'no'}")
+    return "\n".join(lines)
+
+
+async def create_first_accounts(db, ceo: FirstAccount, admin: FirstAccount) -> list:
+    """Insert the pair into `db`. Raises RuntimeError when accounts exist or insertion fails."""
+    users = db["users"]
+    if await users.count_documents({}) > 0:
+        raise RuntimeError("Accounts already exist. This script only sets up a new, empty install.")
+    validate_pair(ceo, admin)
+    records = build_accounts(ceo, admin, created_by="create_first_user")
+    await users.create_index("employee_id", unique=True)
+    await users.create_index("email", unique=True)
     try:
-        client = AsyncIOMotorClient(MONGODB_URI)
-        db = client[DATABASE_NAME]
-        users = db["users"]
-        
-        # Test connection
-        await client.server_info()
-        print("✅ Connected to MongoDB")
-        print(f"   Database: {DATABASE_NAME}\n")
-    except Exception as e:
-        print(f"❌ Failed to connect to MongoDB: {e}")
-        print(f"   Make sure MongoDB is running on {MONGODB_URI}")
-        sys.exit(1)
-    
-    # Check if any HR user already exists
-    existing_hr = await users.find_one({"role": "HR"})
-    if existing_hr:
-        print("⚠️  HR user already exists!")
-        print(f"   Employee ID: {existing_hr['employee_id']}")
-        print(f"   Email: {existing_hr['email']}")
-        print("\n   Use this account to create other users.")
-        print("   Or delete it from MongoDB and run this script again.\n")
-        return
-    
-    # Get user input - NO DEFAULTS (Production Mode)
-    print("Creating first HR/Admin user...")
-    print("-" * 60)
-    
-    employee_id = ""
-    while not employee_id:
-        employee_id = input("Employee ID (required): ").strip()
-        if not employee_id:
-            print("❌ Employee ID is required!")
-    
-    name = ""
-    while not name:
-        name = input("Full Name (required): ").strip()
-        if not name:
-            print("❌ Full Name is required!")
-    
-    email = ""
-    while not email:
-        email = input("Email (required): ").strip()
-        if not email:
-            print("❌ Email is required!")
-        elif "@" not in email:
-            print("❌ Invalid email format!")
-            email = ""
-    
-    password = ""
-    while not password:
-        password = input("Password (required, min 8 characters): ").strip()
-        if not password:
-            print("❌ Password is required!")
-        elif len(password) < 8:
-            print("❌ Password must be at least 8 characters!")
-            password = ""
-    
-    print("-" * 60)
-    print("\nCreating user with:")
-    print(f"  Employee ID: {employee_id}")
-    print(f"  Name: {name}")
-    print(f"  Email: {email}")
-    print(f"  Password: {password}")
-    print("  Role: HR")
-    print("  Admin: Yes")
-    
-    confirm = input("\nProceed? (y/n): ").strip().lower()
-    if confirm != 'y':
-        print("\n❌ Cancelled")
-        return
-    
-    # Create HR user
-    hr_user = {
-        "employee_id": employee_id,
-        "name": name,
-        "email": email,
-        "role": "HR",
-        "dept": "Human Resources",
-        "employee_password": hash_password(password),
-        "github_username": None,
-        "team_id": None,
-        "is_active": True,
-        "is_admin": True,
-        "avatar": None,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    
+        await users.insert_many(records, ordered=True)
+    except Exception as error:
+        await users.delete_many({"employee_id": {"$in": [r["employee_id"] for r in records]},
+                                 "created_by": "create_first_user"})
+        raise RuntimeError(f"Could not create both accounts; nothing was created ({type(error).__name__})")
+    return records
+
+
+async def main() -> int:
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    from core.config import settings
+
+    print("\nSAMANVAYA - create the first accounts")
+    print(f"Database: {settings.DB_NAME}\n")
+    client = AsyncIOMotorClient(settings.MONGO_URI)
     try:
-        result = await users.insert_one(hr_user)
-        
-        print("\n" + "="*60)
-        print(" ✅ SUCCESS - HR USER CREATED")
-        print("="*60)
-        print(f"\nEmployee ID: {employee_id}")
-        print(f"Email: {email}")
-        print(f"Password: {password}")
-        print(f"MongoDB ID: {result.inserted_id}")
-        print("\n⚠️  IMPORTANT:")
-        print("1. Save these credentials in a secure password manager")
-        print("2. Delete this terminal output after saving credentials")
-        print("3. Use this account to create other users via API or UI")
-        print("4. Do NOT share these credentials\n")
-        print("="*60 + "\n")
-        
-    except Exception as e:
-        print(f"\n❌ Failed to create user: {e}")
-        sys.exit(1)
-
-
-async def create_sample_users():
-    """Sample user creation removed for production."""
-    # Production mode: No sample/dummy users
-    print("\n✅ Done! Use the HR account to create other users via API or UI.\n")
-    return
-
-
-async def main():
-    """Main entry point."""
-    try:
-        # Create first HR user
-        await create_first_hr_user()
-        
-        # Optionally create sample users
-        await create_sample_users()
-        
-        print("="*60)
-        print(" 🎉 SETUP COMPLETE")
-        print("="*60)
-        print("\nNext steps:")
-        print("1. Start backend: python main.py")
-        print("2. Login with your HR credentials")
-        print("3. Create teams and other users via API or UI")
-        print("\nAPI Documentation: http://localhost:8000/docs")
-        print("="*60 + "\n")
-        
-    except KeyboardInterrupt:
-        print("\n\n❌ Cancelled by user\n")
-    except Exception as e:
-        print(f"\n❌ Error: {e}\n")
-        sys.exit(1)
+        db = client[settings.DB_NAME]
+        if await db["users"].count_documents({}) > 0:
+            print("Accounts already exist. Nothing was changed.")
+            return 1
+        ceo = ask_account("Chief Executive (no admin rights)")
+        admin = ask_account("Platform administrator (DevOps role, admin rights)")
+        try:
+            validate_pair(ceo, admin)
+        except ValueError as error:
+            print(f"\nNot created: {error}")
+            return 1
+        print("\nAbout to create:")
+        print(summary(build_accounts(ceo, admin, created_by="create_first_user")))
+        if input("\nProceed? (y/n): ").strip().lower() != "y":
+            print("Cancelled. Nothing was changed.")
+            return 1
+        records = await create_first_accounts(db, ceo, admin)
+        print("\nCreated:")
+        print(summary(records))
+        print("\nKeep the passwords in your password manager. Sign in as the platform administrator to "
+              "create the other employees; account changes then need a second approver (CR-010).")
+        return 0
+    except RuntimeError as error:
+        print(f"\nNot created: {error}")
+        return 1
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        sys.exit(asyncio.run(main()))
+    except KeyboardInterrupt:
+        print("\nCancelled. Nothing was changed.")
+        sys.exit(1)

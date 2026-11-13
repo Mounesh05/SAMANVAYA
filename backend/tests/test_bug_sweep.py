@@ -99,7 +99,8 @@ async def test_setup_secret_is_compared_safely(monkeypatch):
     from api.routes import setup
     monkeypatch.setattr(setup.settings, "DEMO_SETUP_SECRET", "right-secret")
     monkeypatch.setattr(type(setup.settings), "is_development", lambda self: True)
-    payload = setup.SetupRequest(setup_secret="wrong-secret", employee_password="x", organisation_password="y")
+    account = {"email": "someone@samanvaya.com", "organisation_password": "x", "employee_password": "y"}
+    payload = setup.SetupRequest(setup_secret="wrong-secret", ceo=account, admin=account)  # CR-012 shape
     await refused(setup.initialize_demo_admin(payload), 403)
     assert "hmac.compare_digest" in inspect.getsource(setup.initialize_demo_admin)
 

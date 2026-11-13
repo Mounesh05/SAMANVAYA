@@ -1,14 +1,13 @@
-"""Local-only first administrator initialization."""
+"""Local-only first-run setup: the Chief Executive and the platform administrator (CR-012)."""
 
 import hmac
 import asyncio
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 
 from core.config import settings
-from core.security import hash_password, validate_password_strength
+from domain.services.first_accounts import FirstAccount, build_accounts, validate_pair
 from repositories.user_repository import UserRepository
 
 router = APIRouter()
@@ -20,11 +19,17 @@ class SetupStatus(BaseModel):
     reason: str | None = None
 
 
-class SetupRequest(BaseModel):
-    setup_secret: str
-    employee_password: str
+class AccountSetup(BaseModel):
+    email: EmailStr
     organisation_password: str
-    email: EmailStr = "demo.ceo@example.com"
+    employee_password: str
+
+
+class SetupRequest(BaseModel):
+    """CR-012: two separate accounts; the CEO has no admin rights."""
+    setup_secret: str
+    ceo: AccountSetup
+    admin: AccountSetup
 
 
 @router.get("/status", response_model=SetupStatus)
@@ -47,17 +52,14 @@ async def initialize_demo_admin(payload: SetupRequest):
     if not hmac.compare_digest(payload.setup_secret.encode(), settings.DEMO_SETUP_SECRET.encode()):
         raise HTTPException(status_code=403, detail="Invalid setup secret")
 
-    valid, message = validate_password_strength(payload.organisation_password)
-    if not valid:
-        raise HTTPException(status_code=422, detail=f"Organisation password: {message}")
-    valid, message = validate_password_strength(payload.employee_password)
-    if not valid:
-        raise HTTPException(status_code=422, detail=f"Employee password: {message}")
-    if payload.organisation_password == payload.employee_password:
-        raise HTTPException(
-            status_code=422,
-            detail="Organisation and employee passwords must be different",
-        )
+    ceo = FirstAccount("DEMO-CEO", "Demo CEO", str(payload.ceo.email),
+                       payload.ceo.organisation_password, payload.ceo.employee_password)
+    admin = FirstAccount("DEMO-ADMIN", "Platform Admin", str(payload.admin.email),
+                         payload.admin.organisation_password, payload.admin.employee_password)
+    try:
+        validate_pair(ceo, admin)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
 
     async with _setup_lock:
         users = UserRepository()
@@ -65,22 +67,13 @@ async def initialize_demo_admin(payload: SetupRequest):
             raise HTTPException(status_code=409, detail="An account already exists")
 
         await users.ensure_indexes()
-        await users.insert(
-            {
-                "employee_id": "DEMO-CEO",
-                "name": "Demo CEO",
-                "email": str(payload.email),
-                "role": "CEO",
-                "dept": "Executive",
-                "organisation_password": hash_password(payload.organisation_password),
-                "employee_password": hash_password(payload.employee_password),
-                "github_username": None,
-                "team_id": None,
-                "is_active": True,
-                "is_admin": True,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "created_by": "local-first-run-setup",
-            }
-        )
+        records = build_accounts(ceo, admin, created_by="local-first-run-setup")
+        try:
+            await users.col.insert_many(records, ordered=True)
+        except Exception:
+            # All or nothing: never leave one of the two accounts behind.
+            await users.col.delete_many({"employee_id": {"$in": [r["employee_id"] for r in records]},
+                                         "created_by": "local-first-run-setup"})
+            raise HTTPException(status_code=409, detail="Setup could not create both accounts; nothing was created")
 
-    return SetupStatus(available=False, reason="Initial administrator created")
+    return SetupStatus(available=False, reason="Chief Executive and platform administrator created")
