@@ -313,6 +313,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_TRANSFER_REQUESTS,
         Permission.REVIEW_TRANSFER_REQUEST,
         Permission.REVIEW_TRANSFER_HR,
+        # CR-006 (Decision 1): HR records an approved transfer (alongside the CEO).
+        Permission.EXECUTE_TRANSFER,
         # HR administration
         Permission.VIEW_AUDIT_LOGS,
         # Note: HR does NOT have:
@@ -386,6 +388,7 @@ ADMIN_PERMISSIONS: Set[Permission] = {
 # HR Designation-based permissions
 HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
     "HR_MANAGER": {
+        Permission.EXECUTE_TRANSFER,  # CR-006
         Permission.VIEW_EMPLOYEE_DIRECTORY,
         Permission.VIEW_EMPLOYEE_PROFILE,
         Permission.VIEW_ORG_CHART,
@@ -420,6 +423,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         # No VIEW_AUDIT_LOGS for recruiter
     },
     "HR_OPERATIONS": {
+        Permission.EXECUTE_TRANSFER,  # CR-006
         Permission.VIEW_EMPLOYEE_DIRECTORY,
         Permission.VIEW_EMPLOYEE_PROFILE,
         Permission.CREATE_EMPLOYEE,

@@ -9,7 +9,7 @@ import { Badge } from '../../components/common/Badge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { useAuthStore } from '../../store/useAuthStore';
-import { hasPermission, PERMISSIONS } from '../../auth/permissions';
+import { hasPermission, hasAnyPermission, PERMISSIONS } from '../../auth/permissions';
 import { CheckCircle, XCircle, Flag, Play, ArrowLeft } from 'lucide-react';
 
 export function TransferDetailPage() {
@@ -47,7 +47,7 @@ export function TransferDetailPage() {
   });
 
   const flagMutation = useMutation({
-    mutationFn: (comment) => transfersApi.flagTransfer(transferId, { manager_comment: comment }),
+    mutationFn: (comment) => transfersApi.flagTransfer(transferId, { flag: 'needs_hr_review', comments: comment || null }),
     onSuccess: () => {
       queryClient.invalidateQueries(['transfer', transferId]);
       queryClient.invalidateQueries(['transfers']);
@@ -81,7 +81,6 @@ export function TransferDetailPage() {
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
   };
 
-  const isHR = user?.role === 'HR';
   // CR-004: a Lead acts only at their own stage, as the backend checks
   // (services/transfer_service.py _can_approve_at_stage).
   const isManagerStage = Boolean(user?.employee_id) && (
@@ -91,12 +90,14 @@ export function TransferDetailPage() {
   // CR-005: PM and CEO act at the management-approval stage.
   const isManagementStage = transfer.status === 'pending_management_approval'
     && hasPermission(user, PERMISSIONS.APPROVE_TRANSFER_AS_MANAGEMENT);
-  // HR stages are reviewed in CR-006.
-  const canApprove = isManagerStage || isManagementStage || (isHR && transfer.status === 'pending');
-  const canReject = isManagerStage || isManagementStage || (isHR && transfer.status === 'pending');
-  const canFlag = isHR && transfer.status === 'pending';
-  // CR-005: Execute only for EXECUTE_TRANSFER holders (CEO); PMs were shown a
-  // button the backend always refused.
+  // CR-006: HR acts at the real HR stages (the page waited for a status
+  // "pending" that never occurs), gated by the backend's HR review permissions.
+  const isHRStage = ['pending_hr_validation', 'pending_hr_review'].includes(transfer.status)
+    && hasAnyPermission(user, [PERMISSIONS.REVIEW_TRANSFER_HR, PERMISSIONS.REVIEW_TRANSFER_REQUEST]);
+  const canApprove = isManagerStage || isManagementStage || isHRStage;
+  const canReject = isManagerStage || isManagementStage || isHRStage;
+  const canFlag = isHRStage && hasPermission(user, PERMISSIONS.REVIEW_TRANSFER_REQUEST);
+  // CR-005/CR-006: Execute only for EXECUTE_TRANSFER holders (HR and CEO).
   const canExecute = hasPermission(user, PERMISSIONS.EXECUTE_TRANSFER) && transfer.status === 'approved';
 
   return (

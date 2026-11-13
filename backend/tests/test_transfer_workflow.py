@@ -530,13 +530,18 @@ class TestTransferExecution:
             assert mock_transfer_repo['update_status'].call_args[0][1] == TransferStatus.EFFECTIVE.value
 
     @pytest.mark.asyncio
-    async def test_hr_cannot_execute_transfer(
+    async def test_lead_cannot_execute_transfer(
         self,
         transfer_service,
         mock_transfer_repo,
         sample_hr
     ):
-        """Test HR cannot execute transfers (no team membership permission)."""
+        """Roles without EXECUTE_TRANSFER cannot execute.
+
+        CR-006 Decision 1 gave HR EXECUTE_TRANSFER (with the CEO); HR execution
+        is covered in tests/test_hr_access.py.
+        """
+        lead = {**sample_hr, "employee_id": "LEAD-9", "role": "LEAD", "designation": None}
         mock_transfer_repo['find_by_id'].return_value = {
             "id": "TRF-001",
             "employee_id": "EMP001",
@@ -546,7 +551,7 @@ class TestTransferExecution:
         }
         
         with pytest.raises(ValueError, match="Insufficient permissions to execute transfer"):
-            await transfer_service.execute_transfer("TRF-001", sample_hr)
+            await transfer_service.execute_transfer("TRF-001", lead)
 
 
 class TestConcurrentTransfers:

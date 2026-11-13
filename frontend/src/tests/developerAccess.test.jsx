@@ -114,10 +114,11 @@ describe('CR-001 page access table', () => {
       feedback: ['LEAD', 'PM', 'QA', 'DEVOPS', 'HR', 'CEO'],
       evaluation: ['CEO', 'HR', 'LEAD', 'DEVELOPER'],
     };
-    // Intended changes: CR-001 (Developer) and CR-002 (QA).
+    // Intended changes: CR-001 (Developer), CR-002 (QA) and CR-006 (HR).
     const intended = {
       DEVELOPER: { incidents: true, evaluation: false },
       QA: { incidents: true },
+      HR: { evaluation: false }, // CR-006: backend refuses HR evaluation reads
     };
     for (const [page, roles] of Object.entries(before)) {
       for (const role of Object.keys(rolePermissions).filter((r) => !r.startsWith('_'))) {

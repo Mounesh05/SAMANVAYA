@@ -158,7 +158,7 @@ class TransferService:
         approver_id = approver["employee_id"]
 
         # Verify approver is authorized for current stage
-        if not self._can_approve_at_stage(transfer, current_status, approver_id, approver_role):
+        if not self._can_approve_at_stage(transfer, current_status, approver_id, approver_role, approver):
             raise ValueError(f"You are not authorized to approve at stage: {current_status}")
 
         # Record approval
@@ -209,7 +209,7 @@ class TransferService:
         rejector_id = rejector["employee_id"]
 
         # Verify rejector is authorized
-        if not self._can_approve_at_stage(transfer, current_status, rejector_id, rejector_role):
+        if not self._can_approve_at_stage(transfer, current_status, rejector_id, rejector_role, rejector):
             raise ValueError(f"You are not authorized to reject at stage: {current_status}")
 
         # Record rejection
@@ -344,11 +344,24 @@ class TransferService:
         transfer: dict,
         stage: str,
         approver_id: str,
-        approver_role: str
+        approver_role: str,
+        approver: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        """Check if user can approve at current stage."""
+        """Check if user can approve at current stage.
+
+        CR-006: HR and management stages are permission-based (they checked
+        role names). Manager stages stay tied to the named manager.
+        """
+        from core.permissions import Permission, get_user_permissions
+        permissions = get_user_permissions(
+            approver_role,
+            bool((approver or {}).get("is_admin", False)),
+            (approver or {}).get("designation"),
+        )
+        hr_reviewer = bool(permissions & {Permission.REVIEW_TRANSFER_HR, Permission.REVIEW_TRANSFER_REQUEST})
+
         if stage == TransferStatus.PENDING_HR_VALIDATION.value:
-            return approver_role == "HR"
+            return hr_reviewer
 
         if stage == TransferStatus.PENDING_CURRENT_MANAGER_RELEASE.value:
             return approver_id == transfer.get("current_manager_id")
@@ -357,10 +370,10 @@ class TransferService:
             return approver_id == transfer.get("receiving_manager_id")
 
         if stage == TransferStatus.PENDING_MANAGEMENT_APPROVAL.value:
-            return approver_role in ("PM", "CEO")
+            return Permission.APPROVE_TRANSFER_AS_MANAGEMENT in permissions
 
         if stage == TransferStatus.PENDING_HR_REVIEW.value:
-            return approver_role == "HR"
+            return hr_reviewer
 
         return False
 

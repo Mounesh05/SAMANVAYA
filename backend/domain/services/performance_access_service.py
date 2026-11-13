@@ -65,7 +65,7 @@ class PerformanceAccessService:
         return [{**{k: v for k, v in row.items() if k in keys}, "status": "LEGACY_UNVERIFIABLE", "is_active": False,
                  "legacy_is_active": row.get("is_active"), "canonical_approval": None} for row in rows]
 
-    async def _subject(self, employee_id, actor):
+    async def _subject(self, employee_id, actor, hr_permission=Permission.VIEW_PERFORMANCE_OUTCOMES):
         current = await _current(actor)
         subject = await col("users").find_one({"employee_id": employee_id, "org_id": current["org_id"]}, {"_id": 0})
         if not subject:
@@ -74,7 +74,10 @@ class PerformanceAccessService:
         # people only through assigned review workflows.
         if current["employee_id"] != employee_id and current.get("role") not in {"LEAD", "HR", "CEO"}:
             raise HTTPException(403, "Current role cannot inspect this employee assessment")
-        if current.get("role") == "HR" and Permission.VIEW_PERFORMANCE_OUTCOMES not in get_user_permissions(
+        # CR-006: each read names the HR permission it needs. General reads need
+        # outcome access; the HR case read needs case access only, so Employee
+        # Relations can read the cases it owns.
+        if current.get("role") == "HR" and hr_permission not in get_user_permissions(
                 "HR", current.get("is_admin", False), current.get("designation")):
             raise HTTPException(403, "Current HR outcome access is not authorized")
         return current, subject
@@ -196,7 +199,7 @@ class PerformanceAccessService:
             raise HTTPException(403, "Case-specific current HR permission is required")
         record = await PerformanceRepository().get_by_id(performance_id)
         employee_id = record["developer_id"] if record else performance_id
-        await self._subject(employee_id, actor)
+        await self._subject(employee_id, actor, Permission.VIEW_HR_PERFORMANCE_ASSESSMENT)
         if record:
             await self._row(record, current)
         assessment = await col("hr_assessments").find_one({"developer_id": employee_id,

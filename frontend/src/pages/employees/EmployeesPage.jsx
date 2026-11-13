@@ -15,11 +15,16 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { UserPlus, Edit, Trash2 } from 'lucide-react';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
 import { useAuthStore } from '../../store/useAuthStore';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 
 const ASSIGNABLE_ROLES = Object.keys(ROLES).filter((r) => r !== 'CEO');
 
 export function EmployeesPage() {
   const { user } = useAuthStore();
+  // CR-006: show only actions the backend accepts. Create and edit check
+  // MANAGE_EMPLOYEES; deactivation is system-admin only (Decision 2).
+  const canManageEmployees = hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES);
+  const canDeactivate = Boolean(user?.is_admin);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -174,7 +179,7 @@ export function EmployeesPage() {
         if (isCEO || isSelf) {
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              {!isCEO && (
+              {!isCEO && canManageEmployees && (
                 <Button variant="ghost" size="sm" onClick={() => openEdit(e)} title="Edit Profile">
                   <Edit size={15} />
                 </Button>
@@ -198,12 +203,16 @@ export function EmployeesPage() {
         }
         return (
           <div style={{ display: 'flex', gap: '0.35rem' }}>
-            <Button variant="ghost" size="sm" onClick={() => openEdit(e)} title="Edit Employee">
-              <Edit size={15} />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setDeleteId(e.employee_id)} title="Deactivate Employee">
-              <Trash2 size={15} style={{ color: 'var(--danger)' }} />
-            </Button>
+            {canManageEmployees && (
+              <Button variant="ghost" size="sm" onClick={() => openEdit(e)} title="Edit Employee">
+                <Edit size={15} />
+              </Button>
+            )}
+            {canDeactivate && (
+              <Button variant="ghost" size="sm" onClick={() => setDeleteId(e.employee_id)} title="Deactivate Employee">
+                <Trash2 size={15} style={{ color: 'var(--danger)' }} />
+              </Button>
+            )}
           </div>
         );
       },
@@ -219,16 +228,18 @@ export function EmployeesPage() {
         title="Employee Directory"
         subtitle="Manage company staff, role assignments, department allocation, and authentication accounts."
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<UserPlus size={16} />}
-            onClick={() => {
-              resetForm();
-              setIsCreateModalOpen(true);
-            }}
-          >
-            Add Employee
-          </Button>
+          canManageEmployees && (
+            <Button
+              variant="primary"
+              leftIcon={<UserPlus size={16} />}
+              onClick={() => {
+                resetForm();
+                setIsCreateModalOpen(true);
+              }}
+            >
+              Add Employee
+            </Button>
+          )
         }
       />
 
