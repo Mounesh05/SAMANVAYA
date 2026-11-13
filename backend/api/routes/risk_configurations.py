@@ -94,8 +94,11 @@ async def list_risk_configurations(
     - project_id: Filter by project (None = only global configs)
     - include_inactive: Include inactive configurations
     
-    Requires: Any authenticated user
+    Requires: any authenticated user for global configs; access to the project
+    for a project's configs.
     """
+    if project_id:
+        await verify_project_access(current_user, project_id)
     service = get_risk_config_service()
     configs = await service.list_configurations(project_id, include_inactive)
     
@@ -135,9 +138,11 @@ async def get_risk_configuration(
     
     Returns the active configuration (from DB or hardcoded fallback).
     
-    Requires: Any authenticated user
+    Requires: any authenticated user for "global"; project access otherwise.
     """
     project_id = None if project_id_or_global == "global" else project_id_or_global
+    if project_id:
+        await verify_project_access(current_user, project_id)
     
     service = get_risk_config_service()
     config = await service.get_configuration(project_id, use_cache=False)
@@ -301,9 +306,11 @@ async def validate_configuration(
     
     Returns validation results with detailed error messages.
     
-    Requires: Any authenticated user
+    Requires: any authenticated user for "global"; project access otherwise.
     """
     project_id = None if project_id_or_global == "global" else project_id_or_global
+    if project_id:
+        await verify_project_access(current_user, project_id)
     
     service = get_risk_config_service()
     config = await service.get_configuration(project_id, use_cache=False)

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from domain.services.hitl_workflow_service import hitl_service, ApprovalPriority
-from core.dependencies import get_current_user
+from core.dependencies import get_current_user, require_admin
 from core.authorization import has_org_access
 
 router = APIRouter()
@@ -129,8 +129,8 @@ async def reject_request(
 
 @router.post("/cleanup")
 async def cleanup_expired_approvals(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_admin()),
 ):
-    """Cleanup expired approval requests."""
+    """Cleanup expired approval requests. Platform maintenance: admins only."""
     count = await hitl_service.cleanup_expired()
     return {"expired_count": count}

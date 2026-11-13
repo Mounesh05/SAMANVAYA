@@ -1,5 +1,6 @@
 """Local-only first administrator initialization."""
 
+import hmac
 import asyncio
 from datetime import datetime, timezone
 
@@ -43,7 +44,7 @@ async def setup_status():
 async def initialize_demo_admin(payload: SetupRequest):
     if not settings.is_development() or not settings.DEMO_SETUP_SECRET:
         raise HTTPException(status_code=404, detail="First-run setup is unavailable")
-    if payload.setup_secret != settings.DEMO_SETUP_SECRET:
+    if not hmac.compare_digest(payload.setup_secret.encode(), settings.DEMO_SETUP_SECRET.encode()):
         raise HTTPException(status_code=403, detail="Invalid setup secret")
 
     valid, message = validate_password_strength(payload.organisation_password)

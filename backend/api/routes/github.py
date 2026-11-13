@@ -13,6 +13,9 @@ from domain.models.github_project_config import GitHubProjectConfig
 from core.database import col
 from pydantic import BaseModel
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -64,10 +67,11 @@ async def github_integration_health(
             "rate_limit_remaining": user_info.get("rate_limit", {}).get("remaining"),
         }
     
-    except Exception as e:
+    except Exception:
+        logger.exception("GitHub health check failed")
         return {
             "status": "error",
-            "message": str(e),
+            "message": "GitHub API is not reachable with the configured token",
             "note": "Ensure GITHUB_TOKEN is set in .env"
         }
 
@@ -76,7 +80,8 @@ async def github_integration_health(
 async def get_repository_info(
     owner: str = Query(...),
     repo: str = Query(...),
-    user: dict = Depends(get_current_user),
+    # Reads GitHub with the server token, so only repository-link holders may use it.
+    user: dict = Depends(require_permission(Permission.MANAGE_REPOSITORY_LINK)),
 ):
     """
     Get repository information from GitHub.
@@ -90,17 +95,19 @@ async def get_repository_info(
         
         return repo_info
     
-    except Exception as e:
+    except Exception:
+        logger.exception("GitHub request failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to fetch repository info: {str(e)}"
+            detail="Failed to fetch repository info. See the server log for details."
         )
 
 
 @router.get("/list-repositories")
 async def list_repositories(
     org: str = Query(None, description="Organization name (optional)"),
-    user: dict = Depends(get_current_user),
+    # Reads GitHub with the server token, so only repository-link holders may use it.
+    user: dict = Depends(require_permission(Permission.MANAGE_REPOSITORY_LINK)),
 ):
     """
     List GitHub repositories.
@@ -119,10 +126,11 @@ async def list_repositories(
             "repositories": repos,
         }
     
-    except Exception as e:
+    except Exception:
+        logger.exception("GitHub request failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to list repositories: {str(e)}"
+            detail="Failed to list repositories. See the server log for details."
         )
 
 
@@ -130,7 +138,8 @@ async def list_repositories(
 async def list_branches(
     owner: str = Query(...),
     repo: str = Query(...),
-    user: dict = Depends(get_current_user),
+    # Reads GitHub with the server token, so only repository-link holders may use it.
+    user: dict = Depends(require_permission(Permission.MANAGE_REPOSITORY_LINK)),
 ):
     """List repository branches using the configured read-only GitHub token."""
     try:
@@ -142,10 +151,11 @@ async def list_branches(
             "total": len(branches),
             "branches": branches,
         }
-    except Exception as e:
+    except Exception:
+        logger.exception("GitHub request failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to list repository branches: {str(e)}"
+            detail="Failed to list repository branches. See the server log for details."
         )
 
 
@@ -367,10 +377,11 @@ async def sync_pull_request(
             status_code=e.response.status_code,
             detail=f"GitHub API error: {e.response.text}"
         )
-    except Exception as e:
+    except Exception:
+        logger.exception("GitHub request failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to sync PR: {str(e)}"
+            detail="Failed to sync PR. See the server log for details."
         )
 
 
@@ -421,8 +432,9 @@ async def sync_repository_prs(
             "results": results,
         }
     
-    except Exception as e:
+    except Exception:
+        logger.exception("GitHub request failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to sync repository PRs: {str(e)}"
+            detail="Failed to sync repository PRs. See the server log for details."
         )
