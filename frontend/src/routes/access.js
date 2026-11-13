@@ -50,6 +50,8 @@ export const PAGE_ACCESS = Object.freeze({
 
   // CR-001: reporters (Developers) see their own reports; DevOps/Lead/CEO see all.
   incidents: { anyOf: [P.VIEW_INCIDENTS, P.CREATE_INCIDENT] },
+  // CR-010: people who request or approve account changes (admins, HR).
+  approvals: { anyOf: [P.MANAGE_EMPLOYEES, P.MANAGE_USERS] },
   cicdLogs: { anyOf: [P.ANALYZE_CICD_LOGS] },
   pullRequests: { anyOf: [P.ANALYZE_PR_RISK] },
 

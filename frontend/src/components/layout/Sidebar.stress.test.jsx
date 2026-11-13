@@ -50,6 +50,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       '/performance',
       '/feedback',
       '/audit',
+      '/approvals', // CR-010: HR requests and approves role changes
     ];
     expect(renderedHrefs.sort()).toEqual(expectedHRRoutes.sort());
 

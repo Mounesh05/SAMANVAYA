@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeesApi } from '../../api/employees.api';
+import { approvalsApi } from '../../api/approvals.api';
 import { teamsApi } from '../../api/teams.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/common/Table';
@@ -29,6 +30,15 @@ export function EmployeesPage() {
   // is_admin field). The backend refuses to remove the last active admin.
   const canManageAdmins = Boolean(user?.is_admin);
   const [adminError, setAdminError] = useState('');
+  // CR-010: admin rights, role and active-status changes need a second person.
+  const [notice, setNotice] = useState('');
+  const showResult = (result) => {
+    if (result?.status === 'pending_approval') {
+      setNotice(`Sent for approval (${result.approval_id}). A second person must approve it on the Approvals page.`);
+    } else if (result?.second_approver === 'none_available') {
+      setNotice('Applied. No second approver was available, so this was recorded in the audit log.');
+    }
+  };
   // CR-009: admins and HR Managers assign HR designations (never their own).
   const canAssignDesignations = hasPermission(user, PERMISSIONS.MANAGE_HR_DESIGNATIONS);
   const [search, setSearch] = useState('');
@@ -53,6 +63,16 @@ export function EmployeesPage() {
 
   const queryClient = useQueryClient();
 
+  // CR-010: mark rows with a pending account change that you raised or must decide.
+  const canSeeApprovals = canManageEmployees || Boolean(user?.is_admin);
+  const pendingMine = useQuery({ queryKey: ['approvals', 'mine'], queryFn: approvalsApi.listMine, enabled: canSeeApprovals });
+  const pendingForMe = useQuery({ queryKey: ['approvals', 'pending'], queryFn: approvalsApi.listPending, enabled: canSeeApprovals });
+  const pendingSubjects = new Set(
+    [...(pendingMine.data?.approvals || []), ...(pendingForMe.data?.approvals || [])]
+      .filter((a) => a.kind === 'employee_change')
+      .map((a) => a.change?.employee_id),
+  );
+
   const { data: employees = [], isLoading, error, refetch } = useQuery({
     queryKey: ['employees', { role: roleFilter }],
     queryFn: () => employeesApi.list(roleFilter ? { role: roleFilter } : {}),
@@ -74,8 +94,10 @@ export function EmployeesPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => employeesApi.update(id, updates),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      showResult(result);
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
       setEditEmployee(null);
       resetForm();
     },
@@ -83,9 +105,11 @@ export function EmployeesPage() {
 
   const adminMutation = useMutation({
     mutationFn: ({ id, isAdmin }) => employeesApi.update(id, { is_admin: isAdmin }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setAdminError('');
+      showResult(result);
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
     },
     onError: (error) => {
       setAdminError(error?.response?.data?.detail || error?.message || 'Could not change admin rights');
@@ -108,8 +132,10 @@ export function EmployeesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => employeesApi.delete(id),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      showResult(result);
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
       setDeleteId(null);
     },
   });
@@ -216,6 +242,9 @@ export function EmployeesPage() {
       render: (e) => (
         <span style={{ color: e.is_active ? 'var(--success)' : 'var(--danger)', fontWeight: '600', fontSize: '0.8125rem' }}>
           {e.is_active ? 'Active' : 'Inactive'}
+          {pendingSubjects.has(e.employee_id) && (
+            <span style={{ marginLeft: '0.4rem', color: 'var(--warning)', fontWeight: 500 }}>· pending approval</span>
+          )}
         </span>
       ),
     },
@@ -295,6 +324,7 @@ export function EmployeesPage() {
       />
 
       {adminError && <p role="alert" style={{ color: 'var(--danger)' }}>{adminError}</p>}
+      {notice && <p role="status" style={{ color: 'var(--primary)' }}>{notice}</p>}
 
       {/* Filters Bar */}
       <div

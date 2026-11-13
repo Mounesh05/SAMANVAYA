@@ -42,7 +42,10 @@ class ApprovalRequest:
         impact_level: str,
         priority: ApprovalPriority,
         approvers: List[str],
-        expires_in_hours: int = 24
+        expires_in_hours: int = 24,
+        requested_by: Optional[str] = None,
+        kind: Optional[str] = None,
+        change: Optional[Dict[str, Any]] = None,
     ):
         self.id = f"APPROVAL-{uuid.uuid4().hex[:8].upper()}"
         self.action = action
@@ -60,6 +63,11 @@ class ApprovalRequest:
         self.approved_by: Optional[str] = None
         self.approved_at: Optional[datetime] = None
         self.rejection_reason: Optional[str] = None
+        # CR-010: who asked (can never approve), and for typed requests the
+        # exact change that is applied on approval.
+        self.requested_by = requested_by
+        self.kind = kind
+        self.change = change
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -77,7 +85,10 @@ class ApprovalRequest:
             "expires_at": self.expires_at.isoformat(),
             "approved_by": self.approved_by,
             "approved_at": self.approved_at.isoformat() if self.approved_at else None,
-            "rejection_reason": self.rejection_reason
+            "rejection_reason": self.rejection_reason,
+            "requested_by": self.requested_by,
+            "kind": self.kind,
+            "change": self.change,
         }
 
 
@@ -104,7 +115,11 @@ class HITLWorkflowService:
         context: Dict[str, Any],
         impact_level: str,
         priority: ApprovalPriority,
-        approvers: List[str]
+        approvers: List[str],
+        requested_by: Optional[str] = None,
+        kind: Optional[str] = None,
+        change: Optional[Dict[str, Any]] = None,
+        expires_in_hours: int = 24,
     ) -> ApprovalRequest:
         """
         Create approval request.
@@ -121,6 +136,11 @@ class HITLWorkflowService:
         Returns:
             ApprovalRequest object
         """
+        # CR-010: the requester can never be an approver, and a request needs
+        # at least one other approver.
+        eligible = list(dict.fromkeys(a for a in approvers if a and a != requested_by))
+        if not eligible:
+            raise ValueError("An approval request needs at least one approver other than the requester")
         approval = ApprovalRequest(
             action=action,
             description=description,
@@ -128,7 +148,11 @@ class HITLWorkflowService:
             context=context,
             impact_level=impact_level,
             priority=priority,
-            approvers=approvers
+            approvers=eligible,
+            expires_in_hours=expires_in_hours,
+            requested_by=requested_by,
+            kind=kind,
+            change=change,
         )
         
         await self.collection.insert_one(approval.to_dict())
@@ -157,17 +181,7 @@ class HITLWorkflowService:
         Returns:
             True if approved, False if not found or not authorized
         """
-        approval_doc = await self.collection.find_one_and_update(
-            {"id": approval_id, "approvers": approver_id, "status": ApprovalStatus.PENDING.value},
-            {
-                "$set": {
-                    "status": ApprovalStatus.APPROVED.value,
-                    "approved_by": approver_id,
-                    "approved_at": datetime.now(timezone.utc).isoformat()
-                }
-            }
-        )
-        
+        approval_doc = await self.claim(approval_id, approver_id, comment)
         if not approval_doc:
             logger.warning(f"Approval {approval_id} not found or user {approver_id} not authorized")
             return False
@@ -208,7 +222,7 @@ class HITLWorkflowService:
             True if rejected, False if not found or not authorized
         """
         approval_doc = await self.collection.find_one_and_update(
-            {"id": approval_id, "approvers": rejector_id, "status": ApprovalStatus.PENDING.value},
+            self._actionable(approval_id, rejector_id),
             {
                 "$set": {
                     "status": ApprovalStatus.REJECTED.value,
@@ -241,10 +255,46 @@ class HITLWorkflowService:
         
         return True
     
+    @staticmethod
+    def _actionable(approval_id: str, user_id: str) -> Dict[str, Any]:
+        """CR-010: a pending, unexpired request that names this user as an
+        approver and that this user did not raise."""
+        return {
+            "id": approval_id,
+            "approvers": user_id,
+            "status": ApprovalStatus.PENDING.value,
+            "requested_by": {"$ne": user_id},
+            "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+        }
+
+    async def claim(self, approval_id: str, approver_id: str, comment: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Atomically mark a request approved; returns it, or None if it can't be."""
+        changes = {
+            "status": ApprovalStatus.APPROVED.value,
+            "approved_by": approver_id,
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "approval_comment": comment,
+        }
+        # Take the document as it was and merge the change, rather than asking
+        # for the updated one (works the same on MongoDB and in-memory mocks).
+        before = await self.collection.find_one_and_update(
+            self._actionable(approval_id, approver_id), {"$set": changes}, projection={"_id": 0})
+        return {**before, **changes} if before else None
+
+    async def mark_failed(self, approval_id: str, reason: str) -> None:
+        """CR-010: an approved change that could not be applied (rules re-checked)."""
+        await self.collection.update_one({"id": approval_id}, {"$set": {"status": "failed", "failure_reason": reason}})
+
+    async def get_requested_by(self, user_id: str) -> List[Dict[str, Any]]:
+        """Pending requests raised by this user."""
+        cursor = self.collection.find({"requested_by": user_id, "status": "pending"}, {"_id": 0})
+        return await cursor.to_list(length=None)
+
     async def get_pending_for_user(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all pending approvals for a user."""
         cursor = self.collection.find(
-            {"approvers": user_id, "status": "pending"},
+            {"approvers": user_id, "status": "pending", "requested_by": {"$ne": user_id},
+             "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}},
             {"_id": 0}
         )
         return await cursor.to_list(length=None)

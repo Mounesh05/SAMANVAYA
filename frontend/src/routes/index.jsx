@@ -211,6 +211,11 @@ const FeedbackPage = React.lazy(() =>
     default: m.FeedbackPage,
   }))
 );
+const ApprovalsPage = React.lazy(() =>
+  import('../pages/approvals/ApprovalsPage').then((m) => ({
+    default: m.ApprovalsPage,
+  }))
+);
 const ReportsPage = React.lazy(() =>
   import('../pages/reports/ReportsPage').then((m) => ({
     default: m.ReportsPage,
@@ -509,6 +514,9 @@ export function AppRoutes() {
             }
           />
           <Route path="reports" element={<RoleGuard page="reports"><ReportsPage /></RoleGuard>} />
+          {/* CR-010: two-person approval; notifications link to /approvals/{id}. */}
+          <Route path="approvals" element={<RoleGuard page="approvals"><ApprovalsPage /></RoleGuard>} />
+          <Route path="approvals/:approvalId" element={<RoleGuard page="approvals"><ApprovalsPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard page="profile"><ProfilePage /></RoleGuard>} />
 
           {/* 404 Route */}

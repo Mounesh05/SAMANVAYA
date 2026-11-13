@@ -23,6 +23,7 @@ import {
   BookOpen,
   Rocket,
   AlertTriangle,
+  CheckSquare,
   History,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -54,6 +55,7 @@ export function Sidebar() {
       { page: 'tasks', to: '/tasks', icon: <ListTodo size={19} />, label: 'Tasks' },
       { page: 'board', to: '/board', icon: <KanbanSquare size={19} />, label: 'Board' },
       { page: 'employees', to: '/employees', icon: <Users size={19} />, label: 'Employees' },
+      { page: 'approvals', to: '/approvals', icon: <CheckSquare size={19} />, label: 'Approvals' },
       { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: handlesOthersTransfers ? 'Transfer Requests' : 'My Transfers' },
       { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: role === ROLES.LEAD && !managesTeams ? 'My Team' : 'Teams' },
       // Developers cannot list teams; "My Team" opens their own team directly.

@@ -106,10 +106,18 @@ class TestAssigning:
         assert result.designation is None
 
     @pytest.mark.anyio
-    async def test_leaving_hr_clears_the_designation(self, staff):
-        result = await update("OPS-1", ADMIN, role="PM")
-        assert result.role == "PM" and result.designation is None
-        assert staff[1].await_args_list[0].kwargs["details"]["old"] == "HR_OPERATIONS"
+    async def test_leaving_hr_clears_the_designation(self, staff, monkeypatch):
+        # CR-010: the role change waits for a second person; the designation
+        # is cleared when it is applied.
+        from approval_helpers import approve, body, wire
+        audit = wire(staff[0], monkeypatch)
+        pending = body(await update("OPS-1", ADMIN, role="PM"))
+        assert (await staff[0].users.find_one({"employee_id": "OPS-1"}))["designation"] == "HR_OPERATIONS"
+        await approve(pending["approval_id"], HR_MANAGER)
+        doc = await staff[0].users.find_one({"employee_id": "OPS-1"})
+        assert doc["role"] == "PM" and doc["designation"] is None
+        cleared = [c.kwargs["details"] for c in audit.await_args_list if c.kwargs["details"].get("field") == "designation"]
+        assert cleared and cleared[0]["old"] == "HR_OPERATIONS"
 
     @pytest.mark.anyio
     async def test_edits_without_designation_leave_it_alone(self, staff):

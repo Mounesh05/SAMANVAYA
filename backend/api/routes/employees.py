@@ -4,6 +4,7 @@ HR and Admin functionality for managing employees.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
+from fastapi.responses import JSONResponse
 from typing import List, Optional, Union
 from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr, model_validator
@@ -13,6 +14,7 @@ from core.permissions import HR_DESIGNATIONS, Permission, get_user_permissions
 from core.security import hash_password, validate_password_strength
 from core.audit import log_audit, AuditAction
 from domain.schemas.hr_views import EmployeeHRView
+from domain.services import employee_change_service as changes
 
 router = APIRouter()
 
@@ -113,16 +115,16 @@ async def create_employee(
 ):
     """
     Create a new employee.
-    
+
     **Required Permission:** MANAGE_EMPLOYEES (HR or ADMIN)
-    
+
     Creates employee account with:
     - Basic information (name, email, role, dept)
     - Authentication credentials (password is hashed)
     - Optional GitHub username for integration
     - Optional team assignment
     - Admin status (can only be set by existing admins)
-    
+
     **HR users receive filtered response without technical fields.**
     """
     # Check permission
@@ -131,7 +133,7 @@ async def create_employee(
         user.get('is_admin', False),
         user.get('designation')
     )
-    
+
     if Permission.MANAGE_EMPLOYEES not in user_permissions:
         raise HTTPException(
             status_code=403,
@@ -152,6 +154,12 @@ async def create_employee(
         raise HTTPException(
             status_code=403,
             detail="Only admins can create admin accounts"
+        )
+    # CR-010: admin rights are granted after creation, through two-person approval.
+    if employee.is_admin:
+        raise HTTPException(
+            status_code=422,
+            detail="Create the account first, then request admin rights for it (two-person approval).",
         )
 
     designation = (
@@ -195,9 +203,9 @@ async def create_employee(
             "created_at": datetime.now(timezone.utc).isoformat(),
             "created_by": user.get('employee_id')
         }
-        
+
         await repo.insert(employee_doc)
-        
+
         # Audit log
         await log_audit(
             action=AuditAction.USER_CREATED,
@@ -206,11 +214,11 @@ async def create_employee(
             resource_id=employee.employee_id,
             details={"role": employee.role, "dept": employee.dept, "designation": designation}
         )
-        
+
         # Return filtered view for HR users
         if user.get('role', '').upper() == 'HR':
             return EmployeeHRView.from_employee(employee_doc)
-        
+
         return EmployeeResponse(
             employee_id=employee.employee_id,
             name=employee.name,
@@ -224,7 +232,7 @@ async def create_employee(
             designation=designation,
             created_at=employee_doc["created_at"]
         )
-        
+
     except HTTPException:
         raise
     except Exception:
@@ -242,9 +250,9 @@ async def list_employees(
 ):
     """
     List all employees with optional filters.
-    
+
     **Required Permission:** VIEW_ORGANIZATION_DATA (HR, CEO, or ADMIN)
-    
+
     Returns list of employees matching the filters.
     **HR users receive filtered response without technical fields.**
     """
@@ -254,7 +262,7 @@ async def list_employees(
         user.get('is_admin', False),
         user.get('designation')
     )
-    
+
     if not (
         Permission.VIEW_ORGANIZATION_DATA in user_permissions
         or Permission.VIEW_PROJECT_DATA in user_permissions
@@ -265,10 +273,10 @@ async def list_employees(
             status_code=403,
             detail="Insufficient permissions to view employees."
         )
-    
+
     try:
         repo = UserRepository()
-        
+
         # Build filter
         filter_query = {}
         if role:
@@ -279,18 +287,18 @@ async def list_employees(
             filter_query["team_id"] = team_id
         if is_active is not None:
             filter_query["is_active"] = is_active
-        
+
         # Authorization: LEAD can only see their own team
         if user.get("role", "").upper() == "LEAD":
             filter_query["team_id"] = user["team_id"]
-        
+
         # Get employees
         employees = await repo.find_all(filter_query)
-        
+
         # Return filtered view for HR users
         if user.get('role', '').upper() == 'HR':
             return [EmployeeHRView.from_employee(emp) for emp in employees]
-        
+
         return [
             EmployeeResponse(
                 employee_id=emp.get("employee_id", ""),
@@ -311,7 +319,7 @@ async def list_employees(
             )
             for emp in employees
         ]
-        
+
     except HTTPException:
         raise
     except Exception:
@@ -325,16 +333,16 @@ async def get_employee(
 ):
     """
     Get employee details by ID.
-    
+
     **Permission Check:**
     - Own data: Any authenticated user
     - Other's data: Requires VIEW_ORGANIZATION_DATA (HR, CEO, ADMIN)
-    
+
     **HR users receive filtered response without technical fields.**
     """
     # Check if viewing own data
     is_own_data = employee_id == user.get('employee_id')
-    
+
     if not is_own_data:
         # Check permission for viewing others' data
         user_permissions = get_user_permissions(
@@ -342,7 +350,7 @@ async def get_employee(
             user.get('is_admin', False),
             user.get('designation')
         )
-        
+
         if not (
             Permission.VIEW_ORGANIZATION_DATA in user_permissions
             or Permission.VIEW_EMPLOYEE_DIRECTORY in user_permissions
@@ -351,21 +359,21 @@ async def get_employee(
                 status_code=403,
                 detail="Insufficient permissions to view other employees' data"
             )
-    
+
     try:
         repo = UserRepository()
         employee = await repo.find_by_employee_id(employee_id)
-        
+
         if not employee:
             raise HTTPException(
                 status_code=404,
                 detail=f"Employee {employee_id} not found"
             )
-        
+
         # Return filtered view for HR users
         if user.get('role', '').upper() == 'HR':
             return EmployeeHRView.from_employee(employee)
-        
+
         return EmployeeResponse(
             employee_id=employee.get("employee_id", ""),
             name=employee.get("name", "Unknown"),
@@ -379,7 +387,7 @@ async def get_employee(
             designation=employee.get("designation"),
             created_at=employee.get("created_at")
         )
-        
+
     except HTTPException:
         raise
     except Exception:
@@ -394,9 +402,9 @@ async def update_employee(
 ):
     """
     Update employee information.
-    
+
     **Required Permission:** MANAGE_EMPLOYEES (HR or ADMIN)
-    
+
     Updates employee details. Only admins can change admin status.
     """
     # Check permission
@@ -404,16 +412,16 @@ async def update_employee(
         user.get('role', '').upper(),
         user.get('is_admin', False)
     )
-    
+
     if Permission.MANAGE_EMPLOYEES not in user_permissions:
         raise HTTPException(
             status_code=403,
             detail="Insufficient permissions. Only HR or ADMIN can update employees."
         )
-    
+
     try:
         repo = UserRepository()
-        
+
         # Get existing employee
         employee = await repo.find_by_employee_id(employee_id)
         if not employee:
@@ -443,7 +451,7 @@ async def update_employee(
                 status_code=403,
                 detail="HR cannot directly modify engineering team membership. Team transfers must be processed through the organizational transfer workflow."
             )
-        
+
         # Build update dict (only include provided fields)
         update_data = {}
         if updates.name is not None:
@@ -480,7 +488,7 @@ async def update_employee(
             if not updates.is_active:
                 await _refuse_if_last_admin(repo, employee)
             update_data["is_active"] = updates.is_active
-        
+
         # Only admins can change admin status
         if updates.is_admin is not None:
             if not user.get('is_admin', False):
@@ -492,55 +500,50 @@ async def update_employee(
                 await _refuse_if_last_admin(repo, employee)  # CR-008
             update_data["is_admin"] = updates.is_admin
 
-        # CR-009: HR designations. Leaving HR clears it; setting needs
+        # CR-010: admin rights, role and active status go through two-person
+        # approval; everything else in the same edit applies now.
+        covered = changes.covered_changes(employee, update_data)
+
+        # CR-009: HR designations, checked against the current role (a role
+        # change clears the designation when it is applied). Setting one needs
         # MANAGE_HR_DESIGNATIONS and is never allowed on your own account.
-        new_role = (update_data.get("role") or employee.get("role") or "").upper()
+        current_role = (employee.get("role") or "").upper()
         old_designation = employee.get("designation")
         if "designation" in updates.model_fields_set:
             if employee_id == user.get("employee_id"):
                 raise HTTPException(status_code=403, detail="You cannot change your own HR designation")
-            update_data["designation"] = _check_designation(user, new_role, updates.designation)
-        elif new_role != "HR" and old_designation:
-            update_data["designation"] = None
-        
-        if not update_data:
+            update_data["designation"] = _check_designation(user, current_role, updates.designation)
+
+        if not update_data and not covered:
             raise HTTPException(
                 status_code=400,
                 detail="No updates provided"
             )
-        
-        # Add metadata
-        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-        update_data["updated_by"] = user.get('employee_id')
-        
-        # Update employee
-        await repo.update_one(
-            {"employee_id": employee_id},
-            {"$set": update_data}
-        )
-        
+
+        if update_data:
+            update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+            update_data["updated_by"] = user.get('employee_id')
+            await repo.update_one(
+                {"employee_id": employee_id},
+                {"$set": update_data}
+            )
+
         if "designation" in update_data and update_data["designation"] != old_designation:
             await log_audit(
                 action=AuditAction.USER_UPDATED, actor=user, resource_type="employee", resource_id=employee_id,
                 details={"field": "designation", "old": old_designation, "new": update_data["designation"]},
             )
 
-        # CR-008: record admin-right and active-status changes in the audit log.
-        if "is_admin" in update_data and update_data["is_admin"] != bool(employee.get("is_admin", False)):
-            await log_audit(
-                action=AuditAction.ADMIN_GRANTED if update_data["is_admin"] else AuditAction.ADMIN_REVOKED,
-                actor=user, resource_type="employee", resource_id=employee_id,
-            )
-        if "is_active" in update_data:
-            await log_audit(
-                action=AuditAction.USER_ACTIVATED if update_data["is_active"] else AuditAction.USER_DEACTIVATED,
-                actor=user, resource_type="employee", resource_id=employee_id,
-            )
+        pending = None
+        if covered:
+            result = await changes.request_or_apply(repo, await repo.find_by_employee_id(employee_id), covered, user)
+            if result["status"] == "pending_approval":
+                pending = result
 
         # Get updated employee
         updated_employee = await repo.find_by_employee_id(employee_id)
-        
-        return EmployeeResponse(
+
+        response = EmployeeResponse(
             employee_id=updated_employee.get("employee_id", ""),
             name=updated_employee.get("name", "Unknown"),
             email=updated_employee.get("email", ""),
@@ -553,27 +556,17 @@ async def update_employee(
             designation=updated_employee.get("designation"),
             created_at=updated_employee.get("created_at")
         )
-        
+        if pending:
+            return JSONResponse(status_code=202, content={**pending, "employee": response.model_dump()})
+        return response
+
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-async def _refuse_if_last_admin(repo: UserRepository, employee: dict) -> None:
-    """CR-008: never remove admin rights from, or deactivate, the last active admin."""
-    if not employee.get("is_admin") or employee.get("is_active", True) is False:
-        return
-    others = await repo.col.count_documents({
-        "is_admin": True,
-        "is_active": {"$ne": False},
-        "employee_id": {"$ne": employee.get("employee_id")},
-    })
-    if others == 0:
-        raise HTTPException(
-            status_code=409,
-            detail="This is the last active admin. Make another employee an admin first.",
-        )
+_refuse_if_last_admin = changes.refuse_if_last_admin  # moved to the CR-010 service
 
 
 @router.delete("/{employee_id}")
@@ -583,15 +576,15 @@ async def delete_employee(
 ):
     """
     Delete (deactivate) an employee.
-    
+
     **Required Permission:** ADMIN only
-    
+
     This actually deactivates the employee rather than deleting.
     Use for offboarding employees.
     """
     try:
         repo = UserRepository()
-        
+
         # Get employee
         employee = await repo.find_by_employee_id(employee_id)
         if not employee:
@@ -599,7 +592,7 @@ async def delete_employee(
                 status_code=404,
                 detail=f"Employee {employee_id} not found"
             )
-        
+
         if employee.get("role", "").upper() == "CEO":
             raise HTTPException(
                 status_code=403,
@@ -614,28 +607,16 @@ async def delete_employee(
 
         await _refuse_if_last_admin(repo, employee)  # CR-008
 
-        # Deactivate instead of delete
-        await repo.update_one(
-            {"employee_id": employee_id},
-            {
-                "$set": {
-                    "is_active": False,
-                    "deactivated_at": datetime.now(timezone.utc).isoformat(),
-                    "deactivated_by": user.get('employee_id')
-                }
-            }
-        )
-        
-        # Audit log
-        await log_audit(
-            action=AuditAction.USER_DEACTIVATED,
-            actor=user,
-            resource_type="employee",
-            resource_id=employee_id
-        )
-        
-        return {"message": f"Employee {employee_id} deactivated successfully"}
-        
+        if employee.get("is_active", True) is False:
+            return {"message": f"Employee {employee_id} is already inactive"}
+
+        # CR-010: deactivation is confirmed by a second admin when one exists.
+        result = await changes.request_or_apply(repo, employee, {"is_active": False}, user)
+        if result["status"] == "pending_approval":
+            return JSONResponse(status_code=202, content={
+                **result, "message": f"Deactivation of {employee_id} sent for approval ({result['approval_id']})"})
+        return {"message": f"Employee {employee_id} deactivated successfully", **result}
+
     except HTTPException:
         raise
     except Exception:
@@ -650,7 +631,7 @@ async def assign_employee_to_team(
 ):
     """
     Assign an employee to a team.
-    
+
     **Required Permission:** ASSIGN_PROJECT (ADMIN or HR)
     """
     # Check permission
@@ -658,16 +639,16 @@ async def assign_employee_to_team(
         user.get('role', '').upper(),
         user.get('is_admin', False)
     )
-    
+
     if Permission.ASSIGN_PROJECT not in user_permissions:
         raise HTTPException(
             status_code=403,
             detail="Insufficient permissions to assign teams"
         )
-    
+
     try:
         repo = UserRepository()
-        
+
         # Update employee's team
         result = await repo.update_one(
             {"employee_id": employee_id},
@@ -679,15 +660,15 @@ async def assign_employee_to_team(
                 }
             }
         )
-        
+
         if result.matched_count == 0:
             raise HTTPException(
                 status_code=404,
                 detail=f"Employee {employee_id} not found"
             )
-        
+
         return {"message": f"Employee {employee_id} assigned to team {team_id}"}
-        
+
     except HTTPException:
         raise
     except Exception:

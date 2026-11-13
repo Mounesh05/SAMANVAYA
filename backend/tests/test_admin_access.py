@@ -58,10 +58,15 @@ class TestActiveStatus:
         assert (await staff[0].users.find_one({"employee_id": "DEV-1"}))["is_active"] is True
 
     @pytest.mark.anyio
-    async def test_admin_deactivates_and_it_is_audited(self, staff):
-        result = await update("DEV-1", ADMIN, is_active=False)
-        assert result.is_active is False
-        assert staff[1].await_args.kwargs["action"].value == "USER_DEACTIVATED"
+    async def test_admin_deactivation_goes_to_a_second_admin(self, staff, monkeypatch):
+        # CR-010: another admin (CEO-1) exists, so the change waits for approval.
+        from approval_helpers import approve, body, wire
+        audit = wire(staff[0], monkeypatch)
+        pending = body(await update("DEV-1", ADMIN, is_active=False))
+        assert pending["status"] == "pending_approval"
+        await approve(pending["approval_id"], {"employee_id": "CEO-1", "role": "CEO", "is_admin": True})
+        assert (await staff[0].users.find_one({"employee_id": "DEV-1"}))["is_active"] is False
+        assert audit.await_args.kwargs["action"].value == "USER_DEACTIVATED"
 
     @pytest.mark.anyio
     async def test_ceo_account_and_self_are_refused(self, staff):
@@ -78,11 +83,17 @@ class TestActiveStatus:
 
 class TestLastAdmin:
     @pytest.mark.anyio
-    async def test_admin_rights_move_from_the_ceo_to_a_platform_admin(self, staff):
-        await update("DEV-1", ADMIN, is_admin=True)
-        await update("CEO-1", ADMIN, is_admin=False)
+    async def test_admin_rights_move_from_the_ceo_to_a_platform_admin(self, staff, monkeypatch):
+        # CR-010: each step is confirmed by a second admin.
+        from approval_helpers import approve, body, wire
+        audit = wire(staff[0], monkeypatch)
+        ceo = {"employee_id": "CEO-1", "role": "CEO", "is_admin": True}
+        grant = body(await update("DEV-1", ADMIN, is_admin=True))
+        await approve(grant["approval_id"], ceo)
+        revoke = body(await update("CEO-1", ADMIN, is_admin=False))
+        await approve(revoke["approval_id"], {"employee_id": "DEV-1", "role": "DEVELOPER", "is_admin": True})
         assert (await staff[0].users.find_one({"employee_id": "CEO-1"}))["is_admin"] is False
-        actions = [c.kwargs["action"].value for c in staff[1].await_args_list]
+        actions = [c.kwargs["action"].value for c in audit.await_args_list if c.kwargs["action"].value.startswith("ADMIN_")]
         assert actions == ["ADMIN_GRANTED", "ADMIN_REVOKED"]
 
     @pytest.mark.anyio

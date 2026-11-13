@@ -18,6 +18,9 @@ vi.mock('../api/employees.api', () => ({
   employeesApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
 }));
 vi.mock('../api/teams.api', () => ({ teamsApi: { list: vi.fn().mockResolvedValue([]) } }));
+vi.mock('../api/approvals.api', () => ({
+  approvalsApi: { listPending: vi.fn().mockResolvedValue({ approvals: [] }), listMine: vi.fn().mockResolvedValue({ approvals: [] }) },
+}));
 
 const ADMIN = roleUser('DEVELOPER', { employee_id: 'ADM-1', is_admin: true });
 const HR = roleUser('HR', { employee_id: 'HR-1' });
