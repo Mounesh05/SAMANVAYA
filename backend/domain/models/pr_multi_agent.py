@@ -135,9 +135,7 @@ class AssessedClaim(Contract):
     conflicts_with: tuple[Label, ...] = ()
 
 
-class PRAdvisoryReport(Contract):
-    schema_version: Literal["pr-multi-agent-report-v1"] = "pr-multi-agent-report-v1"
-    workflow_type: Literal["pr_multi_agent_v1"] = "pr_multi_agent_v1"
+class PRAnalysisContent(Contract):
     scope: PRScope
     snapshot: PRSnapshot
     status: ReportStatus
@@ -149,4 +147,9 @@ class PRAdvisoryReport(Contract):
     limitations: tuple[Text, ...]
     read_only: Literal[True] = True
     authoritative_score: None = None
+
+
+class PRAdvisoryReport(PRAnalysisContent):
+    schema_version: Literal["pr-multi-agent-report-v1"] = "pr-multi-agent-report-v1"
+    workflow_type: Literal["pr_multi_agent_v1"] = "pr_multi_agent_v1"
     durable: Literal[False] = False
