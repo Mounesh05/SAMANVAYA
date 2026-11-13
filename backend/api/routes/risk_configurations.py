@@ -21,7 +21,7 @@ from core.authorization import verify_project_access
 async def _authorize_risk_change(user: dict, project_id: Optional[str]) -> None:
     """CR-003: risk weights are project-scoped.
 
-    - A project's weights: MANAGE_RISK_CONFIG (Lead, PM, CEO, DevOps) and
+    - A project's weights: MANAGE_RISK_CONFIG (Lead, PM, DevOps) and
       access to that project.
     - Global defaults (project_id None): MANAGE_GLOBAL_RISK_CONFIG (CEO).
     """
@@ -269,7 +269,7 @@ async def clear_cache(
     
     Useful after bulk updates or database migrations.
     
-    Requires: CLEAR_RISK_CACHE (DevOps, CEO)
+    Requires: CLEAR_RISK_CACHE (DevOps)
     """
     if Permission.CLEAR_RISK_CACHE not in get_user_permissions(
             current_user.get("role", current_user.get("organizational_role", "")),

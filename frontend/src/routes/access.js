@@ -83,7 +83,9 @@ export const PAGE_ACCESS = Object.freeze({
   transfers: { roles: [HR, LEAD, DEVELOPER], menuRoles: [HR, DEVELOPER, LEAD], convertIn: 'CR-006 (HR)' },
   // CR-001..004: blocked for Developers, QA, DevOps and Leads. Its CSV exports are
   // made-up numbers until real reporting arrives in CR-007.
-  reports: { roles: ALL.filter((role) => ![DEVELOPER, QA, DEVOPS, LEAD].includes(role)), menuRoles: [CEO, PM], convertIn: 'CR-007 (CEO)' },
+  // CR-007: a hub of links to live pages (each card checks canOpenPage). It
+  // becomes permission-based (EXPORT_DATA) when a reports backend exists.
+  reports: { roles: [CEO, PM, HR], menuRoles: [CEO, PM], convertIn: 'reports backend (needs new structure)' },
 });
 
 function roleOf(user) {

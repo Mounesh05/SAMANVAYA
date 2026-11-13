@@ -74,7 +74,7 @@ async def enable_ci_integration(
     3. Stores CI configuration in database
     4. Returns provisioning status and workflow URL
     
-    Requires MANAGE_TEST_AUTOMATION (QA, PM, LEAD, CEO by default).
+    Requires MANAGE_TEST_AUTOMATION (QA, PM, LEAD by default).
     """
     # Validate project access
     await qa_service.accessible_project(user, project_id)

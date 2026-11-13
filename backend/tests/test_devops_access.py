@@ -58,14 +58,15 @@ class TestDevOpsPermissions:
 
     @pytest.mark.parametrize("permission, roles", [
         # Conversions keep today's roles (DevOps added where CR-003 says so).
-        (Permission.MANAGE_REPOSITORY_LINK, {"CEO", "PM", "LEAD", "DEVOPS"}),
+        # CR-007 later removed the CEO from the hands-on delivery permissions.
+        (Permission.MANAGE_REPOSITORY_LINK, {"PM", "LEAD", "DEVOPS"}),
         (Permission.VIEW_PIPELINES, {"DEVOPS", "QA", "LEAD"}),
         (Permission.VIEW_DEPLOYMENTS, {"DEVOPS", "LEAD"}),
         (Permission.ANALYZE_DEPLOYMENT_RISK, {"DEVOPS", "LEAD"}),
-        (Permission.MANAGE_RISK_CONFIG, {"LEAD", "PM", "CEO", "DEVOPS"}),
+        (Permission.MANAGE_RISK_CONFIG, {"LEAD", "PM", "DEVOPS"}),
         (Permission.MANAGE_GLOBAL_RISK_CONFIG, {"CEO"}),
-        (Permission.CLEAR_RISK_CACHE, {"DEVOPS", "CEO"}),
-        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "PM", "LEAD", "CEO", "DEVOPS"}),
+        (Permission.CLEAR_RISK_CACHE, {"DEVOPS"}),
+        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "PM", "LEAD", "DEVOPS"}),
         (Permission.CREATE_BUG, {"QA", "DEVELOPER", "LEAD", "DEVOPS"}),
     ])
     def test_permission_holders(self, permission, roles):
@@ -116,9 +117,9 @@ class TestRouteGuards:
     async def test_repository_link_and_legacy_ci(self):
         from api.routes import github
         link = {r for r in ["CEO", "PM", "LEAD", "DEVOPS", "QA", "DEVELOPER", "HR"] if await self._allowed(github.save_project_github_config, r)}
-        assert link == {"CEO", "PM", "LEAD", "DEVOPS"}
+        assert link == {"PM", "LEAD", "DEVOPS"}  # CR-007: not the CEO
         ci = {r for r in ["CEO", "PM", "LEAD", "DEVOPS", "QA", "DEVELOPER", "HR"] if await self._allowed(github.provision_qa_workflow, r)}
-        assert ci == {"CEO", "PM", "LEAD", "DEVOPS", "QA"}  # HR removed; it never passed the old write check
+        assert ci == {"PM", "LEAD", "DEVOPS", "QA"}  # CR-007: not the CEO. HR removed; it never passed the old write check
 
 
 # ── Project scope for pipelines and deployments ─────────────────────────────
@@ -221,7 +222,8 @@ class TestRiskConfigScope:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("role, allowed", [("DEVOPS", True), ("CEO", True), ("LEAD", False), ("PM", False)])
+# CR-007: the CEO no longer clears the risk cache (DevOps only).
+@pytest.mark.parametrize("role, allowed", [("DEVOPS", True), ("CEO", False), ("LEAD", False), ("PM", False)])
 async def test_clearing_the_risk_cache(role, allowed):
     from api.routes import risk_configurations
     service = type("S", (), {"clear_cache": lambda self, project_id=None: None})()

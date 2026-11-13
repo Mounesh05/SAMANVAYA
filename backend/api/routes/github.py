@@ -173,7 +173,7 @@ async def save_project_github_config(
 ):
     """Validate and persist repository and developer branch configuration.
 
-    CR-003: MANAGE_REPOSITORY_LINK holders (CEO, PM, Lead, DevOps) link
+    CR-003: MANAGE_REPOSITORY_LINK holders (PM, Lead, DevOps; not the CEO since CR-007) link
     repositories for projects they can access. For CEO/PM/Lead read and write
     scope are the same projects; DevOps never hold project write access, so
     the check is project access, not write access.

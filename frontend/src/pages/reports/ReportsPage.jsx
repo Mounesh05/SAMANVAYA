@@ -1,77 +1,78 @@
-import React, { useMemo } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { Download, TrendingUp, Layers, Award, ShieldCheck } from 'lucide-react';
-import { ROLES } from '../../utils/constants';
+import { ArrowRight, Briefcase, TrendingUp, Layers, Award, ShieldCheck } from 'lucide-react';
+import { canOpenPage } from '../../routes/access';
+
+/**
+ * CR-007: there is no reports backend yet, so this page no longer offers a
+ * download (it used to export a hardcoded CSV). Each report links to the live
+ * page that holds its data, and is shown only to people who can open that page
+ * (the first target the user can open is used).
+ */
+const REPORTS = [
+  {
+    title: 'Sprint Velocity & Completion',
+    description: 'Story points committed vs delivered across sprints.',
+    icon: <Layers size={22} style={{ color: 'var(--cyan)' }} />,
+    targets: [{ page: 'sprints', to: '/sprints' }],
+  },
+  {
+    title: 'Engineering Quality & Static Analysis',
+    description: 'Defect density, security findings, and code maintainability.',
+    icon: <ShieldCheck size={22} style={{ color: 'var(--success)' }} />,
+    targets: [{ page: 'ceoQuality', to: '/quality' }, { page: 'codeQuality', to: '/code-quality' }],
+  },
+  {
+    title: 'Workforce Performance',
+    description: 'Performance outcomes within your access scope.',
+    icon: <Award size={22} style={{ color: 'var(--purple)' }} />,
+    targets: [{ page: 'performance', to: '/performance' }],
+  },
+  {
+    title: 'Delivery & Risk Governance',
+    description: 'Project health, delivery confidence, and active risks.',
+    icon: <TrendingUp size={22} style={{ color: 'var(--primary)' }} />,
+    targets: [{ page: 'ceoRisk', to: '/risk' }],
+  },
+  {
+    title: 'Project Portfolio',
+    description: 'Status of every project you can access.',
+    icon: <Briefcase size={22} style={{ color: 'var(--warning)' }} />,
+    targets: [{ page: 'projects', to: '/projects' }],
+  },
+];
 
 export function ReportsPage() {
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase();
-
-  const allReports = [
-    {
-      title: 'Sprint Velocity & Completion Report',
-      description: 'Historical story points committed vs delivered across sprints.',
-      icon: <Layers size={22} style={{ color: 'var(--cyan)' }} />,
-      type: 'sprint_velocity',
-      roles: [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA],
-    },
-    {
-      title: 'Engineering Quality & Static Analysis Trends',
-      description: 'Defect density, security vulnerability rate, and code maintainability metrics.',
-      icon: <ShieldCheck size={22} style={{ color: 'var(--success)' }} />,
-      type: 'quality_trends',
-      roles: [ROLES.DEVELOPER, ROLES.LEAD, ROLES.QA, ROLES.DEVOPS],
-    },
-    {
-      title: 'Workforce Performance Distribution Report',
-      description: 'Individual and team-level performance breakdowns and AI evaluation summaries.',
-      icon: <Award size={22} style={{ color: 'var(--purple)' }} />,
-      type: 'performance_distribution',
-      roles: [ROLES.HR, ROLES.CEO],
-    },
-    {
-      title: 'Project Delivery & Risk Governance Summary',
-      description: 'Executive overview of project health, delivery confidence, and active impediments.',
-      icon: <TrendingUp size={22} style={{ color: 'var(--primary)' }} />,
-      type: 'delivery_risk',
-      roles: [ROLES.PM, ROLES.LEAD, ROLES.CEO],
-    },
-  ];
-
-  const reports = useMemo(() => {
-    return allReports.filter((r) => r.roles.includes(role));
-  }, [allReports, role]);
-
-  const handleExportCSV = (reportName) => {
-    const csvContent = 'data:text/csv;charset=utf-8,Metric,Value,Date\nVelocity,42,2026-08-30\nPass Rate,98.4%,2026-08-30\nQuality Score,88,2026-08-30';
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${reportName}_report.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const navigate = useNavigate();
+  const reports = REPORTS
+    .map((r) => ({ ...r, target: r.targets.find((t) => canOpenPage(user, t.page)) }))
+    .filter((r) => r.target);
 
   return (
     <div>
       <PageHeader
         title="Reports & Analytics Center"
-        subtitle="Generate authoritative reports, export analytics data, and audit organizational metrics."
+        subtitle="Open the live data behind each report. Downloadable reports need a reports backend and are not available yet."
       />
+
+      {reports.length === 0 && (
+        <p style={{ color: 'var(--text-muted)' }}>No reports are available for your role.</p>
+      )}
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '1.5rem',
         }}
       >
         {reports.map((r) => (
-          <Card key={r.type} padding="lg" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <Card key={r.title} padding="lg" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <div
                 style={{
@@ -95,14 +96,14 @@ export function ReportsPage() {
               </p>
             </div>
 
-            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end' }}>
               <Button
                 variant="secondary"
                 size="sm"
-                leftIcon={<Download size={14} />}
-                onClick={() => handleExportCSV(r.type)}
+                rightIcon={<ArrowRight size={14} />}
+                onClick={() => navigate(r.target.to)}
               >
-                Export CSV
+                Open {r.title}
               </Button>
             </div>
           </Card>

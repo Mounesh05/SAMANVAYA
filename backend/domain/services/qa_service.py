@@ -20,7 +20,9 @@ from domain.models.qa import (
 from repositories.qa_repository import QARepository
 
 
-MANAGEMENT_ROLES = {"QA", "PM", "LEAD", "CEO"}
+# CR-007: the CEO reads defects (READ_ROLES) but does not edit, assign or
+# change their status; QA, PM and Lead manage them.
+MANAGEMENT_ROLES = {"QA", "PM", "LEAD"}
 READ_ROLES = {"QA", "DEVELOPER", "DEVOPS", "LEAD", "PM", "CEO"}
 TERMINAL_DEFECT_STATES = {"CLOSED"}
 
@@ -475,8 +477,8 @@ class QAService:
                 }
                 if new_status not in allowed.get(current, set()):
                     raise HTTPException(status_code=400, detail="Invalid QA defect transition")
-            elif role not in {"PM", "LEAD", "CEO"}:
-                raise HTTPException(status_code=403, detail="Insufficient permissions to change defect status")
+            elif role not in {"PM", "LEAD"}:  # CR-007: not the CEO
+                raise HTTPException(status_code=403, detail="Only QA, PM, Lead, or the assigned developer can change defect status")
             elif role in {"LEAD", "PM"} and current == "READY_FOR_RETEST":
                 # CR-004 (Lead) and CR-005 (PM): QA verifies fixes; managers
                 # assign and prioritise.

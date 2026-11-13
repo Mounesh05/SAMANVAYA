@@ -19,7 +19,7 @@ const EMPTY_LIST = [];
 
 export function QADashboardPage() {
   const { user } = useAuthStore();
-  // Enable/disable CI is MANAGE_TEST_AUTOMATION (QA, PM, Lead, CEO), as on the backend.
+  // Enable/disable CI is MANAGE_TEST_AUTOMATION (QA, PM, Lead; not the CEO since CR-007), as on the backend.
   const canManageCi = hasPermission(user, PERMISSIONS.MANAGE_TEST_AUTOMATION);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [isProvisioningModalOpen, setIsProvisioningModalOpen] = useState(false);

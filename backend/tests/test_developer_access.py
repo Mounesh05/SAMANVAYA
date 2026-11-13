@@ -59,11 +59,11 @@ class TestPermissionMatrix:
                        Permission.MANAGE_INTEGRATIONS, Permission.VIEW_INCIDENTS):
             assert denied not in permissions, denied
 
-    @pytest.mark.parametrize("role", ["LEAD", "PM", "CEO"])
+    @pytest.mark.parametrize("role", ["LEAD", "PM"])  # CR-007: not the CEO
     def test_backlog_owners_accept_drafts(self, role):
         assert Permission.ACCEPT_STORY in get_user_permissions(role)
 
-    @pytest.mark.parametrize("role", ["QA", "DEVOPS", "HR"])
+    @pytest.mark.parametrize("role", ["QA", "DEVOPS", "HR", "CEO"])
     def test_other_roles_do_not_accept_drafts(self, role):
         assert Permission.ACCEPT_STORY not in get_user_permissions(role)
 

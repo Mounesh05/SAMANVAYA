@@ -328,13 +328,12 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         # - VIEW_ORGANIZATION_PERFORMANCE (too broad, use VIEW_PERFORMANCE_OUTCOMES)
     },
 
+    # CR-007: executive oversight, approvals and organisation design. Hands-on
+    # delivery rights (repository links, CI automation, story acceptance, risk
+    # cache and project risk weights) belong to DevOps, QA, Lead and PM.
     OrganizationalRole.CEO: {
         Permission.VIEW_OWN_DATA,
         Permission.MANAGE_GLOBAL_RISK_CONFIG,
-        Permission.CLEAR_RISK_CACHE,
-        Permission.MANAGE_REPOSITORY_LINK,
-        Permission.MANAGE_RISK_CONFIG,
-        Permission.MANAGE_TEST_AUTOMATION,
         Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,
         Permission.VIEW_ALL_DATA,
@@ -353,7 +352,6 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_AUDIT_LOGS,
         # CRUD permissions
         Permission.CREATE_INCIDENT,
-        Permission.ACCEPT_STORY,
         Permission.CREATE_TEAM,
         Permission.MANAGE_TEAMS,
         Permission.ASSIGN_PROJECT,
