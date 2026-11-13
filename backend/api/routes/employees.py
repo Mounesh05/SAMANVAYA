@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr, model_validator
 from repositories.user_repository import UserRepository
 from core.dependencies import get_current_user, require_admin
-from core.permissions import Permission, get_user_permissions
+from core.permissions import HR_DESIGNATIONS, Permission, get_user_permissions
 from core.security import hash_password, validate_password_strength
 from core.audit import log_audit, AuditAction
 from domain.schemas.hr_views import EmployeeHRView
@@ -32,6 +32,7 @@ class EmployeeCreate(BaseModel):
     github_username: Optional[str] = None
     team_id: Optional[str] = None
     is_admin: bool = False
+    designation: Optional[str] = None  # CR-009: HR specialism code, HR role only
 
     @model_validator(mode="after")
     def validate_credentials(self):
@@ -68,6 +69,7 @@ class EmployeeUpdate(BaseModel):
     team_id: Optional[str] = None
     is_admin: Optional[bool] = None
     is_active: Optional[bool] = None
+    designation: Optional[str] = None  # CR-009: send null or "" to clear
 
 
 class EmployeeResponse(BaseModel):
@@ -81,7 +83,27 @@ class EmployeeResponse(BaseModel):
     team_id: Optional[str] = None
     is_active: bool
     is_admin: bool
+    designation: Optional[str] = None
     created_at: Optional[str] = None
+
+
+def _check_designation(user: dict, role: str, designation: Optional[str]) -> Optional[str]:
+    """CR-009: validate an HR designation and who may assign it.
+
+    Returns the normalised code, or None for "no designation" (HR generalist).
+    """
+    code = (designation or "").strip().upper() or None
+    permissions = get_user_permissions(
+        user.get('role', '').upper(), user.get('is_admin', False), user.get('designation'))
+    if Permission.MANAGE_HR_DESIGNATIONS not in permissions:
+        raise HTTPException(status_code=403, detail="Only admins and HR Managers can assign HR designations")
+    if code is None:
+        return None
+    if code not in HR_DESIGNATIONS:
+        raise HTTPException(status_code=422, detail=f"Unknown HR designation. Use one of: {', '.join(HR_DESIGNATIONS)}")
+    if (role or "").upper() != "HR":
+        raise HTTPException(status_code=422, detail="Only HR employees can have an HR designation")
+    return code
 
 
 @router.post("/", response_model=Union[EmployeeResponse, EmployeeHRView], status_code=201)
@@ -132,6 +154,12 @@ async def create_employee(
             detail="Only admins can create admin accounts"
         )
 
+    designation = (
+        _check_designation(user, employee.role, employee.designation)
+        if "designation" in employee.model_fields_set and employee.designation not in (None, "")
+        else None
+    )
+
     try:
         repo = UserRepository()
 
@@ -163,6 +191,7 @@ async def create_employee(
             "team_id": employee.team_id,
             "is_active": True,
             "is_admin": employee.is_admin,
+            "designation": designation,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "created_by": user.get('employee_id')
         }
@@ -175,7 +204,7 @@ async def create_employee(
             actor=user,
             resource_type="employee",
             resource_id=employee.employee_id,
-            details={"role": employee.role, "dept": employee.dept}
+            details={"role": employee.role, "dept": employee.dept, "designation": designation}
         )
         
         # Return filtered view for HR users
@@ -192,6 +221,7 @@ async def create_employee(
             team_id=employee.team_id,
             is_active=True,
             is_admin=employee.is_admin,
+            designation=designation,
             created_at=employee_doc["created_at"]
         )
         
@@ -276,6 +306,7 @@ async def list_employees(
                 team_id=emp.get("team_id"),
                 is_active=emp.get("is_active", True),
                 is_admin=emp.get("is_admin", False),
+                designation=emp.get("designation"),
                 created_at=emp.get("created_at")
             )
             for emp in employees
@@ -345,6 +376,7 @@ async def get_employee(
             team_id=employee.get("team_id"),
             is_active=employee.get("is_active", True),
             is_admin=employee.get("is_admin", False),
+            designation=employee.get("designation"),
             created_at=employee.get("created_at")
         )
         
@@ -459,6 +491,17 @@ async def update_employee(
             if not updates.is_admin:
                 await _refuse_if_last_admin(repo, employee)  # CR-008
             update_data["is_admin"] = updates.is_admin
+
+        # CR-009: HR designations. Leaving HR clears it; setting needs
+        # MANAGE_HR_DESIGNATIONS and is never allowed on your own account.
+        new_role = (update_data.get("role") or employee.get("role") or "").upper()
+        old_designation = employee.get("designation")
+        if "designation" in updates.model_fields_set:
+            if employee_id == user.get("employee_id"):
+                raise HTTPException(status_code=403, detail="You cannot change your own HR designation")
+            update_data["designation"] = _check_designation(user, new_role, updates.designation)
+        elif new_role != "HR" and old_designation:
+            update_data["designation"] = None
         
         if not update_data:
             raise HTTPException(
@@ -476,6 +519,12 @@ async def update_employee(
             {"$set": update_data}
         )
         
+        if "designation" in update_data and update_data["designation"] != old_designation:
+            await log_audit(
+                action=AuditAction.USER_UPDATED, actor=user, resource_type="employee", resource_id=employee_id,
+                details={"field": "designation", "old": old_designation, "new": update_data["designation"]},
+            )
+
         # CR-008: record admin-right and active-status changes in the audit log.
         if "is_admin" in update_data and update_data["is_admin"] != bool(employee.get("is_admin", False)):
             await log_audit(
@@ -501,6 +550,7 @@ async def update_employee(
             team_id=updated_employee.get("team_id"),
             is_active=updated_employee.get("is_active", True),
             is_admin=updated_employee.get("is_admin", False),
+            designation=updated_employee.get("designation"),
             created_at=updated_employee.get("created_at")
         )
         

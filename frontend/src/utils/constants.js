@@ -18,6 +18,21 @@ export const ROLE_LABELS = {
   [ROLES.CEO]: 'Executive (CEO)',
 };
 
+/** CR-009: HR specialisms (backend HR_DESIGNATIONS). Empty = HR generalist. */
+export const HR_DESIGNATION_LABELS = {
+  HR_MANAGER: 'HR Manager',
+  RECRUITER: 'Recruiter',
+  HR_OPERATIONS: 'HR Operations',
+  HRBP: 'HR Business Partner',
+  EMPLOYEE_RELATIONS: 'Employee Relations',
+  COMPENSATION_BENEFITS: 'Compensation & Benefits',
+};
+
+/** Readable name for a designation code; other text is shown as it is. */
+export function designationLabel(designation) {
+  return HR_DESIGNATION_LABELS[designation] || designation || '';
+}
+
 export const ROLE_COLORS = {
   [ROLES.DEVELOPER]: '#3b82f6',
   [ROLES.LEAD]: '#6366f1',

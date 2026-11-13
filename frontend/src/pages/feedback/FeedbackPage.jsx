@@ -7,7 +7,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Select } from '../../components/common/Select';
-import { ROLES, ROLE_LABELS } from '../../utils/constants';
+import { ROLES, ROLE_LABELS, designationLabel } from '../../utils/constants';
 import { CheckCircle2, Star, Send, Save, AlertCircle, ShieldCheck, Info } from 'lucide-react';
 import { useToast } from '../../components/common/Toast';
 
@@ -396,7 +396,7 @@ export function FeedbackPage() {
                 placeholder="Select employee to evaluate"
                 options={evaluatableEmployees.map((e) => ({
                   value: e.employee_id,
-                  label: `${e.name} (${e.role}${e.designation ? ` - ${e.designation}` : ''}) - ${e.employee_id}`,
+                  label: `${e.name} (${e.role}${e.designation ? ` - ${designationLabel(e.designation)}` : ''}) - ${e.employee_id}`,
                 }))}
                 required
               />

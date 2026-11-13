@@ -13,7 +13,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { UserPlus, Edit, Trash2, ShieldCheck, ShieldOff } from 'lucide-react';
-import { ROLES, ROLE_LABELS } from '../../utils/constants';
+import { ROLES, ROLE_LABELS, HR_DESIGNATION_LABELS, designationLabel } from '../../utils/constants';
 import { useAuthStore } from '../../store/useAuthStore';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 
@@ -29,6 +29,8 @@ export function EmployeesPage() {
   // is_admin field). The backend refuses to remove the last active admin.
   const canManageAdmins = Boolean(user?.is_admin);
   const [adminError, setAdminError] = useState('');
+  // CR-009: admins and HR Managers assign HR designations (never their own).
+  const canAssignDesignations = hasPermission(user, PERMISSIONS.MANAGE_HR_DESIGNATIONS);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -46,6 +48,7 @@ export function EmployeesPage() {
     employee_password: '',
     team_id: '',
     github_username: '',
+    designation: '',
   });
 
   const queryClient = useQueryClient();
@@ -122,8 +125,11 @@ export function EmployeesPage() {
       employee_password: '',
       team_id: '',
       github_username: '',
+      designation: '',
     });
   };
+
+  const canEditDesignation = canAssignDesignations && editEmployee?.employee_id !== user?.employee_id;
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -136,10 +142,17 @@ export function EmployeesPage() {
           role: formData.role,
           dept: formData.dept,
           github_username: formData.github_username || null,
+          // Send the designation only when this user may change it and it changed.
+          ...(canEditDesignation && (formData.designation || '') !== (editEmployee.designation || '')
+            ? { designation: formData.role === 'HR' ? formData.designation || null : null }
+            : {}),
         },
       });
     } else {
-      createMutation.mutate(formData);
+      const { designation, ...rest } = formData;
+      createMutation.mutate(
+        canAssignDesignations && rest.role === 'HR' && designation ? { ...rest, designation } : rest,
+      );
     }
   };
 
@@ -156,6 +169,7 @@ export function EmployeesPage() {
       employee_password: '',
       team_id: emp.team_id || '',
       github_username: emp.github_username || '',
+      designation: emp.designation || '',
     });
   };
 
@@ -169,7 +183,13 @@ export function EmployeesPage() {
   const columns = [
     { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '700' }}>{e.name}</span> },
     { key: 'employee_id', header: 'Employee ID', render: (e) => <span className="font-mono">{e.employee_id}</span> },
-    { key: 'role', header: 'Role', render: (e) => ROLE_LABELS[e.role] || e.role },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (e) => (e.role === 'HR' && e.designation
+        ? `${ROLE_LABELS[e.role] || e.role} · ${designationLabel(e.designation)}`
+        : ROLE_LABELS[e.role] || e.role),
+    },
     {
       key: 'dept',
       header: 'Department',
@@ -433,6 +453,17 @@ export function EmployeesPage() {
               required
             />
           </div>
+
+          {formData.role === 'HR' && (
+            <Select
+              label="HR designation"
+              value={formData.designation}
+              onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+              placeholder="HR generalist (no designation)"
+              options={Object.entries(HR_DESIGNATION_LABELS).map(([value, label]) => ({ value, label }))}
+              disabled={editEmployee ? !canEditDesignation : !canAssignDesignations}
+            />
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             {editEmployee ? (

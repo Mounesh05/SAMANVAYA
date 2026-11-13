@@ -114,6 +114,7 @@ class Permission(str, Enum):
     VIEW_AUDIT_LOGS = "VIEW_AUDIT_LOGS"
     EXPORT_DATA = "EXPORT_DATA"
     MANAGE_SETTINGS = "MANAGE_SETTINGS"
+    MANAGE_HR_DESIGNATIONS = "MANAGE_HR_DESIGNATIONS"  # CR-009: assign HR specialisms
     MANAGE_INTEGRATIONS = "MANAGE_INTEGRATIONS"
 
 
@@ -377,6 +378,7 @@ ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.ASSIGN_PROJECT,
     Permission.VIEW_AUDIT_LOGS,
     Permission.EXPORT_DATA,
+    Permission.MANAGE_HR_DESIGNATIONS,  # CR-009 D1-A: admins appoint HR specialists
     # Reserved: no settings or integrations screens check these yet.
     Permission.MANAGE_SETTINGS,
     Permission.MANAGE_INTEGRATIONS,
@@ -384,8 +386,11 @@ ADMIN_PERMISSIONS: Set[Permission] = {
 
 
 # HR Designation-based permissions
+# CR-009: a designation REPLACES the base HR set (least privilege by
+# specialism). HR users without one keep the base HR set ("HR generalist").
 HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
     "HR_MANAGER": {
+        Permission.MANAGE_HR_DESIGNATIONS,  # CR-009 D1-A
         Permission.EXECUTE_TRANSFER,  # CR-006
         Permission.VIEW_EMPLOYEE_DIRECTORY,
         Permission.VIEW_EMPLOYEE_PROFILE,
@@ -407,6 +412,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_GRIEVANCES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
         Permission.VIEW_AUDIT_LOGS,  # HR Manager can view HR-relevant audit logs
@@ -418,6 +424,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.MANAGE_CANDIDATES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
         # No VIEW_AUDIT_LOGS for recruiter
     },
     "HR_OPERATIONS": {
@@ -433,6 +440,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.MANAGE_EMPLOYEES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
     },
     "HRBP": {
         Permission.VIEW_EMPLOYEE_DIRECTORY,
@@ -447,6 +455,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_GRIEVANCES,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
         Permission.SUBMIT_HR_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
     },
@@ -457,6 +466,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_HR_PERFORMANCE_ASSESSMENT,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
     },
     "COMPENSATION_BENEFITS": {
         Permission.VIEW_EMPLOYEE_DIRECTORY,
@@ -464,8 +474,12 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.VIEW_COMPENSATION,
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
+        Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
     },
 }
+
+
+HR_DESIGNATIONS = tuple(HR_DESIGNATION_PERMISSIONS)  # CR-009: allowed designation codes
 
 
 def get_user_permissions(role: str, is_admin: bool = False, designation: Optional[str] = None) -> Set[Permission]:
@@ -483,16 +497,11 @@ def get_user_permissions(role: str, is_admin: bool = False, designation: Optiona
     try:
         org_role = OrganizationalRole(role.upper())
         
-        # For HR role with designation, use designation permissions instead of base role
+        # An HR designation replaces the base HR set; everyone else uses the role set.
         if org_role == OrganizationalRole.HR and designation and designation in HR_DESIGNATION_PERMISSIONS:
             permissions = set(HR_DESIGNATION_PERMISSIONS[designation])
         else:
-            # Use base role permissions
             permissions = set(ROLE_PERMISSIONS.get(org_role, set()))
-            
-            # Add HR designation-specific permissions on top (for non-HR roles or no designation)
-            if org_role == OrganizationalRole.HR and designation and designation in HR_DESIGNATION_PERMISSIONS:
-                permissions.update(HR_DESIGNATION_PERMISSIONS[designation])
     except (ValueError, KeyError):
         return set()
 

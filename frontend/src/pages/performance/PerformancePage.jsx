@@ -16,7 +16,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Play, Sparkles, Shield, UserCheck, Award, BookOpen } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
-import { ROLES } from '../../utils/constants';
+import { ROLES, designationLabel } from '../../utils/constants';
 import { hasPermission, hasAnyPermission, PERMISSIONS } from '../../auth/permissions';
 import { useToast } from '../../components/common/Toast';
 
@@ -220,7 +220,7 @@ export function PerformancePage() {
               onChange={(e) => setSelectedDevId(e.target.value)}
               options={visibleEmployees.map((e) => ({
                 value: e.employee_id,
-                label: `${e.name} (${e.role}${e.designation ? ` - ${e.designation}` : ''}) - ${e.employee_id}`,
+                label: `${e.name} (${e.role}${e.designation ? ` - ${designationLabel(e.designation)}` : ''}) - ${e.employee_id}`,
               }))}
             />
           </div>
