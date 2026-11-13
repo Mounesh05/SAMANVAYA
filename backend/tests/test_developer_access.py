@@ -291,7 +291,7 @@ class TestConvertedRouteGuards:
         (Permission.TRANSITION_TASK, {"DEVELOPER", "LEAD", "PM", "QA", "DEVOPS"}),  # board move
         (Permission.ANALYZE_CICD_LOGS, {"DEVELOPER", "LEAD", "QA", "DEVOPS"}),      # CI/CD log analysis
         (Permission.ANALYZE_PR_RISK, {"DEVELOPER", "LEAD", "QA", "DEVOPS"}),        # PR risk analysis
-        (Permission.VIEW_INCIDENTS, {"DEVOPS", "LEAD", "CEO"}),                     # former Incidents page roles
+        (Permission.VIEW_INCIDENTS, {"DEVOPS", "LEAD", "CEO", "PM"}),               # former Incidents page roles; PM added in CR-014
         (Permission.CREATE_INCIDENT, {"DEVELOPER", "DEVOPS", "CEO", "QA"}),  # QA added in CR-002
     ])
     def test_permission_holders(self, permission, roles):

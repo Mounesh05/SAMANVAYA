@@ -54,6 +54,7 @@ class AuditAction(str, Enum):
     # Data access
     SENSITIVE_DATA_ACCESSED = "SENSITIVE_DATA_ACCESSED"
     EXPORT_DATA = "EXPORT_DATA"
+    INCIDENT_UPDATED = "INCIDENT_UPDATED"  # CR-014: triage changes
     
     # Settings
     SETTINGS_CHANGED = "SETTINGS_CHANGED"

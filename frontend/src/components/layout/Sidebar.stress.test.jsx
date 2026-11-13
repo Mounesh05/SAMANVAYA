@@ -142,6 +142,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/performance',
           '/feedback',
           '/reports',
+          '/incidents', // CR-014: PMs triage their projects' incidents
         ],
         forbiddenRoutes: [
           '/employees',
@@ -153,7 +154,6 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/tests',
           '/pipelines',
           '/deployments',
-          '/incidents',
           '/cicd-logs',
           '/evaluation',
           '/audit',

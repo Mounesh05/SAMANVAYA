@@ -51,6 +51,7 @@ class TestDevOpsPermissions:
             Permission.MANAGE_REPOSITORY_LINK, Permission.VIEW_PIPELINES, Permission.VIEW_DEPLOYMENTS,
             Permission.ANALYZE_DEPLOYMENT_RISK, Permission.MANAGE_RISK_CONFIG, Permission.CLEAR_RISK_CACHE,
             Permission.MANAGE_TEST_AUTOMATION, Permission.CREATE_BUG,
+            Permission.TRIAGE_INCIDENT,  # CR-014
         }
 
     def test_devops_sees_only_own_performance(self):

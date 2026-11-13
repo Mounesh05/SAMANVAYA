@@ -19,6 +19,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { AlertTriangle, Plus, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { formatDate, timeAgo } from '../../utils/dates';
+import { IncidentDetail } from './IncidentDetail';
 
 const INCIDENT_STATUS = {
   OPEN: 'open',
@@ -45,10 +46,13 @@ const EMPTY_INCIDENT = {
 export function IncidentsPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  // DevOps/Lead/CEO see every incident in their projects; reporters such as
-  // developers see only the incidents they reported.
+  // DevOps/Lead/PM/CEO see every incident in their projects; reporters such as
+  // developers see only the incidents they reported. CR-014: DevOps, Lead and
+  // PM triage them.
   const canViewAll = hasPermission(user, PERMISSIONS.VIEW_INCIDENTS);
   const canReport = hasPermission(user, PERMISSIONS.CREATE_INCIDENT);
+  const canTriage = hasPermission(user, PERMISSIONS.TRIAGE_INCIDENT);
+  const [openIncident, setOpenIncident] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -149,6 +153,7 @@ export function IncidentsPage() {
       header: 'Status',
       render: (inc) => <StatusBadge status={inc.status} />,
     },
+    { key: 'assignee', header: 'Owner', render: (inc) => inc.assignee_name || inc.assignee_id || '—' },
     { key: 'service', header: 'Service', render: (inc) => inc.service || '—' },
     { key: 'reporter_name', header: 'Reported by', render: (inc) => inc.reporter_name || inc.reporter_id || '—' },
     {
@@ -182,8 +187,8 @@ export function IncidentsPage() {
         title={canViewAll ? 'Incidents' : 'My Reported Incidents'}
         subtitle={
           canViewAll
-            ? 'Track, manage, and resolve production incidents.'
-            : 'Report a production problem. DevOps triages and resolves it.'
+            ? 'Track, triage, and resolve production incidents. Select an incident for its details.'
+            : 'Report a production problem. DevOps, Leads and PMs triage and resolve it.'
         }
         actions={
           canReport && (
@@ -213,8 +218,8 @@ export function IncidentsPage() {
           color="danger"
         />
         <MetricCard
-          title="Resolved Today"
-          value={incidents.filter((i) => i.status === 'resolved').length}
+          title="Resolved"
+          value={incidents.filter((i) => i.status === 'resolved' || i.status === 'closed').length}
           icon={<CheckCircle size={20} />}
           color="success"
         />
@@ -261,8 +266,19 @@ export function IncidentsPage() {
       <Table
         columns={columns}
         data={filteredIncidents}
+        onRowClick={(incident) => setOpenIncident(incident)}
         emptyMessage={canViewAll ? 'No active incidents. All systems operational.' : 'You have not reported any incidents.'}
       />
+
+      {/* CR-014: incident detail and triage */}
+      <Modal
+        isOpen={Boolean(openIncident)}
+        onClose={() => setOpenIncident(null)}
+        title={openIncident ? `${openIncident.id}: ${openIncident.title}` : ''}
+        subtitle={canTriage ? 'Acknowledge, assign, resolve and close' : 'Incident details'}
+      >
+        {openIncident && <IncidentDetail incidentId={openIncident.id} canTriage={canTriage} />}
+      </Modal>
 
       {/* Create Incident Modal */}
       <Modal

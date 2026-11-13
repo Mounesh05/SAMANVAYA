@@ -121,6 +121,7 @@ describe('CR-001 page access table', () => {
       DEVELOPER: { incidents: true, evaluation: false },
       QA: { incidents: true },
       HR: { evaluation: false }, // CR-006: backend refuses HR evaluation reads
+      PM: { incidents: true }, // CR-014: PMs see and triage their projects' incidents
     };
     for (const [page, roles] of Object.entries(before)) {
       for (const role of Object.keys(rolePermissions).filter((r) => !r.startsWith('_'))) {

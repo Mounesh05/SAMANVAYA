@@ -73,6 +73,7 @@ class Permission(str, Enum):
     CREATE_BUG = "CREATE_BUG"
     CREATE_INCIDENT = "CREATE_INCIDENT"
     VIEW_INCIDENTS = "VIEW_INCIDENTS"  # read all incidents in accessible projects
+    TRIAGE_INCIDENT = "TRIAGE_INCIDENT"  # CR-014: acknowledge, assign, resolve, close
     
     # Task Management
     MOVE_TASK = "MOVE_TASK"
@@ -166,6 +167,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-004: a Lead manages one team. People data (performance, evaluations,
     # feedback) is team-scoped; work is scoped to the team's projects.
     OrganizationalRole.LEAD: {
+        Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
         Permission.VIEW_OWN_DATA,
         Permission.SYNC_REPOSITORY_PRS,
         Permission.ANALYZE_SPRINT_RISK,
@@ -203,6 +205,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     },
 
     OrganizationalRole.PM: {
+        Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
+        Permission.VIEW_INCIDENTS,  # CR-014 D1-A
         Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
         Permission.VIEW_OWN_DATA,
         Permission.SYNC_REPOSITORY_PRS,
@@ -264,6 +268,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-003: DevOps own pipelines, deployments, repository links and CI in
     # their projects; own performance only.
     OrganizationalRole.DEVOPS: {
+        Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
         Permission.VIEW_OWN_DATA,
         Permission.MANAGE_REPOSITORY_LINK,
         Permission.VIEW_PIPELINES,
