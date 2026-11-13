@@ -147,12 +147,16 @@ async def test_connected_code_quality_run_resolves_source_revision(mock_db, monk
     github.client.get_commit.assert_awaited_once_with("o", "r", "testing")
 
 
-async def test_ollama_outage_does_not_block_github_structural_analysis(monkeypatch):
+async def test_ollama_outage_does_not_block_github_structural_analysis(mock_db, monkeypatch):
+    from core import database
+    monkeypatch.setattr(database, "get_db", lambda: mock_db)
+    await mock_db.users.insert_one({"employee_id": "A", "role": "DEVELOPER", "org_id": "O1", "project_ids": ["P1"]})
+    await mock_db.projects.insert_one({"id": "P1", "org_id": "O1"})
     monkeypatch.setitem(sys.modules, "agents.llm_provider", SimpleNamespace(check_ollama_connection=lambda: False))
     result = await GitHubAnalysisService().analyze_with_ai({
         "project_id": "P1", "source_files": {"module.py": SOURCE}, "commit_sha": "head",
-    }, {}, use_deep_analysis=True)
-    assert result["ai_analysis"]["error"] == "Ollama not available"
+    }, {"risk_score": 1}, authorization={"employee_id": "A"})
+    assert result["ai_analysis"]["error"] == "MODEL_UNAVAILABLE"
     assert result["function_discovery"]["functions"][0]["task_status"] == "INFERRED"
     assert result["function_discovery"]["functions"][0]["verified_contract"] is None
 

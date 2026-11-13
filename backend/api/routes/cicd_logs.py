@@ -5,14 +5,17 @@ Endpoints for analyzing build, test, and deployment logs with AI
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from intelligence.log_analyzer import LogAnalyzer
 from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
 from core.dependencies import get_current_user, require_roles
 from repositories.ai_run_repository import AIRunRepository
-from domain.services.ai_run_access import invocation_scope
+from domain.services.ai_run_access import invocation_scope, permissions
+from core.permissions import Permission
 from domain.services.ai_evidence_service import prepare_evidence
+from domain.services.internal_agent_adapter import validated_interpretation
 
 router = APIRouter(tags=["CI/CD Logs"])
 
@@ -64,6 +67,8 @@ class LogAnalysisResponse(BaseModel):
     prevention: str | None = None
     urgency: str | None = None
     confidence: float | None = None
+    ai_status: Literal["completed", "failed", "unavailable", "skipped"] = "skipped"
+    ai_errors: list[str] = Field(default_factory=list)
     
     # Metadata
     execution_time_ms: float
@@ -138,6 +143,9 @@ async def analyze_cicd_log(
     
     # Layer 6: AI Agent interprets evidence (if requested)
     if request.use_ai:
+        user_permissions = permissions(current_user)
+        if current_user.get("role", "").upper() == "HR" or Permission.VIEW_AI_EVALUATION not in user_permissions:
+            raise HTTPException(403, "Insufficient permissions for technical AI analysis")
         if not check_ollama_connection():
             raise HTTPException(
                 status_code=503,
@@ -147,6 +155,8 @@ async def analyze_cicd_log(
         try:
             ai_state = {
                 "task_type": "cicd_analysis",
+                "user_context": {"employee_id": current_user.get("employee_id"), "role": current_user.get("role"),
+                                 "permissions": [permission.value for permission in user_permissions]},
                 "evidence": evidence,
                 "context": {
                     "log_type": request.log_type,
@@ -160,6 +170,9 @@ async def analyze_cicd_log(
             
             import asyncio
             ai_result = await asyncio.to_thread(invoke_agent, "cicd_analysis", ai_state)
+            interpretation = validated_interpretation(ai_result, kind="cicd")
+            ai_result = interpretation
+            response_data.update(ai_status=interpretation["status"], ai_errors=interpretation["errors"])
             
             response_data.update({
                 "ai_analysis": ai_result.get("analysis"),
@@ -188,7 +201,8 @@ async def analyze_cicd_log(
                     "recommendations": ai_result.get("recommendations"),
                     "urgency": ai_result.get("urgency"),
                 },
-                status="completed",
+                status="completed" if interpretation["status"] == "completed" else "failed",
+                error_message="; ".join(interpretation.get("errors", [])) or None,
                 execution_time_ms=(time.time() - start_time) * 1000,
                 model_name="ollama",
                 triggered_by=current_user["email"],
@@ -196,9 +210,10 @@ async def analyze_cicd_log(
             run_id = await ai_run_repo.create(ai_run)
             response_data["ai_run_id"] = run_id
             
-        except Exception as e:
+        except Exception:
             # AI failed, but Layer 5 results are still valid
-            response_data["ai_analysis"] = f"AI analysis failed: {str(e)}"
+            response_data.update(ai_analysis=None, root_cause=None, affected_component=None, fix_recommendations=[],
+                prevention=None, urgency=None, confidence=None, ai_status="failed", ai_errors=["AGENT_ADAPTER_FAILED"])
     
     response_data["execution_time_ms"] = (time.time() - start_time) * 1000
     

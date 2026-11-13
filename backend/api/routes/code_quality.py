@@ -25,6 +25,7 @@ from core.permissions import Permission
 from core.authorization import get_accessible_project_ids, verify_project_access
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
+from domain.services.ai_run_access import invocation_scope, permissions, ACCESS_VERSION
 from intelligence.analyzers.language_detector import LanguageDetector
 from intelligence.analyzers.registry import list_supported_languages
 
@@ -124,6 +125,7 @@ async def start_analysis(
         run_id=run_id,
         body=normalized_body,
         profile=profile,
+        actor_id=user.get("employee_id"),
     )
 
     return {
@@ -148,7 +150,7 @@ async def get_run(run_id: str, user: dict = Depends(get_current_user)):
     if run.get("repository_id") not in accessible:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    return run
+    return await _visible_ai_result(run, user)
 
 
 @router.get("/runs/{run_id}/findings")
@@ -223,7 +225,7 @@ async def get_latest_run(
     )
     if not run:
         raise HTTPException(status_code=404, detail="No completed runs for this repository")
-    return run
+    return await _visible_ai_result(run, user)
 
 
 @router.get("/repositories/{repository_id}/history")
@@ -298,7 +300,30 @@ async def supported_languages():
 
 # ── Background task ───────────────────────────────────────────────────────────
 
-async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None:
+async def _visible_ai_result(run, user):
+    """Apply the AI tenant/permission boundary to optional interpretation fields."""
+    if "ai_analysis" not in run:
+        return run
+    if run.get("ai_status") == "skipped":
+        return {**run, "ai_analysis": {"status": "skipped", "errors": []},
+                "ai_provenance": {}, "ai_authorization_scope": None}
+    scope = run.get("ai_authorization_scope") or {}
+    if not isinstance(scope, dict):
+        scope = {}
+    if (user.get("role", "").upper() != "HR" and Permission.VIEW_AI_EVALUATION in permissions(user)
+            and scope.get("access_version") == ACCESS_VERSION and scope.get("owner_id")
+            and scope.get("project_id") == run.get("repository_id")):
+        try:
+            current = await invocation_scope(user, {"project_id": scope["project_id"]})
+            if current["organization_id"] == scope.get("organization_id"):
+                return run
+        except HTTPException:
+            pass
+    return {**run, "ai_analysis": {"status": "unavailable", "analysis": None, "errors": ["AI_RESULT_ACCESS_DENIED"]},
+            "ai_status": "unavailable", "ai_provenance": {}, "ai_authorization_scope": None}
+
+
+async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any, actor_id: Optional[str] = None) -> None:
     """
     Heavy analysis executed in the background.
     Updates the run document with results when complete.
@@ -362,10 +387,12 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
         risk_result = await RiskEngine().analyze_evidence(evidence, baseline)
 
         # AI Code Agent (if requested and not quick)
-        ai_analysis = {}
+        from domain.services.internal_agent_adapter import resolve_code_authority, interpret_code, failed_interpretation
+        ai_analysis = {"status": "skipped", "errors": []}
+        authority = None
         if body.use_ai and body.analysis_level != "quick":
             try:
-                from agents.code_agent import code_analysis_node
+                authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
                 # Build a summary string for the agent
                 summary = (
                     f"Language: {evidence.primary_language}\n"
@@ -381,21 +408,12 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
                     f"Risk factors: {', '.join(risk_result['risk_factors'][:5])}\n"
                     f"{evidence.analysis_quality.prompt_note()}"
                 )
-                agent_state = {
-                    "evidence": {"evidence_summary": summary},
-                    "context": body.pr_context,
-                    "agent_history": [],
-                    "errors": [],
-                }
-                agent_result = code_analysis_node(agent_state)
-                ai_analysis = {
-                    "analysis": agent_result.get("analysis", ""),
-                    "recommendations": agent_result.get("recommendations", []),
-                    "critical_issues": agent_result.get("critical_issues", []),
-                    "review_focus": agent_result.get("review_focus", ""),
-                }
-            except Exception as e:
-                ai_analysis = {"error": str(e)[:200]}
+                ai_analysis = await interpret_code({"evidence_summary": summary}, context, authority,
+                    evidence_available=evidence.files_analyzed > 0, quality_result=quality_result, risk_result=risk_result)
+            except HTTPException:
+                ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
+            except Exception:
+                ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
 
         # Persist findings to their own collection
         if evidence.static_findings:
@@ -445,6 +463,10 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any) -> None
                     "findings_count": len(evidence.static_findings),
                     "function_discovery": evidence.function_discovery.model_dump(mode="json"),
                     "ai_analysis": ai_analysis,
+                    "ai_status": ai_analysis["status"],
+                    "ai_authorization_scope": authority.scope if authority is not None else None,
+                    "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
+                                      "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"},
                 }
             },
         )
