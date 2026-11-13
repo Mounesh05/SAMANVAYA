@@ -4,7 +4,7 @@ AI Runs represent agent executions with evidence, analysis, and recommendations.
 """
 
 from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, Literal
 from datetime import datetime
 
 
@@ -15,6 +15,11 @@ class AIRun(BaseModel):
     """
     
     id: Optional[str] = None
+    access_version: Optional[Literal["ai-run-access-v1"]] = None
+    owner_id: Optional[str] = None
+    project_id: Optional[str] = None
+    organization_id: Optional[str] = None
+    provenance: Dict[str, Any] = Field(default_factory=dict)
     agent_type: str = Field(..., description="code_review|qa_analysis|devops_risk|meeting_insights|cicd_analysis")
     
     # Input (from Intelligence Engine)

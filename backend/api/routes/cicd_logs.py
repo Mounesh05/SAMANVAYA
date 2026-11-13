@@ -11,6 +11,8 @@ from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
 from core.dependencies import get_current_user, require_roles
 from repositories.ai_run_repository import AIRunRepository
+from domain.services.ai_run_access import invocation_scope
+from domain.services.ai_evidence_service import prepare_evidence
 
 router = APIRouter(tags=["CI/CD Logs"])
 
@@ -172,9 +174,15 @@ async def analyze_cicd_log(
             # Save AI run
             ai_run_repo = AIRunRepository()
             from domain.models.ai_run import AIRun
+            scope = await invocation_scope(current_user, {})
+            _, stored_inputs, provenance = await prepare_evidence(
+                current_user, scope, "cicd_analysis", request.model_dump(), ai_state["context"], [])
+            stored_inputs["derived_observations"] = evidence
             ai_run = AIRun(
                 agent_type="cicd_analysis",
-                input_data={"evidence": evidence, "context": ai_state["context"]},
+                **scope,
+                provenance=provenance,
+                input_data=stored_inputs,
                 output_data={
                     "analysis": ai_result.get("analysis"),
                     "recommendations": ai_result.get("recommendations"),

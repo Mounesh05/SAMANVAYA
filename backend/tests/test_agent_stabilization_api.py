@@ -1,6 +1,6 @@
 """Existing /ai/invoke schema and failed-run persistence, not F01/F02 fixes."""
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 import json
 
 import httpx
@@ -20,9 +20,9 @@ RESPONSE_KEYS = {"run_id", "task_type", "analysis", "recommendations", "risk_lev
 @pytest.fixture
 async def endpoint(mock_db, monkeypatch):
     monkeypatch.setattr(database, "get_db", lambda: mock_db)
-    monkeypatch.setattr(ai, "get_accessible_project_ids", AsyncMock(return_value=["P1"]))
+    await mock_db.projects.insert_one({"id": "P1", "org_id": "O1"})
     monkeypatch.setattr(ai, "check_ollama_connection", lambda: True)
-    actor = {"employee_id": "SYNTHETIC", "email": "synthetic@example.invalid", "role": "CEO", "org_id": "O1"}
+    actor = {"employee_id": "SYNTHETIC", "email": "synthetic@example.invalid", "role": "CEO", "org_id": "O1", "project_ids": ["P1"]}
     app = FastAPI()
     app.include_router(ai.router, prefix="/api/ai")
     app.dependency_overrides[get_current_user] = lambda: actor

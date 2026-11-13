@@ -4,16 +4,18 @@ Invoke specialized agents to interpret Intelligence Engine evidence
 """
 
 from typing import Dict, Any, Literal
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 
 from agents.supervisor import invoke_agent
 from agents.llm_provider import check_ollama_connection
 from core.dependencies import get_current_user
-from core.authorization import get_accessible_project_ids, has_org_access
 from core.permissions import get_user_permissions, Permission
 from domain.models.ai_run import AIRun
+from domain.models.ai_evidence import GitHubFileEvidenceV1
+from domain.services.ai_run_access import invocation_scope, read_filter
+from domain.services.ai_evidence_service import prepare_evidence
 from repositories.ai_run_repository import AIRunRepository
 
 router = APIRouter(tags=["AI Agents"])
@@ -22,9 +24,11 @@ router = APIRouter(tags=["AI Agents"])
 class AgentRequest(BaseModel):
     """Request to invoke an AI agent."""
     task_type: Literal["code_review", "qa_analysis", "devops_risk", "meeting_insights", "cicd_analysis", "hr_assistant"]
-    evidence: Dict[str, Any] = Field(..., description="Evidence from Intelligence Engine")
+    evidence: Dict[str, Any] = Field(..., description="Caller-supplied unverified evidence")
     context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
     save_run: bool = Field(default=True, description="Save run to database")
+    evidence_sources_v1: list[GitHubFileEvidenceV1] = Field(default_factory=list, max_length=4,
+        description="Optional exact-revision GitHub file references for scoped code_review")
 
 
 class AgentResponse(BaseModel):
@@ -71,6 +75,11 @@ async def invoke_agent_endpoint(
     
     start_time = datetime.now(timezone.utc)
 
+    scope = await invocation_scope(current_user, request.context)
+    evidence, stored_inputs, provenance = await prepare_evidence(
+        current_user, scope, request.task_type, request.evidence, request.context, request.evidence_sources_v1)
+    context = {**request.context, "project_id": scope["project_id"], "organization_id": scope["organization_id"]}
+
     if not check_ollama_connection():
         raise HTTPException(
             status_code=503,
@@ -79,18 +88,16 @@ async def invoke_agent_endpoint(
 
     try:
         # Add user context to agent state
-        accessible_project_ids = await get_accessible_project_ids(current_user)
-        
         initial_state = {
             "task_type": request.task_type,
-            "evidence": request.evidence,
-            "context": request.context,
+            "evidence": evidence,
+            "context": context,
             "user_context": {
                 "employee_id": current_user.get('employee_id', current_user.get('id')),
                 "role": current_user.get('role', '').upper(),
                 "designation": current_user.get('designation'),
                 "permissions": [p.value for p in user_permissions],
-                "accessible_project_ids": accessible_project_ids,
+                "accessible_project_ids": [scope["project_id"]] if scope["project_id"] else [],
             },
             "agent_history": [],
             "errors": [],
@@ -110,7 +117,9 @@ async def invoke_agent_endpoint(
             ai_run_repo = AIRunRepository()
             ai_run = AIRun(
                 agent_type=request.task_type,
-                input_data={"evidence": request.evidence, "context": request.context},
+                **scope,
+                provenance=provenance,
+                input_data=stored_inputs,
                 output_data={
                     "analysis": result.get("analysis"),
                     "recommendations": result.get("recommendations"),
@@ -145,54 +154,22 @@ async def invoke_agent_endpoint(
 
 @router.get("/runs", response_model=list[AIRun])
 async def list_ai_runs(
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
     agent_type: str | None = None,
     current_user: dict = Depends(get_current_user),
+    skip: int = Query(default=0, ge=0),
 ):
-    """List recent AI agent runs with optional filtering. Only returns runs for accessible projects.
-    
-    **HR users receive filtered runs without technical evidence.**
-    """
+    """Authorize in MongoDB before counting and paginating the matching runs."""
     ai_run_repo = AIRunRepository()
 
-    filters = {}
+    filters = await read_filter(current_user)
     if agent_type:
         filters["agent_type"] = agent_type
 
-    runs = await ai_run_repo.list(limit=limit, filters=filters)
-    
-    # Filter runs by accessible projects
-    # AI runs store project_id in context if available
-    accessible_project_ids = await get_accessible_project_ids(current_user)
-    is_hr_user = current_user.get('role', '').upper() == 'HR'
-    
-    filtered_runs = []
-    for run in runs:
-        # If user has org-wide access, include all runs
-        if has_org_access(current_user):
-            # Filter technical details for HR
-            if is_hr_user:
-                run_dict = run if isinstance(run, dict) else run.dict() if hasattr(run, 'dict') else {}
-                filtered_runs.append(filter_ai_run_for_hr(run_dict))
-            else:
-                filtered_runs.append(run)
-            continue
-            
-        # Check if run has a project_id in context
-        run_dict = run if isinstance(run, dict) else run.dict() if hasattr(run, 'dict') else {}
-        input_data = run_dict.get("input_data", {})
-        context = input_data.get("context", {}) if isinstance(input_data, dict) else {}
-        project_id = context.get("project_id") if isinstance(context, dict) else None
-        
-        # Include run if it has no project_id (ad-hoc) or if user has access
-        if not project_id or project_id in accessible_project_ids:
-            # Filter technical details for HR
-            if is_hr_user:
-                filtered_runs.append(filter_ai_run_for_hr(run_dict))
-            else:
-                filtered_runs.append(run)
-    
-    return filtered_runs
+    runs = await ai_run_repo.list(limit=limit, skip=skip, filters=filters)
+    if current_user.get("role", "").upper() == "HR":
+        return [filter_ai_run_for_hr(run.model_dump()) for run in runs]
+    return runs
 
 
 @router.get("/runs/{run_id}", response_model=AIRun)
@@ -200,77 +177,25 @@ async def get_ai_run(
     run_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Get specific AI run by ID. User must have access to the run's project if applicable.
-    
-    **HR users receive filtered run without technical evidence.**
-    """
+    """Read an authorized run, concealing unavailable or unauthorized identities."""
     ai_run_repo = AIRunRepository()
-    run = await ai_run_repo.get_by_id(run_id)
+    run = await ai_run_repo.get_by_id(run_id, filters=await read_filter(current_user))
 
     if not run:
         raise HTTPException(status_code=404, detail="AI run not found")
 
-    is_hr_user = current_user.get('role', '').upper() == 'HR'
-
-    # Check project access if run has a project_id
-    if not has_org_access(current_user):
-        run_dict = run if isinstance(run, dict) else run.dict() if hasattr(run, 'dict') else {}
-        input_data = run_dict.get("input_data", {})
-        context = input_data.get("context", {}) if isinstance(input_data, dict) else {}
-        project_id = context.get("project_id") if isinstance(context, dict) else None
-        
-        if project_id:
-            accessible_project_ids = await get_accessible_project_ids(current_user)
-            if project_id not in accessible_project_ids:
-                raise HTTPException(status_code=403, detail="You don't have access to this AI run")
-
-    # Filter technical details for HR
-    if is_hr_user:
-        run_dict = run if isinstance(run, dict) else run.dict() if hasattr(run, 'dict') else {}
-        return filter_ai_run_for_hr(run_dict)
+    if current_user.get("role", "").upper() == "HR":
+        return filter_ai_run_for_hr(run.model_dump())
 
     return run
 
 
 def filter_ai_run_for_hr(run: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Remove technical evidence from AI run results for HR users.
-    HR sees summary, scores, recommendations - NO raw technical data.
-    
-    Args:
-        run: Full AI run data
-        
-    Returns:
-        Filtered run data safe for HR viewing
-    """
-    filtered = run.copy()
-    
-    # Remove technical evidence from output_data
-    if 'output_data' in filtered and filtered['output_data']:
-        output = filtered['output_data'].copy()
-        
-        # Remove raw technical details
-        output.pop('raw_evidence', None)
-        output.pop('github_data', None)
-        output.pop('pr_diffs', None)
-        output.pop('commit_details', None)
-        output.pop('cicd_logs', None)
-        output.pop('code_review_comments', None)
-        output.pop('test_failures', None)
-        output.pop('technical_details', None)
-        
-        # Remove system internals and debugging info
-        output.pop('agent_history', None)
-        output.pop('errors', None)
-        
-        # Keep only HR-appropriate summaries
-        # Keep: summary, scores, recommendations, risk_level, analysis, confidence
-        filtered['output_data'] = output
-    
-    # Remove raw evidence from input_data completely
-    if 'input_data' in filtered and filtered['input_data']:
-        input_data = filtered['input_data'].copy()
-        input_data.pop('evidence', None)  # Remove full evidence dict completely
-        filtered['input_data'] = input_data
-    
+    """Expose lifecycle metadata only. Generic model prose has no HR-safe approval."""
+    fields = ("id", "agent_type", "status", "created_at", "updated_at", "access_version",
+              "owner_id", "project_id", "organization_id")
+    filtered = {key: run[key] for key in fields if key in run}
+    # AIRun retains its public fields, with sensitive values deliberately empty.
+    filtered.update(input_data={}, output_data={}, provenance={}, triggered_by="redacted",
+                    model_name=None, error_message=None, execution_time_ms=None)
     return filtered
