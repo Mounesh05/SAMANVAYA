@@ -70,9 +70,11 @@ describe('CR-001 page access table', () => {
   });
 
   it('keeps Reports for the roles that still have it', () => {
-    expect(canOpenPage({ role: 'CEO' }, 'reports')).toBe(true);
-    expect(canOpenPage({ role: 'PM' }, 'reports')).toBe(true);
-    expect(showInMenu({ role: 'PM' }, 'reports')).toBe(true);
+    // CR-011: Reports is permission-based (EXPORT_DATA: CEO, PM, HR).
+    expect(canOpenPage(roleUser('CEO'), 'reports')).toBe(true);
+    expect(canOpenPage(roleUser('PM'), 'reports')).toBe(true);
+    expect(showInMenu(roleUser('PM'), 'reports')).toBe(true);
+    expect(canOpenPage(roleUser('HR'), 'reports')).toBe(true);
     // CR-004: blocked for Leads too.
     expect(canOpenPage({ role: 'LEAD' }, 'reports')).toBe(false);
     // CR-002/CR-003: blocked for QA and DevOps as for Developers (made-up export data).

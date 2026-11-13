@@ -203,6 +203,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     },
 
     OrganizationalRole.PM: {
+        Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
         Permission.VIEW_OWN_DATA,
         Permission.SYNC_REPOSITORY_PRS,
         Permission.ANALYZE_SPRINT_RISK,
@@ -292,6 +293,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     },
 
     OrganizationalRole.HR: {
+        Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_EMPLOYEE_DIRECTORY,
         Permission.VIEW_EMPLOYEE_PROFILE,
@@ -390,6 +392,7 @@ ADMIN_PERMISSIONS: Set[Permission] = {
 # specialism). HR users without one keep the base HR set ("HR generalist").
 HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
     "HR_MANAGER": {
+        Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
         Permission.MANAGE_HR_DESIGNATIONS,  # CR-009 D1-A
         Permission.EXECUTE_TRANSFER,  # CR-006
         Permission.VIEW_EMPLOYEE_DIRECTORY,
@@ -443,6 +446,7 @@ HR_DESIGNATION_PERMISSIONS: dict[str, Set[Permission]] = {
         Permission.REQUEST_TRANSFER,  # CR-009: everyone may request their own transfer
     },
     "HRBP": {
+        Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
         Permission.VIEW_EMPLOYEE_DIRECTORY,
         Permission.VIEW_EMPLOYEE_PROFILE,
         Permission.VIEW_ORG_CHART,

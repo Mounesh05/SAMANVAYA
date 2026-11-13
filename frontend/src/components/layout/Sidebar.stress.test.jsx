@@ -51,6 +51,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       '/feedback',
       '/audit',
       '/approvals', // CR-010: HR requests and approves role changes
+      '/reports', // CR-011: HR downloads the aggregated performance report
     ];
     expect(renderedHrefs.sort()).toEqual(expectedHRRoutes.sort());
 
@@ -81,7 +82,6 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       '/incidents',
       '/cicd-logs',
       '/evaluation',
-      '/reports',
       '/quality',
       '/risk',
       '/organization',

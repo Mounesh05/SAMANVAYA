@@ -53,7 +53,10 @@ describe('CR-008 admin rights and pages', () => {
   });
 
   it('opens no extra role-based page just for being admin', () => {
-    expect(canOpenPage(DEV_ADMIN, 'reports')).toBe(false);
+    // CR-011: admins hold EXPORT_DATA, so Reports opens, but it stays out of
+    // their menu and only shows reports their role can see.
+    expect(canOpenPage(DEV_ADMIN, 'reports')).toBe(true);
+    expect(showInMenu(DEV_ADMIN, 'reports')).toBe(false);
     expect(canOpenPage(DEV_ADMIN, 'ceoRisk')).toBe(false);
     expect(canOpenPage(DEV_ADMIN, 'evaluation')).toBe(false);
   });

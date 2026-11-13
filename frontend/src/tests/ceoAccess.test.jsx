@@ -2,6 +2,7 @@
  * CR-007: CEO access, as the UI presents it.
  * Backend counterparts live in backend/tests/test_ceo_access.py.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -12,11 +13,16 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ReportsPage } from '../pages/reports/ReportsPage';
 import { roleUser } from './utils/roleUser';
 
+// CR-011: the Reports page asks the backend which reports can be downloaded.
+vi.mock('../api/reports.api', () => ({ reportsApi: { list: vi.fn().mockResolvedValue({ reports: [] }), downloadCsv: vi.fn() } }));
+
 const CEO = roleUser('CEO', { employee_id: 'CEO-1' });
 
 function renderReports(user) {
   useAuthStore.setState({ user, token: 't', isAuthenticated: true });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
+    <QueryClientProvider client={queryClient}>
     <MemoryRouter initialEntries={['/reports']}>
       <Routes>
         <Route path="/reports" element={<ReportsPage />} />
@@ -24,7 +30,8 @@ function renderReports(user) {
         <Route path="/quality" element={<p>Quality page</p>} />
         <Route path="*" element={<p>Other page</p>} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -62,7 +69,9 @@ describe('CR-007 Reports page', () => {
 
   it('shows only reports whose page the user can open', () => {
     renderReports(roleUser('PM'));
-    expect(screen.queryByRole('button', { name: /Delivery & Risk Governance/i })).not.toBeInTheDocument();
+    // CR-011: a PM opens delivery & risk through Projects (no CEO Risk page).
+    expect(screen.getByRole('button', { name: /Open Delivery & Risk Governance/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Open Project Portfolio/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open Workforce Performance/i })).toBeInTheDocument();
   });
 });

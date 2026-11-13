@@ -263,6 +263,7 @@ from api.routes import (
     cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
     recommendations, traceability, risk_configurations, audit, transfers,
+    reports,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -325,6 +326,7 @@ app.include_router(approvals.router, prefix="/api/approvals", tags=["Approvals"]
 
 # Audit Logs (Role-based filtering)
 app.include_router(audit.router, prefix="/api/audit", tags=["Audit Logs"])
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])  # CR-011
 
 # Role-specific dashboards
 app.include_router(developer.router, prefix="/api/role/developer", tags=["Role: Developer"])
