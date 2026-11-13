@@ -21,6 +21,15 @@ engine = RecommendationEngine()
 logger = logging.getLogger(__name__)
 
 
+def _may_act(rec: dict, user: dict) -> bool:
+    """Own recommendation, CEO, or (CR-013) a PM on a project they manage."""
+    from core.authorization import managed_project_ids
+    if rec.get("user_id") == user.get("employee_id") or has_org_access(user):
+        return True
+    return ((user.get("role") or "").upper() == "PM"
+            and bool(rec.get("project_id")) and rec["project_id"] in managed_project_ids(user))
+
+
 async def _visible_algorithm_recommendations(recommendations, user, *, strict=False):
     """Keep algorithm evidence under its existing project/org read boundary."""
     from api.routes.algorithms import project_access
@@ -159,7 +168,7 @@ async def accept_recommendation(
             raise HTTPException(status_code=404, detail="Recommendation not found")
         await _visible_algorithm_recommendations([rec], current_user, strict=True)
         
-        if rec.get("user_id") != user_id and not has_org_access(current_user):
+        if not _may_act(rec, current_user):
             raise HTTPException(status_code=403, detail="Access denied")
         
         success = await engine.accept_recommendation(recommendation_id, user_id, notes)
@@ -193,7 +202,7 @@ async def reject_recommendation(
             raise HTTPException(status_code=404, detail="Recommendation not found")
         await _visible_algorithm_recommendations([rec], current_user, strict=True)
         
-        if rec.get("user_id") != user_id and not has_org_access(current_user):
+        if not _may_act(rec, current_user):
             raise HTTPException(status_code=403, detail="Access denied")
         
         success = await engine.reject_recommendation(recommendation_id, user_id, reason)
@@ -225,7 +234,7 @@ async def mark_recommendation_implemented(
     await _visible_algorithm_recommendations([rec], current_user, strict=True)
     
     user_id = current_user["employee_id"]
-    if rec.get("user_id") != user_id and not has_org_access(current_user):
+    if not _may_act(rec, current_user):
         raise HTTPException(status_code=403, detail="Access denied")
     
     try:

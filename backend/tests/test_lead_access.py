@@ -167,9 +167,12 @@ class TestQaModuleForLeads:
             await self._service(PROJECT_B).accessible_project({**LEAD, "org_id": "O1"}, "PRJ-B")
         assert error.value.status_code == 403
 
-    async def test_pm_keeps_org_wide_qa_access_until_cr005(self):
-        pm = make_user("PM-1", "PM", team_id=None, org_id="O1")
+    async def test_pm_qa_access_follows_managed_projects(self):
+        # CR-013: PMs reach QA data only for projects they manage.
+        pm = make_user("PM-1", "PM", team_id=None, org_id="O1", project_ids=["PRJ-B"])
         assert (await self._service(PROJECT_B).accessible_project(pm, "PRJ-B"))["id"] == "PRJ-B"
+        with pytest.raises(HTTPException):
+            await self._service(PROJECT_B).accessible_project(make_user("PM-2", "PM", team_id=None, org_id="O1"), "PRJ-B")
 
     @pytest.mark.parametrize("target", ["CLOSED", "REOPENED"])
     async def test_lead_cannot_verify_or_close(self, target):

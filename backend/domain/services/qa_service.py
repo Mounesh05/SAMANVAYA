@@ -83,10 +83,8 @@ class QAService:
             return project
 
         # CR-004: Leads use the same project scope as the rest of the app (team
-        # and assigned projects, checked above). PM keeps organisation-wide QA
-        # access until CR-005.
-        if role == "PM" and user_org and project_org == user_org:
-            return project
+        # and assigned projects, checked above). CR-013: so do PMs (their
+        # managed projects are their assigned projects).
 
         raise HTTPException(status_code=403, detail="You don't have access to this project")
 

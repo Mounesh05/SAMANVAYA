@@ -380,7 +380,7 @@ async def test_authorized_existing_pm_recommendation_actions_remain_available(wo
     monkeypatch.setattr(recommendations, "engine", engine)
     monkeypatch.setattr(ProjectRepository, "find_by_id", AsyncMock(return_value={"id": "P1", "org_id": "org"}))
     rec_id = result["recommendation_ids"][0]
-    user = {"employee_id": "pm", "role": "PM", "org_id": "org"}
+    user = {"employee_id": "pm", "role": "PM", "org_id": "org", "project_ids": ["P1"]}  # CR-013: managed project
     if action == "accept":
         response = await recommendations.accept_recommendation(rec_id, None, user)
     elif action == "reject":

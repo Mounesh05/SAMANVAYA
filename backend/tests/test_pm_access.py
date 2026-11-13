@@ -75,11 +75,14 @@ async def test_pm_cannot_verify_or_close_defects(target):
 # ── D1-A: PMs keep organisation-wide delivery visibility ────────────────────
 
 @pytest.mark.asyncio
-async def test_pm_still_sees_every_project():
+async def test_pm_sees_only_managed_projects():
+    # CR-013: PM membership replaced organisation-wide PM access.
     from core.authorization import verify_project_access
     with patch("core.authorization._project_repo") as projects:
         projects.find_by_id = AsyncMock(return_value={"id": "PRJ-Z", "team_id": "TEAM-Z"})
-        assert await verify_project_access(make_user(), "PRJ-Z", require_write=True) is None
+        assert await verify_project_access(make_user(project_ids=["PRJ-Z"]), "PRJ-Z", require_write=True) is None
+        with pytest.raises(HTTPException):
+            await verify_project_access(make_user(), "PRJ-Z")
 
 
 # ── D4: Leads see their team members' tasks ─────────────────────────────────

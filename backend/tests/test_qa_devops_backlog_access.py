@@ -206,6 +206,8 @@ async def test_pm_and_lead_keep_task_transition_permissions(role):
     from core.authorization import verify_task_status_update_access
 
     user = create_user(role, f"DEMO-{role}")
+    if role == "PM":
+        user["project_ids"] = [PROJECT_ID]  # CR-013: PMs manage assigned projects
     with patch("core.authorization._task_repo") as task_repo:
         task_repo.find_by_id = AsyncMock(
             return_value={"id": "TASK-1", "project_id": PROJECT_ID}

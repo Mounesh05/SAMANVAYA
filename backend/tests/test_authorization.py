@@ -52,11 +52,11 @@ class TestRoleAccess:
         assert has_global_access(user) is True
         assert has_org_access(user) is True
 
-    def test_pm_has_org_access(self):
-        """PM role has org-wide access."""
+    def test_pm_has_no_org_access(self):
+        """CR-013: PM is limited to managed projects; org-wide access is CEO only."""
         user = create_user(role="PM")
         assert has_global_access(user) is False
-        assert has_org_access(user) is True
+        assert has_org_access(user) is False
 
     def test_lead_has_no_org_access(self):
         """LEAD role does not have org-wide access."""
@@ -80,10 +80,10 @@ class TestRoleAccess:
         user = create_user(role="DEVELOPER", team_id="TEAM-A")
         assert has_team_access(user, "TEAM-B") is False
 
-    def test_pm_has_all_team_access(self):
-        """PM can access any team."""
+    def test_pm_has_no_blanket_team_access(self):
+        """CR-013: PM team access comes from managed projects (verify_team_access)."""
         user = create_user(role="PM", team_id="TEAM-A")
-        assert has_team_access(user, "TEAM-B") is True
+        assert has_team_access(user, "TEAM-B") is False
 
 
 # ── Project Access Tests ──────────────────────────────────────────────────
@@ -96,79 +96,78 @@ class TestProjectAccess:
     async def test_ceo_can_access_any_project(self):
         """CEO can access any project without fetching it."""
         user = create_user(role="CEO", project_ids=[])
-        
+
         # Should not raise - CEO has global access
         await verify_project_access(user, "PRJ-999")
 
-    async def test_pm_can_access_any_project(self):
-        """PM can access any project in their org."""
-        user = create_user(role="PM", project_ids=[])
-        
+    async def test_pm_accesses_only_managed_projects(self):
+        """CR-013: a PM reads and writes the projects they manage, nothing else."""
         with patch("core.authorization._project_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-999", "name": "Test"})
-            
-            # Should not raise - PM has org access
-            await verify_project_access(user, "PRJ-999")
+            await verify_project_access(create_user(role="PM", project_ids=["PRJ-999"]), "PRJ-999", require_write=True)
+            with pytest.raises(HTTPException) as error:
+                await verify_project_access(create_user(role="PM", project_ids=[]), "PRJ-999")
+            assert error.value.status_code == 403
 
     async def test_developer_can_access_assigned_project(self):
         """Developer can access projects they're assigned to."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A", "PRJ-B"])
-        
+
         with patch("core.authorization._project_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-A", "name": "Test"})
-            
+
             # Should not raise - user is assigned to PRJ-A
             await verify_project_access(user, "PRJ-A")
 
     async def test_developer_cannot_access_unassigned_project(self):
         """Developer cannot access projects they're not assigned to."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._project_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-B", "name": "Test"})
-            
+
             # Should raise 403
             with pytest.raises(HTTPException) as exc_info:
                 await verify_project_access(user, "PRJ-B")
-            
+
             assert exc_info.value.status_code == 403
             assert "don't have access" in str(exc_info.value.detail)
 
     async def test_project_not_found_returns_404(self):
         """Non-existent project returns 404."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._project_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value=None)
-            
+
             # Should raise 404
             with pytest.raises(HTTPException) as exc_info:
                 await verify_project_access(user, "PRJ-999")
-            
+
             assert exc_info.value.status_code == 404
             assert "not found" in str(exc_info.value.detail).lower()
 
     async def test_lead_can_access_team_project(self):
         """LEAD can access projects for their team."""
         user = create_user(role="LEAD", project_ids=[], team_id="TEAM-A")
-        
+
         with patch("core.authorization._project_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-TEAM-A", "team_id": "TEAM-A"})
-            
+
             # Should not raise - LEAD can access their team's projects
             await verify_project_access(user, "PRJ-TEAM-A")
 
     async def test_lead_cannot_access_other_team_project(self):
         """LEAD cannot access projects from other teams."""
         user = create_user(role="LEAD", project_ids=[], team_id="TEAM-A")
-        
+
         with patch("core.authorization._project_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-TEAM-B", "team_id": "TEAM-B"})
-            
+
             # Should raise 403
             with pytest.raises(HTTPException) as exc_info:
                 await verify_project_access(user, "PRJ-TEAM-B")
-            
+
             assert exc_info.value.status_code == 403
 
     async def test_developer_can_read_their_team_project(self):
@@ -194,10 +193,10 @@ class TestTaskAccess:
     async def test_ceo_can_access_any_task(self):
         """CEO can access any task."""
         user = create_user(role="CEO", project_ids=[])
-        
+
         with patch("core.authorization._task_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value={"id": "TASK-999", "project_id": "PRJ-999"})
-            
+
             # Should not raise and return project_id
             project_id = await verify_task_access(user, "TASK-999")
             assert project_id == "PRJ-999"
@@ -205,12 +204,12 @@ class TestTaskAccess:
     async def test_developer_can_access_task_in_assigned_project(self):
         """Developer can access tasks in their assigned projects."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._task_repo") as mock_task_repo:
             with patch("core.authorization._project_repo") as mock_project_repo:
                 mock_task_repo.find_by_id = AsyncMock(return_value={"id": "TASK-1", "project_id": "PRJ-A"})
                 mock_project_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-A"})
-                
+
                 # Should not raise
                 project_id = await verify_task_access(user, "TASK-1")
                 assert project_id == "PRJ-A"
@@ -218,29 +217,29 @@ class TestTaskAccess:
     async def test_developer_cannot_access_task_in_unassigned_project(self):
         """Developer cannot access tasks in unassigned projects."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._task_repo") as mock_task_repo:
             with patch("core.authorization._project_repo") as mock_project_repo:
                 mock_task_repo.find_by_id = AsyncMock(return_value={"id": "TASK-1", "project_id": "PRJ-B"})
                 mock_project_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-B"})
-                
+
                 # Should raise 403
                 with pytest.raises(HTTPException) as exc_info:
                     await verify_task_access(user, "TASK-1")
-                
+
                 assert exc_info.value.status_code == 403
 
     async def test_task_not_found_returns_404(self):
         """Non-existent task returns 404."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._task_repo") as mock_repo:
             mock_repo.find_by_id = AsyncMock(return_value=None)
-            
+
             # Should raise 404
             with pytest.raises(HTTPException) as exc_info:
                 await verify_task_access(user, "TASK-999")
-            
+
             assert exc_info.value.status_code == 404
             assert "not found" in str(exc_info.value.detail).lower()
 
@@ -255,12 +254,12 @@ class TestStoryAccess:
     async def test_developer_can_access_story_in_assigned_project(self):
         """Developer can access stories in their assigned projects."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._story_repo") as mock_story_repo:
             with patch("core.authorization._project_repo") as mock_project_repo:
                 mock_story_repo.find_by_id = AsyncMock(return_value={"id": "STORY-1", "project_id": "PRJ-A"})
                 mock_project_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-A"})
-                
+
                 # Should not raise
                 project_id = await verify_story_access(user, "STORY-1")
                 assert project_id == "PRJ-A"
@@ -268,16 +267,16 @@ class TestStoryAccess:
     async def test_developer_cannot_access_story_in_unassigned_project(self):
         """Developer cannot access stories in unassigned projects."""
         user = create_user(role="DEVELOPER", project_ids=["PRJ-A"])
-        
+
         with patch("core.authorization._story_repo") as mock_story_repo:
             with patch("core.authorization._project_repo") as mock_project_repo:
                 mock_story_repo.find_by_id = AsyncMock(return_value={"id": "STORY-1", "project_id": "PRJ-B"})
                 mock_project_repo.find_by_id = AsyncMock(return_value={"id": "PRJ-B"})
-                
+
                 # Should raise 403
                 with pytest.raises(HTTPException) as exc_info:
                     await verify_story_access(user, "STORY-1")
-                
+
                 assert exc_info.value.status_code == 403
 
 
@@ -291,26 +290,28 @@ class TestTeamAccessVerification:
     async def test_user_can_access_own_team(self):
         """User can access their own team."""
         user = create_user(role="DEVELOPER", team_id="TEAM-A")
-        
+
         # Should not raise
         await verify_team_access_func(user, "TEAM-A")
 
     async def test_user_cannot_access_other_team(self):
         """User cannot access other teams."""
         user = create_user(role="DEVELOPER", team_id="TEAM-A")
-        
+
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
             await verify_team_access_func(user, "TEAM-B")
-        
+
         assert exc_info.value.status_code == 403
 
-    async def test_pm_can_access_any_team(self):
-        """PM can access any team."""
-        user = create_user(role="PM", team_id="TEAM-A")
-        
-        # Should not raise
-        await verify_team_access_func(user, "TEAM-B")
+    async def test_pm_accesses_teams_owning_managed_projects(self):
+        """CR-013: a PM opens the teams that own the projects they manage."""
+        with patch("core.authorization._project_repo") as mock_repo:
+            mock_repo.find_all = AsyncMock(return_value=[{"id": "PRJ-1", "team_id": "TEAM-B"}])
+            await verify_team_access_func(create_user(role="PM", team_id="TEAM-A", project_ids=["PRJ-1"]), "TEAM-B")
+            mock_repo.find_all = AsyncMock(return_value=[])
+            with pytest.raises(HTTPException):
+                await verify_team_access_func(create_user(role="PM", team_id="TEAM-A", project_ids=["PRJ-1"]), "TEAM-C")
 
 
 # ── User Task Viewing Tests ───────────────────────────────────────────────
@@ -323,31 +324,32 @@ class TestUserTaskViewing:
     async def test_user_can_view_own_tasks(self):
         """User can view their own tasks."""
         user = create_user(employee_id="E001", role="DEVELOPER")
-        
+
         # Should not raise
         await verify_can_view_user_tasks(user, "E001")
 
     async def test_developer_cannot_view_other_users_tasks(self):
         """Developer cannot view other users' tasks."""
         user = create_user(employee_id="E001", role="DEVELOPER")
-        
+
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
             await verify_can_view_user_tasks(user, "E002")
-        
+
         assert exc_info.value.status_code == 403
         assert "own tasks" in str(exc_info.value.detail)
 
-    async def test_pm_can_view_any_users_tasks(self):
-        """PM can view any user's tasks."""
-        user = create_user(employee_id="E001", role="PM")
-        
-        # Should not raise
-        await verify_can_view_user_tasks(user, "E002")
+    async def test_pm_views_tasks_of_project_members_only(self):
+        """CR-013: a PM sees the tasks of people on the projects they manage."""
+        user = create_user(employee_id="E001", role="PM", project_ids=["PRJ-1"])
+        with patch("core.authorization.project_member_ids", AsyncMock(return_value={"E002"})):
+            await verify_can_view_user_tasks(user, "E002")
+            with pytest.raises(HTTPException):
+                await verify_can_view_user_tasks(user, "E003")
 
     async def test_ceo_can_view_any_users_tasks(self):
         """CEO can view any user's tasks."""
         user = create_user(employee_id="E001", role="CEO")
-        
+
         # Should not raise
         await verify_can_view_user_tasks(user, "E002")

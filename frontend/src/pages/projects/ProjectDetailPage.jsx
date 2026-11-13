@@ -19,13 +19,15 @@ import {
   ArrowLeft,
   Plus,
   KanbanSquare,
+  Users,
 } from 'lucide-react';
 import { formatDate } from '../../utils/dates';
+import { ProjectMembersPanel } from './ProjectMembersPanel';
 
 export function ProjectDetailPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'sprints' | 'tasks'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'sprints' | 'tasks' | 'members'
 
   const {
     data: project,
@@ -118,6 +120,7 @@ export function ProjectDetailPage() {
           { id: 'overview', label: 'Overview', icon: <FolderGit2 size={16} /> },
           { id: 'sprints', label: 'Sprints', icon: <Layers size={16} />, count: sprints.length },
           { id: 'tasks', label: 'Tasks', icon: <ListTodo size={16} />, count: tasks.length },
+          { id: 'members', label: 'Members', icon: <Users size={16} /> },
         ]}
         activeTab={activeTab}
         onChange={setActiveTab}
@@ -172,6 +175,8 @@ export function ProjectDetailPage() {
           <Table columns={taskColumns} data={tasks} emptyMessage="No tasks found for this project." />
         </div>
       )}
+
+      {activeTab === 'members' && <ProjectMembersPanel projectId={projectId} />}
     </div>
   );
 }
