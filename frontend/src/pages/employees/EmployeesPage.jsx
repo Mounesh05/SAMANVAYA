@@ -12,7 +12,7 @@ import { SearchInput } from '../../components/common/SearchInput';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { UserPlus, Edit, Trash2 } from 'lucide-react';
+import { UserPlus, Edit, Trash2, ShieldCheck, ShieldOff } from 'lucide-react';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
 import { useAuthStore } from '../../store/useAuthStore';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
@@ -25,6 +25,10 @@ export function EmployeesPage() {
   // MANAGE_EMPLOYEES; deactivation is system-admin only (Decision 2).
   const canManageEmployees = hasPermission(user, PERMISSIONS.MANAGE_EMPLOYEES);
   const canDeactivate = Boolean(user?.is_admin);
+  // CR-008: only admins grant or remove admin rights (the backend's existing
+  // is_admin field). The backend refuses to remove the last active admin.
+  const canManageAdmins = Boolean(user?.is_admin);
+  const [adminError, setAdminError] = useState('');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -73,6 +77,31 @@ export function EmployeesPage() {
       resetForm();
     },
   });
+
+  const adminMutation = useMutation({
+    mutationFn: ({ id, isAdmin }) => employeesApi.update(id, { is_admin: isAdmin }),
+    onSuccess: () => {
+      setAdminError('');
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
+    onError: (error) => {
+      setAdminError(error?.response?.data?.detail || error?.message || 'Could not change admin rights');
+    },
+  });
+
+  const adminButton = (e) => (
+    canManageAdmins && e.employee_id !== user?.employee_id && (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => adminMutation.mutate({ id: e.employee_id, isAdmin: !e.is_admin })}
+        title={e.is_admin ? `Remove admin rights from ${e.name}` : `Make ${e.name} an admin`}
+        aria-label={e.is_admin ? `Remove admin rights from ${e.name}` : `Make ${e.name} an admin`}
+      >
+        {e.is_admin ? <ShieldOff size={15} style={{ color: 'var(--warning)' }} /> : <ShieldCheck size={15} />}
+      </Button>
+    )
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (id) => employeesApi.delete(id),
@@ -184,6 +213,7 @@ export function EmployeesPage() {
                   <Edit size={15} />
                 </Button>
               )}
+              {adminButton(e)}
               <span
                 style={{
                   fontSize: '0.75rem',
@@ -208,6 +238,7 @@ export function EmployeesPage() {
                 <Edit size={15} />
               </Button>
             )}
+            {adminButton(e)}
             {canDeactivate && (
               <Button variant="ghost" size="sm" onClick={() => setDeleteId(e.employee_id)} title="Deactivate Employee">
                 <Trash2 size={15} style={{ color: 'var(--danger)' }} />
@@ -242,6 +273,8 @@ export function EmployeesPage() {
           )
         }
       />
+
+      {adminError && <p role="alert" style={{ color: 'var(--danger)' }}>{adminError}</p>}
 
       {/* Filters Bar */}
       <div

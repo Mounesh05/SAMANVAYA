@@ -433,7 +433,20 @@ async def update_employee(
             update_data["github_username"] = updates.github_username
         if updates.team_id is not None:
             update_data["team_id"] = updates.team_id
-        if updates.is_active is not None:
+        if updates.is_active is not None and updates.is_active != employee.get("is_active", True):
+            # CR-008: activating or deactivating is an admin action with the
+            # same protections as DELETE (not the CEO account, not yourself).
+            if not user.get('is_admin', False):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only admins can activate or deactivate accounts"
+                )
+            if employee.get("role", "").upper() == "CEO":
+                raise HTTPException(status_code=403, detail="The CEO account cannot be deactivated.")
+            if employee_id == user.get("employee_id"):
+                raise HTTPException(status_code=400, detail="You cannot change the active status of your own account.")
+            if not updates.is_active:
+                await _refuse_if_last_admin(repo, employee)
             update_data["is_active"] = updates.is_active
         
         # Only admins can change admin status
@@ -443,6 +456,8 @@ async def update_employee(
                     status_code=403,
                     detail="Only admins can change admin status"
                 )
+            if not updates.is_admin:
+                await _refuse_if_last_admin(repo, employee)  # CR-008
             update_data["is_admin"] = updates.is_admin
         
         if not update_data:
@@ -461,6 +476,18 @@ async def update_employee(
             {"$set": update_data}
         )
         
+        # CR-008: record admin-right and active-status changes in the audit log.
+        if "is_admin" in update_data and update_data["is_admin"] != bool(employee.get("is_admin", False)):
+            await log_audit(
+                action=AuditAction.ADMIN_GRANTED if update_data["is_admin"] else AuditAction.ADMIN_REVOKED,
+                actor=user, resource_type="employee", resource_id=employee_id,
+            )
+        if "is_active" in update_data:
+            await log_audit(
+                action=AuditAction.USER_ACTIVATED if update_data["is_active"] else AuditAction.USER_DEACTIVATED,
+                actor=user, resource_type="employee", resource_id=employee_id,
+            )
+
         # Get updated employee
         updated_employee = await repo.find_by_employee_id(employee_id)
         
@@ -481,6 +508,22 @@ async def update_employee(
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+async def _refuse_if_last_admin(repo: UserRepository, employee: dict) -> None:
+    """CR-008: never remove admin rights from, or deactivate, the last active admin."""
+    if not employee.get("is_admin") or employee.get("is_active", True) is False:
+        return
+    others = await repo.col.count_documents({
+        "is_admin": True,
+        "is_active": {"$ne": False},
+        "employee_id": {"$ne": employee.get("employee_id")},
+    })
+    if others == 0:
+        raise HTTPException(
+            status_code=409,
+            detail="This is the last active admin. Make another employee an admin first.",
+        )
 
 
 @router.delete("/{employee_id}")
@@ -518,6 +561,8 @@ async def delete_employee(
                 status_code=400,
                 detail="You cannot deactivate your own account."
             )
+
+        await _refuse_if_last_admin(repo, employee)  # CR-008
 
         # Deactivate instead of delete
         await repo.update_one(

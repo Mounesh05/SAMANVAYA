@@ -506,7 +506,7 @@ async def save_hr_assessment_draft(
     if (
         Permission.CREATE_HR_PERFORMANCE_ASSESSMENT not in user_permissions
         and Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT not in user_permissions
-        and not user.get('is_admin', False)
+        # CR-008: no separate admin bypass; admins hold only ADMIN_PERMISSIONS.
     ):
         raise HTTPException(status_code=403, detail="Insufficient permissions to create HR assessment draft")
 
@@ -531,7 +531,7 @@ async def submit_hr_assessment(
     )
     if (
         Permission.SUBMIT_HR_PERFORMANCE_ASSESSMENT not in user_permissions
-        and not user.get('is_admin', False)
+        # CR-008: no separate admin bypass; admins hold only ADMIN_PERMISSIONS.
     ):
         raise HTTPException(status_code=403, detail="Insufficient permissions to submit HR performance assessment")
 
@@ -569,7 +569,7 @@ async def configure_human_evaluation_policy(
 ):
     """
     Retired legacy activation: returns 409. Scoped policy proposals remain inactive drafts.
-    Required Permission: MANAGE_EVALUATION_POLICY (CEO or ADMIN)
+    Required Permission: MANAGE_EVALUATION_POLICY (CEO)
     """
     user_permissions = get_user_permissions(
         user.get('role', '').upper(),
@@ -578,9 +578,9 @@ async def configure_human_evaluation_policy(
     )
     if (
         Permission.MANAGE_EVALUATION_POLICY not in user_permissions
-        and not user.get('is_admin', False)
+        # CR-008: no separate admin bypass; admins hold only ADMIN_PERMISSIONS.
     ):
-        raise HTTPException(status_code=403, detail="Only CEO or ADMIN can configure evaluation policies")
+        raise HTTPException(status_code=403, detail="Only the CEO can configure evaluation policies")
 
     return pending_human_response()
 

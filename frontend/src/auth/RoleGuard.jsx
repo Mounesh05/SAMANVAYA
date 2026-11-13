@@ -10,7 +10,6 @@ import { canOpenPage } from '../routes/access';
 export function RoleGuard({ page, allowedRoles = [], children }) {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
-  const isAdmin = user?.is_admin || false;
 
   if (!role) {
     return <Navigate to="/login" replace />;
@@ -18,7 +17,7 @@ export function RoleGuard({ page, allowedRoles = [], children }) {
 
   const allowed = page
     ? canOpenPage(user, page)
-    : isAdmin || allowedRoles.length === 0 || allowedRoles.includes(role);
+    : allowedRoles.length === 0 || allowedRoles.includes(role);  // CR-008: no admin bypass
   if (allowed) {
     return children;
   }

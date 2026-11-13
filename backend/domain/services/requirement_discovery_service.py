@@ -55,7 +55,8 @@ class RequirementDiscoveryService:
 
     async def approve(self, document, body, user):
         review = RequirementReview.model_validate(body).model_dump()
-        if (not user.get("is_admin") and str(user.get("role", user.get("organizational_role", ""))).upper() not in {"LEAD", "PM", "CEO"}
+        # CR-008: approval comes from the role, not the admin flag.
+        if (str(user.get("role", user.get("organizational_role", ""))).upper() not in {"LEAD", "PM", "CEO"}
                 or not actor(user) or actor(user) == document["proposed_by"] or not user.get("org_id")
                 or user["org_id"] != document["organization_id"]):
             raise PermissionError("Independent authorized review in the same project organization is required")

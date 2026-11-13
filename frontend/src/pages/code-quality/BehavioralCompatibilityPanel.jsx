@@ -34,7 +34,7 @@ export function BehavioralCompatibilityPanel() {
     refetchInterval: query => ['pending', 'running'].includes(query.state.data?.status) ? 1000 : false });
   const docs = contracts.data?.contracts || [];
   const role = (user?.role || user?.organizational_role)?.toUpperCase();
-  const canApprove = user?.is_admin || ['LEAD', 'PM', 'CEO'].includes(role);
+  const canApprove = ['LEAD', 'PM', 'CEO'].includes(role);  // CR-008: approval comes from the role
   const canSubmit = user?.is_admin || ['DEVELOPER', 'LEAD', 'PM', 'CEO', 'QA', 'DEVOPS'].includes(role);
   const errors = [error, proposer.error?.message, contracts.error?.message, review.error?.message, relationships.error?.message, comparison.error?.message, run.error?.message].filter(Boolean);
 

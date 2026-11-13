@@ -50,7 +50,7 @@ export function RequirementsPanel() {
     expected_fingerprint: doc.payload_fingerprint, source_reference: reviewSource, rationale, scope_reviewed: reviewed,
   }), onSuccess: () => { sources.mutate(); parse(context, value => discovery.mutate({ project_id: project.trim(), context: value })); } });
   const role = (user?.role || user?.organizational_role || '').toUpperCase();
-  const canReview = user?.is_admin || ['LEAD', 'PM', 'CEO'].includes(role);
+  const canReview = ['LEAD', 'PM', 'CEO'].includes(role);  // CR-008: approval comes from the role
   const canSubmit = user?.is_admin || ['DEVELOPER', 'LEAD', 'PM', 'CEO', 'QA', 'DEVOPS'].includes(role);
   const errors = [error, discovery.error?.message, sources.error?.message, proposal.error?.message, approval.error?.message].filter(Boolean);
   const parse = (text, action) => { try { setError(''); action(text ? JSON.parse(text) : {}); } catch { setError('Provide valid JSON.'); } };

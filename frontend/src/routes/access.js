@@ -1,5 +1,5 @@
 import { ROLES } from '../utils/constants';
-import { PERMISSIONS as P, hasAnyPermission } from '../auth/permissions';
+import { PERMISSIONS as P, hasAnyPermission, TEAM_LIST_PERMISSIONS, TRANSFER_FOR_OTHERS_PERMISSIONS } from '../auth/permissions';
 
 /**
  * Single source of page access (CR-001). The router (<RoleGuard page="...">)
@@ -11,14 +11,15 @@ import { PERMISSIONS as P, hasAnyPermission } from '../auth/permissions';
  *              needs at least one (read from /api/auth/me). No admin bypass:
  *              admin rights are already part of the permission list.
  *   roles      a role list, for pages whose capability has no permission yet.
- *              `convertIn` names the change request that defines it. Until
- *              then the legacy admin bypass still applies to these pages.
+ *              `convertIn` names what would let it become permission-based.
+ *              CR-008 removed the admin bypass: admins get only what their
+ *              role and admin permissions give.
  *
- * `menuRoles` (optional) narrows who sees the page in the sidebar. A page is
- * never shown in the menu to someone who cannot open it.
+ * `menuRoles` (optional) narrows who sees the page in the sidebar, and
+ * `menuAnyOf` (optional) adds permission holders to it. A page is never shown
+ * in the menu to someone who cannot open it.
  */
 const { CEO, HR, PM, LEAD, DEVELOPER, QA, DEVOPS } = ROLES;
-const ALL = Object.values(ROLES);
 const DELIVERY = [PM, LEAD, DEVELOPER, QA, DEVOPS];
 
 export const PAGE_ACCESS = Object.freeze({
@@ -76,11 +77,13 @@ export const PAGE_ACCESS = Object.freeze({
   // Not yet expressed as permissions.
   projects: { roles: [...DELIVERY, CEO, HR], menuRoles: [...DELIVERY, CEO], convertIn: 'CR-005 (PM)' },
   // CR-001: Developers cannot list teams (the API refuses); they open their own.
-  teams: { roles: [PM, LEAD, HR, CEO], menuRoles: [CEO, LEAD], convertIn: 'CR-004 (Lead)' },
+  // CR-008: mirrors GET /api/teams; admins manage teams through MANAGE_TEAMS.
+  teams: { anyOf: [...TEAM_LIST_PERMISSIONS, P.MANAGE_TEAMS], menuRoles: [CEO, LEAD], menuAnyOf: [P.MANAGE_TEAMS] },
   teamDetail: { roles: [PM, LEAD, DEVELOPER, HR, CEO], menuRoles: [DEVELOPER], convertIn: 'CR-004 (Lead)' },
   // CR-001: Developers request and follow their own transfers.
   // CR-004: Leads approve transfers at their manager stage, so it's in their menu.
-  transfers: { roles: [HR, LEAD, DEVELOPER], menuRoles: [HR, DEVELOPER, LEAD], convertIn: 'CR-006 (HR)' },
+  // CR-008: everyone who can request a transfer or act on others' requests.
+  transfers: { anyOf: [P.REQUEST_TRANSFER, ...TRANSFER_FOR_OTHERS_PERMISSIONS], menuRoles: [HR, DEVELOPER, LEAD] },
   // CR-001..004: blocked for Developers, QA, DevOps and Leads. Its CSV exports are
   // made-up numbers until real reporting arrives in CR-007.
   // CR-007: a hub of links to live pages (each card checks canOpenPage). It
@@ -97,14 +100,13 @@ export function canOpenPage(user, page) {
   const role = roleOf(user);
   if (!entry || !role) return false;
   if (entry.anyOf) return hasAnyPermission(user, entry.anyOf);
-  // Role-based pages keep the legacy admin bypass until their change request.
-  return Boolean(user?.is_admin) || entry.roles.includes(role);
+  return entry.roles.includes(role);  // CR-008: no admin bypass
 }
 
 export function showInMenu(user, page) {
   const entry = PAGE_ACCESS[page];
   if (!canOpenPage(user, page)) return false;
   if (!entry.menuRoles) return true;
-  if (entry.roles && user?.is_admin) return true;
+  if (entry.menuAnyOf && hasAnyPermission(user, entry.menuAnyOf)) return true;
   return entry.menuRoles.includes(roleOf(user));
 }

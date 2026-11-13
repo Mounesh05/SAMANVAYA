@@ -364,7 +364,10 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     },
 }
 
-# Admin permissions (added on top of role permissions)
+# Admin permissions (added on top of role permissions).
+# CR-008: admins run the platform (accounts, teams, projects, audit). People
+# decisions such as evaluations and evaluation policy stay with the roles
+# that own them.
 ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.MANAGE_USERS,
     Permission.MANAGE_TEAMS,
@@ -372,14 +375,11 @@ ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.MANAGE_EMPLOYEES,
     Permission.ASSIGN_TEAM_LEAD,
     Permission.ASSIGN_PROJECT,
-    Permission.TRIGGER_AI_EVALUATION,
-    Permission.TRIGGER_BULK_EVALUATION,
     Permission.VIEW_AUDIT_LOGS,
     Permission.EXPORT_DATA,
+    # Reserved: no settings or integrations screens check these yet.
     Permission.MANAGE_SETTINGS,
     Permission.MANAGE_INTEGRATIONS,
-    Permission.MANAGE_EVALUATION_POLICY,
-    Permission.REVIEW_HUMAN_EVALUATION_COMPLETENESS,
 }
 
 

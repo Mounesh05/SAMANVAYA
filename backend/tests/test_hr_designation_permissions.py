@@ -166,8 +166,9 @@ class TestHRDesignationPermissions:
         # Should also have admin permissions
         assert Permission.MANAGE_USERS in permissions
         assert Permission.MANAGE_TEAMS in permissions
-        assert Permission.TRIGGER_AI_EVALUATION in permissions
-        assert Permission.TRIGGER_BULK_EVALUATION in permissions
+        # CR-008: evaluations are people decisions, not admin rights.
+        assert Permission.TRIGGER_AI_EVALUATION not in permissions
+        assert Permission.TRIGGER_BULK_EVALUATION not in permissions
 
 
 class TestDesignationBoundaries:

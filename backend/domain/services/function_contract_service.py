@@ -60,7 +60,7 @@ class FunctionContractService:
 
     async def approve(self, document, approval, user):
         role = str(user.get("role", user.get("organizational_role", ""))).upper()
-        if not user.get("is_admin") and role not in {"LEAD", "PM", "CEO"}:
+        if role not in {"LEAD", "PM", "CEO"}:  # CR-008: no admin bypass
             raise PermissionError("Contract approval requires an authorized project lead, PM or CEO")
         if not actor(user) or actor(user) == document["proposed_by"]:
             raise PermissionError("An independent reviewer must approve the proposed contract")

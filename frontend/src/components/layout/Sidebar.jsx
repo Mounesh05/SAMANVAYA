@@ -30,6 +30,7 @@ import { authApi } from '../../api/auth.api';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ROLES, ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
 import { showInMenu } from '../../routes/access';
+import { hasAnyPermission, hasPermission, PERMISSIONS, TRANSFER_FOR_OTHERS_PERMISSIONS } from '../../auth/permissions';
 
 export function Sidebar() {
   const { user, logout } = useAuthStore();
@@ -37,7 +38,9 @@ export function Sidebar() {
   const navigate = useNavigate();
 
   const role = user?.role?.toUpperCase();
-  const isAdmin = user?.is_admin || false;
+  // CR-008: labels follow permissions, not the admin flag.
+  const managesTeams = hasPermission(user, PERMISSIONS.MANAGE_TEAMS);
+  const handlesOthersTransfers = hasAnyPermission(user, TRANSFER_FOR_OTHERS_PERMISSIONS);
 
   // Menu entries in display order. Who sees each one comes from the shared
   // page-access table (routes/access.js), the same table the router enforces.
@@ -51,10 +54,10 @@ export function Sidebar() {
       { page: 'tasks', to: '/tasks', icon: <ListTodo size={19} />, label: 'Tasks' },
       { page: 'board', to: '/board', icon: <KanbanSquare size={19} />, label: 'Board' },
       { page: 'employees', to: '/employees', icon: <Users size={19} />, label: 'Employees' },
-      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: isHR || isAdmin || role === ROLES.LEAD ? 'Transfer Requests' : 'My Transfers' },
-      { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: role === ROLES.LEAD && !isAdmin ? 'My Team' : 'Teams' },
+      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: handlesOthersTransfers ? 'Transfer Requests' : 'My Transfers' },
+      { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: role === ROLES.LEAD && !managesTeams ? 'My Team' : 'Teams' },
       // Developers cannot list teams; "My Team" opens their own team directly.
-      ...(role === ROLES.DEVELOPER && user?.team_id && !isAdmin
+      ...(role === ROLES.DEVELOPER && user?.team_id && !managesTeams
         ? [{ page: 'teamDetail', to: `/teams/${user.team_id}`, icon: <Building2 size={19} />, label: 'My Team' }]
         : []),
       { page: 'codeQuality', to: '/code-quality', icon: <ShieldCheck size={19} />, label: 'Code Quality' },
@@ -76,11 +79,11 @@ export function Sidebar() {
       { page: 'ceoOrganization', to: '/organization', icon: <Building2 size={19} />, label: 'Organization' },
     ];
 
-    // Executive pages stay in the CEO's menu only (admins can still open them).
+    // Executive pages stay in the CEO's menu only.
     const ceoOnlyMenu = new Set(['ceoQuality', 'ceoRisk', 'ceoOrganization']);
     const knownRole = Object.values(ROLES).includes(role);
     return items.filter((item) =>
-      (item.page === 'dashboard' && (knownRole || isAdmin))
+      (item.page === 'dashboard' && knownRole)
       || (ceoOnlyMenu.has(item.page) ? role === ROLES.CEO : showInMenu(user, item.page))
     );
   };
