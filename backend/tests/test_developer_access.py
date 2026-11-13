@@ -50,6 +50,7 @@ class TestPermissionMatrix:
             Permission.CREATE_INCIDENT,  # report only
             Permission.ANALYZE_CICD_LOGS, Permission.ANALYZE_PR_RISK,  # were role-name checks
             Permission.VIEW_DEFECTS, Permission.VIEW_CODE_QUALITY,     # CR-002 page conversions
+            Permission.USE_ENGINEERING_INTELLIGENCE,  # was the engineering role list
         }
 
     def test_developer_cannot_manage_backlog_sprints_or_others(self):

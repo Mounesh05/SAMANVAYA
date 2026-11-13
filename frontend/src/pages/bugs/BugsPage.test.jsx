@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { qaApi } from '../../api/qa.api';
 import { useAuthStore } from '../../store/useAuthStore';
-import { roleUser } from '../../tests/utils/roleUser';
+import { roleUser, withPermissions } from '../../tests/utils/roleUser';
 import { BugsPage } from './BugsPage';
 
 vi.mock('../../api/qa.api', () => ({
@@ -110,7 +110,7 @@ describe('BugsPage', () => {
     const user = userEvent.setup();
     const fixedDefect = { ...defect, status: 'FIXED', assignee_id: 'DEMO-DEV' };
     const readyForRetest = { ...fixedDefect, status: 'READY_FOR_RETEST' };
-    useAuthStore.mockReturnValue({ user: { role: 'DEVELOPER', employee_id: 'DEMO-DEV' } });
+    useAuthStore.mockReturnValue({ user: withPermissions({ role: 'DEVELOPER', employee_id: 'DEMO-DEV' }) });
     qaApi.getDefects.mockResolvedValueOnce([fixedDefect]).mockResolvedValue([readyForRetest]);
     qaApi.getDefect.mockResolvedValue(fixedDefect);
     qaApi.updateDefect.mockResolvedValue(readyForRetest);

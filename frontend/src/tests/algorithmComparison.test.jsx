@@ -1,3 +1,4 @@
+import { withPermissions } from './utils/roleUser';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -50,7 +51,7 @@ const completedRun = {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  useAuthStore.setState({ user: { role: 'DEVELOPER' } });
+  useAuthStore.setState({ user: withPermissions({ role: 'DEVELOPER' }) });
   algorithmsApi.getAvailability.mockResolvedValue({ available: true, error: null, environment: {} });
   algorithmsApi.startRun.mockResolvedValue({ run_id: 'run-1', status: 'pending' });
   algorithmsApi.getRun.mockResolvedValue({ run_id: 'run-1', status: 'pending' });
@@ -215,7 +216,7 @@ describe('Numeric sorting benchmark', () => {
   });
 
   it('does not allow non-engineering roles to submit but keeps the panel visible', async () => {
-    useAuthStore.setState({ user: { role: 'HR' } });
+    useAuthStore.setState({ user: withPermissions({ role: 'HR' }) });
     await ready();
     expect(screen.getByRole('button', { name: 'Run sorting benchmark' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Load project history' })).toBeInTheDocument();
@@ -289,7 +290,7 @@ describe('Numeric sorting benchmark', () => {
     ['DEVELOPER', false, 'unavailable', false],
     ['DEVELOPER', false, 'running', false],
   ])('gates review actions for role %s, admin %s, status %s', async (role, is_admin, status, canReview) => {
-    useAuthStore.setState({ user: { role, is_admin } });
+    useAuthStore.setState({ user: withPermissions({ role, is_admin }) });
     algorithmsApi.getHistory.mockResolvedValue({ history: [{ run_id: 'run-1', status }] });
     algorithmsApi.getRun.mockResolvedValue({ ...completedRun, status });
     await ready();
@@ -316,7 +317,7 @@ describe('Numeric sorting benchmark', () => {
 
   it('keeps the benchmark and existing quality analysis flow independent on the quality screen', async () => {
     // Permissions come from /api/auth/me; QA holds TRIGGER_CODE_ANALYSIS.
-    useAuthStore.setState({ user: { role: 'QA', permissions: ['TRIGGER_CODE_ANALYSIS'] } });
+    useAuthStore.setState({ user: withPermissions({ role: 'QA', permissions: ['TRIGGER_CODE_ANALYSIS'] }) });
     const analyze = vi.spyOn(codeQualityApi, 'startAnalysis').mockResolvedValue({});
     client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(<MemoryRouter><QueryClientProvider client={client}><CodeQualityPage /></QueryClientProvider></MemoryRouter>);
@@ -623,7 +624,7 @@ describe('Structure-only inspection', () => {
     inspect();
     await screen.findByRole('region', { name: 'Structure-only inspection results' });
     expect(algorithmsApi.inspectStructure).toHaveBeenCalledTimes(2);
-    act(() => useAuthStore.setState({ user: { role: 'HR' } }));
+    act(() => useAuthStore.setState({ user: withPermissions({ role: 'HR' }) }));
     expect(screen.getByRole('button', { name: 'Inspect structure (no execution)' })).toBeDisabled();
     inspect();
     expect(algorithmsApi.inspectStructure).toHaveBeenCalledTimes(2);
@@ -662,7 +663,7 @@ describe('Explicit compatible history', () => {
   }
 
   it('loads references only on click, shows historical/match flags and limitations, and navigates without reranking', async () => {
-    useAuthStore.setState({ user: { role: 'HR' } });
+    useAuthStore.setState({ user: withPermissions({ role: 'HR' }) });
     await selectSavedRun();
     expect(algorithmsApi.getCompatibleHistory).not.toHaveBeenCalled();
     expect(screen.queryByText('automatic-reference-must-not-render')).not.toBeInTheDocument();

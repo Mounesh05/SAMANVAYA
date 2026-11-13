@@ -4,10 +4,11 @@ import { useAuthStore } from '../store/useAuthStore';
 import { canOpenPage } from '../routes/access';
 
 /**
- * Guards a route using the shared page-access table (routes/access.js).
- * `allowedRoles` is kept only for callers outside the main router.
+ * Guards a route using the shared page-access table (routes/access.js), which
+ * decides by permission (or, for role dashboards, by persona). Every route
+ * passes `page`; without one the route is open to any signed-in user.
  */
-export function RoleGuard({ page, allowedRoles = [], children }) {
+export function RoleGuard({ page, children }) {
   const { user } = useAuthStore();
   const role = user?.role?.toUpperCase();
 
@@ -15,13 +16,10 @@ export function RoleGuard({ page, allowedRoles = [], children }) {
     return <Navigate to="/login" replace />;
   }
 
-  const allowed = page
-    ? canOpenPage(user, page)
-    : allowedRoles.length === 0 || allowedRoles.includes(role);  // CR-008: no admin bypass
-  if (allowed) {
+  if (!page || canOpenPage(user, page)) {
     return children;
   }
 
-  // Redirect to user's appropriate role dashboard
+  // Send the user to their own dashboard.
   return <Navigate to={`/${role.toLowerCase()}/dashboard`} replace />;
 }

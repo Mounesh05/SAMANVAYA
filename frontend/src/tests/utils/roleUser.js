@@ -21,3 +21,9 @@ export function roleUser(role, overrides = {}) {
     ...overrides,
   };
 }
+
+/** Adds the role's real permissions to a hand-built test user (unless it sets its own). */
+export function withPermissions(user) {
+  if (!user || Array.isArray(user.permissions)) return user;
+  return { ...user, permissions: permissionsFor(user.role, Boolean(user.is_admin)) };
+}

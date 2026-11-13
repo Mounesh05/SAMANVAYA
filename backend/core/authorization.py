@@ -295,25 +295,24 @@ def _is_sign_off(user: dict, current_status: str | None, new_status: str | None)
 
 
 async def verify_task_status_update_access(user: dict, task_id: str, new_status: str | None = None) -> str:
-    """Allow management roles, the assignee in an engineering role, or a QA
-    sign-off (Review -> Done/In Progress) to update a task's status."""
-    role = user.get("role", user.get("organizational_role", "")).upper()
+    """MOVE_TASK holders (PM, Lead) move any task they can write to;
+    TRANSITION_TASK holders move their own tasks, or sign off Review work (QA)."""
+    permissions = _permissions(user)
     task = await _task_repo.find_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     employee_id = user.get("employee_id", user.get("id"))
-    if role in {"DEVELOPER", "QA", "DEVOPS"}:
+    if Permission.MOVE_TASK in permissions:
+        return await verify_task_access(user, task_id, require_write=True)
+    if Permission.TRANSITION_TASK in permissions:
         if task.get("assignee_id") != employee_id and not _is_sign_off(user, task.get("status"), new_status):
             raise HTTPException(
                 status_code=403,
                 detail="You can only update tasks assigned to you",
             )
         return await verify_task_access(user, task_id)
-
-    if role not in {"CEO", "PM", "LEAD"}:
-        raise HTTPException(status_code=403, detail="Insufficient task update permissions")
-    return await verify_task_access(user, task_id, require_write=True)
+    raise HTTPException(status_code=403, detail="Insufficient task update permissions")
 
 
 async def verify_story_access(

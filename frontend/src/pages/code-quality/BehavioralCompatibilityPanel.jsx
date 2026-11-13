@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { algorithmsApi } from '../../api/algorithms.api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -33,9 +34,9 @@ export function BehavioralCompatibilityPanel() {
   const run = useQuery({ queryKey: ['compatibility-run', runId], queryFn: () => algorithmsApi.getRun(runId), enabled: Boolean(runId),
     refetchInterval: query => ['pending', 'running'].includes(query.state.data?.status) ? 1000 : false });
   const docs = contracts.data?.contracts || [];
-  const role = (user?.role || user?.organizational_role)?.toUpperCase();
-  const canApprove = ['LEAD', 'PM', 'CEO'].includes(role);  // CR-008: approval comes from the role
-  const canSubmit = user?.is_admin || ['DEVELOPER', 'LEAD', 'PM', 'CEO', 'QA', 'DEVOPS'].includes(role);
+  // Same checks as the backend (permissions, not role names).
+  const canApprove = hasPermission(user, PERMISSIONS.APPROVE_ENGINEERING_CONTRACTS);
+  const canSubmit = hasPermission(user, PERMISSIONS.USE_ENGINEERING_INTELLIGENCE);
   const errors = [error, proposer.error?.message, contracts.error?.message, review.error?.message, relationships.error?.message, comparison.error?.message, run.error?.message].filter(Boolean);
 
   function candidate(value) {

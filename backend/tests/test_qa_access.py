@@ -52,6 +52,7 @@ class TestQaPermissions:
             Permission.VIEW_DEFECTS, Permission.VIEW_CODE_QUALITY, Permission.MANAGE_TEST_AUTOMATION,
             Permission.CREATE_INCIDENT,
             Permission.VIEW_PIPELINES,  # CR-003 conversion of the Pipelines role list
+            Permission.USE_ENGINEERING_INTELLIGENCE,  # was the engineering role list
         }
 
     def test_qa_sees_only_own_performance(self):

@@ -17,6 +17,8 @@ import { NotificationDrawer } from './NotificationDrawer';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { ROLES, ROLE_COLORS } from '../../utils/constants';
 
+const ACRONYM_SEGMENTS = new Set(['HR', 'CEO', 'QA', 'PM']);
+
 export function TopBar() {
   const { user } = useAuthStore();
   const { theme, toggleTheme, toggleSidebar } = useThemeStore();
@@ -40,7 +42,8 @@ export function TopBar() {
       const roleUpper = rawSegments[0].toUpperCase();
       return [
         {
-          label: `${roleUpper === 'HR' || roleUpper === 'CEO' || roleUpper === 'QA' || roleUpper === 'PM' ? roleUpper : roleUpper.charAt(0) + roleUpper.slice(1).toLowerCase()} Dashboard`,
+          // Breadcrumb text from the URL segment: acronyms stay upper case.
+          label: `${ACRONYM_SEGMENTS.has(roleUpper) ? roleUpper : roleUpper.charAt(0) + roleUpper.slice(1).toLowerCase()} Dashboard`,
           to: `/${rawSegments[0]}/dashboard`,
           isLast: true,
         },

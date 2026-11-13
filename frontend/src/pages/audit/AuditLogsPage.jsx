@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { activityApi } from '../../api/activity.api';
-import { useAuthStore } from '../../store/useAuthStore';
+import { auditApi } from '../../api/audit.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Table } from '../../components/common/Table';
@@ -10,192 +9,112 @@ import { Select } from '../../components/common/Select';
 import { Badge } from '../../components/common/Badge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { History, User, FolderGit2, ListTodo, Users, Settings, Shield, GitPullRequest } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { formatDate, timeAgo } from '../../utils/dates';
-import { ROLES } from '../../utils/constants';
 
-const ACTIVITY_TYPES = {
-  employee_created: { label: 'Employee Created', icon: User, color: 'primary' },
-  employee_edited: { label: 'Employee Edited', icon: User, color: 'info' },
-  employee_deactivated: { label: 'Employee Deactivated', icon: User, color: 'danger' },
-  team_created: { label: 'Team Created', icon: Users, color: 'primary' },
-  team_member_changed: { label: 'Team Membership Changed', icon: Users, color: 'info' },
-  team_lead_assigned: { label: 'Team Lead Assigned', icon: Users, color: 'warning' },
-  project_created: { label: 'Project Created', icon: FolderGit2, color: 'primary' },
-  project_membership_changed: { label: 'Project Membership Changed', icon: FolderGit2, color: 'info' },
-  feedback_submitted: { label: 'Feedback Submitted', icon: History, color: 'success' },
-  evaluation_triggered: { label: 'Evaluation Triggered', icon: Shield, color: 'purple' },
-  evaluation_completed: { label: 'Evaluation Completed', icon: Shield, color: 'success' },
-  role_changed: { label: 'Role Changed', icon: Settings, color: 'warning' },
-  task_created: { label: 'Task Created', icon: ListTodo, color: 'primary' },
-  task_completed: { label: 'Task Completed', icon: ListTodo, color: 'success' },
-  pr_merged: { label: 'PR Merged', icon: GitPullRequest, color: 'success' },
+/** Readable names for audit actions; anything else is shown as it is. */
+const ACTION_LABELS = {
+  USER_CREATED: 'Employee created',
+  USER_UPDATED: 'Employee updated',
+  USER_ACTIVATED: 'Account activated',
+  USER_DEACTIVATED: 'Account deactivated',
+  ADMIN_GRANTED: 'Admin rights granted',
+  ADMIN_REVOKED: 'Admin rights removed',
+  EXPORT_DATA: 'Report exported',
+  INCIDENT_UPDATED: 'Incident triaged',
+  TRANSFER_APPROVED: 'Transfer approved',
+  TRANSFER_REJECTED: 'Transfer rejected',
+  TRANSFER_EXECUTED: 'Transfer executed',
 };
+const SENSITIVE = new Set(['ADMIN_GRANTED', 'ADMIN_REVOKED', 'USER_DEACTIVATED', 'EXPORT_DATA']);
 
+const label = (action) => ACTION_LABELS[action] || (action || '').replaceAll('_', ' ').toLowerCase();
+
+function summarise(details) {
+  if (!details || typeof details !== 'object') return '—';
+  const parts = [];
+  if (details.field) parts.push(`${details.field}: ${JSON.stringify(details.old ?? null)} → ${JSON.stringify(details.new ?? null)}`);
+  if (details.purpose) parts.push(`purpose: ${details.purpose}`);
+  if (details.approval_requested) parts.push(`approval requested ${details.approval_requested}`);
+  if (details.approved_by) parts.push(`approved by ${details.approved_by}`);
+  if (details.second_approver === 'none_available') parts.push('no second approver available');
+  if (details.action && details.changes) parts.push(`${details.action}`);
+  if (details.row_count !== undefined) parts.push(`${details.row_count} rows`);
+  return parts.length ? parts.join(' · ') : '—';
+}
+
+/**
+ * The audit trail of sensitive actions. The page opens for VIEW_AUDIT_LOGS
+ * holders (CEO, admins, HR and some HR designations); the backend decides
+ * which events each of them receives (HR accounts see HR-relevant events).
+ */
 export function AuditLogsPage() {
-  const { user } = useAuthStore();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [actionFilter, setActionFilter] = useState('');
 
-  const role = user?.role?.toUpperCase();
-  const canViewAll = role === ROLES.HR || role === ROLES.CEO;
-
-  const { data: activityData, isLoading, error, refetch } = useQuery({
-    queryKey: ['activity', 'me'],
-    queryFn: () => activityApi.getMyFeed(),
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['audit-logs', actionFilter],
+    queryFn: () => auditApi.list({ action: actionFilter }),
     retry: 1,
   });
 
-  const activities = Array.isArray(activityData)
-    ? activityData
-    : activityData?.events || activityData?.activities || activityData?.items || [];
-
-  const filteredActivities = activities.filter((activity) => {
-    const matchesSearch = !search ||
-      activity.description?.toLowerCase().includes(search.toLowerCase()) ||
-      activity.user?.toLowerCase().includes(search.toLowerCase()) ||
-      activity.entity_type?.toLowerCase().includes(search.toLowerCase());
-    const matchesType = !typeFilter || activity.type === typeFilter;
-    return matchesSearch && matchesType;
+  const logs = data?.logs || [];
+  const actions = [...new Set([...(data?.allowed_actions || []), ...logs.map((l) => l.action)])].filter(Boolean).sort();
+  const filtered = logs.filter((log) => {
+    if (!search) return true;
+    const text = `${log.actor_name || ''} ${log.actor_id || ''} ${log.resource_type || ''} ${log.resource_id || ''} ${label(log.action)}`;
+    return text.toLowerCase().includes(search.toLowerCase());
   });
-
-  const getActivityConfig = (type) => {
-    return ACTIVITY_TYPES[type] || { label: type, icon: History, color: 'default' };
-  };
 
   const columns = [
     {
       key: 'timestamp',
       header: 'Time',
-      render: (a) => (
-        <span title={formatDate(a.timestamp)} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {timeAgo(a.timestamp)}
-        </span>
+      render: (l) => (
+        <span title={formatDate(l.timestamp)} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{timeAgo(l.timestamp)}</span>
       ),
     },
     {
-      key: 'type',
+      key: 'action',
       header: 'Action',
-      render: (a) => {
-        const config = getActivityConfig(a.type);
-        const Icon = config.icon;
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Icon size={14} style={{ color: `var(--${config.color})` }} />
-            <Badge variant={config.color} size="sm">{config.label}</Badge>
-          </div>
-        );
-      },
+      render: (l) => <Badge variant={SENSITIVE.has(l.action) ? 'warning' : 'info'} size="sm">{label(l.action)}</Badge>,
     },
-    {
-      key: 'description',
-      header: 'Description',
-      render: (a) => (
-        <span style={{ fontSize: '0.875rem' }}>{a.description || '—'}</span>
-      ),
-    },
-    {
-      key: 'user',
-      header: 'User',
-      render: (a) => (
-        <span style={{ fontWeight: '600' }}>{a.user || a.performed_by || '—'}</span>
-      ),
-    },
-    {
-      key: 'entity_type',
-      header: 'Entity',
-      render: (a) => a.entity_type || '—',
-    },
-    {
-      key: 'entity_id',
-      header: 'Entity ID',
-      render: (a) => a.entity_id ? (
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{a.entity_id}</span>
-      ) : '—',
-    },
+    { key: 'actor', header: 'By', render: (l) => <span style={{ fontWeight: 600 }}>{l.actor_name || l.actor_id || '—'}</span> },
+    { key: 'resource', header: 'On', render: (l) => (l.resource_type ? `${l.resource_type} ${l.resource_id || ''}` : '—') },
+    { key: 'details', header: 'Details', render: (l) => <span style={{ fontSize: '0.8125rem' }}>{summarise(l.details)}</span> },
+    { key: 'success', header: 'Result', render: (l) => (l.success === false ? <Badge variant="danger" size="sm">failed</Badge> : 'ok') },
   ];
 
   if (isLoading) return <LoadingState message="Loading audit logs..." />;
-  if (error) return <ErrorState message={error.message} onRetry={refetch} />;
+  if (error) return <ErrorState message={error?.response?.data?.detail || error.message} onRetry={refetch} />;
 
   return (
     <div>
-      <PageHeader
-        title="Audit Logs"
-        subtitle={canViewAll
-          ? 'Organization-wide audit trail of sensitive actions and changes.'
-          : 'Your recent activity and action history.'
-        }
-      />
+      <PageHeader title="Audit Logs" subtitle="Audit trail of sensitive actions: accounts, approvals, exports, transfers and incidents." />
 
-      {!canViewAll && (
-        <Card
-          variant="flat"
-          padding="md"
-          style={{ marginBottom: '1.5rem', backgroundColor: 'var(--bg-elevated)' }}
-        >
+      {data?.filtered_for_role === 'HR' && (
+        <Card variant="flat" padding="md" style={{ marginBottom: '1.5rem', backgroundColor: 'var(--bg-elevated)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
             <Shield size={16} style={{ color: 'var(--warning)' }} />
-            <span>
-              Full audit log access is restricted to HR and CEO roles. You can view your own activity below.
-            </span>
+            <span>Showing HR-relevant events (employee lifecycle and team structure).</span>
           </div>
         </Card>
       )}
 
-      {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Total Actions</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)' }}>{activities.length}</div>
-        </Card>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Today</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--primary)' }}>
-            {activities.filter((a) => {
-              const today = new Date().toDateString();
-              return new Date(a.timestamp).toDateString() === today;
-            }).length}
-          </div>
-        </Card>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>This Week</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
-            {activities.filter((a) => {
-              const weekAgo = new Date();
-              weekAgo.setDate(weekAgo.getDate() - 7);
-              return new Date(a.timestamp) >= weekAgo;
-            }).length}
-          </div>
-        </Card>
-      </div>
-
-      {/* Filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search by description, user, or entity..."
-          width="320px"
-        />
-        <div style={{ width: '200px' }}>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by person, record or action..." width="320px" />
+        <div style={{ width: '220px' }}>
           <Select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            placeholder="All Action Types"
-            options={Object.entries(ACTIVITY_TYPES).map(([key, val]) => ({
-              value: key,
-              label: val.label,
-            }))}
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            placeholder="All actions"
+            options={actions.map((a) => ({ value: a, label: label(a) }))}
           />
         </div>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{filtered.length} of {data?.total ?? logs.length} entries</span>
       </div>
 
-      <Table
-        columns={columns}
-        data={filteredActivities}
-        emptyMessage="No audit log entries found."
-      />
+      <Table columns={columns} data={filtered} emptyMessage="No audit log entries found." />
     </div>
   );
 }

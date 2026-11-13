@@ -30,24 +30,36 @@ const EMPTY_DEFECT = {
 };
 const EMPTY_LIST = [];
 
-const TRANSITIONS = {
-  QA: {
-    OPEN: ['ASSIGNED'],
-    ASSIGNED: ['IN_PROGRESS'],
-    IN_PROGRESS: ['FIXED'],
-    FIXED: ['READY_FOR_RETEST'],
-    READY_FOR_RETEST: ['CLOSED', 'REOPENED'],
-    REOPENED: ['ASSIGNED', 'IN_PROGRESS'],
-  },
-  DEVELOPER: { ASSIGNED: ['IN_PROGRESS'], IN_PROGRESS: ['FIXED'], FIXED: ['READY_FOR_RETEST'], REOPENED: ['IN_PROGRESS'] },
-  DEVOPS: { ASSIGNED: ['IN_PROGRESS'], IN_PROGRESS: ['FIXED'], FIXED: ['READY_FOR_RETEST'], REOPENED: ['IN_PROGRESS'] },
+// Defect steps by permission, mirroring qa_service.update_defect on the backend.
+const QA_STEPS = {
+  OPEN: ['ASSIGNED'],
+  ASSIGNED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['FIXED'],
+  FIXED: ['READY_FOR_RETEST'],
+  READY_FOR_RETEST: ['CLOSED', 'REOPENED'],
+  REOPENED: ['ASSIGNED', 'IN_PROGRESS'],
 };
+// PM and Lead (MOVE_TASK): the same steps, except QA alone verifies at retest.
+const MANAGER_STEPS = { ...QA_STEPS, READY_FOR_RETEST: [] };
+// Assigned contributors (Developer, DevOps): work on the fix.
+const ASSIGNEE_STEPS = { ASSIGNED: ['IN_PROGRESS'], IN_PROGRESS: ['FIXED'], FIXED: ['READY_FOR_RETEST'], REOPENED: ['IN_PROGRESS'] };
+
+function stepsFor(user, defect) {
+  if (!defect) return [];
+  if (hasPermission(user, PERMISSIONS.VERIFY_DEFECTS)) return QA_STEPS[defect.status] || [];
+  if (hasPermission(user, PERMISSIONS.MOVE_TASK)) return MANAGER_STEPS[defect.status] || [];
+  if (hasPermission(user, PERMISSIONS.TRANSITION_TASK) && defect.assignee_id === user?.employee_id) {
+    return ASSIGNEE_STEPS[defect.status] || [];
+  }
+  return [];
+}
 
 export function BugsPage() {
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase();
-  // CR-002: QA actions follow permissions, as on the backend.
+  // QA actions follow permissions, as on the backend.
   const canVerifyDefects = hasPermission(user, PERMISSIONS.VERIFY_DEFECTS);
+  // Assigning: QA (VERIFY_DEFECTS) or PM/Lead (MOVE_TASK), as on the backend.
+  const canAssignDefects = canVerifyDefects || hasPermission(user, PERMISSIONS.MOVE_TASK);
   const canLinkTestCases = hasPermission(user, PERMISSIONS.MANAGE_TEST_CASES);
   // Anyone with CREATE_BUG reports defects; QA still assigns, verifies and closes.
   const canReportDefect = hasPermission(user, PERMISSIONS.CREATE_BUG);
@@ -171,7 +183,7 @@ export function BugsPage() {
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <SearchInput value={search} onChange={setSearch} placeholder="Search defect, story, or test..." width="300px" />
           <div style={{ width: 180 }}>
-            <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} placeholder="All statuses" options={Object.keys(TRANSITIONS.QA).concat('CLOSED').map((status) => ({ value: status, label: status.replaceAll('_', ' ') }))} />
+            <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} placeholder="All statuses" options={Object.keys(QA_STEPS).concat('CLOSED').map((status) => ({ value: status, label: status.replaceAll('_', ' ') }))} />
           </div>
           <div style={{ width: 180 }}>
             <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)} placeholder="All severities" options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />
@@ -212,7 +224,7 @@ export function BugsPage() {
             <p><strong>Story / Task / Test:</strong> {[defectDetail.story_id, defectDetail.task_id, defectDetail.test_case_id].filter(Boolean).join(' / ') || '—'}</p>
             <p><strong>Reporter:</strong> {defectDetail.reporter_name} · <strong>Assignee:</strong> {defectDetail.assignee_id || 'Unassigned'}</p>
 
-            {canVerifyDefects && (
+            {canAssignDefects && (
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
                 <Input label="Assign to employee ID" value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} />
                 <Button variant="secondary" onClick={() => updateMutation.mutate({ defectId: defectDetail.id, data: { assignee_id: assigneeId || null } })}>Assign</Button>
@@ -224,7 +236,7 @@ export function BugsPage() {
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {(TRANSITIONS[role] || {})[defectDetail.status]?.map((status) => (
+              {stepsFor(user, defectDetail).map((status) => (
                 <Button key={status} variant={status === 'CLOSED' ? 'primary' : 'secondary'} isLoading={updateMutation.isPending} onClick={() => updateMutation.mutate({ defectId: defectDetail.id, data: { status } })}>Move to {status.replaceAll('_', ' ')}</Button>
               ))}
             </div>

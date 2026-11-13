@@ -1,3 +1,4 @@
+import { withPermissions } from '../../tests/utils/roleUser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -83,12 +84,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
 
   describe('1. Dropdown Role & ID Filtering for HR User', () => {
     it('restricts HR evaluation target strictly to engineering contributors and excludes DEMO-HR, DEMO-CEO, PM, and non-eng roles', async () => {
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -135,12 +136,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
 
   describe('2. Self-Evaluation Prevention Across Roles', () => {
     it('DEVELOPER evaluator cannot evaluate self (ENG-DEV-1 is excluded)', async () => {
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'ENG-DEV-1',
         name: 'Alice Developer',
         role: ROLES.DEVELOPER,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -161,12 +162,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
     });
 
     it('LEAD evaluator cannot evaluate self (ENG-LEAD-1 is excluded)', async () => {
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'ENG-LEAD-1',
         name: 'Bob TechLead',
         role: ROLES.LEAD,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -187,12 +188,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
     });
 
     it('QA evaluator cannot evaluate self (ENG-QA-1 is excluded)', async () => {
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'ENG-QA-1',
         name: 'Charlie Quality',
         role: ROLES.QA,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -213,12 +214,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
     });
 
     it('DEVOPS evaluator cannot evaluate self (ENG-OPS-1 is excluded)', async () => {
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'ENG-OPS-1',
         name: 'Dave DevOps',
         role: ROLES.DEVOPS,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -239,12 +240,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
     });
 
     it('CEO evaluator cannot evaluate self (DEMO-CEO is excluded) or HR or PM', async () => {
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'DEMO-CEO',
         name: 'Executive CEO',
         role: ROLES.CEO,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -269,12 +270,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
     it('Empty employee list: renders dropdown with zero options without throwing', async () => {
       employeesApi.list.mockResolvedValue([]);
 
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 
@@ -294,12 +295,12 @@ describe('FeedbackPage Adversarial Stress Tests: Eligibility & Self-Evaluation P
         { employee_id: 'EMP-INTERN', name: 'Intern', role: 'INTERN' },
       ]);
 
-      useAuthStore.getState().setAuth('mock-token', {
+      useAuthStore.getState().setAuth('mock-token', withPermissions({
         employee_id: 'DEMO-HR',
         name: 'HR Manager',
         role: ROLES.HR,
         is_admin: false,
-      });
+      }));
 
       renderFeedbackPage();
 

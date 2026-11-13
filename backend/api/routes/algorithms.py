@@ -2,6 +2,7 @@
 
 import asyncio
 
+from core.permissions import Permission, get_user_permissions
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from core.authorization import verify_project_access
@@ -24,7 +25,6 @@ from domain.schemas.requirement_discovery import RequirementDiscoveryRequest, Re
 router = APIRouter()
 requirement_service = RequirementDiscoveryService()
 service = AlgorithmBenchmarkService(requirements=requirement_service)
-_ENGINEERING_ROLES = {"DEVELOPER", "LEAD", "PM", "CEO", "QA", "DEVOPS"}
 contract_service = FunctionContractService()
 
 
@@ -34,8 +34,8 @@ def normalized_role(user):
 
 
 async def engineering_user(user: dict = Depends(get_current_user)):
-    role = normalized_role(user)
-    if not user.get("is_admin") and role not in _ENGINEERING_ROLES:
+    if Permission.USE_ENGINEERING_INTELLIGENCE not in get_user_permissions(
+            normalized_role(user), user.get("is_admin", False), user.get("designation")):
         raise HTTPException(status_code=403, detail="Engineering project access is required")
     identity = user.get("employee_id") or user.get("sub")
     if not isinstance(identity, str) or not identity.strip():

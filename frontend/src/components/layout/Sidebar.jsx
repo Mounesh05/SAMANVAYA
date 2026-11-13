@@ -30,8 +30,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { authApi } from '../../api/auth.api';
 import { useThemeStore } from '../../store/useThemeStore';
 import { ROLES, ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
-import { showInMenu } from '../../routes/access';
-import { hasAnyPermission, hasPermission, PERMISSIONS, TRANSFER_FOR_OTHERS_PERMISSIONS } from '../../auth/permissions';
+import { canOpenPage, showInMenu } from '../../routes/access';
+import { hasAnyPermission, hasPermission, PERMISSIONS, TEAM_LIST_PERMISSIONS, TRANSFER_FOR_OTHERS_PERMISSIONS } from '../../auth/permissions';
 
 export function Sidebar() {
   const { user, logout } = useAuthStore();
@@ -39,14 +39,18 @@ export function Sidebar() {
   const navigate = useNavigate();
 
   const role = user?.role?.toUpperCase();
-  // CR-008: labels follow permissions, not the admin flag.
-  const managesTeams = hasPermission(user, PERMISSIONS.MANAGE_TEAMS);
+  // Labels and shortcuts follow permissions, not role names.
   const handlesOthersTransfers = hasAnyPermission(user, TRANSFER_FOR_OTHERS_PERMISSIONS);
+  // "My Team": can see only one's own team (VIEW_TEAM_DATA without wider team rights).
+  const ownTeamOnly = hasPermission(user, PERMISSIONS.VIEW_TEAM_DATA) && !hasAnyPermission(user, [
+    ...TEAM_LIST_PERMISSIONS.filter((p) => p !== PERMISSIONS.VIEW_TEAM_DATA), PERMISSIONS.MANAGE_TEAMS,
+  ]);
+  const reviewsPerformanceOutcomes = hasPermission(user, PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES);
+  const submitsHrAssessments = hasPermission(user, PERMISSIONS.SUBMIT_HR_FEEDBACK);
 
   // Menu entries in display order. Who sees each one comes from the shared
   // page-access table (routes/access.js), the same table the router enforces.
   const getNavItems = () => {
-    const isHR = role === ROLES.HR;
     const items = [
       { page: 'dashboard', to: `/${(role || 'developer').toLowerCase()}/dashboard`, icon: <LayoutDashboard size={19} />, label: 'Dashboard' },
       { page: 'projects', to: '/projects', icon: <FolderGit2 size={19} />, label: 'Projects' },
@@ -57,9 +61,9 @@ export function Sidebar() {
       { page: 'employees', to: '/employees', icon: <Users size={19} />, label: 'Employees' },
       { page: 'approvals', to: '/approvals', icon: <CheckSquare size={19} />, label: 'Approvals' },
       { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: handlesOthersTransfers ? 'Transfer Requests' : 'My Transfers' },
-      { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: role === ROLES.LEAD && !managesTeams ? 'My Team' : 'Teams' },
-      // Developers cannot list teams; "My Team" opens their own team directly.
-      ...(role === ROLES.DEVELOPER && user?.team_id && !managesTeams
+      { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: ownTeamOnly ? 'My Team' : 'Teams' },
+      // People who can't list teams but can open their own get a direct "My Team" link.
+      ...(user?.team_id && !canOpenPage(user, 'teams') && canOpenPage(user, 'teamDetail')
         ? [{ page: 'teamDetail', to: `/teams/${user.team_id}`, icon: <Building2 size={19} />, label: 'My Team' }]
         : []),
       { page: 'codeQuality', to: '/code-quality', icon: <ShieldCheck size={19} />, label: 'Code Quality' },
@@ -72,8 +76,8 @@ export function Sidebar() {
       { page: 'incidents', to: '/incidents', icon: <AlertTriangle size={19} />, label: 'Incidents' },
       { page: 'cicdLogs', to: '/cicd-logs', icon: <Terminal size={19} />, label: 'CI/CD Log AI' },
       { page: 'evaluation', to: '/evaluation', icon: <Cpu size={19} />, label: 'AI Evaluation' },
-      { page: 'performance', to: '/performance', icon: <Award size={19} />, label: isHR ? 'Performance Outcomes' : 'Performance' },
-      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={19} />, label: isHR ? 'Workplace Assessment' : 'Role Feedback' },
+      { page: 'performance', to: '/performance', icon: <Award size={19} />, label: reviewsPerformanceOutcomes ? 'Performance Outcomes' : 'Performance' },
+      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={19} />, label: submitsHrAssessments ? 'Workplace Assessment' : 'Role Feedback' },
       { page: 'reports', to: '/reports', icon: <FileBarChart size={19} />, label: 'Reports & Trends' },
       { page: 'audit', to: '/audit', icon: <History size={19} />, label: 'Audit Logs' },
       { page: 'ceoQuality', to: '/quality', icon: <ShieldCheck size={19} />, label: 'Quality' },
@@ -81,13 +85,10 @@ export function Sidebar() {
       { page: 'ceoOrganization', to: '/organization', icon: <Building2 size={19} />, label: 'Organization' },
     ];
 
-    // Executive pages stay in the CEO's menu only.
-    const ceoOnlyMenu = new Set(['ceoQuality', 'ceoRisk', 'ceoOrganization']);
+    // The dashboard link opens the user's own role dashboard (a persona view);
+    // every other entry follows the shared page-access table.
     const knownRole = Object.values(ROLES).includes(role);
-    return items.filter((item) =>
-      (item.page === 'dashboard' && knownRole)
-      || (ceoOnlyMenu.has(item.page) ? role === ROLES.CEO : showInMenu(user, item.page))
-    );
+    return items.filter((item) => (item.page === 'dashboard' ? knownRole : showInMenu(user, item.page)));
   };
 
   const navItems = getNavItems();

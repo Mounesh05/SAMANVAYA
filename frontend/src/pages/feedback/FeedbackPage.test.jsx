@@ -1,3 +1,4 @@
+import { withPermissions } from '../../tests/utils/roleUser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -60,12 +61,12 @@ describe('FeedbackPage Employee Evaluation Dropdown Filtering', () => {
   });
 
   it('as HR user, restricts target dropdown to engineering contributors and excludes HR, CEO, PM, and self', async () => {
-    useAuthStore.getState().setAuth('mock-token', {
+    useAuthStore.getState().setAuth('mock-token', withPermissions({
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
       role: ROLES.HR,
       is_admin: false,
-    });
+    }));
 
     renderPage();
 
@@ -87,12 +88,12 @@ describe('FeedbackPage Employee Evaluation Dropdown Filtering', () => {
   });
 
   it('as engineering Lead, excludes self, non-engineering PM, HR, and CEO', async () => {
-    useAuthStore.getState().setAuth('mock-token', {
+    useAuthStore.getState().setAuth('mock-token', withPermissions({
       employee_id: 'DEMO-LEAD1',
       name: 'Bob Lead',
       role: ROLES.LEAD,
       is_admin: false,
-    });
+    }));
 
     renderPage();
 

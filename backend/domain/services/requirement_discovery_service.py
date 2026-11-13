@@ -9,6 +9,7 @@ import copy
 import hashlib
 import json
 import uuid
+from core.permissions import Permission, get_user_permissions
 from datetime import datetime, timezone
 
 from core.database import col
@@ -55,8 +56,9 @@ class RequirementDiscoveryService:
 
     async def approve(self, document, body, user):
         review = RequirementReview.model_validate(body).model_dump()
-        # CR-008: approval comes from the role, not the admin flag.
-        if (str(user.get("role", user.get("organizational_role", ""))).upper() not in {"LEAD", "PM", "CEO"}
+        # Approval comes from APPROVE_ENGINEERING_CONTRACTS (not the admin flag, CR-008).
+        if (Permission.APPROVE_ENGINEERING_CONTRACTS not in get_user_permissions(
+                str(user.get("role", user.get("organizational_role", ""))), False, user.get("designation"))
                 or not actor(user) or actor(user) == document["proposed_by"] or not user.get("org_id")
                 or user["org_id"] != document["organization_id"]):
             raise PermissionError("Independent authorized review in the same project organization is required")

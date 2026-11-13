@@ -20,10 +20,6 @@ from domain.models.qa import (
 from repositories.qa_repository import QARepository
 
 
-# CR-007: the CEO reads defects (READ_ROLES) but does not edit, assign or
-# change their status; QA, PM and Lead manage them.
-MANAGEMENT_ROLES = {"QA", "PM", "LEAD"}
-READ_ROLES = {"QA", "DEVELOPER", "DEVOPS", "LEAD", "PM", "CEO"}
 TERMINAL_DEFECT_STATES = {"CLOSED"}
 
 
@@ -33,6 +29,24 @@ def _role(user):
 
 def _permissions(user):
     return get_user_permissions(_role(user), user.get("is_admin", False), user.get("designation"))
+
+
+def _reads_qa(user):
+    """VIEW_DEFECTS: QA, Developer, DevOps, Lead, PM, CEO (was READ_ROLES)."""
+    return Permission.VIEW_DEFECTS in _permissions(user)
+
+
+def _manages_defects(user):
+    """Assign and edit defects: VERIFY_DEFECTS (QA) or MOVE_TASK (PM, Lead).
+    CR-007: the CEO reads but doesn't manage them (was MANAGEMENT_ROLES)."""
+    permissions = _permissions(user)
+    return Permission.VERIFY_DEFECTS in permissions or Permission.MOVE_TASK in permissions
+
+
+def _own_defects_only(user):
+    """Contributors who see and work on their own defects (Developer, DevOps)."""
+    permissions = _permissions(user)
+    return not (_manages_defects(user) or Permission.VIEW_ALL_DATA in permissions)
 
 
 def _identity(user):
@@ -57,8 +71,7 @@ class QAService:
         )
 
     async def accessible_project(self, user, project_id):
-        role = _role(user)
-        if role not in READ_ROLES:
+        if not _reads_qa(user):
             raise HTTPException(status_code=403, detail="QA project access is not available for this role")
 
         project = await self.repo.find_one(self.repo.projects, {"id": project_id})
@@ -70,7 +83,7 @@ class QAService:
         if user_org and project_org and user_org != project_org:
             raise HTTPException(status_code=403, detail="Project belongs to another organization")
 
-        if role == "CEO":
+        if Permission.VIEW_ALL_DATA in _permissions(user):  # CEO
             return project
 
         assigned_projects = set(user.get("project_ids") or [])
@@ -89,8 +102,7 @@ class QAService:
         raise HTTPException(status_code=403, detail="You don't have access to this project")
 
     async def list_projects(self, user):
-        role = _role(user)
-        if role not in READ_ROLES:
+        if not _reads_qa(user):
             raise HTTPException(status_code=403, detail="QA project access is not available for this role")
         cursor = self.repo.projects.find({}, {"_id": 0}).sort("name", 1)
         projects = await cursor.to_list(length=1000)
@@ -373,7 +385,7 @@ class QAService:
         query = {"project_id": {"$in": project_ids}}
         if status:
             query["status"] = status
-        if _role(user) in {"DEVELOPER", "DEVOPS"}:
+        if _own_defects_only(user):
             # Defects assigned to them, plus the ones they reported (CR-001/CR-003).
             query["$or"] = [{"assignee_id": _identity(user)}, {"reporter_id": _identity(user)}]
         return await self.repo.list_documents(
@@ -422,13 +434,12 @@ class QAService:
             raise HTTPException(status_code=404, detail="Defect not found")
         await self.accessible_project(user, defect["project_id"])
         identity = _identity(user)
-        if _role(user) in {"DEVELOPER", "DEVOPS"} and identity not in {defect.get("assignee_id"), defect.get("reporter_id")}:
+        if _own_defects_only(user) and identity not in {defect.get("assignee_id"), defect.get("reporter_id")}:
             raise HTTPException(status_code=403, detail="You can only view defects assigned to you or reported by you")
         return defect
 
     async def update_defect(self, user, defect_id, updates: DefectUpdate):
         defect = await self.get_defect(user, defect_id)
-        role = _role(user)
         fields = updates.model_dump(exclude_unset=True)
         if not fields:
             return defect
@@ -440,20 +451,20 @@ class QAService:
         history = list(defect.get("history") or [])
 
         if "assignee_id" in updates.model_fields_set:
-            if role not in MANAGEMENT_ROLES:
+            if not _manages_defects(user):
                 raise HTTPException(status_code=403, detail="Only QA, PM, or Lead can assign defects")
             await self._validate_assignee(user, project, new_assignee)
             changes["assignee_id"] = new_assignee
             if new_assignee and defect["status"] == "OPEN":
                 new_status = "ASSIGNED"
 
-        if changes and role not in MANAGEMENT_ROLES:
+        if changes and not _manages_defects(user):
             raise HTTPException(status_code=403, detail="Only QA, PM, or Lead can edit defect details")
         if new_status:
             current = defect["status"]
             if current in TERMINAL_DEFECT_STATES:
                 raise HTTPException(status_code=409, detail="Closed defects cannot be changed")
-            if role in {"DEVELOPER", "DEVOPS"}:
+            if Permission.VERIFY_DEFECTS not in _permissions(user) and _own_defects_only(user):
                 if defect.get("assignee_id") != _identity(user):
                     raise HTTPException(status_code=403, detail="You can only update assigned defects")
                 allowed = {
@@ -475,9 +486,9 @@ class QAService:
                 }
                 if new_status not in allowed.get(current, set()):
                     raise HTTPException(status_code=400, detail="Invalid QA defect transition")
-            elif role not in {"PM", "LEAD"}:  # CR-007: not the CEO
+            elif Permission.MOVE_TASK not in _permissions(user):  # CR-007: not the CEO
                 raise HTTPException(status_code=403, detail="Only QA, PM, Lead, or the assigned developer can change defect status")
-            elif role in {"LEAD", "PM"} and current == "READY_FOR_RETEST":
+            elif current == "READY_FOR_RETEST":
                 # CR-004 (Lead) and CR-005 (PM): QA verifies fixes; managers
                 # assign and prioritise.
                 raise HTTPException(status_code=403, detail="QA verifies and closes defects; Leads and PMs can assign and prioritise them")

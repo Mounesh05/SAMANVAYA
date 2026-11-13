@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { algorithmsApi } from '../../api/algorithms.api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -11,7 +12,6 @@ import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection
 import { RequirementsSection } from './RequirementsPanel';
 
 const activeStatuses = ['pending', 'running'];
-const engineeringRoles = ['DEVELOPER', 'LEAD', 'PM', 'CEO', 'QA', 'DEVOPS'];
 const pythonKeywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
 const distributions = ['random', 'sorted', 'reversed', 'duplicates'];
 const sumExample = {
@@ -308,7 +308,7 @@ function RunDetails({ run, canSubmit, onSelectRun }) {
 export function AlgorithmComparisonPanel() {
   const id = useId();
   const user = useAuthStore((state) => state.user);
-  const canSubmit = Boolean(user?.is_admin || engineeringRoles.includes((user?.role ?? user?.organizational_role)?.toUpperCase()));
+  const canSubmit = hasPermission(user, PERMISSIONS.USE_ENGINEERING_INTELLIGENCE);  // same check as the backend
   const queryClient = useQueryClient();
   const [projectId, setProjectId] = useState('');
   const [historyProject, setHistoryProject] = useState('');

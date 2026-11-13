@@ -2,6 +2,7 @@
 
 import copy
 import uuid
+from core.permissions import Permission, get_user_permissions
 from datetime import datetime, timezone
 
 from pymongo.errors import DuplicateKeyError
@@ -60,7 +61,7 @@ class FunctionContractService:
 
     async def approve(self, document, approval, user):
         role = str(user.get("role", user.get("organizational_role", ""))).upper()
-        if role not in {"LEAD", "PM", "CEO"}:  # CR-008: no admin bypass
+        if Permission.APPROVE_ENGINEERING_CONTRACTS not in get_user_permissions(role, False, user.get("designation")):
             raise PermissionError("Contract approval requires an authorized project lead, PM or CEO")
         if not actor(user) or actor(user) == document["proposed_by"]:
             raise PermissionError("An independent reviewer must approve the proposed contract")

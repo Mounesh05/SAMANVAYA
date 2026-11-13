@@ -165,7 +165,8 @@ export function EmployeesPage() {
         updates: {
           name: formData.name,
           email: formData.email,
-          role: formData.role,
+          // The CEO's role is never changed here (the backend refuses CEO assignments).
+          ...(editEmployee.role === 'CEO' ? {} : { role: formData.role }),
           dept: formData.dept,
           github_username: formData.github_username || null,
           // Send the designation only when this user may change it and it changed.
@@ -183,7 +184,8 @@ export function EmployeesPage() {
   };
 
   const openEdit = (emp) => {
-    if (emp.role === 'CEO') return;
+    // The CEO account is protected; only admins may edit it (same as the backend).
+    if (emp.role === 'CEO' && !user?.is_admin) return;
     setEditEmployee(emp);
     setFormData({
       employee_id: emp.employee_id,
@@ -257,7 +259,7 @@ export function EmployeesPage() {
         if (isCEO || isSelf) {
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              {!isCEO && canManageEmployees && (
+              {canManageEmployees && (!isCEO || user?.is_admin) && (
                 <Button variant="ghost" size="sm" onClick={() => openEdit(e)} title="Edit Profile">
                   <Edit size={15} />
                 </Button>
@@ -472,7 +474,8 @@ export function EmployeesPage() {
                 }
                 setFormData({ ...formData, role: newRole, dept: defaultDept });
               }}
-              options={ASSIGNABLE_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] || r }))}
+              options={(editEmployee?.role === 'CEO' ? ['CEO'] : ASSIGNABLE_ROLES).map((r) => ({ value: r, label: ROLE_LABELS[r] || r }))}
+              disabled={editEmployee?.role === 'CEO'}
               required
             />
             <Input

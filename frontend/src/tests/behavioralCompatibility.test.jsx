@@ -1,3 +1,4 @@
+import { withPermissions } from './utils/roleUser';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -16,7 +17,7 @@ function panel() {
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(<QueryClientProvider client={client}><BehavioralCompatibilityPanel /></QueryClientProvider>);
 }
-beforeEach(() => { vi.resetAllMocks(); useAuthStore.setState({ user: { role: 'DEVELOPER', employee_id: 'author' } }); });
+beforeEach(() => { vi.resetAllMocks(); useAuthStore.setState({ user: withPermissions({ role: 'DEVELOPER', employee_id: 'author' }) }); });
 afterEach(() => { cleanup(); client?.clear(); });
 function change(label, value) { fireEvent.change(screen.getByLabelText(label), { target: { value } }); }
 
@@ -55,7 +56,7 @@ it('shows proposals separately and never approves them automatically', async () 
 });
 
 it('requires independent reviewer acknowledgement and exact fingerprint', async () => {
-  useAuthStore.setState({ user: { role: 'LEAD', employee_id: 'reviewer' } });
+  useAuthStore.setState({ user: withPermissions({ role: 'LEAD', employee_id: 'reviewer' }) });
   algorithmsApi.getContracts.mockResolvedValue({ contracts: [{ contract_id: 'FCT-1', proposed_by: 'author', status: 'PROPOSED', payload_fingerprint: 'exact-fingerprint', contract: { name: 'reachability', version: '1' } }] });
   algorithmsApi.approveContract.mockResolvedValue({ contract_id: 'FCT-1', status: 'APPROVED' });
   panel(); change('Compatibility project ID', 'P1');

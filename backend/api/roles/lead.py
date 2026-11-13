@@ -4,7 +4,8 @@ Shows: Team health, sprint progress, PR queue, blockers.
 """
 
 from fastapi import APIRouter, Depends
-from core.dependencies import require_roles
+from core.permissions import Permission
+from core.dependencies import require_permission, require_roles
 from repositories.user_repository import UserRepository
 from repositories.pr_repository import PRRepository
 from repositories.task_repository import TaskRepository
@@ -108,7 +109,7 @@ async def team_overview(user: dict = Depends(require_roles("LEAD"))):
 
 
 @router.get("/review-queue")
-async def review_queue(user: dict = Depends(require_roles("LEAD"))):
+async def review_queue(user: dict = Depends(require_permission(Permission.VIEW_TEAM_DATA))):  # team PRs (Leads)
     """Get PRs waiting for review from team."""
     team_id = user.get("team_id")
     

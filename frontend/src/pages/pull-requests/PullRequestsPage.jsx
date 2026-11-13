@@ -17,7 +17,7 @@ import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GitPullRequest, ExternalLink, RefreshCw, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
-import { ROLES, DEFAULT_ORG_ID } from '../../utils/constants';
+import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { formatDate, timeAgo } from '../../utils/dates';
 import { PRAlgorithmIntelligencePanel } from '../code-quality/PRAlgorithmIntelligencePanel';
@@ -31,8 +31,9 @@ export function PullRequestsPage() {
   const [syncData, setSyncData] = useState({ owner: '', repo: '', pr_number: '' });
 
   const queryClient = useQueryClient();
-  const role = user?.role?.toUpperCase();
-  const isLead = role === ROLES.LEAD;
+  // Team review queue: VIEW_TEAM_DATA (Leads), the same check as the backend.
+  const isLead = hasPermission(user, PERMISSIONS.VIEW_TEAM_DATA);
+  const role = user?.role?.toUpperCase();  // query cache key only
   // Sync is offered to SYNC_PR holders (backend: assigned projects only).
   const canSyncPr = hasPermission(user, PERMISSIONS.SYNC_PR);
   const canLoadPersonalPRs = isLead || canSyncPr;

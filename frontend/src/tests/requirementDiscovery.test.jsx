@@ -1,3 +1,4 @@
+import { withPermissions } from './utils/roleUser';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -15,7 +16,7 @@ function panel() {
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(<QueryClientProvider client={client}><RequirementsPanel /></QueryClientProvider>);
 }
-beforeEach(() => { vi.resetAllMocks(); useAuthStore.setState({ user: { employee_id: 'author', role: 'DEVELOPER' } }); });
+beforeEach(() => { vi.resetAllMocks(); useAuthStore.setState({ user: withPermissions({ employee_id: 'author', role: 'DEVELOPER' }) }); });
 afterEach(() => { cleanup(); client?.clear(); });
 
 it('keeps established requirements, suggestions, observations and unknowns separate', () => {
@@ -42,7 +43,7 @@ it('rejects malformed optional context before sending a request', () => {
 });
 
 it('requires independent acknowledgement before approving an exact revision', async () => {
-  useAuthStore.setState({ user: { employee_id: 'reviewer', role: 'LEAD' } });
+  useAuthStore.setState({ user: withPermissions({ employee_id: 'reviewer', role: 'LEAD' }) });
   algorithmsApi.getRequirementSources.mockResolvedValue({ sources: [{ source_id: 'RQS-1', status: 'PROPOSED', proposed_by: 'author', payload_fingerprint: 'exact-fp' }] });
   algorithmsApi.approveRequirementSource.mockResolvedValue({ status: 'APPROVED' });
   algorithmsApi.discoverRequirements.mockResolvedValue({});

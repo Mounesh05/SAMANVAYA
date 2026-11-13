@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { useMutation } from '@tanstack/react-query';
 import { algorithmsApi } from '../../api/algorithms.api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -49,9 +50,9 @@ export function RequirementsPanel() {
   const approval = useMutation({ mutationFn: doc => algorithmsApi.approveRequirementSource(doc.source_id, {
     expected_fingerprint: doc.payload_fingerprint, source_reference: reviewSource, rationale, scope_reviewed: reviewed,
   }), onSuccess: () => { sources.mutate(); parse(context, value => discovery.mutate({ project_id: project.trim(), context: value })); } });
-  const role = (user?.role || user?.organizational_role || '').toUpperCase();
-  const canReview = ['LEAD', 'PM', 'CEO'].includes(role);  // CR-008: approval comes from the role
-  const canSubmit = user?.is_admin || ['DEVELOPER', 'LEAD', 'PM', 'CEO', 'QA', 'DEVOPS'].includes(role);
+  // Same checks as the backend (permissions, not role names).
+  const canReview = hasPermission(user, PERMISSIONS.APPROVE_ENGINEERING_CONTRACTS);
+  const canSubmit = hasPermission(user, PERMISSIONS.USE_ENGINEERING_INTELLIGENCE);
   const errors = [error, discovery.error?.message, sources.error?.message, proposal.error?.message, approval.error?.message].filter(Boolean);
   const parse = (text, action) => { try { setError(''); action(text ? JSON.parse(text) : {}); } catch { setError('Provide valid JSON.'); } };
   return <Card title="Automatic requirement discovery" subtitle="Discover established constraints and preserve uncertain requirements" style={{ marginBottom: '1.75rem' }}>

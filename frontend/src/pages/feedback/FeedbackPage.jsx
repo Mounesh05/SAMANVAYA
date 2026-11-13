@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeesApi } from '../../api/employees.api';
 import { feedbackApi } from '../../api/feedback.api';
@@ -51,10 +52,56 @@ const COMPLIANCE_STATUS_OPTIONS = [
   { value: 'under_review', label: 'Under Review' },
 ];
 
+/**
+ * Feedback forms by permission (SUBMIT_*_FEEDBACK), not by role name. The
+ * first permission the user holds decides the form; the backend checks the
+ * same permission when the feedback is submitted.
+ */
+const FEEDBACK_KINDS = [
+  { key: 'HR', permission: PERMISSIONS.SUBMIT_HR_FEEDBACK, criteria: [], submit: null },
+  { key: 'LEAD', permission: PERMISSIONS.SUBMIT_LEAD_FEEDBACK, submit: (id, data) => feedbackApi.submitLeadFeedback(id, data),
+    criteria: [
+          { key: 'criterion_1', label: 'Technical Skill & Code Hygiene (1-5)' },
+          { key: 'criterion_2', label: 'Code Quality & Design Patterns (1-5)' },
+          { key: 'criterion_3', label: 'Mentoring & Knowledge Sharing (1-5)' },
+          { key: 'criterion_4', label: 'Technical Ownership & Independence (1-5)' },
+        ] },
+  { key: 'PM', permission: PERMISSIONS.SUBMIT_PM_FEEDBACK, submit: (id, data) => feedbackApi.submitPMFeedback(id, data),
+    criteria: [
+          { key: 'criterion_1', label: 'Requirement Understanding (1-5)' },
+          { key: 'criterion_2', label: 'Delivery Reliability & Timeline (1-5)' },
+          { key: 'criterion_3', label: 'Communication & Status Updates (1-5)' },
+          { key: 'criterion_4', label: 'Business Alignment & Pragmatism (1-5)' },
+        ] },
+  { key: 'QA', permission: PERMISSIONS.SUBMIT_QA_FEEDBACK, submit: (id, data) => feedbackApi.submitQAFeedback(id, data),
+    criteria: [
+          { key: 'criterion_1', label: 'Quality Focus & Defect Prevention (1-5)' },
+          { key: 'criterion_2', label: 'Test Coverage & Unit Testing (1-5)' },
+          { key: 'criterion_3', label: 'Bug Response & Remediation (1-5)' },
+          { key: 'criterion_4', label: 'Regression Awareness (1-5)' },
+        ] },
+  { key: 'DEVOPS', permission: PERMISSIONS.SUBMIT_DEVOPS_FEEDBACK, submit: (id, data) => feedbackApi.submitDevOpsFeedback(id, data),
+    criteria: [
+          { key: 'criterion_1', label: 'Deployment Quality & Configurations (1-5)' },
+          { key: 'criterion_2', label: 'CI/CD Compliance & Pipeline Care (1-5)' },
+          { key: 'criterion_3', label: 'Monitoring & Observability Awareness (1-5)' },
+          { key: 'criterion_4', label: 'Incident Response & RCA Support (1-5)' },
+        ] },
+  { key: 'CEO', permission: PERMISSIONS.SUBMIT_CEO_FEEDBACK, submit: (id, data) => feedbackApi.submitCEOFeedback(id, data),
+    criteria: [
+          { key: 'criterion_1', label: 'Business Impact & Value Creation (1-5)' },
+          { key: 'criterion_2', label: 'Innovation & Creative Solutions (1-5)' },
+          { key: 'criterion_3', label: 'Company Mission Alignment (1-5)' },
+          { key: 'criterion_4', label: 'Leadership Potential (1-5)' },
+        ] },
+];
+
 export function FeedbackPage() {
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase() || ROLES.LEAD;
-  const isHR = role === ROLES.HR;
+  const role = user?.role?.toUpperCase() || ROLES.LEAD;  // labels only
+  // The form follows the feedback permission the user holds (same as the backend).
+  const feedbackKind = FEEDBACK_KINDS.find((kind) => hasPermission(user, kind.permission)) || FEEDBACK_KINDS[FEEDBACK_KINDS.length - 1];
+  const isHR = feedbackKind.key === 'HR';
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -157,66 +204,12 @@ export function FeedbackPage() {
     }
   }, [existingAssessment]);
 
-  const getFeedbackCriteria = () => {
-    switch (role) {
-      case ROLES.LEAD:
-        return [
-          { key: 'criterion_1', label: 'Technical Skill & Code Hygiene (1-5)' },
-          { key: 'criterion_2', label: 'Code Quality & Design Patterns (1-5)' },
-          { key: 'criterion_3', label: 'Mentoring & Knowledge Sharing (1-5)' },
-          { key: 'criterion_4', label: 'Technical Ownership & Independence (1-5)' },
-        ];
-      case ROLES.PM:
-        return [
-          { key: 'criterion_1', label: 'Requirement Understanding (1-5)' },
-          { key: 'criterion_2', label: 'Delivery Reliability & Timeline (1-5)' },
-          { key: 'criterion_3', label: 'Communication & Status Updates (1-5)' },
-          { key: 'criterion_4', label: 'Business Alignment & Pragmatism (1-5)' },
-        ];
-      case ROLES.QA:
-        return [
-          { key: 'criterion_1', label: 'Quality Focus & Defect Prevention (1-5)' },
-          { key: 'criterion_2', label: 'Test Coverage & Unit Testing (1-5)' },
-          { key: 'criterion_3', label: 'Bug Response & Remediation (1-5)' },
-          { key: 'criterion_4', label: 'Regression Awareness (1-5)' },
-        ];
-      case ROLES.DEVOPS:
-        return [
-          { key: 'criterion_1', label: 'Deployment Quality & Configurations (1-5)' },
-          { key: 'criterion_2', label: 'CI/CD Compliance & Pipeline Care (1-5)' },
-          { key: 'criterion_3', label: 'Monitoring & Observability Awareness (1-5)' },
-          { key: 'criterion_4', label: 'Incident Response & RCA Support (1-5)' },
-        ];
-      case ROLES.CEO:
-      default:
-        return [
-          { key: 'criterion_1', label: 'Business Impact & Value Creation (1-5)' },
-          { key: 'criterion_2', label: 'Innovation & Creative Solutions (1-5)' },
-          { key: 'criterion_3', label: 'Company Mission Alignment (1-5)' },
-          { key: 'criterion_4', label: 'Leadership Potential (1-5)' },
-        ];
-    }
-  };
-
-  const criteria = getFeedbackCriteria();
+  const criteria = feedbackKind.criteria;
 
   // Mutation for standard non-HR roles
   const submitStandardMutation = useMutation({
     mutationFn: async (data) => {
-      const perfId = targetEmployeeId;
-      switch (role) {
-        case ROLES.LEAD:
-          return feedbackApi.submitLeadFeedback(perfId, data);
-        case ROLES.PM:
-          return feedbackApi.submitPMFeedback(perfId, data);
-        case ROLES.QA:
-          return feedbackApi.submitQAFeedback(perfId, data);
-        case ROLES.DEVOPS:
-          return feedbackApi.submitDevOpsFeedback(perfId, data);
-        case ROLES.CEO:
-        default:
-          return feedbackApi.submitCEOFeedback(perfId, data);
-      }
+      return feedbackKind.submit(targetEmployeeId, data);
     },
     onSuccess: () => {
       setSuccessMessage('Feedback recorded and human component updated.');

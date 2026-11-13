@@ -33,10 +33,13 @@ const ELIGIBLE_ENGINEERING_ROLES = [
 
 export function PerformancePage() {
   const { user } = useAuthStore();
-  const role = user?.role?.toUpperCase();
-  const isHR = role === ROLES.HR;
-  const isCEO = role === ROLES.CEO;
-  const isDeveloperUser = role === ROLES.DEVELOPER;
+  // Who sees whom follows permissions (same as the backend), not role names:
+  // organisation or HR outcomes -> everyone; team performance -> own team; else own record.
+  const seesEveryone = hasAnyPermission(user, [
+    PERMISSIONS.VIEW_ORGANIZATION_PERFORMANCE, PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES,
+  ]);
+  const seesTeam = hasPermission(user, PERMISSIONS.VIEW_TEAM_PERFORMANCE);
+  const reviewsOutcomes = hasPermission(user, PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES);
   // Same rule as the backend: TRIGGER_AI_EVALUATION (Lead, CEO, admins).
   const canTriggerEvaluation = hasPermission(user, PERMISSIONS.TRIGGER_AI_EVALUATION);
   // CR-001: without a team/project/organisation performance permission a user
@@ -74,18 +77,10 @@ export function PerformancePage() {
       );
     });
 
-    if (isHR || isCEO) return evaluatable;
-    if (isDeveloperUser) {
-      return evaluatable.filter((e) => e.employee_id === user?.employee_id);
-    }
-    if (role === ROLES.LEAD) {
-      return evaluatable.filter((e) => e.team_id === user?.team_id);
-    }
-    if (role === ROLES.PM) {
-      return evaluatable.filter((e) => e.dept === user?.dept || e.department === user?.department);
-    }
+    if (seesEveryone) return evaluatable;
+    if (seesTeam) return evaluatable.filter((e) => e.team_id === user?.team_id);
     return evaluatable.filter((e) => e.employee_id === user?.employee_id);
-  }, [employees, role, user, isHR, isCEO, isDeveloperUser]);
+  }, [employees, user, seesEveryone, seesTeam]);
 
   // Selected developer ID: default to developer themselves if engineer,
   // or requested from URL query param (if not HR/CEO), or empty until evaluatable list loads.
@@ -96,7 +91,7 @@ export function PerformancePage() {
     if (requestedDevId && requestedDevId !== 'DEMO-HR' && requestedDevId !== 'DEMO-CEO') {
       return requestedDevId;
     }
-    if (isDeveloperUser && user?.employee_id !== 'DEMO-HR' && user?.employee_id !== 'DEMO-CEO') {
+    if (!seesEveryone && !seesTeam) {
       return user?.employee_id || '';
     }
     return '';
@@ -149,7 +144,7 @@ export function PerformancePage() {
     },
   });
 
-  const isHRView = dashboardData?.is_hr_view || isHR;
+  const isHRView = dashboardData?.is_hr_view || reviewsOutcomes;
   const curr = dashboardData?.current_performance;
   const aiEval = curr?.ai_evaluation;
   const dimensions = aiEval?.dimension_scores || {};
@@ -209,7 +204,7 @@ export function PerformancePage() {
       />
 
       {/* Engineer / Employee Selector */}
-      {(visibleEmployees.length > 1 || isHR || isCEO) && visibleEmployees.length > 0 && (
+      {(visibleEmployees.length > 1 || seesEveryone) && visibleEmployees.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
           <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-muted)' }}>
             Select {isHRView ? 'Employee' : 'Engineer'}:

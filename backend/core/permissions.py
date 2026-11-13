@@ -37,7 +37,7 @@ class Permission(str, Enum):
     MANAGE_CANDIDATES = "MANAGE_CANDIDATES"
     VIEW_COMPENSATION = "VIEW_COMPENSATION"
     VIEW_GRIEVANCES = "VIEW_GRIEVANCES"
-    
+
     # Transfer workflow permissions
     REQUEST_TRANSFER = "REQUEST_TRANSFER"
     APPROVE_TRANSFER_AS_MANAGER = "APPROVE_TRANSFER_AS_MANAGER"
@@ -74,7 +74,10 @@ class Permission(str, Enum):
     CREATE_INCIDENT = "CREATE_INCIDENT"
     VIEW_INCIDENTS = "VIEW_INCIDENTS"  # read all incidents in accessible projects
     TRIAGE_INCIDENT = "TRIAGE_INCIDENT"  # CR-014: acknowledge, assign, resolve, close
-    
+    # Role-name rules turned into permissions (same holders as the old role lists):
+    USE_ENGINEERING_INTELLIGENCE = "USE_ENGINEERING_INTELLIGENCE"  # algorithm / contract / requirement tools
+    APPROVE_ENGINEERING_CONTRACTS = "APPROVE_ENGINEERING_CONTRACTS"  # approve function contracts and requirements
+
     # Task Management
     MOVE_TASK = "MOVE_TASK"
     TRANSITION_TASK = "TRANSITION_TASK"
@@ -98,7 +101,7 @@ class Permission(str, Enum):
     # Lead (CR-004)
     SYNC_REPOSITORY_PRS = "SYNC_REPOSITORY_PRS"            # sync every PR of a project's repository
     ANALYZE_SPRINT_RISK = "ANALYZE_SPRINT_RISK"            # rule-based sprint risk analysis
-    
+
     # Code Analysis & Integration
     TRIGGER_CODE_ANALYSIS = "TRIGGER_CODE_ANALYSIS"
     # Rule-based analysis helpers for engineers (were role-name checks).
@@ -145,6 +148,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # - CREATE_INCIDENT: reports incidents; DevOps triages them (CR-003)
     # - REQUEST_TRANSFER: their own transfer only
     OrganizationalRole.DEVELOPER: {
+        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_CODE_QUALITY,
         Permission.VIEW_DEFECTS,
@@ -167,6 +171,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-004: a Lead manages one team. People data (performance, evaluations,
     # feedback) is team-scoped; work is scoped to the team's projects.
     OrganizationalRole.LEAD: {
+        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
+        Permission.APPROVE_ENGINEERING_CONTRACTS,  # was a role-name rule
         Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
         Permission.VIEW_OWN_DATA,
         Permission.SYNC_REPOSITORY_PRS,
@@ -205,6 +211,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     },
 
     OrganizationalRole.PM: {
+        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
+        Permission.APPROVE_ENGINEERING_CONTRACTS,  # was a role-name rule
         Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
         Permission.VIEW_INCIDENTS,  # CR-014 D1-A
         Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
@@ -240,6 +248,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-002: QA owns testing, the defect lifecycle and sign-off in assigned
     # projects; sees only their own performance.
     OrganizationalRole.QA: {
+        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
         Permission.VIEW_OWN_DATA,
         Permission.VIEW_PIPELINES,
         Permission.SIGN_OFF_WORK,
@@ -268,6 +277,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-003: DevOps own pipelines, deployments, repository links and CI in
     # their projects; own performance only.
     OrganizationalRole.DEVOPS: {
+        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
         Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
         Permission.VIEW_OWN_DATA,
         Permission.MANAGE_REPOSITORY_LINK,
@@ -340,6 +350,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # delivery rights (repository links, CI automation, story acceptance, risk
     # cache and project risk weights) belong to DevOps, QA, Lead and PM.
     OrganizationalRole.CEO: {
+        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
+        Permission.APPROVE_ENGINEERING_CONTRACTS,  # was a role-name rule
         Permission.VIEW_OWN_DATA,
         Permission.MANAGE_GLOBAL_RISK_CONFIG,
         Permission.VIEW_DEFECTS,
@@ -386,6 +398,7 @@ ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.VIEW_AUDIT_LOGS,
     Permission.EXPORT_DATA,
     Permission.MANAGE_HR_DESIGNATIONS,  # CR-009 D1-A: admins appoint HR specialists
+    Permission.USE_ENGINEERING_INTELLIGENCE,  # replaces the old is_admin bypass on these tools
     # Reserved: no settings or integrations screens check these yet.
     Permission.MANAGE_SETTINGS,
     Permission.MANAGE_INTEGRATIONS,
@@ -505,7 +518,7 @@ def get_user_permissions(role: str, is_admin: bool = False, designation: Optiona
     """
     try:
         org_role = OrganizationalRole(role.upper())
-        
+
         # An HR designation replaces the base HR set; everyone else uses the role set.
         if org_role == OrganizationalRole.HR and designation and designation in HR_DESIGNATION_PERMISSIONS:
             permissions = set(HR_DESIGNATION_PERMISSIONS[designation])
