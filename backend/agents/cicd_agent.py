@@ -7,6 +7,7 @@ Uses AI to understand error patterns, flaky tests, and deployment failures.
 from typing import Dict, Any, List
 from .state import AgentState
 from .llm_provider import get_ollama_llm
+from .parsers import safe_parse, response_text, CICDFailureResult, AgentResponseError, failed_response
 
 
 SYSTEM_PROMPT = """You are a DevOps engineer specializing in CI/CD pipeline troubleshooting.
@@ -85,22 +86,15 @@ Analyze this CI/CD failure and provide:
 4. **Prevention**: How to prevent this in the future
 5. **Urgency**: Critical|High|Medium|Low
 
-Format your response as:
-
-ROOT_CAUSE: <one sentence root cause>
-
-AFFECTED_COMPONENT: <component name>
-
-FIX_RECOMMENDATIONS:
-- <specific fix 1>
-- <specific fix 2>
-- <specific fix 3>
-
-PREVENTION: <how to prevent this>
-
-URGENCY: <Critical|High|Medium|Low>
-
-CONFIDENCE: <0.0-1.0>
+Return ONLY a JSON object:
+{{
+  "root_cause": "<one sentence root cause>",
+  "affected_component": "<component name>",
+  "fix_recommendations": ["<specific fix>"],
+  "prevention": "<how to prevent this>",
+  "urgency": "<critical|high|medium|low>",
+  "confidence": <number 0.0-1.0>
+}}
 """
     
     try:
@@ -123,12 +117,7 @@ CONFIDENCE: <0.0-1.0>
         }
         
     except Exception as e:
-        return {
-            **state,
-            "errors": state.get("errors", []) + [f"CI/CD agent error: {str(e)}"],
-            "agent_history": state.get("agent_history", []) + ["cicd_agent"],
-            "next_agent": None,
-        }
+        return failed_response(state, "cicd_agent", e)
 
 
 def _format_failure_patterns(patterns: List[str]) -> str:
@@ -144,44 +133,47 @@ def _format_failure_patterns(patterns: List[str]) -> str:
 
 
 def _parse_cicd_response(response: str) -> Dict[str, Any]:
-    """Parse structured CI/CD analysis response."""
-    lines = response.strip().split("\n")
-    
-    result = {
-        "root_cause": "",
-        "affected_component": "",
-        "fix_recommendations": [],
-        "prevention": "",
-        "urgency": "medium",
-        "confidence": 0.7,
-    }
-    
-    current_section = None
-    
-    for line in lines:
-        line = line.strip()
-        
-        if line.startswith("ROOT_CAUSE:"):
-            result["root_cause"] = line.replace("ROOT_CAUSE:", "").strip()
-        elif line.startswith("AFFECTED_COMPONENT:"):
-            result["affected_component"] = line.replace("AFFECTED_COMPONENT:", "").strip()
-        elif line.startswith("FIX_RECOMMENDATIONS:"):
-            current_section = "recommendations"
-        elif line.startswith("PREVENTION:"):
-            result["prevention"] = line.replace("PREVENTION:", "").strip()
-            current_section = None
-        elif line.startswith("URGENCY:"):
-            urgency = line.replace("URGENCY:", "").strip().lower()
-            result["urgency"] = urgency
-        elif line.startswith("CONFIDENCE:"):
-            try:
-                result["confidence"] = float(line.replace("CONFIDENCE:", "").strip())
-            except ValueError:
-                result["confidence"] = 0.7
-        elif current_section == "recommendations" and line.startswith("-"):
-            result["fix_recommendations"].append(line.lstrip("- ").strip())
-    
-    return result
+    """JSON v1 plus a strict adapter for the supported legacy section protocol."""
+    text = response_text(response)
+    if not text.startswith("ROOT_CAUSE:"):
+        parsed = safe_parse(text, CICDFailureResult)
+    else:
+        labels = {
+            "ROOT_CAUSE": "root_cause",
+            "AFFECTED_COMPONENT": "affected_component",
+            "FIX_RECOMMENDATIONS": "fix_recommendations",
+            "PREVENTION": "prevention",
+            "URGENCY": "urgency",
+            "CONFIDENCE": "confidence",
+        }
+        result, section = {}, None
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            label, separator, value = line.partition(":")
+            if separator and label in labels:
+                section = labels[label]
+                if section in result:
+                    raise AgentResponseError("Duplicate legacy section")
+                result[section] = [] if section == "fix_recommendations" else value.strip()
+                if section == "fix_recommendations" and value.strip():
+                    raise AgentResponseError("Unsupported inline legacy list")
+            elif section == "fix_recommendations" and line.startswith("-"):
+                result[section].append(line.lstrip("- ").strip())
+            elif section in {"root_cause", "affected_component", "prevention"}:
+                result[section] += " " + line
+            else:
+                raise AgentResponseError("Unsupported legacy section")
+        try:
+            if "confidence" in result:
+                result["confidence"] = float(result["confidence"])
+            if "urgency" in result:
+                result["urgency"] = result["urgency"].lower()
+            parsed = CICDFailureResult.model_validate(result)
+        except ValueError as error:
+            raise AgentResponseError("Invalid legacy CI/CD response") from error
+    return parsed.model_dump(exclude={"schema_version"})
 
 
 def analyze_test_flakiness(
