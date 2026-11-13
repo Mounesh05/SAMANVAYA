@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # ── Environment ──────────────────────────────────────────────
     ENVIRONMENT: str = "development"  # development, staging, production
     DEBUG: bool = True
+    PR_MULTI_AGENT_INTERNAL_ENABLED: bool = False
     
     # ── Database ──────────────────────────────────────────────────
     MONGO_URI: str = "mongodb://localhost:27017"
