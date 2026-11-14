@@ -27,13 +27,15 @@ export function GitHubSyncPage() {
 
   const [syncResult, setSyncResult] = useState(null);
   const [qaForm, setQaForm] = useState({ owner: '', repo: '', project_id: '' });
+  // E2E check: the form used to start with a developer's demo project,
+  // repository and employee ID; it now starts empty.
   const [projectConfigForm, setProjectConfigForm] = useState({
-    project_id: 'PRJ-CF0346FA',
-    repository_owner: 'Mounesh05',
-    repository_name: 'campusconnect-demo',
-    repository_url: 'https://github.com/Mounesh05/campusconnect-demo',
+    project_id: '',
+    repository_owner: '',
+    repository_name: '',
+    repository_url: '',
     default_branch: 'main',
-    employee_id: 'DEMO-MOUNESH',
+    employee_id: '',
     github_username: 'Mounesh05',
     branch: 'feature/mounesh-events',
   });

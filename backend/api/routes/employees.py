@@ -9,6 +9,7 @@ from typing import List, Optional, Union
 from datetime import datetime, timezone
 from pydantic import BaseModel, EmailStr, model_validator
 from repositories.user_repository import UserRepository
+from core.config import settings
 from core.dependencies import get_current_user, require_admin
 from core.permissions import HR_DESIGNATIONS, Permission, get_user_permissions
 from core.security import hash_password, validate_password_strength
@@ -200,6 +201,9 @@ async def create_employee(
             "is_active": True,
             "is_admin": employee.is_admin,
             "designation": designation,
+            # New employees join the creator's organisation (E2E finding:
+            # nothing set org_id, so organisation-scoped features refused everyone).
+            "org_id": user.get("org_id") or settings.DEFAULT_ORG_ID,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "created_by": user.get('employee_id')
         }
@@ -351,9 +355,12 @@ async def get_employee(
             user.get('designation')
         )
 
+        # E2E check: employee managers (HR, admins) can open the records they
+        # edit and deactivate, not only the directory holders.
         if not (
             Permission.VIEW_ORGANIZATION_DATA in user_permissions
             or Permission.VIEW_EMPLOYEE_DIRECTORY in user_permissions
+            or Permission.MANAGE_EMPLOYEES in user_permissions
         ):
             raise HTTPException(
                 status_code=403,

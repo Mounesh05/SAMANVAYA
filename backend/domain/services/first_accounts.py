@@ -46,8 +46,12 @@ def validate_pair(ceo: FirstAccount, admin: FirstAccount) -> None:
         raise ValueError("The two accounts must not share a password")
 
 
-def build_accounts(ceo: FirstAccount, admin: FirstAccount, created_by: str) -> List[dict]:
-    """User records for the pair (passwords hashed). Call validate_pair first."""
+def build_accounts(ceo: FirstAccount, admin: FirstAccount, created_by: str, org_id: str) -> List[dict]:
+    """User records for the pair (passwords hashed). Call validate_pair first.
+
+    Both belong to `org_id`: organisation-scoped features (performance, HR
+    assessments, reports) need it, and nothing else in the app sets it.
+    """
     now = datetime.now(timezone.utc).isoformat()
 
     def record(account: FirstAccount, role: str, dept: str, is_admin: bool) -> dict:
@@ -63,6 +67,7 @@ def build_accounts(ceo: FirstAccount, admin: FirstAccount, created_by: str) -> L
             "team_id": None,
             "is_active": True,
             "is_admin": is_admin,
+            "org_id": org_id,
             "created_at": now,
             "created_by": created_by,
         }

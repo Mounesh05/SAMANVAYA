@@ -16,7 +16,8 @@ import { Plus, ArrowRight } from 'lucide-react';
 import { formatDate } from '../../utils/dates';
 import { DEFAULT_ORG_ID } from '../../utils/constants';
 import { PermissionGuard } from '../../auth/PermissionGuard';
-import { PERMISSIONS } from '../../auth/permissions';
+import { hasAnyPermission, hasPermission, PERMISSIONS, TEAM_LIST_PERMISSIONS } from '../../auth/permissions';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export function ProjectsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -32,15 +33,21 @@ export function ProjectsPage() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   const { data: projects = [], isLoading, error, refetch } = useQuery({
     queryKey: ['projects', 'list'],
     queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
   });
 
+  // Teams are only needed by the Create Project form, and only people who can
+  // list teams may ask for them (E2E check: Developers got 403 here).
+  const canPickTeam = hasPermission(user, PERMISSIONS.CREATE_PROJECT)
+    && hasAnyPermission(user, [...TEAM_LIST_PERMISSIONS, PERMISSIONS.MANAGE_TEAMS]);
   const { data: teams = [] } = useQuery({
     queryKey: ['teams', 'list'],
     queryFn: () => teamsApi.list(),
+    enabled: canPickTeam,
   });
 
   const createMutation = useMutation({

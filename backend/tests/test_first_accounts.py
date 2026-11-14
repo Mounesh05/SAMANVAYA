@@ -23,7 +23,8 @@ def account(who="ceo", **overrides):
 
 class TestPair:
     def test_records_separate_ceo_and_admin(self):
-        ceo, admin = build_accounts(account("ceo"), account("admin"), created_by="t")
+        ceo, admin = build_accounts(account("ceo"), account("admin"), created_by="t", org_id="ORG001")
+        assert ceo["org_id"] == admin["org_id"] == "ORG001"
         assert (ceo["role"], ceo["is_admin"]) == ("CEO", False)
         assert (admin["role"], admin["is_admin"]) == ("DEVOPS", True)
         assert verify_password("Adm-Emp-Pass4!", admin["employee_password"])
@@ -75,6 +76,7 @@ class TestSetup:
         assert set(users) == {"DEMO-CEO", "DEMO-ADMIN"}
         assert users["DEMO-CEO"]["is_admin"] is False and users["DEMO-CEO"]["role"] == "CEO"
         assert users["DEMO-ADMIN"]["is_admin"] is True and users["DEMO-ADMIN"]["role"] == "DEVOPS"
+        assert {u["org_id"] for u in users.values()} == {"ORG001"}  # E2E finding: organisation recorded
 
     @pytest.mark.anyio
     async def test_a_weak_password_creates_nothing(self, dev_setup):

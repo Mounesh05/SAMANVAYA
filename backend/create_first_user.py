@@ -58,13 +58,13 @@ def summary(records: list) -> str:
     return "\n".join(lines)
 
 
-async def create_first_accounts(db, ceo: FirstAccount, admin: FirstAccount) -> list:
+async def create_first_accounts(db, ceo: FirstAccount, admin: FirstAccount, org_id: str = "ORG001") -> list:
     """Insert the pair into `db`. Raises RuntimeError when accounts exist or insertion fails."""
     users = db["users"]
     if await users.count_documents({}) > 0:
         raise RuntimeError("Accounts already exist. This script only sets up a new, empty install.")
     validate_pair(ceo, admin)
-    records = build_accounts(ceo, admin, created_by="create_first_user")
+    records = build_accounts(ceo, admin, created_by="create_first_user", org_id=org_id)
     await users.create_index("employee_id", unique=True)
     await users.create_index("email", unique=True)
     try:
@@ -89,6 +89,7 @@ async def main() -> int:
         if await db["users"].count_documents({}) > 0:
             print("Accounts already exist. Nothing was changed.")
             return 1
+        org_id = input(f"Organisation ID [{settings.DEFAULT_ORG_ID}]: ").strip() or settings.DEFAULT_ORG_ID
         ceo = ask_account("Chief Executive (no admin rights)")
         admin = ask_account("Platform administrator (DevOps role, admin rights)")
         try:
@@ -97,11 +98,12 @@ async def main() -> int:
             print(f"\nNot created: {error}")
             return 1
         print("\nAbout to create:")
-        print(summary(build_accounts(ceo, admin, created_by="create_first_user")))
+        print(f"Organisation: {org_id}")
+        print(summary(build_accounts(ceo, admin, created_by="create_first_user", org_id=org_id)))
         if input("\nProceed? (y/n): ").strip().lower() != "y":
             print("Cancelled. Nothing was changed.")
             return 1
-        records = await create_first_accounts(db, ceo, admin)
+        records = await create_first_accounts(db, ceo, admin, org_id)
         print("\nCreated:")
         print(summary(records))
         print("\nKeep the passwords in your password manager. Sign in as the platform administrator to "

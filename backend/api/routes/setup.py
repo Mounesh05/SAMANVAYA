@@ -4,7 +4,7 @@ import hmac
 import asyncio
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from core.config import settings
 from domain.services.first_accounts import FirstAccount, build_accounts, validate_pair
@@ -30,6 +30,9 @@ class SetupRequest(BaseModel):
     setup_secret: str
     ceo: AccountSetup
     admin: AccountSetup
+    # The organisation both accounts (and everyone they create) belong to.
+    org_id: str = Field(default_factory=lambda: settings.DEFAULT_ORG_ID, min_length=1, max_length=50,
+                        pattern=r"^[A-Za-z0-9_-]+$")
 
 
 @router.get("/status", response_model=SetupStatus)
@@ -67,7 +70,7 @@ async def initialize_demo_admin(payload: SetupRequest):
             raise HTTPException(status_code=409, detail="An account already exists")
 
         await users.ensure_indexes()
-        records = build_accounts(ceo, admin, created_by="local-first-run-setup")
+        records = build_accounts(ceo, admin, created_by="local-first-run-setup", org_id=payload.org_id)
         try:
             await users.col.insert_many(records, ordered=True)
         except Exception:

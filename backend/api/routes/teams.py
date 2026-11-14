@@ -265,30 +265,12 @@ async def get_team(
     """
     Get team details by ID.
     
-    **Permission Check:**
-    - Own team: Requires VIEW_TEAM_DATA (LEAD)
-    - Any team: Requires VIEW_ORGANIZATION_DATA (HR, CEO, ADMIN)
+    **Access:** the shared team rule (verify_team_access): your own team;
+    every team for the CEO, HR and admins; for a PM, the teams that own the
+    projects they manage (CR-013). E2E check: a second, older check here
+    refused PMs that rule allowed, so it was removed.
     """
-    # Authorization: verify user has access to this team
     await verify_team_access(user, team_id)
-    # Check permission
-    user_permissions = get_user_permissions(
-        user.get('role', '').upper(),
-        user.get('is_admin', False)
-    )
-    
-    is_own_team = team_id == user.get('team_id')
-    
-    if (
-        not is_own_team
-        and Permission.VIEW_ORGANIZATION_DATA not in user_permissions
-        and Permission.VIEW_TEAM_DATA not in user_permissions
-        and Permission.VIEW_EMPLOYEE_DIRECTORY not in user_permissions
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="Insufficient permissions to view this team"
-        )
     
     try:
         teams_col = col("teams")
