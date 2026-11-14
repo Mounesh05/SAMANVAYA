@@ -50,8 +50,11 @@ def payload(**overrides):
     from api.routes import setup
     values = {
         "setup_secret": "right-secret",
-        "ceo": {"email": "ceo@samanvaya.com", "organisation_password": GOOD["ceo"][0], "employee_password": GOOD["ceo"][1]},
-        "admin": {"email": "it@samanvaya.com", "organisation_password": GOOD["admin"][0], "employee_password": GOOD["admin"][1]},
+        # CR-016: real names and employee IDs are entered at setup.
+        "ceo": {"employee_id": "emp-1001", "name": "Asha Rao", "email": "ceo@samanvaya.com",
+                "organisation_password": GOOD["ceo"][0], "employee_password": GOOD["ceo"][1]},
+        "admin": {"employee_id": "EMP-1002", "name": "Ravi Kumar", "email": "it@samanvaya.com",
+                  "organisation_password": GOOD["admin"][0], "employee_password": GOOD["admin"][1]},
     }
     values.update(overrides)
     return setup.SetupRequest(**values)
@@ -70,29 +73,31 @@ class TestSetup:
     @pytest.mark.anyio
     async def test_setup_creates_exactly_the_two_accounts(self, dev_setup):
         from api.routes import setup
-        result = await setup.initialize_demo_admin(payload())
+        result = await setup.initialize_first_accounts(payload())
         assert "platform administrator" in result.reason
         users = {u["employee_id"]: u async for u in dev_setup.users.find({})}
-        assert set(users) == {"DEMO-CEO", "DEMO-ADMIN"}
-        assert users["DEMO-CEO"]["is_admin"] is False and users["DEMO-CEO"]["role"] == "CEO"
-        assert users["DEMO-ADMIN"]["is_admin"] is True and users["DEMO-ADMIN"]["role"] == "DEVOPS"
+        assert set(users) == {"EMP-1001", "EMP-1002"}  # stored upper-case, as typed otherwise
+        assert users["EMP-1001"]["is_admin"] is False and users["EMP-1001"]["role"] == "CEO"
+        assert users["EMP-1001"]["name"] == "Asha Rao"
+        assert users["EMP-1002"]["is_admin"] is True and users["EMP-1002"]["role"] == "DEVOPS"
         assert {u["org_id"] for u in users.values()} == {"ORG001"}  # E2E finding: organisation recorded
 
     @pytest.mark.anyio
     async def test_a_weak_password_creates_nothing(self, dev_setup):
         from api.routes import setup
-        bad = {"email": "it@samanvaya.com", "organisation_password": "short", "employee_password": GOOD["admin"][1]}
+        bad = {"employee_id": "EMP-1002", "name": "Ravi Kumar", "email": "it@samanvaya.com",
+               "organisation_password": "short", "employee_password": GOOD["admin"][1]}
         with pytest.raises(HTTPException) as error:
-            await setup.initialize_demo_admin(payload(admin=bad))
+            await setup.initialize_first_accounts(payload(admin=bad))
         assert error.value.status_code == 422
         assert await dev_setup.users.count_documents({}) == 0
 
     @pytest.mark.anyio
     async def test_a_second_run_is_refused(self, dev_setup):
         from api.routes import setup
-        await setup.initialize_demo_admin(payload())
+        await setup.initialize_first_accounts(payload())
         with pytest.raises(HTTPException) as error:
-            await setup.initialize_demo_admin(payload())
+            await setup.initialize_first_accounts(payload())
         assert error.value.status_code == 409
         assert await dev_setup.users.count_documents({}) == 2
 
@@ -101,7 +106,7 @@ class TestSetup:
         from api.routes import setup
         monkeypatch.setattr(type(setup.settings), "is_development", lambda self: False)
         with pytest.raises(HTTPException) as error:
-            await setup.initialize_demo_admin(payload())
+            await setup.initialize_first_accounts(payload())
         assert error.value.status_code == 404
 
 

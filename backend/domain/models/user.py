@@ -57,11 +57,20 @@ class UserOut(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Request model for user login."""
-    
-    employee_id: str
-    organisation_password: str
-    employee_password: str
+    """Request model for user login (CR-016: one rule, both passwords).
+
+    `employee_id` also accepts a work email. `identifier` is the same field
+    under a clearer name; send either one.
+    """
+
+    employee_id: str = Field(default="", max_length=254)
+    identifier: str = Field(default="", max_length=254)
+    organisation_password: str = Field(max_length=256)
+    employee_password: str = Field(max_length=256)
+
+    @property
+    def login_id(self) -> str:
+        return self.identifier or self.employee_id
 
 
 class LoginResponse(BaseModel):

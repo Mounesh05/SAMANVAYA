@@ -1,14 +1,10 @@
 import apiClient from './client';
 
 export const authApi = {
-  // Simple login with email + password
+  // CR-016: one sign-in rule. { identifier (employee ID or work email),
+  // organisation_password, employee_password }; both passwords are checked.
   login: async (credentials) => {
     return apiClient.post('/auth/login', credentials);
-  },
-
-  // Full login with employee_id + org password + emp password
-  loginFull: async (credentials) => {
-    return apiClient.post('/auth/login/full', credentials);
   },
 
   // Register new user
@@ -16,7 +12,8 @@ export const authApi = {
     return apiClient.post('/auth/register', userData);
   },
 
-  initializeDemoAdmin: async (setupData) => {
+  // First-run setup: the Chief Executive and the platform administrator.
+  initializeFirstAccounts: async (setupData) => {
     return apiClient.post('/setup/initialize', setupData);
   },
 

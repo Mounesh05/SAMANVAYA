@@ -6,6 +6,10 @@ Handles user registration, login, and authentication logic.
 from datetime import datetime, timezone
 from typing import Optional
 from core.security import hash_password, verify_password, create_access_token
+
+# Checked when no account matches, so a failed sign-in takes about as long
+# whether or not the account exists (no account discovery by timing).
+_UNUSED_HASH = hash_password("no-account-matches-this-sign-in")
 from core.permissions import get_user_permissions
 from repositories.user_repository import UserRepository
 from domain.models.user import UserCreate, UserOut, LoginResponse
@@ -140,69 +144,33 @@ class AuthService:
 
     # ── Authentication ────────────────────────────────────────────────────────
 
+    async def _find_by_identifier(self, identifier: str) -> Optional[dict]:
+        """An employee ID or a work email (CR-016)."""
+        value = (identifier or "").strip()
+        if not value:
+            return None
+        if "@" in value:
+            return (await self.user_repo.find_by_email(value)
+                    or await self.user_repo.find_by_email(value.lower()))
+        return (await self.user_repo.find_by_employee_id(value)
+                or await self.user_repo.find_by_employee_id(value.upper()))
+
     async def authenticate_user(
-        self, employee_id: str, organisation_password: str, employee_password: str
+        self, identifier: str, organisation_password: str, employee_password: str
     ) -> Optional[LoginResponse]:
         """
-        Authenticate user with both organization and employee passwords.
-        
-        Args:
-            employee_id: Employee ID
-            organisation_password: Organization password
-            employee_password: Employee password
-        
-        Returns:
-            LoginResponse with token and user data, or None if auth fails
+        CR-016: the only sign-in rule. `identifier` is an employee ID or a work
+        email; both the organisation and the employee password are always
+        checked. Returns None for every failure (unknown account, wrong
+        password, inactive account) so callers give one message.
         """
-        user = await self.user_repo.find_by_employee_id(employee_id)
-        
-        if not user:
+        user = await self._find_by_identifier(identifier)
+
+        org_valid = verify_password(organisation_password or "", (user or {}).get("organisation_password") or _UNUSED_HASH)
+        emp_valid = verify_password(employee_password or "", (user or {}).get("employee_password") or _UNUSED_HASH)
+
+        if not user or not (org_valid and emp_valid) or not user.get("is_active", True):
             return None
-
-        if not user.get("is_active", True):
-            return None
-
-        # Verify both passwords
-        org_pwd_valid = verify_password(
-            organisation_password, user.get("organisation_password", "")
-        )
-        emp_pwd_valid = verify_password(
-            employee_password, user.get("employee_password", "")
-        )
-
-        if not (org_pwd_valid and emp_pwd_valid):
-            return None
-
-        return self._login_response(user)
-
-    async def authenticate_user_by_email(
-        self, email: str, password: str
-    ) -> Optional[LoginResponse]:
-        """
-        Authenticate user with email and password.
-        Simplified authentication that uses the same password for both org and employee auth.
-        
-        Args:
-            email: User email address
-            password: Password (used for both org and employee verification)
-        
-        Returns:
-            LoginResponse with token and user data, or None if auth fails
-        """
-        user = await self.user_repo.find_by_email(email)
-        
-        if not user:
-            return None
-
-        if not user.get("is_active", True):
-            return None
-
-        # For simplified auth, verify against employee_password
-        pwd_valid = verify_password(password, user.get("employee_password", ""))
-
-        if not pwd_valid:
-            return None
-
         return self._login_response(user)
 
     async def get_user_by_employee_id(self, employee_id: str) -> Optional[UserOut]:

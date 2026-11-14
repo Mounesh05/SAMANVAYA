@@ -44,6 +44,28 @@ function processQueue(error, token = null) {
   failedQueue = [];
 }
 
+// Errors keep their message as before and also carry the HTTP status
+// (undefined when the server could not be reached), so pages such as sign-in
+// can react to a status without parsing text.
+// Validation errors (422) arrive as a list of { loc, msg }; turn them into
+// one readable sentence instead of "[object Object]".
+export function readableDetail(detail) {
+  if (!Array.isArray(detail)) return typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : detail;
+  return detail
+    .map((item) => {
+      if (typeof item === 'string') return item;
+      const field = (item?.loc || []).filter((part) => part !== 'body').join(' ');
+      const message = String(item?.msg || 'is not valid').replace(/^Value error, /, '');
+      return field ? `${field}: ${message}` : message;
+    })
+    .join('; ');
+}
+
+function withStatus(err, status) {
+  err.status = status;
+  return err;
+}
+
 apiClient.interceptors.response.use(
   // Success: unwrap response.data as before
   (response) => response.data,
@@ -52,8 +74,9 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const status = error?.response?.status;
-    const detail =
-      error?.response?.data?.detail || error?.response?.data?.message;
+    const detail = readableDetail(
+      error?.response?.data?.detail || error?.response?.data?.message
+    );
 
     // ── 401 Auto-Refresh Logic ──────────────────────────────────────────
 
@@ -71,7 +94,7 @@ apiClient.interceptors.response.use(
           window.location.assign('/login?expired=true');
         }
         return Promise.reject(
-          new Error(detail || 'Authentication failed')
+          withStatus(new Error(detail || 'Authentication failed'), status)
         );
       }
 
@@ -143,12 +166,12 @@ apiClient.interceptors.response.use(
 
     if (status === 403) {
       const message = detail || 'You do not have permission for this action';
-      return Promise.reject(new Error(message));
+      return Promise.reject(withStatus(new Error(message), status));
     }
 
     const message =
       detail || error?.message || 'An unexpected error occurred';
-    return Promise.reject(new Error(message));
+    return Promise.reject(withStatus(new Error(message), status));
   }
 );
 

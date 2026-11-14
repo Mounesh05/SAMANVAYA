@@ -5,7 +5,6 @@ Handles user registration and login.
 
 from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from fastapi.security import HTTPBearer
-from pydantic import BaseModel, EmailStr
 from domain.models.user import UserCreate, UserOut, LoginRequest, LoginResponse
 from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
@@ -22,11 +21,9 @@ auth_service = AuthService()
 oauth2_scheme = HTTPBearer()
 
 
-class SimpleLoginRequest(BaseModel):
-    """Simplified login request for email + password authentication."""
-    email: EmailStr
-    password: str
-
+# CR-016: one message for every failed sign-in, so it never tells an
+# attacker whether an account exists or is inactive.
+SIGN_IN_FAILED = "Sign-in failed. Check your ID and both passwords, or contact your administrator."
 
 @router.post("/register", response_model=UserOut, status_code=201)
 @limiter.limit("3/minute")
@@ -62,52 +59,52 @@ async def register(request: Request, user_data: UserCreate):
         raise HTTPException(status_code=500, detail="Registration failed")
 
 
+async def _record_sign_in(request: Request, actor: dict, success: bool, login_id: str) -> None:
+    """Audit every sign-in attempt (CR-016). Never blocks or fails a sign-in."""
+    try:
+        from core.audit import AuditAction, log_audit
+        await log_audit(
+            AuditAction.LOGIN if success else AuditAction.LOGIN_FAILED,
+            actor,
+            resource_type="session",
+            details={"login_id": login_id[:254], "ip": getattr(request.client, "host", None)},
+            success=success,
+        )
+    except Exception:  # pragma: no cover - audit storage problems must not lock people out
+        logger.warning("Could not record a sign-in attempt", exc_info=True)
+
+
+async def _sign_in(request: Request, credentials: LoginRequest) -> LoginResponse:
+    login_id = (credentials.login_id or "").strip()
+    result = await auth_service.authenticate_user(
+        login_id,
+        credentials.organisation_password,
+        credentials.employee_password,
+    )
+    if not result:
+        await _record_sign_in(request, {"employee_id": "anonymous", "name": "Unknown"}, False, login_id)
+        raise HTTPException(status_code=401, detail=SIGN_IN_FAILED)
+    await _record_sign_in(request, {"employee_id": result.user.employee_id, "name": result.user.name}, True, login_id)
+    return result
+
+
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")
-async def login(request: Request, credentials: SimpleLoginRequest):
+async def login(request: Request, credentials: LoginRequest):
     """
-    Authenticate user with email and password.
-    Returns JWT token and user information.
-    
-    This is a simplified login endpoint that accepts email + password.
-    The password is used for both organization and employee authentication.
+    Sign in with an employee ID or work email and both passwords (CR-016).
+
+    The earlier email-and-one-password form is gone: every sign-in checks
+    the organisation password and the employee password.
     """
-    # Use email to find user and password for both auth fields
-    result = await auth_service.authenticate_user_by_email(
-        credentials.email,
-        credentials.password
-    )
-
-    if not result:
-        raise HTTPException(
-            status_code=401, 
-            detail="Invalid email or password"
-        )
-
-    return result
+    return await _sign_in(request, credentials)
 
 
 @router.post("/login/full", response_model=LoginResponse)
 @limiter.limit("5/minute")
 async def login_full(request: Request, credentials: LoginRequest):
-    """
-    Authenticate user with employee_id and both passwords.
-    
-    Requires both organization password and employee password.
-    This is the original authentication method.
-    """
-    result = await auth_service.authenticate_user(
-        credentials.employee_id,
-        credentials.organisation_password,
-        credentials.employee_password,
-    )
-
-    if not result:
-        raise HTTPException(
-            status_code=401, detail="Invalid credentials or user not active"
-        )
-
-    return result
+    """Same rule as /login; kept for existing scripts and clients."""
+    return await _sign_in(request, credentials)
 
 
 @router.post("/logout")

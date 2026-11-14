@@ -1,4 +1,4 @@
-"""Local-only first-run setup: the Chief Executive and the platform administrator (CR-012)."""
+"""Local-only first-run setup: the Chief Executive and the platform administrator (CR-012, CR-016)."""
 
 import hmac
 import asyncio
@@ -20,6 +20,9 @@ class SetupStatus(BaseModel):
 
 
 class AccountSetup(BaseModel):
+    # CR-016: the real person's name and employee ID (no built-in demo names).
+    employee_id: str = Field(min_length=2, max_length=30, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+    name: str = Field(min_length=2, max_length=100)
     email: EmailStr
     organisation_password: str
     employee_password: str
@@ -49,16 +52,14 @@ async def setup_status():
 
 
 @router.post("/initialize", response_model=SetupStatus, status_code=201)
-async def initialize_demo_admin(payload: SetupRequest):
+async def initialize_first_accounts(payload: SetupRequest):
     if not settings.is_development() or not settings.DEMO_SETUP_SECRET:
         raise HTTPException(status_code=404, detail="First-run setup is unavailable")
     if not hmac.compare_digest(payload.setup_secret.encode(), settings.DEMO_SETUP_SECRET.encode()):
         raise HTTPException(status_code=403, detail="Invalid setup secret")
 
-    ceo = FirstAccount("DEMO-CEO", "Demo CEO", str(payload.ceo.email),
-                       payload.ceo.organisation_password, payload.ceo.employee_password)
-    admin = FirstAccount("DEMO-ADMIN", "Platform Admin", str(payload.admin.email),
-                         payload.admin.organisation_password, payload.admin.employee_password)
+    ceo, admin = (FirstAccount(a.employee_id, a.name, str(a.email), a.organisation_password, a.employee_password)
+                  for a in (payload.ceo, payload.admin))
     try:
         validate_pair(ceo, admin)
     except ValueError as error:

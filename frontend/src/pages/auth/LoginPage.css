@@ -1,0 +1,407 @@
+/* CR-016: sign-in page. One page on one background: a header, the
+   introduction and the sign-in card side by side, and a footer.
+   Colours are local tokens with a dark and a light set that follow the
+   app theme (data-theme on <html>). */
+
+.signin {
+  --si-canvas: #0b1120;
+  --si-canvas-glow: rgba(37, 99, 235, 0.16);
+  --si-grid: rgba(148, 163, 184, 0.05);
+  --si-card: #111a2e;
+  --si-card-border: rgba(148, 163, 184, 0.16);
+  --si-card-shadow: 0 24px 48px -12px rgba(2, 6, 23, 0.6);
+  --si-text: #f1f5f9;
+  --si-text-2: #a3b1c6;
+  --si-text-3: #7d8ba1;
+  --si-accent: #3b82f6;
+  --si-accent-soft: rgba(59, 130, 246, 0.12);
+  --si-accent-text: #93c5fd;
+  --si-divider: rgba(148, 163, 184, 0.14);
+  --si-field: #0d1526;
+  --si-field-border: #475569;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--si-text);
+  background:
+    radial-gradient(900px 520px at 12% -10%, var(--si-canvas-glow), transparent 70%),
+    radial-gradient(700px 480px at 100% 110%, var(--si-canvas-glow), transparent 70%),
+    var(--si-canvas);
+  position: relative;
+  isolation: isolate;
+}
+
+[data-theme='light'] .signin {
+  --si-canvas: #f3f6fa;
+  --si-canvas-glow: rgba(37, 99, 235, 0.08);
+  --si-grid: rgba(15, 23, 42, 0.04);
+  --si-card: #ffffff;
+  --si-card-border: #e2e8f0;
+  --si-card-shadow: 0 20px 40px -16px rgba(15, 23, 42, 0.18);
+  --si-text: #0f172a;
+  --si-text-2: #475569;
+  --si-text-3: #64748b;
+  --si-accent: #2563eb;
+  --si-accent-soft: #eff6ff;
+  --si-accent-text: #1d4ed8;
+  --si-divider: #e2e8f0;
+  --si-field: #ffffff;
+  --si-field-border: #94a3b8;
+}
+
+/* Faint grid over the whole page, fading towards the bottom. */
+.signin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(var(--si-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--si-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(180deg, #000 0%, transparent 75%);
+  pointer-events: none;
+}
+
+.signin-shell {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+
+.signin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.signin-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--si-text);
+}
+
+.signin-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--si-accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+}
+
+.signin-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--si-text-2);
+  background: transparent;
+  border: 1px solid var(--si-card-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.signin-theme:hover {
+  color: var(--si-text);
+  background: var(--si-accent-soft);
+}
+
+/* ── Body: introduction + card ─────────────────────────────── */
+
+.signin-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr minmax(380px, 440px);
+  align-items: center;
+  gap: 4.5rem;
+  padding-top: 0.5rem;
+  padding-bottom: 2rem;
+}
+
+.signin-intro .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: var(--si-accent-soft);
+  color: var(--si-accent-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.signin-intro h2 {
+  margin-top: 1.25rem;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--si-text);
+  max-width: 18ch;
+}
+
+.signin-intro .lead {
+  margin-top: 1rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--si-text-2);
+  max-width: 46ch;
+}
+
+.signin-points {
+  list-style: none;
+  margin: 2.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1.35rem;
+  max-width: 480px;
+}
+
+.signin-points li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.signin-points .icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--si-accent-soft);
+  color: var(--si-accent-text);
+}
+
+.signin-points strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--si-text);
+}
+
+.signin-points span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--si-text-2);
+}
+
+/* ── Card ───────────────────────────────────────────────────── */
+
+.signin-card {
+  background: var(--si-card);
+  border: 1px solid var(--si-card-border);
+  border-radius: 16px;
+  box-shadow: var(--si-card-shadow);
+  padding: 2rem 2.25rem 1.6rem;
+}
+
+.signin-card h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--si-text);
+}
+
+.signin-card .subtitle {
+  margin-top: 0.4rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--si-text-2);
+}
+
+.signin-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
+}
+
+.signin-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.signin-notice.error {
+  background: var(--danger-light);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+.signin-notice.info {
+  background: var(--si-accent-soft);
+  border: 1px solid var(--si-card-border);
+  color: var(--si-text);
+}
+
+.signin-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* Labels and fields inside the card use the page tokens. The shared Input
+   sets colours inline, hence !important. Field outlines keep at least 3:1
+   contrast (WCAG 1.4.11) and focus shows a clear ring. */
+.signin-card label {
+  color: var(--si-text) !important;
+}
+
+.signin .input-field {
+  background-color: var(--si-field) !important;
+  border-color: var(--si-field-border) !important;
+  color: var(--si-text) !important;
+  min-height: 44px;
+}
+
+.signin .input-field::placeholder {
+  color: var(--si-text-3);
+}
+
+.signin .input-field:focus {
+  border-color: var(--si-accent) !important;
+  box-shadow: 0 0 0 3px var(--si-accent-soft);
+}
+
+.signin .btn-primary {
+  background: var(--si-accent) !important;
+  box-shadow: none !important;
+  min-height: 46px;
+  border-radius: 10px !important;
+}
+
+.signin .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.signin button:focus-visible {
+  outline: 2px solid var(--si-accent);
+  outline-offset: 2px;
+}
+
+.signin-caps {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: -0.45rem 0 0;
+  font-size: 0.75rem;
+  color: var(--warning);
+}
+
+.signin-help {
+  margin-top: 1.4rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--si-divider);
+  display: grid;
+  gap: 0.55rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--si-text-2);
+}
+
+.signin-help strong {
+  color: var(--si-text);
+  font-weight: 600;
+}
+
+.signin-assurance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--si-text-3);
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+
+.signin-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1.25rem;
+  border-top: 1px solid var(--si-divider);
+  font-size: 0.75rem;
+  color: var(--si-text-3);
+}
+
+.signin-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* ── Smaller screens ───────────────────────────────────────── */
+
+@media (max-width: 960px) {
+  .signin-body {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0;
+    padding-top: 0.5rem;
+  }
+
+  .signin-intro {
+    display: none;
+  }
+
+  .signin-card {
+    width: 100%;
+    max-width: 440px;
+  }
+}
+
+@media (max-width: 480px) {
+  .signin-shell {
+    padding: 0 1rem;
+  }
+
+  .signin-card {
+    padding: 1.75rem 1.25rem 1.5rem;
+    border-radius: 14px;
+  }
+
+  .signin-footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signin * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

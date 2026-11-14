@@ -1,268 +1,222 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { authApi } from '../../api/auth.api';
-import { Card } from '../../components/common/Card';
+import { useThemeStore } from '../../store/useThemeStore';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
-import { Shield, AlertCircle, KeyRound, Mail, UserCheck } from 'lucide-react';
+import {
+  Shield, AlertCircle, KeyRound, UserCheck, Info, Lock, Moon, Sun, LineChart, Bug, Award, Sparkles,
+} from 'lucide-react';
+import './LoginPage.css';
+
+/**
+ * CR-016: one sign-in rule for every employee (larger-company model).
+ *
+ * - Employee ID or work email, plus the organisation password and the
+ *   employee password. Both passwords are always checked by the backend.
+ * - One message for every failure, so the page never tells anyone whether
+ *   an account exists or is inactive (the backend does the same).
+ * - No self-registration and no role list: accounts are created by HR and
+ *   admins, and each person lands on their own home page after sign-in.
+ */
+export const SIGN_IN_FAILED =
+  'Sign-in failed. Check your ID and both passwords, or contact your administrator.';
+
+const PUBLIC_PATHS = ['/login', '/setup'];
+
+function safeReturnPath(location) {
+  const path = location.state?.from?.pathname;
+  if (!path || !path.startsWith('/') || path.startsWith('//') || PUBLIC_PATHS.includes(path)) return '/';
+  return path + (location.state?.from?.search || '');
+}
 
 export function LoginPage() {
-  const [activeTab, setActiveTab] = useState('simple'); // 'simple' | 'full'
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  // Full login state
-  const [employeeId, setEmployeeId] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [orgPassword, setOrgPassword] = useState('');
   const [empPassword, setEmpPassword] = useState('');
-
+  const [capsLock, setCapsLock] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { setAuth } = useAuthStore();
+  const { setAuth, isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === 'true';
+  const { theme, toggleTheme } = useThemeStore();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Already signed in: go to the home page instead of showing the form.
+  if (isAuthenticated && user) {
+    return <Navigate to={safeReturnPath(location)} replace />;
+  }
+
+  const trackCapsLock = (event) => {
+    if (typeof event.getModifierState === 'function') setCapsLock(event.getModifierState('CapsLock'));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (isLoading) return;
     setError('');
+
+    const id = identifier.trim();
+    if (!id || !orgPassword || !empPassword) {
+      setError('Enter your employee ID or work email and both passwords.');
+      return;
+    }
+
     setIsLoading(true);
-
     try {
-      let response;
-      if (activeTab === 'simple') {
-        if (!email || !password) {
-          setError('Please provide both email and password');
-          setIsLoading(false);
-          return;
-        }
-        response = await authApi.login({ email, password });
-      } else {
-        if (!employeeId || !orgPassword || !empPassword) {
-          setError('Please fill in all employee and organisation credentials');
-          setIsLoading(false);
-          return;
-        }
-        response = await authApi.loginFull({
-          employee_id: employeeId,
-          organisation_password: orgPassword,
-          employee_password: empPassword,
-        });
+      const response = await authApi.login({
+        identifier: id,
+        organisation_password: orgPassword,
+        employee_password: empPassword,
+      });
+      if (!response?.token || !response?.user) {
+        setError(SIGN_IN_FAILED);
+        return;
       }
-
-      if (response && response.token) {
-        setAuth(response.token, response.user);
-        const role = response.user?.role?.toLowerCase() || 'developer';
-        const from = location.state?.from?.pathname || `/${role}/dashboard`;
-        navigate(from, { replace: true });
-      } else {
-        setError('Login failed: Token not received from server');
-      }
+      setAuth(response.token, response.user);
+      // The router sends each person to their own home page from "/".
+      navigate(safeReturnPath(location), { replace: true });
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please check your credentials.');
+      const status = err?.status ?? err?.response?.status;
+      if (status === 429) {
+        setError('Too many sign-in attempts. Wait a minute, then try again.');
+      } else if (status === undefined) {
+        setError('The server could not be reached. Check your connection and try again.');
+      } else {
+        setError(SIGN_IN_FAILED);
+      }
+      // Never keep passwords in the form after a failed attempt.
+      setOrgPassword('');
+      setEmpPassword('');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.5rem',
-        background: 'radial-gradient(ellipse at top, #1e293b 0%, #0a0e17 70%)',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Background decoration elements */}
-      <div
-        style={{
-          position: 'absolute',
-          width: '500px',
-          height: '500px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(0, 0, 0, 0) 70%)',
-          top: '-100px',
-          right: '-100px',
-          pointerEvents: 'none',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          width: '400px',
-          height: '400px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(0, 0, 0, 0) 70%)',
-          bottom: '-100px',
-          left: '-100px',
-          pointerEvents: 'none',
-        }}
-      />
-
-      <div style={{ width: '100%', maxWidth: '440px', zIndex: 10 }}>
-        {/* Brand Logo & Title */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: '900',
-              fontSize: '1.75rem',
-              boxShadow: '0 0 25px rgba(59, 130, 246, 0.4)',
-              marginBottom: '1rem',
-            }}
-          >
-            S
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '800', letterSpacing: '-0.03em' }}>
-            <span className="gradient-text">SAMANVAYA</span>
-          </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            AI-Powered Software Engineering & Performance Platform
-          </p>
+    <div className="signin">
+      <header className="signin-shell signin-header">
+        <div className="signin-logo">
+          <span className="signin-mark" aria-hidden="true">S</span>
+          SAMANVAYA
         </div>
+        <button
+          type="button"
+          className="signin-theme"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? <Sun size={15} aria-hidden="true" /> : <Moon size={15} aria-hidden="true" />}
+          {theme === 'dark' ? 'Light' : 'Dark'}
+        </button>
+      </header>
 
-        {/* Login Card */}
-        <Card padding="lg" style={{ border: '1px solid var(--border-default)' }}>
-          {/* Method Tabs */}
-          <div
-            style={{
-              display: 'flex',
-              background: 'var(--bg-input)',
-              padding: '0.25rem',
-              borderRadius: 'var(--radius-md)',
-              marginBottom: '1.5rem',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('simple');
-                setError('');
-              }}
-              style={{
-                flex: 1,
-                padding: '0.45rem',
-                fontSize: '0.8125rem',
-                fontWeight: '600',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                background: activeTab === 'simple' ? 'var(--primary)' : 'transparent',
-                color: activeTab === 'simple' ? '#fff' : 'var(--text-muted)',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)',
-              }}
-            >
-              Email Login
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('full');
-                setError('');
-              }}
-              style={{
-                flex: 1,
-                padding: '0.45rem',
-                fontSize: '0.8125rem',
-                fontWeight: '600',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                background: activeTab === 'full' ? 'var(--primary)' : 'transparent',
-                color: activeTab === 'full' ? '#fff' : 'var(--text-muted)',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast)',
-              }}
-            >
-              Org / Employee ID
-            </button>
-          </div>
+      <div className="signin-shell signin-body">
+        <aside className="signin-intro" aria-label="About Samanvaya">
+          <span className="eyebrow">
+            <Sparkles size={14} aria-hidden="true" />
+            AI-assisted engineering platform
+          </span>
+          <h2>Plan, deliver and review engineering work in one place.</h2>
+          <p className="lead">
+            AI reads pull requests, sprint data and code quality to flag risk and gather evidence. People review
+            it and make every final decision.
+          </p>
+          <ul className="signin-points">
+            <li>
+              <span className="icon" aria-hidden="true"><LineChart size={19} /></span>
+              <div>
+                <strong>AI delivery risk</strong>
+                <span>Sprint and project risk scored from live delivery data, with reports for leadership.</span>
+              </div>
+            </li>
+            <li>
+              <span className="icon" aria-hidden="true"><Bug size={19} /></span>
+              <div>
+                <strong>Code quality and incidents</strong>
+                <span>AI-assisted code checks, CI results, defects and incident triage in one place.</span>
+              </div>
+            </li>
+            <li>
+              <span className="icon" aria-hidden="true"><Award size={19} /></span>
+              <div>
+                <strong>Fair, AI-assisted reviews</strong>
+                <span>AI gathers evidence from real work; people review it, and every decision is recorded.</span>
+              </div>
+            </li>
+          </ul>
+        </aside>
+
+        <main className="signin-card">
+          <h1>Sign in</h1>
+          <p className="subtitle">Use the account your organisation gave you.</p>
+
+          {sessionExpired && !error && (
+            <div role="status" className="signin-notice info">
+              <Info size={16} aria-hidden="true" />
+              <span>Your session has ended. Sign in again to continue.</span>
+            </div>
+          )}
 
           {error && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1rem',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--danger-light)',
-                border: '1px solid var(--danger-border)',
-                color: 'var(--danger)',
-                fontSize: '0.8125rem',
-                marginBottom: '1.25rem',
-              }}
-            >
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <div role="alert" className="signin-notice error">
+              <AlertCircle size={16} aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-            {activeTab === 'simple' ? (
-              <>
-                <Input
-                  label="Email Address"
-                  type="email"
-                  placeholder="Enter your work email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  leftIcon={<Mail size={16} />}
-                  required
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  leftIcon={<KeyRound size={16} />}
-                  required
-                />
-              </>
-            ) : (
-              <>
-                <Input
-                  label="Employee ID"
-                  placeholder="Enter your employee ID"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  leftIcon={<UserCheck size={16} />}
-                  required
-                />
-                <Input
-                  label="Organisation Password"
-                  type="password"
-                  placeholder="Enter your organization password"
-                  value={orgPassword}
-                  onChange={(e) => setOrgPassword(e.target.value)}
-                  leftIcon={<Shield size={16} />}
-                  required
-                />
-                <Input
-                  label="Employee Password"
-                  type="password"
-                  placeholder="Enter your employee password"
-                  value={empPassword}
-                  onChange={(e) => setEmpPassword(e.target.value)}
-                  leftIcon={<KeyRound size={16} />}
-                  required
-                />
-              </>
+          <form onSubmit={handleSubmit} noValidate aria-busy={isLoading} className="signin-fields">
+            <Input
+              label="Employee ID or work email"
+              name="username"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="e.g. EMP-1042 or name@company.com"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              leftIcon={<UserCheck size={16} />}
+              maxLength={254}
+              autoFocus
+              required
+            />
+            <Input
+              label="Organisation password"
+              type="password"
+              name="organisation-password"
+              autoComplete="current-password"
+              placeholder="Shared by your organisation"
+              value={orgPassword}
+              onChange={(e) => setOrgPassword(e.target.value)}
+              onKeyUp={trackCapsLock}
+              onKeyDown={trackCapsLock}
+              leftIcon={<Shield size={16} />}
+              maxLength={256}
+              required
+            />
+            <Input
+              label="Employee password"
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              placeholder="Your own password"
+              value={empPassword}
+              onChange={(e) => setEmpPassword(e.target.value)}
+              onKeyUp={trackCapsLock}
+              onKeyDown={trackCapsLock}
+              leftIcon={<KeyRound size={16} />}
+              maxLength={256}
+              required
+            />
+
+            {capsLock && (
+              <p role="status" className="signin-caps">
+                <AlertCircle size={13} aria-hidden="true" /> Caps Lock is on.
+              </p>
             )}
 
             <Button
@@ -270,18 +224,33 @@ export function LoginPage() {
               variant="primary"
               size="lg"
               isLoading={isLoading}
-              style={{ marginTop: '0.5rem', width: '100%' }}
+              disabled={isLoading}
+              style={{ marginTop: '0.35rem', width: '100%' }}
             >
-              Sign In to Samanvaya
+              Sign in
             </Button>
           </form>
-        </Card>
 
-        {/* Footer info */}
-        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1.5rem' }}>
-          Role-aware system supporting DEVELOPER, LEAD, PM, QA, DEVOPS, HR, & CEO roles.
-        </p>
+          <div className="signin-help">
+            <div>
+              <strong>Forgot a password or locked out?</strong> Contact your IT administrator.
+            </div>
+            <div>
+              <strong>New here?</strong> Accounts are created by HR; there is no self sign-up.
+            </div>
+          </div>
+
+          <p className="signin-assurance">
+            <Lock size={12} aria-hidden="true" />
+            Two-password sign-in. Every sign-in is recorded.
+          </p>
+        </main>
       </div>
+
+      <footer className="signin-shell signin-footer">
+        <span>&copy; {new Date().getFullYear()} SAMANVAYA. All rights reserved.</span>
+        <span>Authorised use only.</span>
+      </footer>
     </div>
   );
 }
