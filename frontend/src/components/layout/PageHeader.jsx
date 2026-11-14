@@ -25,10 +25,11 @@ export function PageHeader({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <h1
             style={{
-              fontSize: '1.75rem',
-              fontWeight: '800',
+              fontSize: '1.625rem',
+              fontWeight: '700',
               color: 'var(--text-primary)',
-              letterSpacing: '-0.03em',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.2,
             }}
           >
             {title}
@@ -39,9 +40,9 @@ export function PageHeader({
           <p
             style={{
               fontSize: '0.875rem',
-              color: 'var(--text-muted)',
-              marginTop: '0.25rem',
-              maxWidth: '650px',
+              color: 'var(--text-secondary)',
+              marginTop: '0.35rem',
+              maxWidth: '680px',
             }}
           >
             {subtitle}

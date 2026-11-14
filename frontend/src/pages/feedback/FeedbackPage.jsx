@@ -140,9 +140,8 @@ export function FeedbackPage() {
     return employees.filter((e) => {
       const empRole = e.role?.toUpperCase();
       return (
+        // CR-016: eligibility comes from the person's role, never from built-in IDs.
         eligibleRoles.includes(empRole) &&
-        e.employee_id !== 'DEMO-HR' &&
-        e.employee_id !== 'DEMO-CEO' &&
         empRole !== ROLES.CEO &&
         empRole !== ROLES.HR &&
         e.employee_id !== user?.employee_id

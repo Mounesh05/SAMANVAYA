@@ -6,7 +6,7 @@ export function StatusBadge({ status, size = 'sm' }) {
   const normalized = String(status || '').toLowerCase();
 
   let variant = 'default';
-  if (['done', 'completed', 'success'].includes(normalized)) variant = 'success';
+  if (['done', 'completed', 'success', 'passed'].includes(normalized)) variant = 'success';
   else if (['in_progress', 'running'].includes(normalized)) variant = 'primary';
   else if (['review', 'pending'].includes(normalized)) variant = 'purple';
   else if (['blocked', 'failed'].includes(normalized)) variant = 'danger';

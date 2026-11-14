@@ -1,4 +1,5 @@
 import React from 'react';
+import './Shell.css';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -14,7 +15,8 @@ import {
   MessageSquareQuote,
   FileBarChart,
   LogOut,
-  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   GitPullRequest,
   Layers,
   Terminal,
@@ -29,13 +31,23 @@ import {
 import { useAuthStore } from '../../store/useAuthStore';
 import { authApi } from '../../api/auth.api';
 import { useThemeStore } from '../../store/useThemeStore';
-import { ROLES, ROLE_LABELS, ROLE_COLORS } from '../../utils/constants';
+import { ROLES, ROLE_LABELS } from '../../utils/constants';
 import { canOpenPage, showInMenu } from '../../routes/access';
 import { hasAnyPermission, hasPermission, PERMISSIONS, TEAM_LIST_PERMISSIONS, TRANSFER_FOR_OTHERS_PERMISSIONS } from '../../auth/permissions';
 
+// Menu sections, in order. Each page key belongs to one section; a section
+// with nothing the person can open is left out.
+const NAV_SECTIONS = [
+  { title: 'Overview', pages: ['dashboard'] },
+  { title: 'Delivery', pages: ['projects', 'sprints', 'stories', 'tasks', 'board'] },
+  { title: 'Engineering', pages: ['codeQuality', 'pullRequests', 'githubSync', 'tests', 'bugs', 'pipelines', 'deployments', 'incidents', 'cicdLogs'] },
+  { title: 'People', pages: ['employees', 'approvals', 'transfers', 'teams', 'teamDetail', 'evaluation', 'performance', 'feedback'] },
+  { title: 'Insights', pages: ['reports', 'audit', 'ceoQuality', 'ceoRisk', 'ceoOrganization'] },
+];
+
 export function Sidebar() {
   const { user, logout } = useAuthStore();
-  const { sidebarCollapsed, toggleSidebar } = useThemeStore();
+  const { sidebarCollapsed, toggleSidebar, setSidebarCollapsed } = useThemeStore();
   const navigate = useNavigate();
 
   const role = user?.role?.toUpperCase();
@@ -52,37 +64,37 @@ export function Sidebar() {
   // page-access table (routes/access.js), the same table the router enforces.
   const getNavItems = () => {
     const items = [
-      { page: 'dashboard', to: `/${(role || 'developer').toLowerCase()}/dashboard`, icon: <LayoutDashboard size={19} />, label: 'Dashboard' },
-      { page: 'projects', to: '/projects', icon: <FolderGit2 size={19} />, label: 'Projects' },
-      { page: 'sprints', to: '/sprints', icon: <Layers size={19} />, label: 'Sprints' },
-      { page: 'stories', to: '/stories', icon: <BookOpen size={19} />, label: 'Stories' },
-      { page: 'tasks', to: '/tasks', icon: <ListTodo size={19} />, label: 'Tasks' },
-      { page: 'board', to: '/board', icon: <KanbanSquare size={19} />, label: 'Board' },
-      { page: 'employees', to: '/employees', icon: <Users size={19} />, label: 'Employees' },
-      { page: 'approvals', to: '/approvals', icon: <CheckSquare size={19} />, label: 'Approvals' },
-      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={19} />, label: handlesOthersTransfers ? 'Transfer Requests' : 'My Transfers' },
-      { page: 'teams', to: '/teams', icon: <Building2 size={19} />, label: ownTeamOnly ? 'My Team' : 'Teams' },
+      { page: 'dashboard', to: `/${(role || 'developer').toLowerCase()}/dashboard`, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+      { page: 'projects', to: '/projects', icon: <FolderGit2 size={18} />, label: 'Projects' },
+      { page: 'sprints', to: '/sprints', icon: <Layers size={18} />, label: 'Sprints' },
+      { page: 'stories', to: '/stories', icon: <BookOpen size={18} />, label: 'Stories' },
+      { page: 'tasks', to: '/tasks', icon: <ListTodo size={18} />, label: 'Tasks' },
+      { page: 'board', to: '/board', icon: <KanbanSquare size={18} />, label: 'Board' },
+      { page: 'employees', to: '/employees', icon: <Users size={18} />, label: 'Employees' },
+      { page: 'approvals', to: '/approvals', icon: <CheckSquare size={18} />, label: 'Approvals' },
+      { page: 'transfers', to: '/transfers', icon: <GitPullRequest size={18} />, label: handlesOthersTransfers ? 'Transfer Requests' : 'My Transfers' },
+      { page: 'teams', to: '/teams', icon: <Building2 size={18} />, label: ownTeamOnly ? 'My Team' : 'Teams' },
       // People who can't list teams but can open their own get a direct "My Team" link.
       ...(user?.team_id && !canOpenPage(user, 'teams') && canOpenPage(user, 'teamDetail')
-        ? [{ page: 'teamDetail', to: `/teams/${user.team_id}`, icon: <Building2 size={19} />, label: 'My Team' }]
+        ? [{ page: 'teamDetail', to: `/teams/${user.team_id}`, icon: <Building2 size={18} />, label: 'My Team' }]
         : []),
-      { page: 'codeQuality', to: '/code-quality', icon: <ShieldCheck size={19} />, label: 'Code Quality' },
-      { page: 'pullRequests', to: '/pull-requests', icon: <GitPullRequest size={19} />, label: 'Pull Requests' },
-      { page: 'githubSync', to: '/github/sync', icon: <GitPullRequest size={19} />, label: 'GitHub Sync' },
-      { page: 'tests', to: '/tests', icon: <FlaskConical size={19} />, label: 'Tests' },
-      { page: 'bugs', to: '/bugs', icon: <Bug size={19} />, label: 'Bugs' },
-      { page: 'pipelines', to: '/pipelines', icon: <Terminal size={19} />, label: 'Pipelines' },
-      { page: 'deployments', to: '/deployments', icon: <Rocket size={19} />, label: 'Deployments' },
-      { page: 'incidents', to: '/incidents', icon: <AlertTriangle size={19} />, label: 'Incidents' },
-      { page: 'cicdLogs', to: '/cicd-logs', icon: <Terminal size={19} />, label: 'CI/CD Log AI' },
-      { page: 'evaluation', to: '/evaluation', icon: <Cpu size={19} />, label: 'AI Evaluation' },
-      { page: 'performance', to: '/performance', icon: <Award size={19} />, label: reviewsPerformanceOutcomes ? 'Performance Outcomes' : 'Performance' },
-      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={19} />, label: submitsHrAssessments ? 'Workplace Assessment' : 'Role Feedback' },
-      { page: 'reports', to: '/reports', icon: <FileBarChart size={19} />, label: 'Reports & Trends' },
-      { page: 'audit', to: '/audit', icon: <History size={19} />, label: 'Audit Logs' },
-      { page: 'ceoQuality', to: '/quality', icon: <ShieldCheck size={19} />, label: 'Quality' },
-      { page: 'ceoRisk', to: '/risk', icon: <ShieldAlert size={19} />, label: 'Risk' },
-      { page: 'ceoOrganization', to: '/organization', icon: <Building2 size={19} />, label: 'Organization' },
+      { page: 'codeQuality', to: '/code-quality', icon: <ShieldCheck size={18} />, label: 'Code Quality' },
+      { page: 'pullRequests', to: '/pull-requests', icon: <GitPullRequest size={18} />, label: 'Pull Requests' },
+      { page: 'githubSync', to: '/github/sync', icon: <GitPullRequest size={18} />, label: 'GitHub Sync' },
+      { page: 'tests', to: '/tests', icon: <FlaskConical size={18} />, label: 'Tests' },
+      { page: 'bugs', to: '/bugs', icon: <Bug size={18} />, label: 'Bugs' },
+      { page: 'pipelines', to: '/pipelines', icon: <Terminal size={18} />, label: 'Pipelines' },
+      { page: 'deployments', to: '/deployments', icon: <Rocket size={18} />, label: 'Deployments' },
+      { page: 'incidents', to: '/incidents', icon: <AlertTriangle size={18} />, label: 'Incidents' },
+      { page: 'cicdLogs', to: '/cicd-logs', icon: <Terminal size={18} />, label: 'CI/CD Log AI' },
+      { page: 'evaluation', to: '/evaluation', icon: <Cpu size={18} />, label: 'AI Evaluation' },
+      { page: 'performance', to: '/performance', icon: <Award size={18} />, label: reviewsPerformanceOutcomes ? 'Performance Outcomes' : 'Performance' },
+      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={18} />, label: submitsHrAssessments ? 'Workplace Assessment' : 'Role Feedback' },
+      { page: 'reports', to: '/reports', icon: <FileBarChart size={18} />, label: 'Reports & Trends' },
+      { page: 'audit', to: '/audit', icon: <History size={18} />, label: 'Audit Logs' },
+      { page: 'ceoQuality', to: '/quality', icon: <ShieldCheck size={18} />, label: 'Quality' },
+      { page: 'ceoRisk', to: '/risk', icon: <ShieldAlert size={18} />, label: 'Risk' },
+      { page: 'ceoOrganization', to: '/organization', icon: <Building2 size={18} />, label: 'Organization' },
     ];
 
     // The dashboard link opens the user's own role dashboard (a persona view);
@@ -92,7 +104,15 @@ export function Sidebar() {
   };
 
   const navItems = getNavItems();
-  const roleColor = ROLE_COLORS[role] || '#3b82f6';
+  const sections = NAV_SECTIONS
+    .map((section) => ({ ...section, items: navItems.filter((item) => section.pages.includes(item.page)) }))
+    .filter((section) => section.items.length > 0);
+
+  const roleLabel = ROLE_LABELS[role] || role || '';
+  const initials = (user?.name || '')
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'U';
+  const isPhone = () => window.matchMedia?.('(max-width: 700px)').matches;
+  const closeOnPhone = () => { if (isPhone()) setSidebarCollapsed(true); };
 
   const handleLogout = async () => {
     await authApi.logout();
@@ -101,237 +121,77 @@ export function Sidebar() {
   };
 
   return (
-    <aside
-      className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}
-      style={{
-        width: sidebarCollapsed ? '72px' : '236px',
-        height: '100vh',
-        backgroundColor: 'var(--bg-secondary)',
-        borderRight: '1px solid var(--border-subtle)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        transition: 'width var(--transition-base)',
-        flexShrink: 0,
-      }}
-    >
-      {/* Brand Header */}
-      <div
-        style={{
-          padding: '1.25rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: sidebarCollapsed ? 'center' : 'space-between',
-          borderBottom: '1px solid var(--border-subtle)',
-          minHeight: '70px',
-        }}
+    <>
+      {!sidebarCollapsed && <div className="sb-backdrop" onClick={toggleSidebar} aria-hidden="true" />}
+      <aside
+        className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}
+        aria-label="Main menu"
       >
-        {!sidebarCollapsed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: '900',
-                fontSize: '1.1rem',
-                boxShadow: '0 0 15px rgba(59, 130, 246, 0.4)',
-              }}
-            >
-              S
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: '800', letterSpacing: '-0.03em' }}>
-                <span className="gradient-text">Samanvaya</span>
-              </h2>
-              <p style={{ fontSize: '0.675rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Engineering AI
-              </p>
-            </div>
-          </div>
-        )}
+        <NavLink to={navItems[0]?.to || '/'} className="sb-brand" title="Samanvaya" onClick={closeOnPhone}>
+          <span className="sb-mark" aria-hidden="true">S</span>
+          {!sidebarCollapsed && (
+            <span className="sb-name">
+              SAMANVAYA
+              <span className="sb-tag">AI-assisted engineering</span>
+            </span>
+          )}
+        </NavLink>
 
-        {sidebarCollapsed && (
-          <div
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: '900',
-              fontSize: '1.2rem',
-              boxShadow: '0 0 15px rgba(59, 130, 246, 0.4)',
-            }}
+        <nav className="sb-nav">
+          {sections.map((section) => (
+            <div className="sb-section" key={section.title}>
+              <div className="sb-section-title">{section.title}</div>
+              <ul className="sb-list">
+                {section.items.map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      className="sb-link"
+                      title={sidebarCollapsed ? item.label : undefined}
+                      onClick={closeOnPhone}
+                    >
+                      {item.icon}
+                      {!sidebarCollapsed && <span className="sb-label">{item.label}</span>}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        <div className="sb-footer">
+          <button
+            type="button"
+            className="sb-icon-button sb-collapse"
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+            title={sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
           >
-            S
-          </div>
-        )}
-
-        <button
-          onClick={toggleSidebar}
-          style={{
-            display: sidebarCollapsed ? 'none' : 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '0.3rem',
-            borderRadius: 'var(--radius-sm)',
-          }}
-          title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-        >
-          <ChevronLeft size={18} />
-        </button>
-      </div>
-
-      {/* Navigation Links */}
-      <nav
-        style={{
-          flex: 1,
-          padding: '0.85rem 0.65rem',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.25rem',
-        }}
-      >
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: sidebarCollapsed ? '0.7rem' : '0.65rem 0.85rem',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.875rem',
-              fontWeight: isActive ? '700' : '500',
-              color: isActive ? '#ffffff' : 'var(--text-secondary)',
-              backgroundColor: isActive ? 'var(--primary)' : 'transparent',
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-              textDecoration: 'none',
-              transition: 'all var(--transition-fast)',
-              boxShadow: isActive ? '0 2px 10px rgba(59, 130, 246, 0.3)' : 'none',
-            })}
-            title={sidebarCollapsed ? item.label : undefined}
-          >
-            <span style={{ display: 'flex', alignItems: 'center' }}>{item.icon}</span>
-            {!sidebarCollapsed && <span>{item.label}</span>}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* User & Role Footer */}
-      <div
-        style={{
-          padding: '0.85rem 0.75rem',
-          borderTop: '1px solid var(--border-subtle)',
-          backgroundColor: 'rgba(0, 0, 0, 0.15)',
-        }}
-      >
-        {!sidebarCollapsed ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }}
-              onClick={() => navigate('/profile')}
-            >
-              <div
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '50%',
-                  backgroundColor: `${roleColor}25`,
-                  border: `1.5px solid ${roleColor}`,
-                  color: roleColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: '700',
-                  fontSize: '0.875rem',
-                }}
-              >
-                {user?.name?.charAt(0) || 'U'}
-              </div>
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                  {user?.name || 'User'}
-                </div>
-                <div style={{ fontSize: '0.725rem', color: roleColor, fontWeight: '600' }}>
-                  {ROLE_LABELS[role] || role}
-                </div>
-              </div>
-            </div>
-
+            {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+            {!sidebarCollapsed && <span>Collapse</span>}
+          </button>
+          <div className="sb-user">
             <button
-              onClick={handleLogout}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                padding: '0.4rem',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Logout"
+              type="button"
+              className="sb-user-main"
+              onClick={() => { closeOnPhone(); navigate('/profile'); }}
+              title={sidebarCollapsed ? `${user?.name || 'User'} · ${roleLabel}` : 'Your profile'}
             >
-              <LogOut size={17} />
+              <span className="shell-avatar" aria-hidden="true">{initials}</span>
+              {!sidebarCollapsed && (
+                <span style={{ minWidth: 0 }}>
+                  <span className="sb-user-name" style={{ display: 'block' }}>{user?.name || 'User'}</span>
+                  <span className="sb-user-role" style={{ display: 'block' }}>{roleLabel}</span>
+                </span>
+              )}
             </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-            <div
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '50%',
-                backgroundColor: `${roleColor}25`,
-                border: `1.5px solid ${roleColor}`,
-                color: roleColor,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: '700',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-              }}
-              onClick={() => navigate('/profile')}
-              title={`${user?.name} (${role})`}
-            >
-              {user?.name?.charAt(0) || 'U'}
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                padding: '0.3rem',
-              }}
-              title="Logout"
-            >
+            <button type="button" className="sb-icon-button" onClick={handleLogout} aria-label="Sign out" title="Sign out">
               <LogOut size={16} />
             </button>
           </div>
-        )}
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }

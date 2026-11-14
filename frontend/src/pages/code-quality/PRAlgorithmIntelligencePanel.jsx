@@ -38,11 +38,11 @@ export function PRAlgorithmIntelligencePanel({ prId }) {
   const comparison = useQuery({ queryKey: ['algorithms', 'run', selected], queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected) });
   const explanation = useMutation({ mutationFn: runId => algorithmsApi.getExplanation(runId) });
   const runs = history.error ? [] : history.data?.analyses || [];
-  return <Card title="PR Algorithm Intelligence" subtitle="Automatic evidence and fresh comparisons for connected projects" style={{ marginBottom: '1.75rem' }}>
-    <p>Approved functional contracts determine what can be validated. Missing behavior stays unknown. Findings apply to tested workloads and do not identify a production-optimal algorithm.</p>
+  return <Card className="cq-panel" title="PR algorithm checks" subtitle="Automatic comparisons for connected projects" style={{ marginBottom: '1.75rem' }}>
+    <p className="cq-note">Results cover tested workloads only. Behaviour without an approved contract is reported as unknown.</p>
     {history.isLoading && <p role="status">Loading PR analysis…</p>}
     {history.error && <p role="alert">{history.error.message}</p>}
-    {!history.isLoading && !history.error && !runs.length && <p>No automatic PR analyses recorded for your connected projects.</p>}
+    {!history.isLoading && !history.error && !runs.length && <p>No automatic PR analyses recorded yet.</p>}
     {runs.map(run => <details key={run.run_id} open={!run.historical_only}>
       <summary>{run.repository} PR #{run.pr_number} · {statusLabel(run.status)}{run.historical_only ? ' · Historical only' : ''}</summary>
       <p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p>

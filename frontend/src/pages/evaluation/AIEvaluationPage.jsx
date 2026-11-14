@@ -134,7 +134,7 @@ export function AIEvaluationPage() {
               label="Employee ID"
               value={formData.employee_id}
               onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-              placeholder="e.g. DEMO-MOUNESH"
+              placeholder="e.g. EMP-1042"
               required
             />
 

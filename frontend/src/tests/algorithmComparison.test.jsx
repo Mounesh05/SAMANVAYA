@@ -322,8 +322,8 @@ describe('Numeric sorting benchmark', () => {
     client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(<MemoryRouter><QueryClientProvider client={client}><CodeQualityPage /></QueryClientProvider></MemoryRouter>);
     await screen.findByText('Benchmark worker available.');
-    expect(screen.getByText('Analysis History')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Start Analysis Run' }));
+    expect(screen.getByText('Analysis history')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start analysis' }));
     change(/Repository or Project ID/, 'real-repository');
     fireEvent.change(screen.getByPlaceholderText('Paste real changed repository paths, one per line'), { target: { value: 'src/real.py' } });
     fireEvent.click(screen.getByRole('button', { name: 'Run Analysis' }));

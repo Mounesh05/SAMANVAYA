@@ -55,7 +55,7 @@ export function RequirementsPanel() {
   const canSubmit = hasPermission(user, PERMISSIONS.USE_ENGINEERING_INTELLIGENCE);
   const errors = [error, discovery.error?.message, sources.error?.message, proposal.error?.message, approval.error?.message].filter(Boolean);
   const parse = (text, action) => { try { setError(''); action(text ? JSON.parse(text) : {}); } catch { setError('Provide valid JSON.'); } };
-  return <Card title="Automatic requirement discovery" subtitle="Discover established constraints and preserve uncertain requirements" style={{ marginBottom: '1.75rem' }}>
+  return <Card title="Requirement discovery" subtitle="Known constraints and open requirements" style={{ marginBottom: '1.75rem' }}>
     <Input label="Requirements project ID" value={project} onChange={e => setProject(e.target.value)} />
     <p>Approved project policy is imported automatically. Specific contract, discovery, task, story, PR and historical run references can add context. Unrelated records are excluded.</p>
     <details><summary>Optional evidence references</summary>

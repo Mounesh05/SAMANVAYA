@@ -10,16 +10,13 @@ import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import {
-  Users,
-  Building2,
-  Award,
-  UserPlus,
-  ArrowRight,
-  TrendingUp,
-  GitPullRequest,
-} from 'lucide-react';
+import { BarList, SegmentedBar } from '../../components/charts/Charts';
 import { ROLE_LABELS } from '../../utils/constants';
+import '../../components/dashboard/Dashboard.css';
+import { Users, Building2, UserPlus, ArrowRight, GitPullRequest, UserX } from 'lucide-react';
+
+// CEO and HR work across the organisation and are not placed in a team.
+const ORG_WIDE_ROLES = new Set(['CEO', 'HR']);
 
 export function HRDashboardPage() {
   const navigate = useNavigate();
@@ -29,13 +26,12 @@ export function HRDashboardPage() {
     queryFn: () => rolesApi.getHRDashboard(),
   });
 
-  // Fetch pending transfer requests count
   const { data: transfersData } = useQuery({
     queryKey: ['transfers', 'pending'],
     queryFn: () => transfersApi.getTransfers({ status: 'pending' }),
   });
 
-  if (isLoading) return <LoadingState message="Loading People & HR dashboard..." />;
+  if (isLoading) return <LoadingState message="Loading the people dashboard..." />;
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
   const summary = data?.summary || {};
@@ -45,148 +41,118 @@ export function HRDashboardPage() {
     ? transfersData.length
     : (transfersData?.transfers?.length || 0);
 
+  const departments = employees.reduce((counts, e) => {
+    const dept = e.dept || 'No department';
+    counts[dept] = (counts[dept] || 0) + 1;
+    return counts;
+  }, {});
+  const teamRoles = employees.filter((e) => !ORG_WIDE_ROLES.has(e.role));
+  const inTeam = teamRoles.filter((e) => e.team_id).length;
+  const withoutTeam = teamRoles.length - inTeam;
+
   const employeeColumns = [
-    { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '700' }}>{e.name}</span> },
-    { key: 'employee_id', header: 'Employee ID', render: (e) => <span className="font-mono">{e.employee_id}</span> },
+    { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '600' }}>{e.name}</span> },
+    { key: 'employee_id', header: 'Employee ID', render: (e) => <span className="font-mono" style={{ fontSize: '0.8125rem' }}>{e.employee_id}</span> },
     { key: 'role', header: 'Role', render: (e) => ROLE_LABELS[e.role] || e.role },
-    { key: 'dept', header: 'Department', render: (e) => e.dept },
-    { key: 'team_id', header: 'Team', render: (e) => e.team_id || (e.role === 'CEO' || e.role === 'HR' ? '—' : 'Unassigned') },
+    { key: 'dept', header: 'Department', render: (e) => e.dept || '—' },
+    { key: 'team_id', header: 'Team', render: (e) => e.team_id || (ORG_WIDE_ROLES.has(e.role) ? '—' : 'Unassigned') },
     {
       key: 'action',
-      header: 'Profile',
-      render: (e) => {
-        if (e.role === 'CEO') {
-          return (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              Executive
-            </span>
-          );
-        }
-        if (e.role === 'HR') {
-          return (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              HR
-            </span>
-          );
-        }
-        return (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate(`/performance?developer=${e.employee_id}`)}
-          >
-            Performance
-          </Button>
-        );
-      },
+      header: '',
+      align: 'right',
+      render: (e) => (ORG_WIDE_ROLES.has(e.role) ? null : (
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/performance?developer=${e.employee_id}`)}>
+          Performance
+        </Button>
+      )),
     },
   ];
 
   return (
-    <div>
+    <div className="dash">
       <PageHeader
-        title="People & Organizational Structure Dashboard"
-        subtitle="Manage employee records, organizational roles, team capacity, and overall workforce performance."
+        title="People and organisation"
+        subtitle="Workforce, teams and transfers."
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<UserPlus size={16} />}
-            onClick={() => navigate('/employees')}
-          >
-            Manage Employees
+          <Button variant="primary" leftIcon={<UserPlus size={16} />} onClick={() => navigate('/employees')}>
+            Manage employees
           </Button>
         }
       />
 
-      {/* Metrics Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '1.75rem',
-        }}
-      >
+      <div className="dash-kpis">
         <MetricCard
-          title="Total Workforce"
-          value={summary.total_employees || employees.length || 0}
-          subtitle="Active employees"
-          icon={<Users size={20} />}
+          title="Active employees"
+          value={summary.total_employees ?? employees.length}
+          subtitle={`${Object.keys(roleDistribution).length} roles`}
+          icon={<Users size={18} />}
           color="primary"
           onClick={() => navigate('/employees')}
         />
         <MetricCard
-          title="Pending Transfers"
+          title="Pending transfers"
           value={pendingTransfers}
-          subtitle="Transfer requests awaiting approval"
-          icon={<GitPullRequest size={20} />}
-          color="warning"
+          subtitle="Awaiting decision"
+          icon={<GitPullRequest size={18} />}
+          color={pendingTransfers > 0 ? 'warning' : 'success'}
           onClick={() => navigate('/transfers')}
         />
         <MetricCard
-          title="Performance Average"
-          value={summary.performance_average ?? '—'}
-          subtitle="Organization-wide average when evaluations exist"
-          icon={<Award size={20} />}
+          title="Departments"
+          value={Object.keys(departments).length}
+          subtitle="With active staff"
+          icon={<Building2 size={18} />}
           color="purple"
-          onClick={() => navigate('/performance')}
         />
         <MetricCard
-          title="Talent Growth Index"
-          value={summary.talent_growth_index ?? '—'}
-          subtitle="Quarter-over-quarter trend when available"
-          icon={<TrendingUp size={20} />}
-          color="success"
+          title="Not in a team"
+          value={withoutTeam}
+          subtitle="No team assigned"
+          icon={<UserX size={18} />}
+          color={withoutTeam > 0 ? 'warning' : 'success'}
         />
       </div>
 
-      {/* Role Distribution Summary */}
-      <Card
-        title="Workforce Role Breakdown"
-        subtitle="Distribution across organizational responsibilities"
-        style={{ marginBottom: '1.75rem' }}
-      >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-          {Object.entries(roleDistribution).map(([roleName, count]) => (
-            <div
-              key={roleName}
-              style={{
-                padding: '0.75rem 1.25rem',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--bg-elevated)',
-                border: '1px solid var(--border-subtle)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.2rem',
-                minWidth: '130px',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-                {roleName}
-              </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                {count}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div className="dash-row">
+        <Card title="Workforce by role">
+          <BarList
+            label="Employees"
+            emptyText="No employees yet."
+            items={Object.entries(roleDistribution).map(([role, count]) => ({
+              key: role,
+              label: ROLE_LABELS[role] || role,
+              value: count,
+            }))}
+          />
+          <h4 className="dash-sub">Team placement</h4>
+          <SegmentedBar
+            label="Team placement"
+            emptyText="No data yet."
+            parts={[
+              { label: 'In a team', value: inTeam, tone: 'blue' },
+              { label: 'Not in a team', value: withoutTeam, tone: 'warning' },
+            ]}
+          />
+        </Card>
 
-      {/* Recent Employees Table */}
+        <Card title="Workforce by department">
+          <BarList
+            label="Employees"
+            emptyText="No employees yet."
+            items={Object.entries(departments).map(([dept, count]) => ({ key: dept, label: dept, value: count }))}
+          />
+        </Card>
+      </div>
+
       <Card
-        title="Employee Directory"
-        subtitle="Recent active personnel"
+        title="Employee directory"
         action={
-          <Button variant="ghost" size="sm" onClick={() => navigate('/employees')}>
-            Full Directory <ArrowRight size={14} />
+          <Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />} onClick={() => navigate('/employees')}>
+            Full directory
           </Button>
         }
       >
-        <Table
-          columns={employeeColumns}
-          data={employees.slice(0, 5)}
-          emptyMessage="No employees registered yet."
-        />
+        <Table columns={employeeColumns} data={employees.slice(0, 6)} emptyMessage="No employees yet." />
       </Card>
     </div>
   );

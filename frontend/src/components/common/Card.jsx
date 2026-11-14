@@ -55,16 +55,17 @@ export function Card({
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'space-between',
-            marginBottom: '1rem',
-            paddingBottom: '0.5rem',
+            gap: '1rem',
+            marginBottom: '1.1rem',
+            paddingBottom: '0.75rem',
             borderBottom: '1px solid var(--border-subtle)',
           }}
         >
           <div>
             {title && (
-              <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+              <h3 style={{ fontSize: '0.975rem', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                 {title}
               </h3>
             )}
@@ -74,7 +75,7 @@ export function Card({
               </p>
             )}
           </div>
-          {action && <div>{action}</div>}
+          {action && <div style={{ flexShrink: 0 }}>{action}</div>}
         </div>
       )}
       {children}

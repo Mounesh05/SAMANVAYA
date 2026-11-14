@@ -10,13 +10,17 @@ import { RiskBadge } from '../../components/common/RiskBadge';
 import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import {
-  Users,
-  GitPullRequest,
-  AlertTriangle,
-  MessageSquareQuote,
-  ShieldAlert,
-} from 'lucide-react';
+import { BarList, SegmentedBar } from '../../components/charts/Charts';
+import { ROLE_LABELS } from '../../utils/constants';
+import '../../components/dashboard/Dashboard.css';
+import { Users, GitPullRequest, AlertTriangle, MessageSquareQuote, ShieldAlert } from 'lucide-react';
+
+const RISK_LEVELS = [
+  { key: 'LOW', label: 'Low', tone: 'good' },
+  { key: 'MEDIUM', label: 'Medium', tone: 'warning' },
+  { key: 'HIGH', label: 'High', tone: 'serious' },
+  { key: 'CRITICAL', label: 'Critical', tone: 'critical' },
+];
 
 export function LeadDashboardPage() {
   const navigate = useNavigate();
@@ -26,21 +30,37 @@ export function LeadDashboardPage() {
     queryFn: () => rolesApi.getLeadDashboard(),
   });
 
-  if (isLoading) return <LoadingState message="Loading Tech Lead dashboard..." />;
+  if (isLoading) return <LoadingState message="Loading the team dashboard..." />;
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
   const summary = data?.summary || {};
   const teamMembers = data?.team_members || [];
   const reviewQueue = data?.pr_review_queue || [];
   const blockers = data?.blockers || [];
+  const nameOf = Object.fromEntries(teamMembers.map((m) => [m.employee_id, m.name]));
+
+  const riskCounts = reviewQueue.reduce((counts, pr) => {
+    const level = String(pr.risk_level || 'LOW').toUpperCase();
+    counts[level] = (counts[level] || 0) + 1;
+    return counts;
+  }, {});
+  const prsByAuthor = reviewQueue.reduce((counts, pr) => {
+    const author = pr.author_id || 'unknown';
+    counts[author] = (counts[author] || 0) + 1;
+    return counts;
+  }, {});
+  const queueNote = summary.open_prs > reviewQueue.length
+    ? `Latest ${reviewQueue.length} of ${summary.open_prs}`
+    : undefined;
 
   const memberColumns = [
-    { key: 'name', header: 'Member', render: (m) => <span style={{ fontWeight: '700' }}>{m.name}</span> },
-    { key: 'role', header: 'Role', render: (m) => m.role },
+    { key: 'name', header: 'Member', render: (m) => <span style={{ fontWeight: '600' }}>{m.name}</span> },
+    { key: 'role', header: 'Role', render: (m) => ROLE_LABELS[m.role] || m.role },
     { key: 'email', header: 'Email', render: (m) => <span style={{ color: 'var(--text-muted)' }}>{m.email}</span> },
     {
       key: 'actions',
-      header: 'Actions',
+      header: '',
+      align: 'right',
       render: (m) => (
         <Button
           variant="ghost"
@@ -50,155 +70,138 @@ export function LeadDashboardPage() {
             navigate(`/feedback?target=${m.employee_id}`);
           }}
         >
-          Give Feedback
+          Give feedback
         </Button>
       ),
     },
   ];
 
   const prColumns = [
-    { key: 'title', header: 'PR Title', render: (pr) => <span style={{ fontWeight: '600' }}>{pr.title || `PR #${pr.pr_number || pr.id}`}</span> },
-    { key: 'author_id', header: 'Author', render: (pr) => pr.author_name || pr.author_id || 'Unknown' },
+    { key: 'title', header: 'Pull request', render: (pr) => <span style={{ fontWeight: '600' }}>{pr.title || `PR #${pr.pr_number || pr.id}`}</span> },
+    { key: 'author_id', header: 'Author', render: (pr) => pr.author_name || nameOf[pr.author_id] || pr.author_id || 'Unknown' },
     { key: 'risk_level', header: 'Risk', render: (pr) => <RiskBadge level={pr.risk_level || 'LOW'} score={pr.risk_score} /> },
-    {
-      key: 'action',
-      header: 'Review',
-      render: () => <Button variant="secondary" size="sm">Inspect</Button>,
-    },
   ];
 
   return (
-    <div>
+    <div className="dash">
       <PageHeader
-        title={`Tech Lead Dashboard — ${data?.team_id || 'Team Overview'}`}
-        subtitle="Monitor team execution, review pipeline, high-risk PRs, and team impediments."
+        title={data?.team_id ? `Team overview · ${data.team_id}` : 'Team overview'}
+        subtitle="Reviews, risk and blockers."
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<MessageSquareQuote size={16} />}
-            onClick={() => navigate('/feedback')}
-          >
-            Submit Lead Feedback
+          <Button variant="primary" leftIcon={<MessageSquareQuote size={16} />} onClick={() => navigate('/feedback')}>
+            Give feedback
           </Button>
         }
       />
 
-      {/* Metrics Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '1.75rem',
-        }}
-      >
+      {data?.error && (
+        <Card>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Not assigned to a team yet.
+          </p>
+        </Card>
+      )}
+
+      <div className="dash-kpis">
         <MetricCard
-          title="Team Size"
-          value={summary.team_size || teamMembers.length || 0}
-          subtitle="Active engineers"
-          icon={<Users size={20} />}
+          title="Team size"
+          value={summary.team_size ?? teamMembers.length}
+          subtitle={`${summary.total_active_tasks ?? 0} active tasks`}
+          icon={<Users size={18} />}
           color="primary"
           onClick={() => navigate('/teams')}
         />
         <MetricCard
-          title="PR Review Queue"
-          value={summary.open_prs || 0}
-          subtitle="Waiting for team review"
-          icon={<GitPullRequest size={20} />}
+          title="Open pull requests"
+          value={summary.open_prs ?? 0}
+          subtitle="Waiting for review"
+          icon={<GitPullRequest size={18} />}
           color="purple"
         />
         <MetricCard
-          title="High Risk PRs"
-          value={summary.high_risk_prs || 0}
-          subtitle="Detected by Layer 5 engine"
-          icon={<ShieldAlert size={20} />}
+          title="High-risk pull requests"
+          value={summary.high_risk_prs ?? 0}
+          subtitle="AI-rated high or critical"
+          icon={<ShieldAlert size={18} />}
           color={summary.high_risk_prs > 0 ? 'danger' : 'success'}
         />
         <MetricCard
-          title="Blocked Tasks"
-          value={summary.blocked_tasks || 0}
-          subtitle="Impediments blocking progress"
-          icon={<AlertTriangle size={20} />}
+          title="Blocked tasks"
+          value={summary.blocked_tasks ?? 0}
+          subtitle="Need attention"
+          icon={<AlertTriangle size={18} />}
           color={summary.blocked_tasks > 0 ? 'warning' : 'success'}
           onClick={() => navigate('/board')}
         />
       </div>
 
-      {/* Tables Row: Team Members & Review Queue */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '1.75rem',
-        }}
-      >
-        <Card
-          title="Team Members & Workload"
-          subtitle="Engineers in your assigned team"
-          action={
-            <Button variant="ghost" size="sm" onClick={() => navigate('/teams')}>
-              Manage Team
-            </Button>
-          }
-        >
-          <Table
-            columns={memberColumns}
-            data={teamMembers}
-            emptyMessage="No team members assigned yet."
+      <div className="dash-row">
+        <Card title="Review queue by risk" subtitle={queueNote}>
+          <SegmentedBar
+            label="Review queue by risk"
+            emptyText="The review queue is empty."
+            parts={RISK_LEVELS.map((level) => ({ label: level.label, value: riskCounts[level.key] || 0, tone: level.tone }))}
           />
         </Card>
-
-        <Card
-          title="PR Review Queue"
-          subtitle="Open pull requests needing attention"
-          action={
-            <Button variant="ghost" size="sm" onClick={() => navigate('/github/sync')}>
-              View All PRs
-            </Button>
-          }
-        >
-          <Table
-            columns={prColumns}
-            data={reviewQueue}
-            emptyMessage="No pending PRs in the review queue."
+        <Card title="Pull requests by author" subtitle={queueNote}>
+          <BarList
+            label="Open pull requests"
+            emptyText="No open pull requests."
+            items={Object.entries(prsByAuthor).map(([author, count]) => ({
+              key: author,
+              label: nameOf[author] || author,
+              value: count,
+            }))}
           />
         </Card>
       </div>
 
-      {/* Blockers alert list if any */}
       {blockers.length > 0 && (
-        <Card title="Active Team Blockers" subtitle="Tasks flagged as blocked">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+        <Card title="Blocked work">
+          <ul className="dash-list">
             {blockers.map((b) => (
-              <div
-                key={b.id}
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--danger-light)',
-                  border: '1px solid var(--danger-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--danger)' }}>
+              <li key={b.id}>
+                <div className="dash-list-main">
+                  <div className="dash-list-title">
+                    <AlertTriangle size={14} style={{ color: 'var(--viz-critical)', marginRight: '0.4rem', verticalAlign: '-2px' }} aria-hidden="true" />
                     {b.title}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Assignee: {b.assignee_id || 'Unassigned'} • Due: {b.due_date || 'N/A'}
+                  <div className="dash-list-meta">
+                    {nameOf[b.assignee_id] || b.assignee_id || 'Unassigned'} · Due {b.due_date || 'not set'}
                   </div>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => navigate('/board')}>
-                  Resolve on Board
+                  Open board
                 </Button>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </Card>
       )}
+
+      <div className="dash-row">
+        <Card
+          title="Team members"
+          action={
+            <Button variant="ghost" size="sm" onClick={() => navigate('/teams')}>
+              Manage team
+            </Button>
+          }
+        >
+          <Table columns={memberColumns} data={teamMembers} emptyMessage="No team members assigned yet." />
+        </Card>
+
+        <Card
+          title="Review queue"
+          action={
+            <Button variant="ghost" size="sm" onClick={() => navigate('/pull-requests')}>
+              All pull requests
+            </Button>
+          }
+        >
+          <Table columns={prColumns} data={reviewQueue} emptyMessage="Queue is empty." />
+        </Card>
+      </div>
     </div>
   );
 }

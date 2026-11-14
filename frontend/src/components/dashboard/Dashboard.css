@@ -1,0 +1,185 @@
+/* Shared layout for the role dashboards: header, a row of key figures,
+   then rows of panels that fold to one column on narrow screens. */
+
+.dash {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1440px;
+}
+
+.dash > .page-header {
+  margin-bottom: 0 !important;
+}
+
+.dash-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 1rem;
+}
+
+.dash-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.dash-row--wide {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+
+.dash-row--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dash-row > *,
+.dash-stack > * {
+  min-width: 0;
+}
+
+.dash-row > .card {
+  height: 100%;
+}
+
+.dash-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* A sub-heading inside a panel, between two charts. */
+.dash-sub {
+  margin: 1.35rem 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dash-sub:first-child {
+  margin-top: 0;
+}
+
+/* A short written summary inside a panel. */
+.dash-note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--primary-light);
+  border: 1px solid var(--border-accent);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.dash-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary);
+}
+
+.dash-note strong {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.dash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dash-actions > button {
+  justify-content: flex-start !important; /* Button centres its label inline */
+  width: 100%;
+}
+
+.dash-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* A compact list of recent items (events, executions). */
+.dash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dash-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.8125rem;
+}
+
+.dash-list li:last-child {
+  border-bottom: none;
+}
+
+.dash-list-main {
+  min-width: 0;
+}
+
+.dash-list-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-list-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+@media (max-width: 1180px) {
+  .dash-row--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .dash-row,
+  .dash-row--wide,
+  .dash-row--three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phones: key figures two to a row so the charts start on the first screen. */
+@media (max-width: 600px) {
+  .dash {
+    gap: 1rem;
+  }
+
+  .dash-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .dash-kpis .metric-card {
+    padding: 0.9rem !important;
+  }
+
+  .dash-kpis .metric-card > div:first-child > div:last-child {
+    display: none !important; /* the icon; the title already says what the figure is */
+  }
+
+  .dash-kpis .metric-card > div:first-child > div:first-child > div {
+    font-size: 1.5rem !important;
+  }
+}

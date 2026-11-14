@@ -16,7 +16,7 @@ export function AppShell() {
           className="app-main"
           style={{
             flex: 1,
-            padding: '1.75rem',
+            padding: '1.75rem 2rem 2.5rem',
             overflowY: 'auto',
             maxWidth: '1440px',
             width: '100%',

@@ -69,9 +69,8 @@ export function PerformancePage() {
     const evaluatable = employees.filter((e) => {
       const empRole = e.role?.toUpperCase();
       return (
+        // CR-016: eligibility comes from the person's role, never from built-in IDs.
         ELIGIBLE_ENGINEERING_ROLES.includes(empRole) &&
-        e.employee_id !== 'DEMO-HR' &&
-        e.employee_id !== 'DEMO-CEO' &&
         empRole !== ROLES.CEO &&
         empRole !== ROLES.HR
       );
@@ -82,14 +81,12 @@ export function PerformancePage() {
     return evaluatable.filter((e) => e.employee_id === user?.employee_id);
   }, [employees, user, seesEveryone, seesTeam]);
 
-  // Selected developer ID: default to developer themselves if engineer,
-  // or requested from URL query param (if not HR/CEO), or empty until evaluatable list loads.
+  // Selected developer ID: the viewer's own record, or empty until the list of
+  // people they may see has loaded. A ?developer= value is used only once it is
+  // known to be in that list (CR-016: no built-in ID exceptions).
   const [selectedDevId, setSelectedDevId] = useState(() => {
     if (ownRecordOnly) {
       return user?.employee_id || '';
-    }
-    if (requestedDevId && requestedDevId !== 'DEMO-HR' && requestedDevId !== 'DEMO-CEO') {
-      return requestedDevId;
     }
     if (!seesEveryone && !seesTeam) {
       return user?.employee_id || '';
@@ -100,7 +97,7 @@ export function PerformancePage() {
   useEffect(() => {
     if (ownRecordOnly || visibleEmployees.length === 0) return;
 
-    if (requestedDevId && requestedDevId !== 'DEMO-HR' && requestedDevId !== 'DEMO-CEO' && visibleEmployees.some((e) => e.employee_id === requestedDevId)) {
+    if (requestedDevId && visibleEmployees.some((e) => e.employee_id === requestedDevId)) {
       setSelectedDevId(requestedDevId);
       return;
     }
@@ -120,7 +117,9 @@ export function PerformancePage() {
   } = useQuery({
     queryKey: ['developer-performance', shownDevId],
     queryFn: () => performanceApi.getDeveloperDashboard(shownDevId),
-    enabled: Boolean(shownDevId) && shownDevId !== 'DEMO-HR' && shownDevId !== 'DEMO-CEO',
+    // Only query people the viewer may see (own record, or someone in the visible list).
+    enabled: Boolean(shownDevId) && (ownRecordOnly || shownDevId === user?.employee_id
+      || visibleEmployees.some((e) => e.employee_id === shownDevId)),
     retry: 1,
   });
 

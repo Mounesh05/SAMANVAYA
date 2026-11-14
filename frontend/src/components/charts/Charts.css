@@ -1,0 +1,397 @@
+/* Dashboard charts. Thin marks, hairline grid, values in text colours,
+   identity from a coloured key beside the text. Tokens: --viz-* (index.css). */
+
+.viz {
+  position: relative;
+  min-width: 0;
+}
+
+.viz-empty {
+  padding: 1.25rem 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.viz-caption {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.viz-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.viz [tabindex='0']:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ── Legend ─────────────────────────────────────────────────── */
+
+.viz-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin: 0.85rem 0 0;
+  font-size: 0.8125rem;
+}
+
+.viz-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-secondary);
+}
+
+.viz-legend-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.viz-cols + .viz-legend,
+.viz > .viz-legend:first-child {
+  margin: 0 0 0.85rem;
+}
+
+/* ── Segmented bar ──────────────────────────────────────────── */
+
+.viz-seg {
+  display: flex;
+  gap: 2px;
+  height: 28px;
+}
+
+.viz-seg-part {
+  flex-basis: 0;
+  min-width: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: visible;
+  cursor: default;
+  transition: filter var(--transition-fast);
+}
+
+.viz-seg-part:hover {
+  filter: brightness(1.08);
+}
+
+/* ── Bar list ───────────────────────────────────────────────── */
+
+.viz-bars,
+.viz-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.viz-bars li {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.viz-bars-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz-bars-track {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 28px;
+  border-radius: 4px;
+}
+
+.viz-bars-track.is-clickable {
+  cursor: pointer;
+}
+
+.viz-bars-track:hover .viz-bars-bar {
+  filter: brightness(1.1);
+}
+
+.viz-bars-bar {
+  display: block;
+  max-width: calc(100% - 3rem);
+  height: 12px;
+  border-radius: 0 4px 4px 0;
+  border-left: 1px solid var(--viz-axis);
+}
+
+.viz-bars-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Meter ──────────────────────────────────────────────────── */
+
+.viz-meter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.viz-meter-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.viz-meter-track {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.viz-meter-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.viz-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.viz-state svg { flex-shrink: 0; }
+.viz-state--good svg { color: var(--viz-good); }
+.viz-state--warning svg { color: var(--viz-warning); }
+.viz-state--critical svg { color: var(--viz-critical); }
+
+/* ── Stacked columns ────────────────────────────────────────── */
+
+.viz-cols {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.viz-cols-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  transform: translateY(-0.4em);
+}
+
+.viz-cols-plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--viz-axis);
+}
+
+.viz-cols-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--viz-grid);
+  pointer-events: none;
+}
+
+.viz-cols-slot {
+  position: relative;
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: default;
+  border-radius: 4px;
+}
+
+.viz-cols-slot:hover {
+  background: var(--viz-hover);
+}
+
+.viz-cols-stack {
+  width: min(24px, 62%);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.viz-cols-stack span {
+  flex-basis: 0;
+  min-height: 2px;
+}
+
+.viz-cols-stack span:last-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.viz-cols-x {
+  display: flex;
+  margin-top: 0.4rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.viz-cols-x span {
+  flex: 1 1 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* ── Timeline ───────────────────────────────────────────────── */
+
+.viz-timeline li,
+.viz-timeline-axis {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 30%) minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.viz-timeline-track {
+  position: relative;
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(var(--viz-grid), var(--viz-grid)) center / 100% 1px no-repeat;
+}
+
+.viz-timeline-track.is-clickable { cursor: pointer; }
+
+.viz-timeline-bar {
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+}
+
+.viz-timeline-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--text-muted);
+  opacity: 0.6;
+}
+
+.viz-timeline-flag {
+  font-size: 0.6875rem;
+}
+
+.viz-timeline-axis {
+  margin-top: 0.4rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.viz-timeline-axis-dates {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+}
+
+.viz-timeline-head {
+  margin: 0 0 0.25rem;
+  height: 1rem;
+}
+
+.viz-timeline-axis-today {
+  position: absolute;
+  transform: translateX(-50%);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── Tooltip ────────────────────────────────────────────────── */
+
+.viz-tip {
+  position: absolute;
+  z-index: 20;
+  transform: translate(-50%, calc(-100% - 10px));
+  min-width: 140px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.75rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.viz-tip-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+}
+
+.viz-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-secondary);
+}
+
+.viz-tip-label { flex: 1; }
+
+.viz-tip-value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.viz-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .viz-seg-part,
+  .viz-bars-bar,
+  .viz-cols-stack span,
+  .viz-timeline-bar,
+  .viz-meter-track span {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viz * { transition: none !important; }
+}

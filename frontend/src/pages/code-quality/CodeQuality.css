@@ -1,0 +1,146 @@
+/* Code quality page: compact, consistent text inside the analysis panels. */
+
+.cq {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cq > * {
+  margin-bottom: 0 !important;
+}
+
+/* Supported languages strip */
+.cq-langs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.cq-langs-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 0.25rem;
+}
+
+.cq-chip {
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--bg-card-solid, transparent);
+}
+
+.cq-filter {
+  max-width: 320px;
+  margin-bottom: 1rem;
+}
+
+/* Panel body text */
+.cq-panel p,
+.cq-panel li {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.cq-panel p + p,
+.cq-panel p + ul,
+.cq-panel ul + p {
+  margin-top: 0.4rem;
+}
+
+.cq-panel h3,
+.cq-panel h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0.75rem 0 0.35rem;
+}
+
+.cq-panel ul {
+  padding-left: 1.1rem;
+}
+
+.cq-panel a {
+  font-size: 0.8125rem;
+  color: var(--primary);
+}
+
+.cq-panel pre {
+  font-size: 0.75rem;
+  max-height: 320px;
+  overflow: auto;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+
+.cq-panel details {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+  margin-top: 0.6rem;
+}
+
+.cq-panel details details {
+  border-style: dashed;
+}
+
+.cq-panel summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cq-panel article {
+  border-top: 1px solid var(--border-default);
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.cq-note {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Advanced tools disclosure */
+.cq-advanced {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-card-solid, transparent);
+}
+
+.cq-advanced > summary {
+  cursor: pointer;
+  padding: 0.9rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cq-advanced > summary span {
+  margin-left: 0.5rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.cq-advanced[open] > summary {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.cq-advanced-body {
+  padding: 1.25rem;
+}
+
+.cq-advanced-body > * + * {
+  margin-top: 1.25rem;
+}

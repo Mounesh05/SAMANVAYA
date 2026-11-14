@@ -21,6 +21,9 @@ import { AlgorithmComparisonPanel } from './AlgorithmComparisonPanel';
 import { BehavioralCompatibilityPanel } from './BehavioralCompatibilityPanel';
 import { RequirementsPanel } from './RequirementsPanel';
 import { PRAlgorithmIntelligencePanel } from './PRAlgorithmIntelligencePanel';
+import './CodeQuality.css';
+
+const LANGUAGES = ['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust'];
 
 export function CodeQualityPage() {
   const [selectedRepo, setSelectedRepo] = useState('');
@@ -91,7 +94,7 @@ export function CodeQualityPage() {
     { key: 'language', header: 'Language', render: (r) => <span style={{ textTransform: 'capitalize', fontWeight: '600' }}>{r.language || 'Multi'}</span> },
     {
       key: 'quality_score',
-      header: 'Quality Score',
+      header: 'Quality score',
       render: (r) => (
         r.quality_score != null ? (
           <span style={{ fontWeight: '800', color: getGradeColor(r.quality_grade || 'A') }}>
@@ -121,20 +124,20 @@ export function CodeQualityPage() {
     { key: 'created_at', header: 'Date', render: (r) => formatDate(r.created_at) },
     {
       key: 'action',
-      header: 'Action',
+      header: '',
       render: (r) => (
         <Button variant="secondary" size="sm" onClick={() => navigate(`/code-quality/runs/${r.run_id}`)}>
-          {r.status === 'completed' ? 'Inspect Findings' : 'View Run'} <ArrowRight size={14} />
+          {r.status === 'completed' ? 'View findings' : 'View run'} <ArrowRight size={14} />
         </Button>
       ),
     },
   ];
 
   return (
-    <div>
+    <div className="cq">
       <PageHeader
-        title="Unified Code Quality & Multi-Language Engine"
-        subtitle="Language-agnostic quality inspection, static analysis, security vulnerabilities, and risk scoring."
+        title="Code quality"
+        subtitle="Static analysis, security and risk scoring."
         actions={
           <PermissionGuard permission={PERMISSIONS.TRIGGER_CODE_ANALYSIS}>
             <Button
@@ -142,81 +145,54 @@ export function CodeQualityPage() {
               leftIcon={<Play size={16} />}
               onClick={() => setIsAnalyzeModalOpen(true)}
             >
-              Start Analysis Run
+              Start analysis
             </Button>
           </PermissionGuard>
         }
       />
 
-      <PRAlgorithmIntelligencePanel />
-      <details><summary>Advanced manual benchmarking and contract validation</summary>
-      <AlgorithmComparisonPanel />
-      <BehavioralCompatibilityPanel />
-      <RequirementsPanel />
-      </details>
+      <div className="cq-langs" aria-label="Supported languages">
+        <span className="cq-langs-label"><Code2 size={15} aria-hidden="true" /> Auto-detected languages</span>
+        {LANGUAGES.map((language) => <span key={language} className="cq-chip">{language}</span>)}
+      </div>
 
-      {/* Language Engine Banner */}
-      <Card
-        padding="md"
-        style={{
-          background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.08) 100%)',
-          border: '1px solid rgba(6, 182, 212, 0.25)',
-          marginBottom: '1.75rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--cyan-light)',
-                color: 'var(--cyan)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Code2 size={22} />
-            </div>
-            <div>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                Multi-Language Support Active
-              </h4>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Analyzes Java, C++, TypeScript, JavaScript, Python, Go, and Rust with zero manual language configuration.
-              </p>
-            </div>
-          </div>
+      <Card title="Analysis history">
+        <div className="cq-filter">
+          <Input label="Project ID" value={selectedRepo}
+            onChange={(event) => setSelectedRepo(event.target.value.trim())}
+            placeholder="Enter a project ID" />
         </div>
-      </Card>
-
-      <Input label="Analysis history project ID" value={selectedRepo}
-        onChange={(event) => setSelectedRepo(event.target.value.trim())}
-        placeholder="Open existing project analysis and discovered functions" />
-
-      {isLoading ? (
-        <LoadingState message="Loading code quality history..." />
-      ) : error ? (
-        <ErrorState message={error.message} onRetry={refetch} />
-      ) : (
-        <Card title="Analysis History" subtitle="Recent quality runs and findings">
+        {isLoading ? (
+          <LoadingState message="Loading analysis history..." />
+        ) : error ? (
+          <ErrorState message={error.message} onRetry={refetch} />
+        ) : (
           <Table
             columns={columns}
             data={runs}
-            emptyMessage="No analysis runs recorded for this repository."
+            emptyMessage={selectedRepo ? 'No analysis runs for this project.' : 'Enter a project ID to view its runs.'}
             onRowClick={(r) => navigate(`/code-quality/runs/${r.run_id}`)}
           />
-        </Card>
-      )}
+        )}
+      </Card>
+
+      <PRAlgorithmIntelligencePanel />
+
+      <details className="cq-advanced">
+        <summary>Advanced tools<span>Benchmarks, compatibility and requirements</span></summary>
+        <div className="cq-advanced-body cq-panel">
+          <AlgorithmComparisonPanel />
+          <BehavioralCompatibilityPanel />
+          <RequirementsPanel />
+        </div>
+      </details>
 
       {/* Start Analysis Modal */}
       <Modal
         isOpen={isAnalyzeModalOpen}
         onClose={() => setIsAnalyzeModalOpen(false)}
-        title="Start Code Quality Analysis"
-        subtitle="Trigger static analysis and AI code review"
+        title="Start analysis"
+        subtitle="Static analysis and AI review"
         footer={
           <>
             <Button variant="secondary" onClick={() => setIsAnalyzeModalOpen(false)}>
@@ -227,7 +203,7 @@ export function CodeQualityPage() {
               onClick={handleStartAnalysis}
               isLoading={analyzeMutation.isPending}
             >
-              {formData.repository_id.trim() && formData.changed_files.trim() ? 'Run Analysis' : 'Enter repository and changed files'}
+              {formData.repository_id.trim() && formData.changed_files.trim() ? 'Run Analysis' : 'Enter repository and files'}
             </Button>
           </>
         }
@@ -241,32 +217,32 @@ export function CodeQualityPage() {
             required
           />
           <p style={{ marginTop: '-0.65rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Use the connected repository or project identifier. Do not use a sample name.
+            Use the connected repository or project ID.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <Input
-              label="PR Number (Optional)"
+              label="PR number (optional)"
               type="number"
               value={formData.pr_number}
               onChange={(e) => setFormData({ ...formData, pr_number: e.target.value })}
               placeholder="e.g. 42"
             />
             <Select
-              label="Analysis Level"
+              label="Analysis level"
               value={formData.analysis_level}
               onChange={(e) => setFormData({ ...formData, analysis_level: e.target.value })}
               options={[
                 { value: 'quick', label: 'Quick' },
                 { value: 'standard', label: 'Standard' },
-                { value: 'deep', label: 'Deep (Full Tools + Security)' },
+                { value: 'deep', label: 'Deep (all tools + security)' },
               ]}
             />
           </div>
 
           <div>
             <label style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
-              Changed Files (One per line)
+              Changed files (one per line)
             </label>
             <textarea
               rows={4}

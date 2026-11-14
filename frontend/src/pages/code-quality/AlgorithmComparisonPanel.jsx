@@ -429,7 +429,7 @@ export function AlgorithmComparisonPanel() {
   };
 
   return (
-    <Card title={generic ? 'Generic function benchmark' : 'Numeric sorting benchmark'} subtitle="Inspect or compare synchronous functions using measured evidence." style={{ marginBottom: '1.75rem' }}>
+    <Card title={generic ? 'Generic function benchmark' : 'Numeric sorting benchmark'} subtitle="Measure and compare functions" style={{ marginBottom: '1.75rem' }}>
       <div style={stack}>
         <Select label="Benchmark mode" value={mode} placeholder={null} options={[{ value: 'sorting', label: 'Numeric sorting preset' }, { value: 'generic', label: 'Generic function' }]} onChange={(event) => {
           setMode(event.target.value);

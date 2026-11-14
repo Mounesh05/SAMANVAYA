@@ -1,7 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Inter (variable, with optical sizing) is the interface font; the system
+   UI fonts are the fallback while it loads or when it is unavailable. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Theme: Dark (Default) */
@@ -78,6 +80,18 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-full: 9999px;
+
+  /* Charts (dashboards). One series hue, fixed status colours, a neutral. */
+  --viz-blue: #3987e5;
+  --viz-good: #0ca30c;
+  --viz-warning: #fab219;
+  --viz-serious: #ec835a;
+  --viz-critical: #d03b3b;
+  --viz-neutral: #64748b;
+  --viz-neutral-ink: #ffffff;
+  --viz-grid: rgba(148, 163, 184, 0.12);
+  --viz-axis: rgba(148, 163, 184, 0.35);
+  --viz-hover: rgba(148, 163, 184, 0.08);
 }
 
 [data-theme='light'] {
@@ -111,6 +125,13 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+
+  --viz-blue: #2a78d6;
+  --viz-neutral: #a3adbb;
+  --viz-neutral-ink: #0f172a;
+  --viz-grid: #e5e9f0;
+  --viz-axis: #c3cad5;
+  --viz-hover: rgba(15, 23, 42, 0.04);
 }
 
 /* Base resets & typography */
@@ -127,6 +148,7 @@ html, body, #root {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -267,7 +289,7 @@ a:hover {
   animation: spin 0.8s linear infinite;
 }
 
-/* Responsive application shell */
+/* Responsive application shell (side menu and top bar: components/layout/Shell.css) */
 .app-main {
   min-width: 0;
 }
@@ -276,65 +298,15 @@ a:hover {
   .app-main {
     padding: 1.25rem !important;
   }
-
-  .app-topbar {
-    padding: 0 1rem !important;
-  }
-
-  .app-topbar nav {
-    max-width: 34vw;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .app-topbar nav span:not(:last-child),
-  .app-topbar nav svg:not(:last-child) {
-    display: none;
-  }
 }
 
 @media (max-width: 700px) {
-  .app-sidebar {
-    position: fixed !important;
-    inset: 0 auto 0 0;
-    width: 260px !important;
-    transform: translateX(0);
-    box-shadow: var(--shadow-xl);
-    transition: transform var(--transition-base);
-  }
-
-  .app-sidebar.app-sidebar-collapsed {
-    width: 260px !important;
-    transform: translateX(-100%);
-  }
-
   .app-shell-content {
     width: 100%;
   }
 
   .app-main {
     padding: 1rem !important;
-  }
-
-  .app-topbar {
-    height: 62px !important;
-  }
-
-  .app-topbar > div:last-child {
-    gap: 0.4rem !important;
-  }
-
-  .app-topbar > div:last-child > button:first-child {
-    display: none !important;
-  }
-
-  .app-topbar > div:last-child > button:nth-child(2) {
-    display: none !important;
-  }
-
-  .app-topbar nav {
-    max-width: 42vw;
   }
 
   .page-header {

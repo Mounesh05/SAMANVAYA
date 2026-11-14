@@ -17,7 +17,7 @@ export function ScoreCard({
     <Card
       padding="lg"
       style={{
-        background: 'linear-gradient(135deg, rgba(19, 29, 46, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
+        background: 'var(--bg-card-solid)',
         border: '1px solid var(--border-default)',
         position: 'relative',
         overflow: 'hidden',
@@ -37,7 +37,7 @@ export function ScoreCard({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <span style={{ fontSize: '3rem', fontWeight: '900', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
+            <span style={{ fontSize: '3rem', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
               {score == null ? '—' : typeof score === 'number' ? score.toFixed(1) : score}
             </span>
             {score != null && (

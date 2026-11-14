@@ -42,8 +42,8 @@ const mockAdversarialEmployees = [
   { employee_id: 'EMP-EMPTY-ROLE', name: 'Empty Role Emp', role: '', designation: 'Unknown' },
 
   // Spoofed identities: Excluded IDs with engineering roles
-  { employee_id: 'DEMO-HR', name: 'Spoofed HR as Dev', role: 'DEVELOPER', designation: 'Spoofed' },
-  { employee_id: 'DEMO-CEO', name: 'Spoofed CEO as Lead', role: 'LEAD', designation: 'Spoofed' },
+  // CR-016: eligibility is by role only; records that reused the old built-in IDs with
+  // engineering roles were removed (with real IDs they are ordinary engineers).
 
   // Legitimate engineering contributors with varying casing
   { employee_id: 'ENG-DEV-1', name: 'Alice Developer', role: 'DEVELOPER', designation: 'Backend' },

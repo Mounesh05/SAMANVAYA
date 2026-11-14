@@ -50,7 +50,7 @@ export function BehavioralCompatibilityPanel() {
     comparison.mutate({ project_id: project.trim(), previous: candidate(previous), current: candidate(current),
       contract_ids: contractIds.split(',').map(s => s.trim()).filter(Boolean) });
   }
-  return <Card title="Behavioral compatibility" subtitle="Validate a potential replacement against an explicitly approved functional contract" style={{ marginBottom: '1.75rem' }}>
+  return <Card title="Behavioral compatibility" subtitle="Check a replacement against an approved contract" style={{ marginBottom: '1.75rem' }}>
     <p>Names, signatures, algorithm families and Phase 2 hypotheses establish provisional relationships only. All approved required checks must pass. Finite tests do not prove universal equivalence.</p>
     <Input label="Compatibility project ID" value={project} onChange={e => setProject(e.target.value)} />
     <details><summary>Functional contract proposal and independent approval</summary>

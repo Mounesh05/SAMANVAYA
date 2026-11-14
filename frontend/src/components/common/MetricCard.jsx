@@ -35,16 +35,17 @@ export function MetricCard({
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: '500', color: 'var(--text-secondary)' }}>
             {title}
           </span>
           <div
             style={{
               fontSize: '1.75rem',
-              fontWeight: '800',
+              fontWeight: '700',
               color: 'var(--text-primary)',
-              marginTop: '0.25rem',
-              letterSpacing: '-0.03em',
+              marginTop: '0.35rem',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.15,
             }}
           >
             {value}
@@ -54,9 +55,10 @@ export function MetricCard({
         {icon && (
           <div
             style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: 'var(--radius-lg)',
+              width: '38px',
+              height: '38px',
+              flexShrink: 0,
+              borderRadius: 'var(--radius-md)',
               backgroundColor: currentTheme.bg,
               color: currentTheme.text,
               display: 'flex',

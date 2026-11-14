@@ -14,22 +14,22 @@ import { RiskBadge } from '../../components/common/RiskBadge';
 import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import {
-  ListTodo,
-  CheckCircle2,
-  GitPullRequest,
-  Sparkles,
-  ArrowRight,
-  AlertTriangle,
-  KanbanSquare,
-} from 'lucide-react';
+import { SegmentedBar } from '../../components/charts/Charts';
+import '../../components/dashboard/Dashboard.css';
+import { ListTodo, CheckCircle2, GitPullRequest, Sparkles, ArrowRight, AlertTriangle, KanbanSquare } from 'lucide-react';
+
+const RISK_LEVELS = [
+  { key: 'LOW', label: 'Low', tone: 'good' },
+  { key: 'MEDIUM', label: 'Medium', tone: 'warning' },
+  { key: 'HIGH', label: 'High', tone: 'serious' },
+  { key: 'CRITICAL', label: 'Critical', tone: 'critical' },
+];
 
 export function DeveloperDashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const employeeId = user?.employee_id;
 
-  // Role dashboard data
   const {
     data: dashboardData,
     isLoading: isRoleLoading,
@@ -40,111 +40,111 @@ export function DeveloperDashboardPage() {
     queryFn: () => rolesApi.getDeveloperDashboard(),
   });
 
-  // Developer Performance data
-  const {
-    data: perfData,
-  } = useQuery({
+  const { data: perfData } = useQuery({
     queryKey: ['developer-performance', employeeId],
     queryFn: () => performanceApi.getDeveloperDashboard(employeeId),
     retry: 1,
   });
 
-  if (isRoleLoading) {
-    return <LoadingState message="Loading your developer dashboard..." />;
-  }
-
-  if (roleError) {
-    return <ErrorState message={roleError.message} onRetry={refetchRole} />;
-  }
+  if (isRoleLoading) return <LoadingState message="Loading your dashboard..." />;
+  if (roleError) return <ErrorState message={roleError.message} onRetry={refetchRole} />;
 
   const summary = dashboardData?.summary || {};
   const myTasks = dashboardData?.my_tasks || [];
   const myPrs = dashboardData?.my_prs || [];
   const currPerf = perfData?.current_performance;
+  const total = summary.total_tasks || 0;
+  const done = summary.completed_tasks || 0;
+  const inProgress = summary.in_progress_tasks || 0;
+  const blocked = summary.blocked_tasks || 0;
+  const otherTasks = Math.max(total - done - inProgress - blocked, 0);
+  const prRisk = myPrs.reduce((counts, pr) => {
+    const level = String(pr.risk_level || 'LOW').toUpperCase();
+    counts[level] = (counts[level] || 0) + 1;
+    return counts;
+  }, {});
+  const recommendations = currPerf?.ai_evaluation?.recommendations || [];
 
   const taskColumns = [
     { key: 'title', header: 'Task', render: (t) => <span style={{ fontWeight: '600' }}>{t.title}</span> },
-    { key: 'priority', header: 'Priority', render: (t) => <span style={{ textTransform: 'capitalize' }}>{t.priority}</span> },
+    { key: 'priority', header: 'Priority', render: (t) => <span style={{ textTransform: 'capitalize' }}>{t.priority || '—'}</span> },
     { key: 'status', header: 'Status', render: (t) => <StatusBadge status={t.status} /> },
-    { key: 'due_date', header: 'Due Date', render: (t) => t.due_date || '—' },
+    { key: 'due_date', header: 'Due', render: (t) => t.due_date || '—' },
   ];
 
   const prColumns = [
-    { key: 'title', header: 'Pull Request', render: (pr) => <span style={{ fontWeight: '600' }}>{pr.title || `PR #${pr.pr_number || pr.id}`}</span> },
-    { key: 'status', header: 'Status', render: (pr) => <StatusBadge status={pr.status} /> },
+    { key: 'title', header: 'Pull request', render: (pr) => <span style={{ fontWeight: '600' }}>{pr.title || `PR #${pr.pr_number || pr.id}`}</span> },
     { key: 'risk_level', header: 'Risk', render: (pr) => <RiskBadge level={pr.risk_level || 'LOW'} score={pr.risk_score} /> },
     { key: 'repo', header: 'Repository', render: (pr) => pr.repo || pr.project_id || '—' },
   ];
 
   return (
-    <div>
+    <div className="dash">
       <PageHeader
-        title={`Welcome back, ${user?.name || 'Developer'}`}
-        subtitle="Here is your personal work summary, engineering quality metrics, and performance."
+        title={`Welcome back, ${user?.name || 'there'}`}
+        subtitle="Your tasks, pull requests and evaluation."
         actions={
-          <Button
-            variant="primary"
-            leftIcon={<KanbanSquare size={16} />}
-            onClick={() => navigate('/board')}
-          >
-            Open Kanban Board
+          <Button variant="primary" leftIcon={<KanbanSquare size={16} />} onClick={() => navigate('/board')}>
+            Open board
           </Button>
         }
       />
 
-      {/* Metrics Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '1.25rem',
-          marginBottom: '1.75rem',
-        }}
-      >
+      <div className="dash-kpis">
         <MetricCard
-          title="Active Tasks"
-          value={summary.in_progress_tasks || 0}
-          subtitle={`Total assigned: ${summary.total_tasks || 0}`}
-          icon={<ListTodo size={20} />}
+          title="In progress"
+          value={inProgress}
+          subtitle={`${total} assigned`}
+          icon={<ListTodo size={18} />}
           color="primary"
           onClick={() => navigate('/tasks')}
         />
         <MetricCard
-          title="Completed Tasks"
-          value={summary.completed_tasks || 0}
-          subtitle="Tasks marked Done"
-          icon={<CheckCircle2 size={20} />}
+          title="Completed"
+          value={done}
+          subtitle={total ? `${Math.round((done / total) * 100)}% complete` : 'No tasks yet'}
+          icon={<CheckCircle2 size={18} />}
           color="success"
         />
         <MetricCard
-          title="Blocked Work"
-          value={summary.blocked_tasks || 0}
-          subtitle="Requires attention"
-          icon={<AlertTriangle size={20} />}
-          color={summary.blocked_tasks > 0 ? 'danger' : 'warning'}
+          title="Blocked"
+          value={blocked}
+          subtitle={blocked ? 'Needs attention' : 'None blocked'}
+          icon={<AlertTriangle size={18} />}
+          color={blocked > 0 ? 'danger' : 'success'}
         />
         <MetricCard
-          title="Open PRs"
-          value={summary.open_prs || 0}
-          subtitle="In review pipeline"
-          icon={<GitPullRequest size={20} />}
+          title="Open pull requests"
+          value={summary.open_prs ?? 0}
+          subtitle="In review"
+          icon={<GitPullRequest size={18} />}
           color="purple"
           onClick={() => navigate('/pull-requests')}
         />
       </div>
 
-      {/* Performance & AI Recommendations Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '1.75rem',
-        }}
-      >
-        {/* Score Card */}
+      <div className="dash-row">
+        <Card title="My tasks by status">
+          <SegmentedBar
+            label="My tasks by status"
+            emptyText="No tasks yet."
+            parts={[
+              { label: 'Done', value: done, tone: 'good' },
+              { label: 'In progress', value: inProgress, tone: 'blue' },
+              { label: 'Blocked', value: blocked, tone: 'critical' },
+              { label: 'To do and other', value: otherTasks, tone: 'neutral' },
+            ]}
+          />
+          <h4 className="dash-sub">Pull requests by risk</h4>
+          <SegmentedBar
+            label="My open pull requests by risk"
+            emptyText="No open pull requests."
+            parts={RISK_LEVELS.map((level) => ({ label: level.label, value: prRisk[level.key] || 0, tone: level.tone }))}
+          />
+        </Card>
+
         <ScoreCard
-          title="Personal Engineering Score"
+          title="Engineering score"
           score={currPerf?.overall_score ?? currPerf?.final_score ?? null}
           grade={currPerf?.grade || 'N/A'}
           aiScore={currPerf?.ai_evaluation?.overall_score ?? currPerf?.ai_evaluation?.score ?? null}
@@ -152,96 +152,50 @@ export function DeveloperDashboardPage() {
           confidence={currPerf?.ai_evaluation?.confidence_score ?? null}
           period={currPerf?.period || currPerf?.period_label || 'No evaluation period'}
         />
-
-        {/* AI Recommendations Card */}
-        <Card
-          title="AI Engineering Insights"
-          subtitle="Real-time feedback generated by Intelligence Engine"
-          action={
-            <Button
-              variant="ghost"
-              size="sm"
-              rightIcon={<ArrowRight size={14} />}
-              onClick={() => navigate('/performance')}
-            >
-              Full Breakdown
-            </Button>
-          }
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <div
-              style={{
-                padding: '0.75rem 1rem',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '0.65rem',
-              }}
-            >
-              <Sparkles size={18} style={{ color: 'var(--cyan)', flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                  Code Quality & Test Coverage
-                </div>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.2rem', lineHeight: '1.4' }}>
-                  {currPerf?.ai_evaluation?.evaluation_summary ||
-                    currPerf?.ai_evaluation?.reasoning ||
-                    'No AI evaluation is available yet.'}
-                </p>
-              </div>
-            </div>
-
-            {currPerf?.ai_evaluation?.recommendations && currPerf.ai_evaluation.recommendations.length > 0 ? (
-              <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                {currPerf.ai_evaluation.recommendations.slice(0, 2).map((rec, idx) => (
-                  <li key={idx}>{rec}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        </Card>
       </div>
 
-      {/* Tables Row: My Tasks & Open PRs */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
-          gap: '1.5rem',
-        }}
+      <Card
+        title="AI evaluation insights"
+        action={
+          <Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />} onClick={() => navigate('/performance')}>
+            Full breakdown
+          </Button>
+        }
       >
+        <div className="dash-note">
+          <Sparkles size={18} aria-hidden="true" />
+          <div>
+            {currPerf?.ai_evaluation?.evaluation_summary || currPerf?.ai_evaluation?.reasoning || 'No AI evaluation is available yet.'}
+            {recommendations.length > 0 && (
+              <ul style={{ paddingLeft: '1.1rem', marginTop: '0.5rem', display: 'grid', gap: '0.3rem' }}>
+                {recommendations.slice(0, 3).map((rec, idx) => <li key={idx}>{rec}</li>)}
+              </ul>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <div className="dash-row">
         <Card
-          title="My Active Tasks"
-          subtitle="Tasks currently assigned to you"
-          action={
-            <Button variant="ghost" size="sm" onClick={() => navigate('/tasks')}>
-              View All
-            </Button>
-          }
+          title="My active tasks"
+          action={<Button variant="ghost" size="sm" onClick={() => navigate('/tasks')}>View all</Button>}
         >
           <Table
             columns={taskColumns}
             data={myTasks.slice(0, 5)}
-            emptyMessage="No assigned tasks found. Enjoy your day!"
+            emptyMessage="No tasks yet."
             onRowClick={() => navigate('/tasks')}
           />
         </Card>
 
         <Card
-          title="My Open Pull Requests"
-          subtitle="Pull requests undergoing review and risk checks"
-          action={
-            <Button variant="ghost" size="sm" onClick={() => navigate('/pull-requests')}>
-              View All
-            </Button>
-          }
+          title="My open pull requests"
+          action={<Button variant="ghost" size="sm" onClick={() => navigate('/pull-requests')}>View all</Button>}
         >
           <Table
             columns={prColumns}
             data={myPrs.slice(0, 5)}
-            emptyMessage="No open pull requests found."
+            emptyMessage="No open pull requests."
             onRowClick={() => navigate('/pull-requests')}
           />
         </Card>
