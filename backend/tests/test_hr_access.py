@@ -46,9 +46,10 @@ class TestTransferStages:
     def test_non_hr_roles_cannot_act_at_hr_stages(self, stage, role):
         assert not can(stage, actor(role))
 
-    def test_management_stage_is_pm_and_ceo(self):
+    def test_management_stage_is_the_ceo(self):
+        # CR-015 D1-A: senior management (the CEO) approves moves between teams.
         allowed = {r for r in ["PM", "CEO", "LEAD", "HR", "DEVELOPER"] if can("pending_management_approval", actor(r))}
-        assert allowed == {"PM", "CEO"}
+        assert allowed == {"CEO"}
 
     def test_manager_stages_stay_tied_to_the_named_manager(self):
         assert can("pending_current_manager_release", actor("LEAD", employee_id="LEAD-1"))
@@ -60,9 +61,9 @@ class TestTransferStages:
 
 
 class TestExecution:
-    def test_hr_and_ceo_execute(self):
+    def test_hr_executes(self):
         holders = {role.value for role, granted in ROLE_PERMISSIONS.items() if Permission.EXECUTE_TRANSFER in granted}
-        assert holders == {"HR", "CEO"}
+        assert holders == {"HR"}  # CR-015: not the CEO
 
     @pytest.mark.asyncio
     async def test_hr_executes_an_approved_transfer(self):

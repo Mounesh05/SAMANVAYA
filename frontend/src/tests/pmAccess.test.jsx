@@ -49,8 +49,16 @@ beforeEach(() => {
   useAuthStore.setState({ user: PM, token: 't', isAuthenticated: true });
 });
 
-describe('CR-005 transfer management stage', () => {
-  it('shows PMs Approve at the management stage and sends PATCH', async () => {
+describe('CR-005 / CR-015 transfer management stage', () => {
+  it('no longer shows PMs Approve at the management stage (CR-015 D1-A)', async () => {
+    apiClient.get.mockResolvedValue(transfer('pending_management_approval'));
+    renderDetail();
+    expect(await screen.findByText('Transfer Request: TRF-2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Approve Transfer/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the CEO Approve at the management stage and sends PATCH', async () => {
+    useAuthStore.setState({ user: roleUser('CEO', { employee_id: 'CEO-1' }), token: 't', isAuthenticated: true });
     apiClient.get.mockResolvedValue(transfer('pending_management_approval'));
     apiClient.patch.mockResolvedValue(transfer('pending_hr_review'));
     const user = userEvent.setup();
@@ -60,16 +68,22 @@ describe('CR-005 transfer management stage', () => {
     await waitFor(() => expect(apiClient.patch).toHaveBeenCalledWith('/transfers/TRF-2/approve', { comments: null }));
   });
 
-  it('never shows PMs the Execute button (CEO-only on the backend)', async () => {
+  it('never shows PMs the Execute button (HR-only on the backend)', async () => {
     apiClient.get.mockResolvedValue(transfer('approved'));
     renderDetail();
     expect(await screen.findByText('Transfer Request: TRF-2')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Execute/i })).not.toBeInTheDocument();
   });
 
-  it('shows Execute to the CEO for an approved transfer', async () => {
-    useAuthStore.setState({ user: roleUser('CEO', { employee_id: 'CEO-1' }), token: 't', isAuthenticated: true });
+  it('shows Execute to HR, not the CEO, for an approved transfer (CR-015)', async () => {
     apiClient.get.mockResolvedValue(transfer('approved'));
+    useAuthStore.setState({ user: roleUser('CEO', { employee_id: 'CEO-1' }), token: 't', isAuthenticated: true });
+    const { unmount } = renderDetail();
+    expect(await screen.findByText('Transfer Request: TRF-2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Execute/i })).not.toBeInTheDocument();
+    unmount();
+
+    useAuthStore.setState({ user: roleUser('HR', { employee_id: 'HR-1' }), token: 't', isAuthenticated: true });
     renderDetail();
     expect(await screen.findByRole('button', { name: /Execute/i })).toBeInTheDocument();
   });

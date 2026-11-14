@@ -40,7 +40,7 @@ export function PerformancePage() {
   ]);
   const seesTeam = hasPermission(user, PERMISSIONS.VIEW_TEAM_PERFORMANCE);
   const reviewsOutcomes = hasPermission(user, PERMISSIONS.VIEW_PERFORMANCE_OUTCOMES);
-  // Same rule as the backend: TRIGGER_AI_EVALUATION (Lead, CEO, admins).
+  // Same rule as the backend: TRIGGER_AI_EVALUATION (Leads; CR-015: not the CEO).
   const canTriggerEvaluation = hasPermission(user, PERMISSIONS.TRIGGER_AI_EVALUATION);
   // CR-001: without a team/project/organisation performance permission a user
   // sees only their own record, whatever the URL asks for.

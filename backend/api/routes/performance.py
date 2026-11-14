@@ -258,9 +258,9 @@ async def evaluate_developer_performance(
     if Permission.TRIGGER_AI_EVALUATION not in user_permissions:
         raise HTTPException(
             status_code=403,
-            detail="Insufficient permissions. Only CEO or ADMIN can trigger evaluations."
+            detail="Insufficient permissions. Team Leads run individual evaluations."
         )
-    # CR-004: Leads evaluate only their team members; the CEO anyone.
+    # CR-004: Leads evaluate only their team members (CR-015: the CEO no longer runs them).
     from core.authorization import verify_can_view_person_evaluations
     await verify_can_view_person_evaluations(user, developer_id)
 

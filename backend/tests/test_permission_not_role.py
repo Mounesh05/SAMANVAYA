@@ -21,12 +21,12 @@ def person(role, **extra):
 
 
 def test_engineering_tools_keep_their_holders():
-    assert holders(Permission.USE_ENGINEERING_INTELLIGENCE) == {"DEVELOPER", "LEAD", "PM", "CEO", "QA", "DEVOPS"}
+    assert holders(Permission.USE_ENGINEERING_INTELLIGENCE) == {"DEVELOPER", "LEAD", "PM", "QA", "DEVOPS"}  # CR-015: not CEO
     assert Permission.USE_ENGINEERING_INTELLIGENCE in ADMIN_PERMISSIONS  # the old admin bypass
 
 
 def test_contract_approval_keeps_its_holders():
-    assert holders(Permission.APPROVE_ENGINEERING_CONTRACTS) == {"LEAD", "PM", "CEO"}
+    assert holders(Permission.APPROVE_ENGINEERING_CONTRACTS) == {"LEAD", "PM"}  # CR-015: not CEO
     assert Permission.APPROVE_ENGINEERING_CONTRACTS not in ADMIN_PERMISSIONS  # CR-008
 
 

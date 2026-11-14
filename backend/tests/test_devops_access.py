@@ -61,14 +61,14 @@ class TestDevOpsPermissions:
     @pytest.mark.parametrize("permission, roles", [
         # Conversions keep today's roles (DevOps added where CR-003 says so).
         # CR-007 later removed the CEO from the hands-on delivery permissions.
-        (Permission.MANAGE_REPOSITORY_LINK, {"PM", "LEAD", "DEVOPS"}),
+        (Permission.MANAGE_REPOSITORY_LINK, {"LEAD", "DEVOPS"}),  # CR-015: not PM
         (Permission.VIEW_PIPELINES, {"DEVOPS", "QA", "LEAD"}),
         (Permission.VIEW_DEPLOYMENTS, {"DEVOPS", "LEAD"}),
         (Permission.ANALYZE_DEPLOYMENT_RISK, {"DEVOPS", "LEAD"}),
         (Permission.MANAGE_RISK_CONFIG, {"LEAD", "PM", "DEVOPS"}),
-        (Permission.MANAGE_GLOBAL_RISK_CONFIG, {"CEO"}),
+        (Permission.MANAGE_GLOBAL_RISK_CONFIG, set()),  # CR-015 D2-A: admins only (ADMIN_PERMISSIONS)
         (Permission.CLEAR_RISK_CACHE, {"DEVOPS"}),
-        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "PM", "LEAD", "DEVOPS"}),
+        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "LEAD", "DEVOPS"}),  # CR-015: not PM
         (Permission.CREATE_BUG, {"QA", "DEVELOPER", "LEAD", "DEVOPS"}),
     ])
     def test_permission_holders(self, permission, roles):
@@ -119,9 +119,9 @@ class TestRouteGuards:
     async def test_repository_link_and_legacy_ci(self):
         from api.routes import github
         link = {r for r in ["CEO", "PM", "LEAD", "DEVOPS", "QA", "DEVELOPER", "HR"] if await self._allowed(github.save_project_github_config, r)}
-        assert link == {"PM", "LEAD", "DEVOPS"}  # CR-007: not the CEO
+        assert link == {"LEAD", "DEVOPS"}  # CR-007: not the CEO; CR-015: not PM
         ci = {r for r in ["CEO", "PM", "LEAD", "DEVOPS", "QA", "DEVELOPER", "HR"] if await self._allowed(github.provision_qa_workflow, r)}
-        assert ci == {"PM", "LEAD", "DEVOPS", "QA"}  # CR-007: not the CEO. HR removed; it never passed the old write check
+        assert ci == {"LEAD", "DEVOPS", "QA"}  # CR-007: not the CEO. HR removed; it never passed the old write check
 
 
 # ── Project scope for pipelines and deployments ─────────────────────────────
@@ -210,12 +210,13 @@ class TestRiskConfigScope:
             await self._authorize(OPS, "PRJ-B")
         assert error.value.status_code == 403
 
-    @pytest.mark.parametrize("role", ["DEVOPS", "LEAD", "PM"])
-    async def test_only_the_ceo_changes_global_defaults(self, role):
+    @pytest.mark.parametrize("role", ["DEVOPS", "LEAD", "PM", "CEO"])
+    async def test_only_admins_change_global_defaults(self, role):
+        # CR-015 D2-A: organisation-wide thresholds are a platform setting.
         with pytest.raises(HTTPException) as error:
             await self._authorize(make_user("X", role), None)
         assert error.value.status_code == 403
-        assert await self._authorize(CEO, None) is None
+        assert await self._authorize(make_user("ADM", "DEVOPS", is_admin=True), None) is None
 
     async def test_people_without_the_permission_are_refused(self):
         with pytest.raises(HTTPException) as error:

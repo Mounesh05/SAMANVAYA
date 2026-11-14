@@ -23,7 +23,7 @@ async def _authorize_risk_change(user: dict, project_id: Optional[str]) -> None:
 
     - A project's weights: MANAGE_RISK_CONFIG (Lead, PM, DevOps) and
       access to that project.
-    - Global defaults (project_id None): MANAGE_GLOBAL_RISK_CONFIG (CEO).
+    - Global defaults (project_id None): MANAGE_GLOBAL_RISK_CONFIG (admins, CR-015).
     """
     permissions = get_user_permissions(
         user.get("role", user.get("organizational_role", "")),
@@ -32,7 +32,7 @@ async def _authorize_risk_change(user: dict, project_id: Optional[str]) -> None:
     )
     if project_id is None:
         if Permission.MANAGE_GLOBAL_RISK_CONFIG not in permissions:
-            raise HTTPException(status_code=403, detail="Only the CEO can change the global risk defaults")
+            raise HTTPException(status_code=403, detail="Only platform admins can change the global risk defaults")
         return
     if Permission.MANAGE_RISK_CONFIG not in permissions:
         raise HTTPException(status_code=403, detail="Insufficient permissions to change risk configurations")

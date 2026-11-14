@@ -97,7 +97,7 @@ export function TransferDetailPage() {
   const canApprove = isManagerStage || isManagementStage || isHRStage;
   const canReject = isManagerStage || isManagementStage || isHRStage;
   const canFlag = isHRStage && hasPermission(user, PERMISSIONS.REVIEW_TRANSFER_REQUEST);
-  // CR-005/CR-006: Execute only for EXECUTE_TRANSFER holders (HR and CEO).
+  // Execute only for EXECUTE_TRANSFER holders (HR; CR-015: not the CEO).
   const canExecute = hasPermission(user, PERMISSIONS.EXECUTE_TRANSFER) && transfer.status === 'approved';
 
   return (

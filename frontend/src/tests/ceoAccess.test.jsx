@@ -44,10 +44,16 @@ describe('CR-007 CEO permissions', () => {
     expect(hasPermission(CEO, PERMISSIONS[name])).toBe(false);
   });
 
-  it('keeps executive and organisation-design rights', () => {
-    for (const name of ['VIEW_ALL_DATA', 'VIEW_AUDIT_LOGS', 'MANAGE_GLOBAL_RISK_CONFIG', 'MANAGE_TEAMS', 'ASSIGN_TEAM_LEAD']) {
+  it('keeps executive rights', () => {
+    for (const name of ['VIEW_ALL_DATA', 'VIEW_AUDIT_LOGS', 'APPROVE_TRANSFER_AS_MANAGEMENT', 'MANAGE_EVALUATION_POLICY']) {
       expect(hasPermission(CEO, PERMISSIONS[name])).toBe(true);
     }
+    // CR-015 (larger-company model): set-up, record-keeping and engineering tools moved away.
+    for (const name of ['MANAGE_GLOBAL_RISK_CONFIG', 'MANAGE_TEAMS', 'ASSIGN_TEAM_LEAD', 'EXECUTE_TRANSFER',
+      'TRIGGER_AI_EVALUATION', 'USE_ENGINEERING_INTELLIGENCE', 'APPROVE_ENGINEERING_CONTRACTS']) {
+      expect(hasPermission(CEO, PERMISSIONS[name]), name).toBe(false);
+    }
+    expect(canOpenPage(CEO, 'evaluation')).toBe(false);
     expect(canOpenPage(CEO, 'reports')).toBe(true);
     expect(canOpenPage(CEO, 'ceoRisk')).toBe(true);
   });

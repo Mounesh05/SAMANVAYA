@@ -210,6 +210,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.APPROVE_TRANSFER_AS_MANAGER,
     },
 
+    # CR-015: PMs own delivery, not repositories, CI or PR syncing; the
+    # management stage of transfers is the CEO's (D1-A).
     OrganizationalRole.PM: {
         Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
         Permission.APPROVE_ENGINEERING_CONTRACTS,  # was a role-name rule
@@ -217,11 +219,8 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.VIEW_INCIDENTS,  # CR-014 D1-A
         Permission.EXPORT_DATA,  # CR-011 D1-A: report downloads (also need the view right)
         Permission.VIEW_OWN_DATA,
-        Permission.SYNC_REPOSITORY_PRS,
         Permission.ANALYZE_SPRINT_RISK,
-        Permission.MANAGE_REPOSITORY_LINK,
         Permission.MANAGE_RISK_CONFIG,
-        Permission.MANAGE_TEST_AUTOMATION,
         Permission.VIEW_DEFECTS,
         Permission.VIEW_PROJECT_DATA,
         Permission.VIEW_OWN_PERFORMANCE,
@@ -241,7 +240,6 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         # Transfer - PM can initiate and approve but NOT execute organizational transfers
         Permission.REQUEST_TRANSFER,
         Permission.APPROVE_TRANSFER_AS_MANAGER,
-        Permission.APPROVE_TRANSFER_AS_MANAGEMENT,
         # Note: EXECUTE_TRANSFER removed - PM manages projects, not permanent team membership
     },
 
@@ -349,11 +347,11 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-007: executive oversight, approvals and organisation design. Hands-on
     # delivery rights (repository links, CI automation, story acceptance, risk
     # cache and project risk weights) belong to DevOps, QA, Lead and PM.
+    # CR-015 (larger-company model): the CEO sees everything, sets policy and
+    # gives final approvals; admins set up teams, HR records changes, and
+    # engineering owns its tools.
     OrganizationalRole.CEO: {
-        Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
-        Permission.APPROVE_ENGINEERING_CONTRACTS,  # was a role-name rule
         Permission.VIEW_OWN_DATA,
-        Permission.MANAGE_GLOBAL_RISK_CONFIG,
         Permission.VIEW_DEFECTS,
         Permission.VIEW_INCIDENTS,
         Permission.VIEW_ALL_DATA,
@@ -366,21 +364,15 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
         Permission.MANAGE_EVALUATION_POLICY,
         Permission.SUBMIT_CEO_FEEDBACK,
         Permission.VIEW_ROLE_FEEDBACK,
-        Permission.TRIGGER_AI_EVALUATION,
         Permission.TRIGGER_BULK_EVALUATION,
         Permission.EXPORT_DATA,
         Permission.VIEW_AUDIT_LOGS,
         # CRUD permissions
         Permission.CREATE_INCIDENT,
-        Permission.CREATE_TEAM,
-        Permission.MANAGE_TEAMS,
-        Permission.ASSIGN_PROJECT,
-        Permission.ASSIGN_TEAM_LEAD,
         # Transfer
         Permission.REQUEST_TRANSFER,
         Permission.APPROVE_TRANSFER_AS_MANAGER,
         Permission.APPROVE_TRANSFER_AS_MANAGEMENT,
-        Permission.EXECUTE_TRANSFER,
     },
 }
 
@@ -399,6 +391,7 @@ ADMIN_PERMISSIONS: Set[Permission] = {
     Permission.EXPORT_DATA,
     Permission.MANAGE_HR_DESIGNATIONS,  # CR-009 D1-A: admins appoint HR specialists
     Permission.USE_ENGINEERING_INTELLIGENCE,  # replaces the old is_admin bypass on these tools
+    Permission.MANAGE_GLOBAL_RISK_CONFIG,  # CR-015 D2-A: organisation-wide risk thresholds are a platform setting
     # Reserved: no settings or integrations screens check these yet.
     Permission.MANAGE_SETTINGS,
     Permission.MANAGE_INTEGRATIONS,

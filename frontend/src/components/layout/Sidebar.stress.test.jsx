@@ -103,7 +103,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/teams',
           '/bugs',
           '/incidents',
-          '/evaluation',
+          // CR-015: '/evaluation' moved to Leads
           '/performance',
           '/feedback',
           '/reports',

@@ -65,7 +65,7 @@ class TestQaPermissions:
         # Conversions: exactly the roles that had this access before CR-002.
         (Permission.VIEW_DEFECTS, {"QA", "DEVELOPER", "DEVOPS", "LEAD", "PM", "CEO"}),
         (Permission.VIEW_CODE_QUALITY, {"QA", "DEVELOPER", "LEAD", "DEVOPS"}),
-        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "PM", "LEAD", "DEVOPS"}),  # DevOps added in CR-003; CEO removed in CR-007
+        (Permission.MANAGE_TEST_AUTOMATION, {"QA", "LEAD", "DEVOPS"}),  # CR-015: not PM  # DevOps added in CR-003; CEO removed in CR-007
         (Permission.CREATE_INCIDENT, {"QA", "DEVELOPER", "DEVOPS", "CEO"}),
     ])
     def test_permission_holders(self, permission, roles):

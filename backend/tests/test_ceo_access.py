@@ -23,10 +23,13 @@ PROJECT = {"id": "PRJ-A", "team_id": "TEAM-A", "org_id": "O1"}
 REMOVED = [Permission.MANAGE_REPOSITORY_LINK, Permission.MANAGE_TEST_AUTOMATION, Permission.ACCEPT_STORY,
            Permission.CLEAR_RISK_CACHE, Permission.MANAGE_RISK_CONFIG]
 KEPT = [Permission.VIEW_ALL_DATA, Permission.VIEW_ORGANIZATION_DATA, Permission.VIEW_ORGANIZATION_PERFORMANCE,
-        Permission.VIEW_AUDIT_LOGS, Permission.VIEW_DEFECTS, Permission.MANAGE_GLOBAL_RISK_CONFIG,
-        Permission.APPROVE_TRANSFER_AS_MANAGEMENT, Permission.EXECUTE_TRANSFER,
-        # D2-A: organisation design stays with the CEO.
-        Permission.CREATE_TEAM, Permission.MANAGE_TEAMS, Permission.ASSIGN_TEAM_LEAD, Permission.ASSIGN_PROJECT]
+        Permission.VIEW_AUDIT_LOGS, Permission.VIEW_DEFECTS, Permission.APPROVE_TRANSFER_AS_MANAGEMENT,
+        Permission.MANAGE_EVALUATION_POLICY, Permission.TRIGGER_BULK_EVALUATION]
+# CR-015 (larger-company model): set-up, record-keeping and engineering tools
+# move to admins, HR and engineering; replaces CR-007 D2-A.
+MOVED_BY_CR015 = [Permission.CREATE_TEAM, Permission.MANAGE_TEAMS, Permission.ASSIGN_TEAM_LEAD, Permission.ASSIGN_PROJECT,
+                  Permission.EXECUTE_TRANSFER, Permission.TRIGGER_AI_EVALUATION, Permission.APPROVE_ENGINEERING_CONTRACTS,
+                  Permission.USE_ENGINEERING_INTELLIGENCE, Permission.MANAGE_GLOBAL_RISK_CONFIG]
 
 
 def dependency_of(endpoint):
@@ -41,6 +44,10 @@ class TestCEOPermissions:
     @pytest.mark.parametrize("permission", KEPT)
     def test_executive_rights_are_kept(self, permission):
         assert permission in get_user_permissions("CEO")
+
+    @pytest.mark.parametrize("permission", MOVED_BY_CR015)
+    def test_operating_rights_moved_away_from_the_ceo(self, permission):
+        assert permission not in get_user_permissions("CEO")
 
     @pytest.mark.parametrize("permission", REMOVED)
     def test_the_accountable_roles_still_hold_them(self, permission):
@@ -68,14 +75,16 @@ class TestCEOGuards:
         assert error.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_ceo_cannot_change_project_risk_weights_but_can_change_global(self):
+    async def test_ceo_changes_no_risk_weights(self):
+        # CR-015 D2-A: global defaults are a platform setting (admins).
         from api.routes.risk_configurations import _authorize_risk_change
         with patch("core.authorization._project_repo") as projects:
             projects.find_by_id = AsyncMock(return_value=PROJECT)
-            with pytest.raises(HTTPException) as error:
-                await _authorize_risk_change(CEO, "PRJ-A")
-            assert error.value.status_code == 403
-            assert await _authorize_risk_change(CEO, None) is None
+            for project_id in ("PRJ-A", None):
+                with pytest.raises(HTTPException) as error:
+                    await _authorize_risk_change(CEO, project_id)
+                assert error.value.status_code == 403
+            assert await _authorize_risk_change({**CEO, "role": "DEVOPS", "is_admin": True}, None) is None
 
     @pytest.mark.asyncio
     async def test_ceo_cannot_accept_a_draft_story(self):

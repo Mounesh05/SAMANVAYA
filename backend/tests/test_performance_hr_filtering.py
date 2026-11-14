@@ -8,6 +8,7 @@ Verifies:
 """
 
 import pytest
+from unittest.mock import AsyncMock
 from datetime import datetime
 from domain.schemas.hr_views import PerformanceOutcomeHR
 
@@ -251,7 +252,16 @@ class TestPerformanceTechnicalFieldExclusions:
 
         monkeypatch.setattr(UserRepository, "find_by_employee_id", mock_find_by_employee_id)
 
-        admin_caller = {"employee_id": "ADMIN1", "role": "CEO", "is_admin": True}
+        # CR-015: Leads run evaluations; the CEO is refused before the role check.
+        with pytest.raises(HTTPException) as exc_info:
+            await performance.evaluate_developer_performance(
+                developer_id="DEMO-CEO", developer_name="Demo CEO", period="2026-Q3",
+                user={"employee_id": "CEO1", "role": "CEO", "is_admin": True})
+        assert exc_info.value.status_code == 403
+
+        from core import authorization
+        monkeypatch.setattr(authorization, "verify_can_view_person_evaluations", AsyncMock())
+        admin_caller = {"employee_id": "LEAD1", "role": "LEAD", "is_admin": False}
 
         with pytest.raises(HTTPException) as exc_info:
             await performance.evaluate_developer_performance(

@@ -86,7 +86,8 @@ async def test_developer_start_background_execution_get_and_history_contract(api
     assert all("source" not in c for c in history["history"][0]["request"]["candidates"])
 
 
-@pytest.mark.parametrize("role", ["DEVELOPER", "LEAD", "PM", "CEO", "QA", "DEVOPS", "developer"])
+# CR-015: the CEO uses the executive Quality and Risk pages, not the engineering tools.
+@pytest.mark.parametrize("role", ["DEVELOPER", "LEAD", "PM", "QA", "DEVOPS", "developer"])
 async def test_engineering_roles_can_submit(api, body, role):
     api.user["role"] = role
     assert (await api.client.post("/algorithms/runs", json=body)).status_code == 202
@@ -155,7 +156,7 @@ async def test_project_authorization_on_all_evidence_paths(api, body, project_id
     api.service.runner.run.assert_not_awaited()
 
 
-@pytest.mark.parametrize("role,project_id,status", [("CEO", "missing", 404), ("PM", "foreign", 403)])
+@pytest.mark.parametrize("role,project_id,status", [("LEAD", "missing", 404), ("PM", "foreign", 403)])  # CR-015: was CEO
 async def test_privileged_roles_do_not_bypass_existence_or_org(api, body, role, project_id, status):
     api.user["role"] = role
     response = await api.client.post("/algorithms/runs", json={**body, "project_id": project_id})

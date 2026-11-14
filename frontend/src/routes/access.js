@@ -74,7 +74,7 @@ export const PAGE_ACCESS = Object.freeze({
   // CR-001: a Developer's own AI evaluation is shown on the Performance page.
   // CR-006: HR sees outcomes on Performance; the backend refuses HR every
   // evaluation read, so outcome access no longer opens this page.
-  evaluation: { anyOf: [P.TRIGGER_AI_EVALUATION], menuRoles: [CEO, LEAD] },
+  evaluation: { anyOf: [P.TRIGGER_AI_EVALUATION], menuRoles: [LEAD] },  // CR-015: Leads run evaluations, not the CEO
 
   // Not yet expressed as permissions.
   projects: { roles: [...DELIVERY, CEO, HR], menuRoles: [...DELIVERY, CEO], convertIn: 'CR-005 (PM)' },

@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field
 
 from agents.llm_provider import check_ollama_connection, get_ollama_llm
 from core.config import settings
-from core.dependencies import get_current_user, require_roles
+from core.dependencies import get_current_user, require_permission
+from core.permissions import Permission
 from core.authorization import has_global_access, team_member_ids, verify_can_view_person_evaluations
 from domain.models.developer_evaluation import DeveloperEvaluation
 from domain.services.github_api_service import GitHubAPIService
@@ -1257,7 +1258,7 @@ async def _authorized_evaluation(
 @router.post("/evaluate", response_model=EvaluationResult)
 async def evaluate_developer_ai(
     request: SimpleEvalRequest,
-    user: dict = Depends(require_roles("CEO", "LEAD")),
+    user: dict = Depends(require_permission(Permission.TRIGGER_AI_EVALUATION)),  # CR-015: Leads
 ):
     """Evaluate one attributable PR and persist the completed result."""
     employee_id = request.employee_id or user.get("employee_id")

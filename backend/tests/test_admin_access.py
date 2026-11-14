@@ -126,7 +126,8 @@ class TestAdminPermissions:
         assert permission not in ADMIN_PERMISSIONS
         assert permission not in get_user_permissions("DEVELOPER", True)
 
-    @pytest.mark.parametrize("permission", PEOPLE_DECISIONS[:3])
+    # CR-015: the CEO keeps policy and organisation-wide runs; Leads evaluate individuals.
+    @pytest.mark.parametrize("permission", PEOPLE_DECISIONS[1:3])
     def test_the_ceo_keeps_them_through_the_role(self, permission):
         assert permission in get_user_permissions("CEO", False)
 

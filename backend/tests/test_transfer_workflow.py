@@ -151,6 +151,7 @@ class TestManagerInitiatedTransfer:
         sample_lead,
         sample_receiving_lead,
         sample_pm,
+        sample_ceo,
         sample_hr
     ):
         """Test full manager-initiated transfer approval chain."""
@@ -216,13 +217,13 @@ class TestManagerInitiatedTransfer:
             mock_transfer_repo['update_status'].assert_called_once()
             assert mock_transfer_repo['update_status'].call_args[0][1] == TransferStatus.PENDING_MANAGEMENT_APPROVAL.value
             
-            # Step 3: PM approves
+            # Step 3: senior management approves (CR-015 D1-A: the CEO, not the PM)
             mock_transfer_repo['find_by_id'].return_value['status'] = TransferStatus.PENDING_MANAGEMENT_APPROVAL.value
             mock_transfer_repo['update_status'].reset_mock()
             
             approved_by_pm = await transfer_service.approve_transfer(
                 created_transfer.id,
-                sample_pm,
+                sample_ceo,
                 "Approved for organizational efficiency"
             )
             
@@ -483,14 +484,15 @@ class TestTransferExecution:
             mock_update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_ceo_can_execute_approved_transfer(
+    async def test_hr_executes_and_ceo_cannot(
         self,
         transfer_service,
         mock_transfer_repo,
         sample_ceo,
+        sample_hr,
         sample_employee
     ):
-        """Test CEO can execute approved organizational transfer."""
+        """CR-015: HR records the move; the CEO approves but does not execute."""
         mock_transfer_repo['find_by_id'].return_value = {
             "id": "TRF-001",
             "employee_id": "EMP001",
@@ -514,10 +516,14 @@ class TestTransferExecution:
         with patch.object(UserRepository, 'find_by_employee_id') as mock_find, \
              patch.object(UserRepository, 'update') as mock_update:
             mock_find.return_value = sample_employee
+
+            with pytest.raises(ValueError, match="Insufficient permissions to execute transfer"):
+                await transfer_service.execute_transfer("TRF-001", sample_ceo)
+            mock_update.assert_not_called()
             
             executed_transfer = await transfer_service.execute_transfer(
                 "TRF-001",
-                sample_ceo
+                sample_hr
             )
             
             # Should update employee's team

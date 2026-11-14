@@ -52,7 +52,7 @@ async def people(mock_db, monkeypatch):
 # ── Permission matrix ───────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("permission, roles", [
-    (Permission.SYNC_REPOSITORY_PRS, {"LEAD", "PM"}),
+    (Permission.SYNC_REPOSITORY_PRS, {"LEAD"}),  # CR-015: not PM
     (Permission.ANALYZE_SPRINT_RISK, {"LEAD", "PM"}),
     (Permission.CREATE_SPRINT, {"LEAD", "PM"}),  # Lead added (Decision 1)
 ])
@@ -61,14 +61,15 @@ def test_permission_holders(permission, roles):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("module, name", [("api.routes.github", "sync_repository_prs"),
-                                           ("api.routes.intelligence", "analyze_sprint")])
-async def test_converted_guards_keep_lead_and_pm(module, name):
+@pytest.mark.parametrize("module, name, allowed", [
+    ("api.routes.github", "sync_repository_prs", ("LEAD",)),  # CR-015: PR syncing is engineering's, not the PM's
+    ("api.routes.intelligence", "analyze_sprint", ("LEAD", "PM"))])
+async def test_converted_guards_keep_lead_and_pm(module, name, allowed):
     import importlib
     check = inspect.signature(getattr(importlib.import_module(module), name)).parameters["user"].default.dependency
-    for role in ("LEAD", "PM"):
+    for role in allowed:
         assert (await check(user=make_user("X", role)))["role"] == role
-    for role in ("DEVELOPER", "QA", "DEVOPS", "HR", "CEO"):
+    for role in {"LEAD", "PM", "DEVELOPER", "QA", "DEVOPS", "HR", "CEO"} - set(allowed):
         with pytest.raises(HTTPException):
             await check(user=make_user("X", role))
 

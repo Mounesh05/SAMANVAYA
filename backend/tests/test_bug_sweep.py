@@ -45,9 +45,9 @@ async def test_only_admins_clean_up_expired_approvals():
 async def test_github_read_through_needs_repository_link_rights(name):
     from api.routes import github
     check = dependency_of(getattr(github, name))
-    for role in ["DEVELOPER", "QA", "HR", "CEO"]:
+    for role in ["DEVELOPER", "QA", "HR", "CEO", "PM"]:  # CR-015: not PM
         await refused(check(user=make_user("X", role)), 403)
-    for role in ["LEAD", "PM", "DEVOPS"]:
+    for role in ["LEAD", "DEVOPS"]:
         assert (await check(user=make_user("X", role)))["role"] == role
 
 

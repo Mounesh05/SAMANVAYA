@@ -57,7 +57,7 @@ describe('CR-003 DevOps pages', () => {
     const githubSync = ['DEVOPS', 'QA', 'LEAD', 'DEVELOPER', 'PM', 'HR', 'CEO'].filter((r) => canOpenPage(roleUser(r), 'githubSync'));
     expect(pipelines.sort()).toEqual(['DEVOPS', 'LEAD', 'QA']);
     expect(deployments.sort()).toEqual(['DEVOPS', 'LEAD']);
-    expect(githubSync.sort()).toEqual(['DEVOPS', 'LEAD', 'PM']); // CR-007: not the CEO
+    expect(githubSync.sort()).toEqual(['DEVOPS', 'LEAD']); // CR-007: not the CEO; CR-015: not the PM
   });
 
   it('gives DevOps CI automation and defect reporting, but only own performance', () => {
