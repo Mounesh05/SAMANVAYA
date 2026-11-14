@@ -7,6 +7,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
+import { ManualPRAnalysisPanel } from '../../components/github/ManualPRAnalysisPanel';
 
 import { GitPullRequest, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 
@@ -312,6 +313,7 @@ export function GitHubSyncPage() {
           )}
         </Card>
       </div>
+      <ManualPRAnalysisPanel />
     </div>
   );
 }

@@ -50,10 +50,15 @@ async def lifespan(app: FastAPI):
     # Start independently of optional indexes so an unrelated index failure
     # cannot silently disable event recovery.
     from api.routes.webhooks import event_processor
+    from domain.services.pr_workflow_runtime import PRWorkflowRuntime
+    workflow_runtime = PRWorkflowRuntime()
+    app.state.pr_workflow_runtime = workflow_runtime
     try:
         await event_processor.start()
+        await workflow_runtime.start()
         yield
     finally:
+        await workflow_runtime.stop()
         await event_processor.stop()
         await close_db()
 
@@ -262,7 +267,7 @@ from api.routes import (
     auth, projects, sprints, intelligence, stories, tasks, github, ai, setup,
     cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
-    recommendations, traceability, risk_configurations, audit, transfers,
+    recommendations, traceability, risk_configurations, audit, transfers, pr_workflows,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -279,6 +284,7 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 app.include_router(intelligence.router, prefix="/api/intelligence", tags=["Intelligence Engine"])
 app.include_router(github.router, prefix="/api/github", tags=["GitHub Integration"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])
+app.include_router(pr_workflows.router, prefix="/api/ai/workflows/v1")
 app.include_router(cicd_logs.router, prefix="/api/cicd-logs", tags=["CI/CD Logs"])
 app.include_router(qa_test_runs.router, prefix="/api/qa", tags=["QA Test Results"])
 app.include_router(qa_management.router, prefix="/api/qa", tags=["QA Management"])

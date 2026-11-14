@@ -44,7 +44,8 @@ class PREvidenceResolver:
     def __init__(self, api):
         self.api = api
 
-    async def authorize(self, actor, request):
+    @staticmethod
+    async def current_actor(actor):
         identity = actor.get("employee_id") if isinstance(actor, dict) else None
         if not isinstance(identity, str) or not identity:
             raise HTTPException(403, "An authenticated account is required")
@@ -56,6 +57,10 @@ class PREvidenceResolver:
         allowed = permissions(user)
         if user["role"] == "HR" or not {Permission.TRIGGER_AI_EVALUATION, Permission.VIEW_AI_EVALUATION} <= allowed:
             raise HTTPException(403, "Insufficient permissions for manual PR interpretation")
+        return user
+
+    async def authorize(self, actor, request):
+        user = await self.current_actor(actor)
         scope = await invocation_scope(user, {"project_id": request.project_id})
         owner, repo = await _repository(request.project_id, scope["organization_id"])
         return scope, owner, repo
