@@ -37,8 +37,8 @@ export function GitHubSyncPage() {
     repository_url: '',
     default_branch: 'main',
     employee_id: '',
-    github_username: 'Mounesh05',
-    branch: 'feature/mounesh-events',
+    github_username: '',
+    branch: '',
   });
 
   const projectConfigQuery = useQuery({

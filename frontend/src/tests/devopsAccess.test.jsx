@@ -75,4 +75,15 @@ describe('CR-003 GitHub Sync actions', () => {
     expect(await screen.findByText('Project Repository Configuration')).toBeInTheDocument();
     expect(screen.queryByText('Synchronize Single PR')).not.toBeInTheDocument();
   });
+
+  it('starts the repository form empty, with no developer filled in', async () => {
+    useAuthStore.setState({ user: DEVOPS, token: 't', isAuthenticated: true });
+    renderPage(<GitHubSyncPage />);
+    await screen.findByText('Project Repository Configuration');
+    for (const label of ['Project ID', 'Repository Owner', 'Repository Name', 'Repository URL', 'Employee ID', 'GitHub Username', 'Developer Branch']) {
+      const inputs = screen.getAllByLabelText(new RegExp(`^${label}`));
+      expect(inputs.at(-1)).toHaveValue('');
+    }
+    expect(screen.getByLabelText(/^Default Branch/)).toHaveValue('main');
+  });
 });
