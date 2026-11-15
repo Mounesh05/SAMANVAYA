@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import {
   DndContext,
+  useDroppable,
   closestCorners,
   KeyboardSensor,
   PointerSensor,
@@ -56,25 +57,20 @@ function SortableCard({ item, onClick, canDrag }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} onClick={onClick}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      {...(canDrag ? attributes : {})}
+      {...(canDrag ? listeners : {})}
+      aria-label={canDrag ? `${item.title}. Drag to change status` : item.title}
+    >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
         <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: '1.3' }}>
           {item.title}
         </span>
         {canDrag && (
-          <button
-            {...attributes}
-            {...listeners}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'grab',
-              padding: '0.1rem',
-            }}
-          >
-            <GripVertical size={16} />
-          </button>
+          <GripVertical size={16} aria-hidden="true" style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         )}
       </div>
 
@@ -95,9 +91,14 @@ function SortableCard({ item, onClick, canDrag }) {
 }
 
 // Kanban Column Component
-function KanbanColumn({ title, count, items = [], onItemClick, user }) {
+function KanbanColumn({ id, title, count, items = [], onItemClick, user }) {
+  // The whole column is a drop target, so a card can be dropped into an
+  // empty column (previously only cards were targets, so empty columns
+  // swallowed the drop and nothing was sent).
+  const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <div
+      data-column={id}
       style={{
         flex: 1,
         minWidth: '260px',
@@ -139,7 +140,18 @@ function KanbanColumn({ title, count, items = [], onItemClick, user }) {
       </div>
 
       {/* Column Items */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem' }}>
+      <div
+        ref={setNodeRef}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '0.75rem',
+          minHeight: '120px',
+          borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
+          background: isOver ? 'var(--shell-active, rgba(59, 130, 246, 0.08))' : 'transparent',
+          transition: 'background 120ms ease',
+        }}
+      >
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
             <SortableCard
