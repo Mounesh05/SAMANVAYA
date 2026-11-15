@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { performanceApi } from '../../api/performance.api';
 import { employeesApi } from '../../api/employees.api';
@@ -202,6 +202,7 @@ export function PerformancePage() {
         }
       />
 
+      <p><Link to="/performance/assessments">Governed assessment records</Link></p>
       {/* Engineer / Employee Selector */}
       {(visibleEmployees.length > 1 || seesEveryone) && visibleEmployees.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -241,6 +242,7 @@ export function PerformancePage() {
           {/* Main Score Card for HR */}
           <ScoreCard
             title={`${curr?.developer_name || selectedDevId} — Approved Performance`}
+            scoring={curr?.scoring}
             score={curr?.overall_score ?? curr?.final_score ?? null}
             grade={curr?.grade || 'N/A'}
             aiScore={null}
@@ -354,6 +356,7 @@ export function PerformancePage() {
           {/* Main Score Card */}
           <ScoreCard
             title={`${curr?.developer_name || selectedDevId} — Performance`}
+            scoring={curr?.scoring}
             score={curr?.overall_score ?? curr?.final_score ?? null}
             grade={curr?.grade || 'N/A'}
             aiScore={null}

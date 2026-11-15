@@ -10,7 +10,7 @@ Verifies:
 
 import json
 import pytest
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock
 from fastapi import HTTPException
 
 from core.permissions import Permission
@@ -234,9 +234,9 @@ class TestAIRunFiltering:
         assert 'agent_history' not in filtered['output_data'], "Agent history should be removed"
         assert 'errors' not in filtered['output_data'], "Errors should be removed"
         
-        # High-level info should remain
-        assert filtered['output_data']['analysis'] == 'Code analysis result'
-        assert filtered['output_data']['recommendations'] == ['Improve tests']
+        # Generic model prose has no independent HR-safe approval.
+        assert filtered['output_data'] == {}
+        assert filtered['input_data'] == {}
 
 
 class TestSupervisorRouting:
@@ -331,11 +331,9 @@ class TestEndToEndAIAuthorization:
             Permission.VIEW_AI_EVALUATION,
         ])
         mock_ollama = Mock(return_value=True)
-        mock_projects = AsyncMock(return_value=['proj1'])
         
         monkeypatch.setattr(ai_routes, 'get_user_permissions', mock_perms)
         monkeypatch.setattr(ai_routes, 'check_ollama_connection', mock_ollama)
-        monkeypatch.setattr(ai_routes, 'get_accessible_project_ids', mock_projects)
         
         mock_llm = Mock()
         mock_llm.invoke.return_value = json.dumps({

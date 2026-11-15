@@ -6,7 +6,7 @@ Operates with filtered data, NO access to technical details or source code.
 from typing import Dict, Any
 from .state import AgentState
 from .llm_provider import get_ollama_llm
-from .parsers import safe_parse, AgentAnalysisResult
+from .parsers import safe_parse, AgentAnalysisResult, failed_response
 from core.permissions import Permission
 
 
@@ -77,15 +77,10 @@ Return ONLY a valid JSON object with this exact structure:
 Return ONLY the JSON object. No prose before or after."""
 
     try:
-        llm = get_ollama_llm(temperature=0.2, response_format=AgentAnalysisResult.model_json_schema())
+        llm = get_ollama_llm(temperature=0.2)
         response = llm.invoke(prompt)
         
-        fallback = AgentAnalysisResult(
-            analysis="Failed to parse AI response",
-            risk_level="medium",
-            confidence=0.0
-        )
-        parsed = safe_parse(response.content if hasattr(response, 'content') else str(response), AgentAnalysisResult, fallback)
+        parsed = safe_parse(response, AgentAnalysisResult)
         
         return {
             **state,
@@ -98,12 +93,7 @@ Return ONLY the JSON object. No prose before or after."""
         }
     
     except Exception as e:
-        return {
-            **state,
-            "errors": state.get("errors", []) + [f"HR agent error: {str(e)}"],
-            "agent_history": state.get("agent_history", []) + ["hr_assistant"],
-            "next_agent": None,
-        }
+        return failed_response(state, "hr_assistant", e)
 
 
 def _build_hr_evidence_summary(evidence: Dict[str, Any], context: Dict[str, Any]) -> str:

@@ -20,6 +20,11 @@ class AIRunRepository(BaseRepository):
         run_id = str(uuid.uuid4())
         doc = {
             "id": run_id,
+            "access_version": ai_run.access_version,
+            "owner_id": ai_run.owner_id,
+            "project_id": ai_run.project_id,
+            "organization_id": ai_run.organization_id,
+            "provenance": ai_run.provenance,
             "agent_type": ai_run.agent_type,
             "input_data": ai_run.input_data,
             "output_data": ai_run.output_data,
@@ -34,9 +39,9 @@ class AIRunRepository(BaseRepository):
         await self.insert(doc)
         return run_id
 
-    async def get_by_id(self, run_id: str) -> Optional[AIRun]:
+    async def get_by_id(self, run_id: str, filters: Optional[Dict[str, Any]] = None) -> Optional[AIRun]:
         """Find AI run by ID."""
-        doc = await self.find_one({"id": run_id, "agent_type": {"$nin": list(PROTECTED_RUN_TYPES)}})
+        doc = await self.find_one({"$and": [filters or {}, {"id": run_id, "agent_type": {"$nin": list(PROTECTED_RUN_TYPES)}}]})
         return AIRun(**doc) if doc else None
 
     async def list(

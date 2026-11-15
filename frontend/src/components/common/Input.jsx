@@ -74,7 +74,6 @@ export const Input = forwardRef(function Input(
             color: 'var(--text-primary)',
             border: `1px solid ${error ? 'var(--danger)' : 'var(--border-default)'}`,
             borderRadius: 'var(--radius-md)',
-            outline: 'none',
             transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
           }}
           className={`input-field ${className}`}

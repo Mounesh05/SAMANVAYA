@@ -87,6 +87,28 @@ async def human_review_history(assignment_id):
 
 
 class HumanFeedbackService:
+    async def assignments(self, actor):
+        current = await _current(actor)
+        documents = await col("ai_runs").find({"agent_type": "performance_human_assignment",
+            "output_data.payload.reviewer_id": current["employee_id"],
+            "input_data.context.organization_id": current["org_id"]}).limit(101).to_list(101)
+        if len(documents) > 100:
+            raise HTTPException(409, "Assigned review history requires a narrower period query")
+        result = []
+        for document in documents:
+            record = _verify(document, "performance_human_assignment")
+            try:
+                request, run = await self._assignment(record["id"], current)
+            except HTTPException as error:
+                if error.status_code in {403, 404}:
+                    continue
+                raise
+            scope = run.evidence.snapshot.scope
+            result.append({"assignment_id": record["id"], "employee_id": scope.employee_id, "role": request.role,
+                "period_start": scope.period_start.isoformat(), "period_end": scope.period_end.isoformat(),
+                "dimensions": list(request.dimensions), "rating_anchors_status": "POLICY_PENDING"})
+        return result
+
     async def assign(self, request, actor):
         request = HumanReviewerAssignmentRequest.model_validate(request)
         current = await _current(actor)

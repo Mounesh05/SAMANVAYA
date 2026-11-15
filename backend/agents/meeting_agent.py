@@ -6,7 +6,7 @@ Uses JSON-mode prompting + shared parsers for robust LLM output handling.
 from typing import Dict, Any
 from .state import AgentState
 from .llm_provider import get_ollama_llm
-from .parsers import safe_parse, AgentAnalysisResult
+from .parsers import safe_parse, AgentAnalysisResult, failed_response
 
 
 def meeting_insights_node(state: AgentState) -> Dict[str, Any]:
@@ -44,12 +44,10 @@ Return ONLY a valid JSON object:
 }}
 Return ONLY JSON. No prose."""
 
-    fallback = AgentAnalysisResult()
-
     try:
         llm = get_ollama_llm(temperature=0.5)
         response = llm.invoke(prompt)
-        parsed = safe_parse(response, AgentAnalysisResult, fallback)
+        parsed = safe_parse(response, AgentAnalysisResult)
 
         return {
             **state,
@@ -62,9 +60,4 @@ Return ONLY JSON. No prose."""
         }
 
     except Exception as e:
-        return {
-            **state,
-            "errors": state.get("errors", []) + [f"Meeting agent error: {str(e)}"],
-            "agent_history": state.get("agent_history", []) + ["meeting_agent"],
-            "next_agent": None,
-        }
+        return failed_response(state, "meeting_agent", e)

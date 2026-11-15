@@ -7,14 +7,13 @@ import logging
 import httpx
 from typing import Optional
 from langchain_core.language_models import BaseLLM
+from langchain_ollama import OllamaLLM
 from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-try:
-    from langchain_ollama import OllamaLLM
-except ImportError:
-    from langchain_community.llms import Ollama as OllamaLLM
+# Use the pinned provider; do not silently substitute incompatible timeouts.
+INFERENCE_TIMEOUT_SECONDS = 120.0
 
 
 def get_ollama_llm(
@@ -30,7 +29,7 @@ def get_ollama_llm(
         temperature=temperature,
         base_url=base_url or settings.OLLAMA_BASE_URL,
         format="json",
-        timeout=120,
+        client_kwargs={"timeout": INFERENCE_TIMEOUT_SECONDS},
     )
 
 

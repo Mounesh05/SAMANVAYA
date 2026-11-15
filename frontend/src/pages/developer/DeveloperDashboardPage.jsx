@@ -145,6 +145,7 @@ export function DeveloperDashboardPage() {
 
         <ScoreCard
           title="Engineering score"
+          scoring={currPerf?.scoring}
           score={currPerf?.overall_score ?? currPerf?.final_score ?? null}
           grade={currPerf?.grade || 'N/A'}
           aiScore={currPerf?.ai_evaluation?.overall_score ?? currPerf?.ai_evaluation?.score ?? null}

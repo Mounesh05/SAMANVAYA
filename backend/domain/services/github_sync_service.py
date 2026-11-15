@@ -46,6 +46,7 @@ class GitHubSyncService:
         use_ai: bool = True,
         use_deep_analysis: bool = False,
         triggered_by: str = "system",
+        actor: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Fetch PR from GitHub, analyze, and store in database.
@@ -165,8 +166,10 @@ class GitHubSyncService:
         ai_analysis = None
         ai_run_id = None
         code_quality_report = None
+        engine_results = None
         
         if use_ai:
+            from domain.services.internal_agent_adapter import GitHubAutomation
             pr_data = {
                 "pr_id": normalized_pr["id"],
                 "title": github_pr.get("title", ""),
@@ -185,10 +188,12 @@ class GitHubSyncService:
                 risk_evidence=risk_evidence,
                 use_deep_analysis=use_deep_analysis,
                 triggered_by=triggered_by,
+                authorization=actor if actor is not None else GitHubAutomation(project_id, repo_id, pr_data.get("commit_sha")),
             )
             
             ai_analysis = analysis_result.get("ai_analysis")
             code_quality_report = analysis_result.get("code_quality_report")
+            engine_results = analysis_result.get("engine_results_v1")
             ai_run_data = analysis_result.get("ai_run_data")
             
             # Save AI run to database if data available
@@ -203,6 +208,7 @@ class GitHubSyncService:
             "ai_analysis": ai_analysis,
             "ai_run_id": ai_run_id,
             "code_quality_report": code_quality_report.dict() if code_quality_report else None,
+            "engine_results_v1": engine_results,
             "ci_data": ci_data,
             "commit_count": len(commits),
             "discovery_run_id": discovery_run_id,
@@ -218,6 +224,7 @@ class GitHubSyncService:
         project_id: str,
         state: str = "open",
         limit: int = 10,
+        actor: Optional[dict] = None,
     ) -> List[Dict[str, Any]]:
         """
         Sync multiple PRs from a repository.
@@ -242,7 +249,8 @@ class GitHubSyncService:
         for github_pr in github_prs[:limit]:
             try:
                 result = await self.sync_pull_request(
-                    owner, repo, github_pr["number"], project_id
+                    owner, repo, github_pr["number"], project_id,
+                    actor=actor, triggered_by=actor.get("email", "unknown") if actor else "system",
                 )
                 synced_prs.append(result)
             except Exception as e:

@@ -8,7 +8,7 @@ Uses JSON-mode prompting + shared parsers for robust LLM output handling.
 from typing import Dict, Any
 from .state import AgentState
 from .llm_provider import get_ollama_llm
-from .parsers import safe_parse, CodeAnalysisResult
+from .parsers import safe_parse, CodeAnalysisResult, failed_response
 from core.permissions import Permission
 
 
@@ -73,15 +73,10 @@ Analyse the evidence above and return ONLY a valid JSON object with this exact s
 Return ONLY the JSON object. No prose before or after."""
 
     try:
-        llm = get_ollama_llm(temperature=0.2, response_format=CodeAnalysisResult.model_json_schema())
+        llm = get_ollama_llm(temperature=0.2)
         response = llm.invoke(prompt)
 
-        fallback = CodeAnalysisResult(
-            analysis="Failed to parse AI response",
-            risk_level="medium",
-            confidence=0.0
-        )
-        parsed = safe_parse(response.content if hasattr(response, 'content') else str(response), CodeAnalysisResult, fallback)
+        parsed = safe_parse(response, CodeAnalysisResult)
 
         return {
             **state,
@@ -90,13 +85,16 @@ Return ONLY the JSON object. No prose before or after."""
             "risk_level": parsed.risk_level,
             "confidence": parsed.confidence,
             "quality_score": parsed.quality_score,
-            "quality_breakdown": parsed.quality_breakdown,
+            "quality_breakdown": (
+                parsed.quality_breakdown.model_dump(exclude_none=True, exclude={"schema_version"})
+                if parsed.quality_breakdown else None
+            ),
             "failure_risk": parsed.failure_risk,
             "critical_issues": parsed.critical_issues,
             "review_focus": parsed.review_focus,
             # Attach formula-based evidence scores alongside AI interpretation
-            "evidence_risk_score": evidence.get("overall_risk_score", 0),
-            "evidence_quality_score": evidence.get("quality_score", 0),
+            "evidence_risk_score": evidence.get("overall_risk_score"),
+            "evidence_quality_score": evidence.get("quality_score"),
             "risk_factors": evidence.get("risk_factors", []),
             "quality_factors": evidence.get("quality_factors", []),
             "agent_history": state.get("agent_history", []) + ["code_agent_enhanced"],
@@ -104,12 +102,7 @@ Return ONLY the JSON object. No prose before or after."""
         }
 
     except Exception as e:
-        return {
-            **state,
-            "errors": state.get("errors", []) + [f"Code agent error: {str(e)}"],
-            "agent_history": state.get("agent_history", []) + ["code_agent_enhanced"],
-            "next_agent": None,
-        }
+        return failed_response(state, "code_agent_enhanced", e)
 
 
 def _build_evidence_text(evidence: Dict[str, Any], context: Dict[str, Any]) -> str:

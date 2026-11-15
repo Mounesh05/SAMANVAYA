@@ -350,6 +350,7 @@ async def sync_pull_request(
             use_ai=request.use_ai,
             use_deep_analysis=request.use_deep_analysis,
             triggered_by=user.get("email", "unknown"),
+            actor=user,
         )
         
         response = {
@@ -419,6 +420,7 @@ async def sync_repository_prs(
             project_id=request.project_id,
             state=request.state,
             limit=request.limit,
+            actor=user,
         )
         
         successful = [r for r in results if "error" not in r]

@@ -201,6 +201,12 @@ const AuditLogsPage = React.lazy(() =>
 );
 
 // Performance & Analytics
+const GovernedPerformancePage = React.lazy(() =>
+  import('../pages/performance/GovernedPerformancePage').then((m) => ({ default: m.GovernedPerformancePage }))
+);
+const AssignedFeedbackPage = React.lazy(() =>
+  import('../pages/feedback/AssignedFeedbackPage').then((m) => ({ default: m.AssignedFeedbackPage }))
+);
 const PerformancePage = React.lazy(() =>
   import('../pages/performance/PerformancePage').then((m) => ({
     default: m.PerformancePage,
@@ -505,6 +511,8 @@ export function AppRoutes() {
 
           {/* Performance, Feedback & Analytics */}
           <Route path="performance" element={<RoleGuard page="performance"><PerformancePage /></RoleGuard>} />
+          <Route path="performance/assessments" element={<RoleGuard page="performance"><GovernedPerformancePage /></RoleGuard>} />
+          <Route path="feedback/assignments" element={<RoleGuard page="feedback"><AssignedFeedbackPage /></RoleGuard>} />
           <Route
             path="feedback"
             element={

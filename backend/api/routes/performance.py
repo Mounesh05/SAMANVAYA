@@ -30,6 +30,39 @@ from core.permissions import Permission, get_user_permissions
 router = APIRouter()
 
 
+from domain.models.performance_readiness import CalibrationPacketRequest
+
+
+@router.get("/readiness")
+async def get_scoring_readiness(user: dict = Depends(get_current_user)):
+    from domain.services.performance_readiness_service import PerformanceReadinessService
+    return await PerformanceReadinessService().readiness(user)
+
+
+@router.post("/calibration-drafts", status_code=201)
+async def propose_calibration_packet(body: CalibrationPacketRequest, user: dict = Depends(get_current_user)):
+    from domain.services.performance_readiness_service import PerformanceReadinessService
+    return await PerformanceReadinessService().propose(body, user)
+
+
+@router.get("/calibration-drafts/{draft_id}")
+async def get_calibration_packet(draft_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_readiness_service import PerformanceReadinessService
+    return await PerformanceReadinessService().get(draft_id, user)
+
+
+@router.get("/human-assignments")
+async def get_my_human_assignments(user: dict = Depends(get_current_user)):
+    from domain.services.performance_human_service import HumanFeedbackService
+    return await HumanFeedbackService().assignments(user)
+
+
+@router.get("/developer/{employee_id}/assessments")
+async def list_my_scoped_assessments(employee_id: str, user: dict = Depends(get_current_user)):
+    from domain.services.performance_lifecycle_service import AssessmentLifecycleService
+    return await AssessmentLifecycleService().list_for_subject(employee_id, user)
+
+
 from domain.models.performance_lifecycle import (
     ApproverAssignmentRequest, AssessmentActionRequest, AssessmentAppealRequest, AssessmentCreateRequest, PolicyReviewRequest,
 )

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from './Card';
 import { getGradeColor } from '../../utils/formatters';
+import { scoringPresentation } from '../../utils/performanceScoring';
 
 export function ScoreCard({
   title = 'Performance Score',
@@ -10,8 +11,11 @@ export function ScoreCard({
   humanScore = null,
   confidence = null,
   period = null,
+  scoring = null,
 }) {
   const gradeColor = getGradeColor(grade);
+  const presentation = scoringPresentation(scoring, score);
+  const shownScore = presentation.score;
 
   return (
     <Card
@@ -23,6 +27,7 @@ export function ScoreCard({
         overflow: 'hidden',
       }}
     >
+      <p data-approved={presentation.approved}>{presentation.label}</p>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -38,13 +43,13 @@ export function ScoreCard({
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
             <span style={{ fontSize: '3rem', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
-              {score == null ? '—' : typeof score === 'number' ? score.toFixed(1) : score}
+              {shownScore == null ? '—' : shownScore.toFixed(1)}
             </span>
-            {score != null && (
+            {shownScore != null && (
               <span style={{ fontSize: '1.25rem', color: 'var(--text-muted)', fontWeight: '600' }}>/ 100</span>
             )}
 
-            <div
+            {presentation.legacy && grade && grade !== 'N/A' && <div
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -60,12 +65,12 @@ export function ScoreCard({
               }}
             >
               Grade {grade}
-            </div>
+            </div>}
           </div>
         </div>
 
         {/* Optional advisory breakdown */}
-        {(aiScore !== null || humanScore !== null) && (
+        {(!scoring && (aiScore !== null || humanScore !== null)) && (
           <div
             style={{
               display: 'flex',
@@ -99,6 +104,8 @@ export function ScoreCard({
           </div>
         )}
       </div>
+      {presentation.legacy && <p>Preserved historical value; methodology and comparability remain unverified.</p>}
+      {!presentation.legacy && !presentation.approved && <p>Missing evidence, policy or approval is not a zero score.</p>}
     </Card>
   );
 }

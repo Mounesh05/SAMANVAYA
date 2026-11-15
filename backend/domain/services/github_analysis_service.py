@@ -5,7 +5,7 @@ Responsibilities:
 - Risk analysis using RiskEngine
 - AI analysis (code review, deep analysis)
 - Code quality analysis using unified analyzer system
-- No GitHub API calls, no database operations
+- Delegated current-account and project-scope checks
 """
 
 import logging
@@ -15,7 +15,11 @@ import os
 from typing import Dict, Any
 
 from intelligence.risk_engine import RiskEngine
-from domain.models.code_quality_report import CodeQualityReport, QualityBreakdown
+from domain.models.code_quality_report import CodeQualityReport, EngineQualityV1
+from domain.services.internal_agent_adapter import (
+    CodeAuthority, resolve_code_authority, interpret_code, internal_run, failed_interpretation,
+)
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +72,7 @@ class GitHubAnalysisService:
         risk_evidence: Dict[str, Any],
         use_deep_analysis: bool = False,
         triggered_by: str = "system",
+        authorization=None,
     ) -> Dict[str, Any]:
         """
         Run AI analysis on PR.
@@ -77,6 +82,7 @@ class GitHubAnalysisService:
             risk_evidence: Risk analysis results
             use_deep_analysis: Whether to run deep static analysis
             triggered_by: User who triggered the analysis
+            authorization: Current account identity or server-owned GitHub job scope
         
         Returns:
             Dict with ai_analysis and optionally code_quality_report
@@ -85,20 +91,18 @@ class GitHubAnalysisService:
         # replaced by generated prose or numerical model confidence.
         discovery = await self.discover_functions(pr_data)
         try:
-            from agents.llm_provider import check_ollama_connection
-            
-            # Check if Ollama is available
-            if not check_ollama_connection():
-                return {
-                    "ai_analysis": {"error": "Ollama not available"},
-                    "code_quality_report": None,
-                    "function_discovery": discovery.model_dump(mode="json"),
-                }
+            try:
+                authority = await resolve_code_authority(authorization, {
+                    "project_id": pr_data.get("project_id"), "repo": pr_data.get("repo"),
+                    "commit_sha": pr_data.get("commit_sha")})
+            except HTTPException:
+                return {"ai_analysis": failed_interpretation("AUTHORIZATION_FAILED"), "code_quality_report": None,
+                        "function_discovery": discovery.model_dump(mode="json"), "ai_run_data": None}
             
             if use_deep_analysis:
-                result = await self._analyze_deep(pr_data, risk_evidence, triggered_by)
+                result = await self._analyze_deep(pr_data, risk_evidence, triggered_by, authority)
             else:
-                result = await self._analyze_simple(pr_data, risk_evidence, triggered_by)
+                result = await self._analyze_simple(pr_data, risk_evidence, triggered_by, authority)
             result["function_discovery"] = discovery.model_dump(mode="json")
             if result.get("code_quality_report") is not None:
                 result["code_quality_report"].function_discovery = discovery
@@ -107,7 +111,7 @@ class GitHubAnalysisService:
         except Exception as e:
             logger.error(f"AI analysis failed: {e}", exc_info=True)
             return {
-                "ai_analysis": {"error": f"AI analysis failed: {str(e)}"},
+                "ai_analysis": failed_interpretation("AGENT_ADAPTER_FAILED"),
                 "code_quality_report": None,
                 "function_discovery": discovery.model_dump(mode="json"),
             }
@@ -121,52 +125,30 @@ class GitHubAnalysisService:
         pr_data: Dict[str, Any],
         risk_evidence: Dict[str, Any],
         triggered_by: str,
+        authority=None,
     ) -> Dict[str, Any]:
         """
         Simple AI analysis (backward compatible).
         
         Uses risk evidence and lightweight AI agent.
         """
-        from agents.code_agent import code_analysis_node
-        
-        agent_state = {
-            "task_type": "code_review",
-            "evidence": risk_evidence,
-            "context": {
+        if not isinstance(authority, CodeAuthority):
+            return {"ai_analysis": failed_interpretation("AUTHORIZATION_MISSING"), "code_quality_report": None, "ai_run_data": None}
+        context = {
                 "pr_title": pr_data.get("title", ""),
                 "author": pr_data.get("author", ""),
                 "pr_number": pr_data.get("pr_number"),
                 "repo": pr_data.get("repo"),
-            },
-            "agent_history": [],
-            "errors": [],
+                "project_id": authority.scope["project_id"],
+                "organization_id": authority.scope["organization_id"],
+                "commit_sha": pr_data.get("commit_sha"),
         }
-        
-        # Invoke code agent
-        ai_result = code_analysis_node(agent_state)
-        
-        # Extract AI insights
-        ai_analysis = {
-            "analysis": ai_result.get("analysis"),
-            "recommendations": ai_result.get("recommendations", []),
-            "risk_level": ai_result.get("risk_level"),
-            "confidence": ai_result.get("confidence"),
-        }
+        ai_analysis = await interpret_code(risk_evidence, context, authority)
         
         return {
             "ai_analysis": ai_analysis,
             "code_quality_report": None,
-            "ai_run_data": {
-                "agent_type": "code_review",
-                "input_data": {
-                    "evidence": risk_evidence,
-                    "context": agent_state["context"],
-                },
-                "output_data": ai_analysis,
-                "status": "completed",
-                "model_name": "ollama",
-                "triggered_by": triggered_by,
-            },
+            "ai_run_data": internal_run(authority, "code_review", risk_evidence, context, ai_analysis, triggered_by),
         }
 
     async def _analyze_deep(
@@ -174,6 +156,7 @@ class GitHubAnalysisService:
         pr_data: Dict[str, Any],
         risk_evidence: Dict[str, Any],
         triggered_by: str,
+        authority=None,
     ) -> Dict[str, Any]:
         """
         Deep AI analysis with unified analyzer system.
@@ -182,7 +165,8 @@ class GitHubAnalysisService:
         """
         from intelligence.analyzers.language_detector import LanguageDetector
         from intelligence.analyzers.registry import get_analyzers_for_profile
-        from agents.code_agent import code_analysis_node
+        if not isinstance(authority, CodeAuthority):
+            return {"ai_analysis": failed_interpretation("AUTHORIZATION_MISSING"), "code_quality_report": None, "ai_run_data": None}
         
         start_time = time.time()
         
@@ -198,6 +182,9 @@ class GitHubAnalysisService:
             "repo": pr_data.get("repo"),
             "project_id": pr_data.get("project_id"),
             "commit_sha": pr_data.get("commit_sha"),
+            "organization_id": authority.scope["organization_id"],
+            "source_files": pr_data.get("source_files", {}),
+            "source_diagnostics": pr_data.get("source_diagnostics", []),
         }
         
         changed_file_paths = pr_data.get("changed_files", [])
@@ -213,24 +200,9 @@ class GitHubAnalysisService:
             )
             # Return error - no fake scores
             # Quality and risk will be calculated by engines if possible
-            return {
-                "ai_analysis": {
-                    "error": f"No analyzer available for languages: {language_profile.detected_languages}",
-                    "analysis": "Unable to perform deep analysis - language not supported",
-                    "recommendations": ["Add support for this language's analyzer"],
-                },
-                "code_quality_report": None,
-                "ai_run_data": {
-                    "agent_type": "code_review_deep",
-                    "input_data": {
-                        "languages": language_profile.detected_languages,
-                    },
-                    "output_data": {"error": "No analyzer available"},
-                    "status": "failed",
-                    "model_name": "ollama",
-                    "triggered_by": triggered_by,
-                },
-            }
+            failed = failed_interpretation("NO_ANALYZER_AVAILABLE")
+            return {"ai_analysis": failed, "code_quality_report": None,
+                    "ai_run_data": internal_run(authority, "code_review_deep", {}, pr_context, failed, triggered_by)}
         else:
             # Run analysis with ALL detected language analyzers and MERGE results
             # Filter files per language to avoid wasting work
@@ -317,32 +289,23 @@ class GitHubAnalysisService:
         
         quality_result = await QualityEngine().calculate(evidence_obj)
         risk_result = await RiskEngine().analyze_evidence(evidence_obj)
+        engine_results = {"schema_version": "engine-results-v1", "quality": quality_result, "risk": risk_result}
         
         # Prepare state for enhanced AI agent
         # AI provides explanation and recommendations, NOT authoritative scores
-        agent_state = {
-            "task_type": "code_review",
-            "evidence": evidence,
-            "quality_result": quality_result,  # Pass engine results to AI
-            "risk_result": risk_result,
-            "context": pr_context,
-            "agent_history": [],
-            "errors": [],
-        }
-        
-        # Invoke enhanced code agent for explanation only
-        ai_result = code_analysis_node(agent_state)
-        
         # Build CodeQualityReport using ENGINE scores, not AI scores
-        quality_breakdown = QualityBreakdown(
-            correctness=quality_result["dimension_scores"].get("correctness", 0),
-            maintainability=quality_result["dimension_scores"].get("maintainability", 0),
-            security=quality_result["dimension_scores"].get("security", 0),
-            testing=quality_result["dimension_scores"].get("testing", 0),
-            performance=quality_result["dimension_scores"].get("performance", 0),
-            architecture=quality_result["dimension_scores"].get("architecture", 0),
-            readability=quality_result["dimension_scores"].get("readability", 0),
-        )
+        try:
+            engine_quality = EngineQualityV1.model_validate(quality_result)
+        except ValueError:
+            failed = failed_interpretation("ENGINE_SCHEMA_INCOMPATIBLE")
+            failed["engine_results_v1"] = engine_results
+            return {"ai_analysis": failed, "code_quality_report": None,
+                    "quality_result": quality_result, "risk_result": risk_result,
+                    "engine_results_v1": engine_results,
+                    "ai_run_data": internal_run(authority, "code_review_deep", evidence, pr_context, failed, triggered_by)}
+
+        ai_result = await interpret_code(evidence, pr_context, authority,
+            evidence_available=evidence_obj.files_analyzed > 0, quality_result=quality_result, risk_result=risk_result)
         
         code_quality_report = CodeQualityReport(
             pr_id=pr_data.get("pr_id"),
@@ -350,7 +313,10 @@ class GitHubAnalysisService:
             pr_title=pr_data.get("title", ""),
             author=pr_data.get("author", ""),
             quality_score=quality_result["quality_score"],  # From QualityEngine
-            quality_breakdown=quality_breakdown,
+            quality_breakdown=None,
+            quality_representation="quality-engine-v1",
+            engine_quality=engine_quality,
+            engine_risk=risk_result,
             quality_factors=quality_result.get("quality_factors", []),
             failure_risk=risk_result["risk_score"],  # From RiskEngine
             risk_level=risk_result["risk_level"],
@@ -362,6 +328,8 @@ class GitHubAnalysisService:
             dependency_changes=evidence.get("dependencies", {}),
             architecture_analysis=evidence.get("architecture", {}),
             ai_analysis=ai_result.get("analysis"),  # AI explanation only
+            ai_status=ai_result["status"],
+            ai_errors=ai_result["errors"],
             critical_issues=ai_result.get("critical_issues", []),
             recommendations=ai_result.get("recommendations", []),
             review_focus=ai_result.get("review_focus"),
@@ -372,10 +340,8 @@ class GitHubAnalysisService:
         
         # AI analysis contains explanation only, not authoritative scores
         ai_analysis = {
-            "analysis": ai_result.get("analysis"),
-            "recommendations": ai_result.get("recommendations", []),
-            "critical_issues": ai_result.get("critical_issues", []),
-            "review_focus": ai_result.get("review_focus"),
+            **ai_result,
+            "engine_results_v1": engine_results,
             # Engine scores provided separately for reference
             "quality_score": quality_result["quality_score"],
             "risk_score": risk_result["risk_score"],
@@ -385,15 +351,6 @@ class GitHubAnalysisService:
         return {
             "ai_analysis": ai_analysis,
             "code_quality_report": code_quality_report,
-            "ai_run_data": {
-                "agent_type": "code_review_deep",
-                "input_data": {
-                    "evidence": evidence,
-                    "context": pr_context,
-                },
-                "output_data": ai_analysis,
-                "status": "completed",
-                "model_name": "ollama",
-                "triggered_by": triggered_by,
-            },
+            "engine_results_v1": engine_results,
+            "ai_run_data": internal_run(authority, "code_review_deep", evidence, pr_context, ai_analysis, triggered_by),
         }

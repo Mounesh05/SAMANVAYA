@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeesApi } from '../../api/employees.api';
@@ -327,6 +328,7 @@ export function FeedbackPage() {
         }
       />
 
+      <p><Link to="/feedback/assignments">Assigned period observations</Link></p>
       <div style={{ maxWidth: isHR ? '800px' : '640px', margin: '0 auto' }}>
         <Card
           title={isHR ? 'Workplace Conduct & Policy Assessment' : `Feedback Submission (${ROLE_LABELS[role] || role})`}

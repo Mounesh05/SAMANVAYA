@@ -1,0 +1,4063 @@
+{
+  "schema_version": "pr-evaluation-results-v1",
+  "baseline_sha": "57c68623daf4d6ca605f6f715b482619faf0a9f9",
+  "recorded_at": "2026-11-14T14:22:28.022738+00:00",
+  "measurement_kind": "CONTROLLED_RESPONSES_NOT_LIVE_MODEL_QUALITY",
+  "python": "3.12.10",
+  "corpus_sha256": "0c5bf54b4ea26818d2087d33c0abc81957349e3df2457d229593944e8b9b9e28",
+  "protocol_sha256": "880420364a2d53311ef5d12cfdfd2368ed8778fbfc08caf2695fea44f95a073a",
+  "harness_sha256": "5a8812a2711114c4e11204d7ff57bbac5314abc0c448287090b5fac0f67d7478",
+  "helper_sha256": "17f60c2d07658b5a878ff8f6cdf4ed68f1d5a4b9d55818986f7c83e8838b74c8",
+  "live_github": "UNVERIFIED",
+  "live_ollama": "UNVERIFIED",
+  "aggregate": {
+    "legacy_single": {
+      "distinct_cases": 9,
+      "trials": 45,
+      "raw_totals_once_per_case": {
+        "tp": 18,
+        "fp": 3,
+        "tn": 6,
+        "fn": 0,
+        "unknown_or_unsupported_unique": 3
+      },
+      "raw_precision": 0.8571428571428571,
+      "raw_recall": 1.0,
+      "raw_false_positive_rate": 0.3333333333333333,
+      "elapsed_median_ms": 5.064700002549216,
+      "elapsed_p95_ms": 16.2947999779135,
+      "controlled_model_calls": 45,
+      "prompt_bytes_total": 249495,
+      "response_bytes_total": 8280,
+      "live_ollama_resource_usage": {
+        "status": "UNVERIFIED",
+        "cpu": null,
+        "ram_bytes": null,
+        "vram_bytes": null,
+        "gpu": null,
+        "tokens": null,
+        "inference_latency_ms": null
+      }
+    },
+    "collaborative": {
+      "distinct_cases": 9,
+      "trials": 45,
+      "raw_totals_once_per_case": {
+        "tp": 18,
+        "fp": 3,
+        "tn": 6,
+        "fn": 0,
+        "unknown_or_unsupported_unique": 3
+      },
+      "raw_precision": 0.8571428571428571,
+      "raw_recall": 1.0,
+      "raw_false_positive_rate": 0.3333333333333333,
+      "elapsed_median_ms": 5.805299995699897,
+      "elapsed_p95_ms": 13.685000012628734,
+      "controlled_model_calls": 90,
+      "prompt_bytes_total": 528070,
+      "response_bytes_total": 49875,
+      "live_ollama_resource_usage": {
+        "status": "UNVERIFIED",
+        "cpu": null,
+        "ram_bytes": null,
+        "vram_bytes": null,
+        "gpu": null,
+        "tokens": null,
+        "inference_latency_ms": null
+      },
+      "supported_totals_once_per_case": {
+        "tp": 18,
+        "fp": 0,
+        "tn": 9,
+        "fn": 0
+      },
+      "typed_disagreements_detected": 3,
+      "unsupported_promotions": 0
+    }
+  },
+  "evidence_snapshots": {
+    "python-reachability": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/reachability.py@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "55c27f1b9edf8960ccdb66af4fa49eed95b7543bf8b20d00e5cd97096216cd28",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "8fc30e57c81a735f817e433f66ba9233bf5b0274b2610b5549b310f66e8dbbe7",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "9b1d6a1a1a763e2aa520d03ac7f9af777f73bec13044c82b81d36697029578e9",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "116d79aa68d9ac06f2fcd7dda2fa484bb072b2ffd3bad96705adcbe8bcbcd29a",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "source_bytes",
+          "value": 287,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f85e61c770cb60cc42a370451268bea28afa9cf76dc89f6084cb1fdaa15c11db",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "static_structure_adjacency_iteration",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f74809d03388d39b5b87e9a551d431d133a8d46c9adb675cdcda32ebc5eae078",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "static_structure_call",
+          "value": 3,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "aaf2589debfe82297a18752850fe2ddfb08c4d415e13a8b34027cc1f47431ed1",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "static_structure_collection_binding",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "26f1a029e9e634eca234055f3f6f23a74aa1dd095a990947be70c8908b06d68f",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "static_structure_conditional",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "296f11d83d856a7e1a3dcb20feb7568355182f6e7775cd934fe82b6335fe0148",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "static_structure_fifo_remove",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "701f8eb43667c2483905a237bc7bf5d825080fb4e01581eb610927809d41edf3",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py",
+          "metric": "static_structure_indexed_read",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5c46f7a8d070fb9ff5977a810ce78392d7829900115167f963aa5fa2e2f66dbd",
+          "evidence_id": "6a3f376dadef9410676593cad26f5314b14bc50c7c3d5691bc4c05c2ae721b95",
+          "subject": "reachability.py:1",
+          "metric": "declared_function",
+          "value": "explore",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5afaaf2729860bc458b6aaf77ca03d48e6d6ad4d07cbb3203de7a9ad4ae9d0a9",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "7b6eac298a2052b340157823da29b88613a6eed26bbcd8d0d488efbc54f183af",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 8,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5cfe4bac7d430f74e1fe477597a46042a96b6866210ce5070ef7727f0b3c4d78",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5e9072b1dcd8dd63d79dc074896ee2501d4e15c36e607a4db28999bda1aaaf28",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "STRUCTURAL_OBSERVATIONS_BOUNDED",
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "javascript-filter": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/filter.js@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "26b8843a4ce8ba05ea71fe56d730b62757e26f62b32f702d22a492a30e5d01cf",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "24f60f4128fe541d8ec8df75aa531873fc5c2824d90fe7749aad4709da805c11",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "33946caf2f437205b2fe07ac17d57394a4a4802ccec376bd396e8ddb06f311a8",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js",
+          "metric": "function_count",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "08634a92ccdd1e272e8232412fc4e17272e9a9001de98207f8318cbc55033731",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js",
+          "metric": "source_bytes",
+          "value": 71,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "56f92e1bfe0fdee34639b389738150dfe159a7390ac642037d921c8b971a8240",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js",
+          "metric": "static_structure_call",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "d9d09294feaa46400c29f41ffa1f9b7a89f4c40030b50f45276ad4b75619f36b",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js",
+          "metric": "static_structure_filtering_call",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "44d98a2db8f0840495f9300b1e461b747b9e251f417c72fadf9549147d37daaa",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js",
+          "metric": "static_structure_return_value",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f5c66ce3ba5b103da0dcceffe6e6b63f1aeb86b5b0058c351c837369e82f9159",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js:1",
+          "metric": "declared_function",
+          "value": "select",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0753a67d6fb37e6b564a6967ca019b7c7966222f9b3c10951388b8ecdc8aa794",
+          "evidence_id": "ae9e82c8c8d7baabc11a51b3ea1f947883f12cfd0347f64a7f5712efe19faf87",
+          "subject": "filter.js:1",
+          "metric": "declared_function",
+          "value": "select.<anonymous@1>",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "475a462f69053960703be42a5598dc2cc18250f586f9e222ba9a0a3b5f4693b8",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0fb5be4e5c5122419c58a9bb7319408020a7da4d72d4f469ce52d64af8322301",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e44c8b20a29b03222ee786bb8e44f205ac992bcc08abf8e4ddeec2b23c2baf45",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "51fdd1aa0f0bb5ea2f868cc3f1606024300697cb2d53f73c6d7e54911c96851c",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "typescript-sort": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/sort.ts@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "b012329bba0482c28e8f384f617a9ad6253af2fdba6d98bc1e78954a46c360c7",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "34c053567741c2d6f19983daa62e25de40d51ac94a7f6f4d70eb1ae400b4a169",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "719dde0a8d6260563f04c50721d28f253e0c076e8a0e778075db004884a7cbae",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts",
+          "metric": "function_count",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "9a3a76ef35bf8bfd88b66614a986994aaeb806899abed62e7e5746073ae97d21",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts",
+          "metric": "source_bytes",
+          "value": 101,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "d7a3fb15c19fe600dfe3c8a96ff65e4c7b7f30f7615809ab43e6c9ae6658f9d6",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts",
+          "metric": "static_structure_call",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "069455f428ab3c87535ef49a034bd12cbb9c225473c79716ac3fe05bb4ddc74b",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts",
+          "metric": "static_structure_return_value",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "c458ef024e0ad28c648159845eac7d88b39807f7d64191bfede16347fdf54486",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts",
+          "metric": "static_structure_sorting_call",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "a115207aac4f8ee2825af78db432a40d48f032cef8024c62418c0efddc6f4651",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts:1",
+          "metric": "declared_function",
+          "value": "arrange",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "2cb21817c873f1dce903b4054f81d97d9c2eab55defc750f9288115b9aa2c6d3",
+          "evidence_id": "2f38a76886076c56cc7e110f583b65cce0ad6c28fc4a38e37503243949571658",
+          "subject": "sort.ts:1",
+          "metric": "declared_function",
+          "value": "arrange.<anonymous@1>",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "c38f7b54ef04845992203259025c8417797bf0a540bcc3ccec83ff9ea745ef47",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "6b72d08d1fdf36df88099b93182499c64ad63b2fdb492792900c8f7d3d580121",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 9,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e820a8ed19adecd84b034aa0f473c3c5072515466c1ca2240d2c12c39671af51",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "be8d180402cf2b83e9e37ec1bf96246479d16198f51698729dc1d7a6836c0fbf",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "python-misleading-name": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/shortest.py@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "2dc1e44ae961c6315ef538cf514dd17072163293a7a97e659517c1138372cc4e",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "8fc30e57c81a735f817e433f66ba9233bf5b0274b2610b5549b310f66e8dbbe7",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "2a32f4a47e3c0a887aa8023e2157f8185c70ec4d5f0a45fe6231b97c3507cf76",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "fab4ebf47752983f65b4eeac06a4a641624a8697cca34e98d557a12d1364079b",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "source_bytes",
+          "value": 289,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e1bf3958dbea727c18e9d5283e8fc3b7a74846898aaf3d42af4e639681ba84f4",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "static_structure_call",
+          "value": 4,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "7a57c670bf1e9b271120cafb7b2e8056547a1aba759ac7b9cf05770e220d0b8a",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "static_structure_collection_binding",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "d67de509e340efbbd5fb9b25955e5984fd599157ea5e9427a134b0bbf85751ca",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "static_structure_conditional",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0de25f0f3d962f6b374bf7abfe7e4747a1cdb933295f270b897c9df4baefaa66",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "static_structure_indexed_read",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "6556fc322351af4857cc349309e372b35beab7588a81fe22d7a8e0b4dab94f80",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "static_structure_lifo_remove",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f1265d34dc8ee84d904772c7c0661acc8111cdb783dbbe80b2f41a3b154a79e3",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py",
+          "metric": "static_structure_membership_guard",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f8b8c11f164dcbfbb7e10331bcaec1f6c51affb527bc8084201d9c7fbee94066",
+          "evidence_id": "e6b5db8c37079a8faad6515ffd05328b385d9a16bd90d6d790e1dac24f68bbb0",
+          "subject": "shortest.py:2",
+          "metric": "declared_function",
+          "value": "shortest_path",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5afaaf2729860bc458b6aaf77ca03d48e6d6ad4d07cbb3203de7a9ad4ae9d0a9",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "7b6eac298a2052b340157823da29b88613a6eed26bbcd8d0d488efbc54f183af",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 8,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5cfe4bac7d430f74e1fe477597a46042a96b6866210ce5070ef7727f0b3c4d78",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5e9072b1dcd8dd63d79dc074896ee2501d4e15c36e607a4db28999bda1aaaf28",
+          "evidence_id": "8ac28bb75fa205c787cdd9d6edffa52825a499202ed0f59f0faf63a363eea2de",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "STRUCTURAL_OBSERVATIONS_BOUNDED",
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "javascript-recursion": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/recursive.js@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "ad3475dad6994f3e233074096dbf851a19d4de31e7e011cbf2967ff2731fcd08",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "34c053567741c2d6f19983daa62e25de40d51ac94a7f6f4d70eb1ae400b4a169",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "b9803a444f659b9784a3a58ba3421e09473cb53108735e2ee9eba8a7cb7a9511",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "1c73c009ade86d4da64ad780b568aa5a64086a027b7198a3d68179f898dc7056",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "source_bytes",
+          "value": 76,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "2f99134ed6d10546e9b11be7bf6e7f3fdb5c2a6c289e07aed6a0730069900a09",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "static_structure_call",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f25481166d549c1291600ad3a5c0160e0151d9e805c5fb8b4cf2e6f27ac2d223",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "static_structure_conditional",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "bb7c1ff8b753a5c467506ffbd86b05dbb26ba589206674e07b88e938a5b84ee9",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "static_structure_conditional_return",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "89e9531faea12166baf11dc33cce63f3e00a0936aee632ee762b8244cae03c80",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "static_structure_direct_recursion",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "764e00a557ec185e0cb17c1b69a374c91a78aef4732e4d2b42e2efe50b4c8cee",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js",
+          "metric": "static_structure_return_value",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "53bc32103f652828cd505a01f894350c836801c4c8e69209e548055a26c88b13",
+          "evidence_id": "7a06816c16c87eedd1661832037bb61a13f14d51eff175a5a1644645c537bac6",
+          "subject": "recursive.js:1",
+          "metric": "declared_function",
+          "value": "depth",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "c38f7b54ef04845992203259025c8417797bf0a540bcc3ccec83ff9ea745ef47",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "6b72d08d1fdf36df88099b93182499c64ad63b2fdb492792900c8f7d3d580121",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 9,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e820a8ed19adecd84b034aa0f473c3c5072515466c1ca2240d2c12c39671af51",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "be8d180402cf2b83e9e37ec1bf96246479d16198f51698729dc1d7a6836c0fbf",
+          "evidence_id": "72402e750e003d72ccb520dddaae50d686e32b0dfd9343c6d94f1a5ca0dcacc2",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "typescript-dynamic-table": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/table.ts@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "741a89bd25a1c8572b1df47b9d3e09a453d94c43a3cc5de2ab683339b89dcd9c",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "24f60f4128fe541d8ec8df75aa531873fc5c2824d90fe7749aad4709da805c11",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "8a0709b4a51483a31d4ec52a4a60851cf68877d750944bcd46c70f9531db52da",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "d269765afdf587831701e2109db3392ffd0f19a330000409647e56e437395162",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "source_bytes",
+          "value": 196,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "4a84c873cfc9b6dfa1d590c4e69953edb8a747d1ea77d7c0122e30d80d2a0399",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "static_structure_collection_binding",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e46250459b2acb0ad771a0a26b155830ee81f9fed253706404ad2818ea044c89",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "static_structure_indexed_read",
+          "value": 4,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "7f3f38344adff1c8e3d62829aff5e45a4f99f45e16fbc585e887874e32ba36dd",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "static_structure_indexed_write",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "d67d67b761efd33ba07def1e8e7a7b6bcb91dac7fe6eb5a54f96e4f1a9b81924",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "static_structure_return_value",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "35c5cbb144fcf3fe704673216cfe499496a2fb7e58e017eed049fbbb354c6924",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts",
+          "metric": "static_structure_while_loop",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "b343776a7b1053baa9e884f66b15d4b65d425f76577c74e3df56c658af547fcc",
+          "evidence_id": "987280888cdd89900202c444441635c7caa2f590897a8421329606f4f0ebcf81",
+          "subject": "table.ts:1",
+          "metric": "declared_function",
+          "value": "accumulate",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "475a462f69053960703be42a5598dc2cc18250f586f9e222ba9a0a3b5f4693b8",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0fb5be4e5c5122419c58a9bb7319408020a7da4d72d4f469ce52d64af8322301",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e44c8b20a29b03222ee786bb8e44f205ac992bcc08abf8e4ddeec2b23c2baf45",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "51fdd1aa0f0bb5ea2f868cc3f1606024300697cb2d53f73c6d7e54911c96851c",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "python-custom": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "e421ec8110cf497fc4537b8488369597c9c1d127d3c36e04a84debbab26a4739",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/custom.py@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "0a1f385a0223268bbf95885978697da43329dfaa84592429ecc85594d879cdf0",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "24f60f4128fe541d8ec8df75aa531873fc5c2824d90fe7749aad4709da805c11",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "23283e366f17773c01fbdb4e22d54829920e5359904ae61d1c9b08ecf943242f",
+          "evidence_id": "e421ec8110cf497fc4537b8488369597c9c1d127d3c36e04a84debbab26a4739",
+          "subject": "custom.py",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e502cca7385fb248d3dc4cd395c7c7ab9020135688b8a904bbf190a6a5b52ef5",
+          "evidence_id": "e421ec8110cf497fc4537b8488369597c9c1d127d3c36e04a84debbab26a4739",
+          "subject": "custom.py",
+          "metric": "source_bytes",
+          "value": 117,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "4e3148762ed01bc967bc7605d635345e48317a14702b6b318869aa7894339d95",
+          "evidence_id": "e421ec8110cf497fc4537b8488369597c9c1d127d3c36e04a84debbab26a4739",
+          "subject": "custom.py",
+          "metric": "static_structure_iteration",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "ac8116e175c697bb538804fca7295fd754bcdc86f79d99788cabe485591fe1a4",
+          "evidence_id": "e421ec8110cf497fc4537b8488369597c9c1d127d3c36e04a84debbab26a4739",
+          "subject": "custom.py",
+          "metric": "static_structure_return_value",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "ab0cfb9542986a46acbcdbe67bb040614e066fd6ffbdc3534ae6b7309b01c049",
+          "evidence_id": "e421ec8110cf497fc4537b8488369597c9c1d127d3c36e04a84debbab26a4739",
+          "subject": "custom.py:1",
+          "metric": "declared_function",
+          "value": "transform",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "475a462f69053960703be42a5598dc2cc18250f586f9e222ba9a0a3b5f4693b8",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0fb5be4e5c5122419c58a9bb7319408020a7da4d72d4f469ce52d64af8322301",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e44c8b20a29b03222ee786bb8e44f205ac992bcc08abf8e4ddeec2b23c2baf45",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "51fdd1aa0f0bb5ea2f868cc3f1606024300697cb2d53f73c6d7e54911c96851c",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "javascript-custom": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "607eae8bad7f3c232f6a8f6f16b798021213992d4481ff16a719aedddebc0328",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/custom.js@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "e460d9f9dd386f24cef36ca5ef68c895efec4ceaed8be72338f487b240bc6cf3",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "24f60f4128fe541d8ec8df75aa531873fc5c2824d90fe7749aad4709da805c11",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "58f3f78862d0d340ffb88444e78eeb4b51e7e66df8909c53349439efde0d7596",
+          "evidence_id": "607eae8bad7f3c232f6a8f6f16b798021213992d4481ff16a719aedddebc0328",
+          "subject": "custom.js",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "68e219093001e613315efcbccab841c9a5506a6a65abaddc97914fb5370e6561",
+          "evidence_id": "607eae8bad7f3c232f6a8f6f16b798021213992d4481ff16a719aedddebc0328",
+          "subject": "custom.js",
+          "metric": "source_bytes",
+          "value": 123,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "53cf09d0d332fb7e9460013dc4279e2be2d7e50e9e39d9bf70d074ff028d2b57",
+          "evidence_id": "607eae8bad7f3c232f6a8f6f16b798021213992d4481ff16a719aedddebc0328",
+          "subject": "custom.js",
+          "metric": "static_structure_iteration",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "fbcad2b92a0bfa5b5aed8ebfb800a3c1b73c36cab06ab92648d00a5a2a6f2070",
+          "evidence_id": "607eae8bad7f3c232f6a8f6f16b798021213992d4481ff16a719aedddebc0328",
+          "subject": "custom.js",
+          "metric": "static_structure_return_value",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "ec97f48337aba9dc5473e91ae5587283dd5db3576350e5dd587d8a88ef80f223",
+          "evidence_id": "607eae8bad7f3c232f6a8f6f16b798021213992d4481ff16a719aedddebc0328",
+          "subject": "custom.js:1",
+          "metric": "declared_function",
+          "value": "transform",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "475a462f69053960703be42a5598dc2cc18250f586f9e222ba9a0a3b5f4693b8",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0fb5be4e5c5122419c58a9bb7319408020a7da4d72d4f469ce52d64af8322301",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e44c8b20a29b03222ee786bb8e44f205ac992bcc08abf8e4ddeec2b23c2baf45",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "51fdd1aa0f0bb5ea2f868cc3f1606024300697cb2d53f73c6d7e54911c96851c",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    },
+    "typescript-custom": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "scope": {
+        "owner_id": "A",
+        "organization_id": "O1",
+        "project_id": "P1",
+        "repository": "owner/repo",
+        "pr_number": 7,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "references": [
+        {
+          "evidence_id": "d5f8b7d6198dd858d5f95fe3ad91c3ce429e175000b057615a5af1707280b181",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://owner/repo/custom.ts@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "content_sha256": "798e6a44615dbcf871d9567d81d154727fe5cac93469f1e52723d4b7fc1982c4",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "scope": {
+            "owner_id": "A",
+            "organization_id": "O1",
+            "project_id": "P1",
+            "repository": "owner/repo",
+            "pr_number": 7,
+            "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "kind": "CI_SUBMISSION",
+          "source_reference": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "content_sha256": "24f60f4128fe541d8ec8df75aa531873fc5c2824d90fe7749aad4709da805c11",
+          "method": "scoped-ci-submission-v1",
+          "verification_scope": "LOCAL_RECORDED_SUBMISSION"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "042ad6da3843cf4ceb7c52e721a883287484d75959c3548145e9aa7a5ef68201",
+          "evidence_id": "d5f8b7d6198dd858d5f95fe3ad91c3ce429e175000b057615a5af1707280b181",
+          "subject": "custom.ts",
+          "metric": "function_count",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "91bfc7d9e40027568fb8f30e45bc2bc04097cf48be3612ea5d6270cad59326fc",
+          "evidence_id": "d5f8b7d6198dd858d5f95fe3ad91c3ce429e175000b057615a5af1707280b181",
+          "subject": "custom.ts",
+          "metric": "source_bytes",
+          "value": 148,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f017b23f5ae5a72f4ba06b80de06128f9fd3ad9b89a7e9f5a3ac9bb0805cfe40",
+          "evidence_id": "d5f8b7d6198dd858d5f95fe3ad91c3ce429e175000b057615a5af1707280b181",
+          "subject": "custom.ts",
+          "metric": "static_structure_iteration",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "838803db7fffbb2c74d23050f8c8dfe661387d864c80a6d7f3471da4b9e85152",
+          "evidence_id": "d5f8b7d6198dd858d5f95fe3ad91c3ce429e175000b057615a5af1707280b181",
+          "subject": "custom.ts",
+          "metric": "static_structure_return_value",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "6c9c1df40c708f65859b072191caedae273bc1f3b5ecd20b50fb182dfe243ad9",
+          "evidence_id": "d5f8b7d6198dd858d5f95fe3ad91c3ce429e175000b057615a5af1707280b181",
+          "subject": "custom.ts:1",
+          "metric": "declared_function",
+          "value": "transform",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "475a462f69053960703be42a5598dc2cc18250f586f9e222ba9a0a3b5f4693b8",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_total_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0fb5be4e5c5122419c58a9bb7319408020a7da4d72d4f469ce52d64af8322301",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_passed_tests",
+          "value": 10,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e44c8b20a29b03222ee786bb8e44f205ac992bcc08abf8e4ddeec2b23c2baf45",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_failed_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "51fdd1aa0f0bb5ea2f868cc3f1606024300697cb2d53f73c6d7e54911c96851c",
+          "evidence_id": "5bec0c6fe048eff31101aa99ccb985d14c6f9bc73249cbcc0b2a2b08e3eba647",
+          "subject": "test_runs/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "metric": "ci_reported_skipped_tests",
+          "value": 0,
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF"
+      ]
+    }
+  },
+  "trials": [
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 29.716999997617677,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6142,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 19.712000008439645,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12789,
+      "response_bytes": 818
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 11.518399987835437,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12789,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 14.526300015859306,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6142,
+      "response_bytes": 145
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 13.380099990172312,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6142,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 7.9107000201474875,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12789,
+      "response_bytes": 818
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 7.53989999066107,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12789,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 12.463100021705031,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6142,
+      "response_bytes": 145
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 13.631800014991313,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6142,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-reachability",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "bbf30fdce74f02fc188ebfcd8f931fe1ee35bdce87db92591c197cfd5f92421d",
+      "elapsed_ms": 19.116300012683496,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12789,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 3.1205000123009086,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5529,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 3.255700023146346,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11631,
+      "response_bytes": 818
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 3.098800021689385,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11631,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 2.8359999996609986,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5529,
+      "response_bytes": 145
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 2.742000011494383,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5529,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 3.2263000030070543,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11631,
+      "response_bytes": 818
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 2.949399990029633,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11631,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 2.410399989457801,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5529,
+      "response_bytes": 145
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 2.436899987515062,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5529,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-filter",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "d1ab004850a94a9c57a267cd1bf5fa580a071b8e2c79a3aa7f37037c5e0d11b0",
+      "elapsed_ms": 3.4419000148773193,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11631,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 4.525800002738833,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5513,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 5.520499980775639,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11599,
+      "response_bytes": 818
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 5.122100003063679,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11599,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 4.0234999905806035,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5513,
+      "response_bytes": 145
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 5.164300004253164,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5513,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 5.648699996527284,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11599,
+      "response_bytes": 818
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 4.740199976367876,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11599,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 4.128999979002401,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5513,
+      "response_bytes": 145
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 4.90259999060072,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5513,
+      "response_bytes": 145
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-sort",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "aaacae0e9706f9628ca428dba6e2af0f26e67a8d096b0f38d8cd0d0b9ca13a07",
+      "elapsed_ms": 4.667300003347918,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 11599,
+      "response_bytes": 818
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 5.005899991374463,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6105,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 5.467600014526397,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12715,
+      "response_bytes": 1131
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 5.805299995699897,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12715,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 5.3097999771125615,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6105,
+      "response_bytes": 174
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 4.286600014893338,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6105,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 5.645500001264736,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12715,
+      "response_bytes": 1131
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 6.090200011385605,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12715,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 5.064700002549216,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6105,
+      "response_bytes": 174
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 4.816500004380941,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 6105,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "python-misleading-name",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "12a25bed10fcdeccef4c6c62f310a4ebf9699f4ce39155a08e89fd552055db9d",
+      "elapsed_ms": 6.034099991666153,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12715,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 8.34450000547804,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5810,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 9.79650000226684,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12193,
+      "response_bytes": 1131
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 7.332000008318573,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12193,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 6.036200007656589,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5810,
+      "response_bytes": 174
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 7.219099992653355,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5810,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 8.081700012553483,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12193,
+      "response_bytes": 1131
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 7.314099988434464,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12193,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 5.561300000408664,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5810,
+      "response_bytes": 174
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 5.718000000342727,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5810,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-recursion",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "6dc19b9944bdaef7419a443b2562ec80d78983c302a5217e83bea21c83475aa1",
+      "elapsed_ms": 6.861699977889657,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12193,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 4.793200001586229,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5785,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 7.607099978486076,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12143,
+      "response_bytes": 1131
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 8.387999987462536,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12143,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 5.28640000266023,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5785,
+      "response_bytes": 174
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 4.611800017300993,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5785,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 5.063800024800003,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12143,
+      "response_bytes": 1131
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 5.127100012032315,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12143,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 4.3169000127818435,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5785,
+      "response_bytes": 174
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 3.9825999992899597,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5785,
+      "response_bytes": 174
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": true,
+      "unsupported_promotions": 0,
+      "status": "PARTIAL_COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-dynamic-table",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "8a4c22ed0cd439917b1bbf7b613c4c86b99afc7f973f583719dac528170ff08f",
+      "elapsed_ms": 4.888299998128787,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 1,
+        "tn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "false_positive_rate": 1.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "model_calls": 2,
+      "prompt_bytes": 12143,
+      "response_bytes": 1131
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 16.2947999779135,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 5.945900018559769,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 10.155099997064099,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 16.830199980176985,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 4.2600999877322465,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 5.859500000951812,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 7.060999982059002,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 5.162500019650906,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 4.9761000263970345,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "python-custom",
+      "language": "python",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "e4151d1310ed9a862a0a7fe2f137f1f7ed4a100b0469561771d681eda696a856",
+      "elapsed_ms": 13.685000012628734,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 4.483600001549348,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 5.08190001710318,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 5.5050000082701445,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 5.230200011283159,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 4.976500000339001,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 5.044999998062849,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 4.7116999921854585,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 7.195900019723922,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 5.8339999814052135,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "javascript-custom",
+      "language": "javascript",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "f859487660b3598050dba033eebb0222e95e13f3b768f875c884ba9df944ed90",
+      "elapsed_ms": 7.0460999850183725,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 0,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 4.404400009661913,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 0,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 5.660600028932095,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 1,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 5.119899986311793,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 1,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 4.165199992712587,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 2,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 5.659000016748905,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 2,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 8.047800016356632,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 3,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 5.384699994465336,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 3,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 7.3549999797251076,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": null,
+      "disagreement_detected": false,
+      "unsupported_promotions": null,
+      "status": "VALID_LEGACY_ADVISORY",
+      "structured_conflict_state": "NOT_SUPPORTED_BY_LEGACY_SCHEMA",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "legacy_single",
+      "repetition": 4,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 6.047300004865974,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 1,
+      "prompt_bytes": 5005,
+      "response_bytes": 233
+    },
+    {
+      "supported": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 0
+      },
+      "disagreement_detected": false,
+      "unsupported_promotions": 0,
+      "status": "COLLABORATIVE_ADVISORY",
+      "case_id": "typescript-custom",
+      "language": "typescript",
+      "mode": "collaborative",
+      "repetition": 4,
+      "snapshot_id": "62dbee8fb178468c307050a763997e1d275a533a024b471024adf372a3de9b61",
+      "elapsed_ms": 7.025600003544241,
+      "raw": {
+        "tp": 2,
+        "fn": 0,
+        "fp": 0,
+        "tn": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "false_positive_rate": 0.0,
+        "unknown_or_unsupported_unique": 1
+      },
+      "model_calls": 2,
+      "prompt_bytes": 10848,
+      "response_bytes": 1376
+    }
+  ]
+}
