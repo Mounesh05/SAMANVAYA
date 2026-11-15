@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str = ""
     GITHUB_TIMEOUT: int = 15
     GITHUB_WEBHOOK_SECRET: str = ""  # Set to your webhook secret from GitHub
+    # Background check of linked repositories for new or changed pull requests,
+    # for installs GitHub cannot reach with webhooks (e.g. localhost). 0 = off.
+    GITHUB_POLL_INTERVAL_SECONDS: int = 180
     QA_TEST_RESULTS_TOKEN: str = ""  # Token used by CI to submit test results
     SAMANVAYA_PUBLIC_API_URL: str = ""  # Public HTTPS URL used by provisioned CI workflows
     

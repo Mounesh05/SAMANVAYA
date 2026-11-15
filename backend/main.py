@@ -51,13 +51,17 @@ async def lifespan(app: FastAPI):
     # cannot silently disable event recovery.
     from api.routes.webhooks import event_processor
     from domain.services.pr_workflow_runtime import PRWorkflowRuntime
+    from domain.services.github_pr_poller import pr_poller
     workflow_runtime = PRWorkflowRuntime()
     app.state.pr_workflow_runtime = workflow_runtime
     try:
         await event_processor.start()
         await workflow_runtime.start()
+        # Pull requests of linked repositories without webhooks (e.g. localhost).
+        await pr_poller.start()
         yield
     finally:
+        await pr_poller.stop()
         await workflow_runtime.stop()
         await event_processor.stop()
         await close_db()
