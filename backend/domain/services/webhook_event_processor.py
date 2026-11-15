@@ -25,6 +25,7 @@ from repositories.pr_repository import PRRepository
 from repositories.project_repository import ProjectRepository
 from repositories.user_repository import UserRepository
 from domain.services.github_sync_service import GitHubSyncService
+from domain.services.task_progress_service import apply_task_progress
 from domain.services.enhanced_notification_service import EnhancedNotificationService as NotificationService
 from domain.services.traceability_service import TraceabilityService
 from domain.services.recommendation_engine import RecommendationEngine
@@ -459,10 +460,14 @@ class WebhookEventProcessor:
             if merged:
                 triggers_executed.append("pr_merged")
                 # TODO: Trigger delivery metrics calculation
-                # TODO: Update sprint progress
-                # TODO: Link to tasks (Phase 1.2)
             else:
                 triggers_executed.append("pr_closed")
+            # Tasks named in the pull request: merged -> done, closed -> in progress.
+            if await apply_task_progress(event.project_id, pr):
+                triggers_executed.append("task_progress")
+        elif action in ("ready_for_review", "converted_to_draft"):
+            if await apply_task_progress(event.project_id, pr):
+                triggers_executed.append("task_progress")
         
         return {
             "triggers_executed": triggers_executed,
@@ -535,7 +540,14 @@ class WebhookEventProcessor:
         review_state = review.get("state", "")
         
         notifications_sent = []
-        
+        triggers = ["review_tracking"]
+
+        # Changes requested -> the named tasks go back to in progress;
+        # an approval keeps them in review (task progress is idempotent).
+        if str(review_state).lower() in ("approved", "changes_requested"):
+            if await apply_task_progress(event.project_id, pr, [review]):
+                triggers.append("task_progress")
+
         # Notify PR author
         if pr_author and pr_author != reviewer:
             state_labels = {
@@ -555,7 +567,7 @@ class WebhookEventProcessor:
             notifications_sent.append(notification["id"])
         
         return {
-            "triggers_executed": ["review_tracking"],
+            "triggers_executed": triggers,
             "risks_detected": [],
             "notifications_sent": notifications_sent,
             "recommendations_created": []

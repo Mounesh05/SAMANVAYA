@@ -17,6 +17,7 @@ from repositories.ai_run_repository import AIRunRepository
 from domain.models.ai_run import AIRun
 from domain.services.github_api_service import GitHubAPIService
 from domain.services.github_analysis_service import GitHubAnalysisService
+from domain.services.task_progress_service import apply_task_progress
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,9 @@ class GitHubSyncService:
             github_pr, project_id, repo_id
         )
         
+        # Tasks named in the pull request follow its state (best effort).
+        task_progress = await apply_task_progress(project_id, github_pr, github_data.get("reviews"))
+
         file_stats = self.normalizer.normalize_pr_files(files)
         ci_data = self.normalizer.normalize_check_runs(check_runs)
         pr_age_hours = self.normalizer.calculate_pr_age_hours(github_pr["created_at"])
@@ -121,6 +125,7 @@ class GitHubSyncService:
             validate_current=validate_current if github_pr.get("base", {}).get("sha") else None)
         if not current_revision:
             return {"pr": normalized_pr, "file_stats": {}, "ci_data": {}, "commit_count": None,
+                    "task_progress": task_progress,
                     "risk_analysis": {"risk_score": normalized_pr.get("risk_score"), "risk_level": normalized_pr.get("risk_level", "unknown"),
                                       "analysis_status": "superseded"},
                     "ai_analysis": None, "ai_run_id": None, "code_quality_report": None,
@@ -215,6 +220,7 @@ class GitHubSyncService:
             "function_discovery": function_discovery.model_dump(mode="json") if function_discovery else None,
             "algorithm_intelligence": algorithm_intelligence,
             "revision_superseded": not current_revision,
+            "task_progress": task_progress,
         }
 
     async def sync_repository_prs(
