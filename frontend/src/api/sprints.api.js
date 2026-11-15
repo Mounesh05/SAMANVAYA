@@ -20,4 +20,9 @@ export const sprintsApi = {
   getHealth: async (sprintId) => {
     return apiClient.get(`/sprints/${sprintId}/health`);
   },
+
+  // planning -> active -> completed (CREATE_SPRINT, project write access).
+  changeStatus: async (sprintId, status) => {
+    return apiClient.patch(`/sprints/${sprintId}/status`, { status });
+  },
 };

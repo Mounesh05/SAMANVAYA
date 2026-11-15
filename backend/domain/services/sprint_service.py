@@ -10,6 +10,17 @@ from repositories.story_repository import StoryRepository
 from repositories.task_repository import TaskRepository
 from domain.models.sprint import SprintCreate, Sprint
 
+# A sprint only moves forward, one step at a time.
+NEXT_STATUS = {"planning": "active", "active": "completed"}
+
+
+class SprintNotFound(LookupError):
+    """No sprint has this ID."""
+
+
+class SprintStatusConflict(ValueError):
+    """The requested status change is not allowed from the sprint's current state."""
+
 
 class SprintService:
     """Service for sprint operations."""
@@ -55,6 +66,48 @@ class SprintService:
         """Get the active sprint for a project."""
         sprint = await self.sprint_repo.find_active(project_id)
         return Sprint(**sprint) if sprint else None
+
+    async def change_status(self, sprint_id: str, new_status: str) -> Sprint:
+        """Start (planning -> active) or complete (active -> completed) a sprint.
+
+        A project has at most one active sprint. Completing a sprint stores its
+        final completion and velocity (completed points) from its work items.
+        """
+        sprint = await self.sprint_repo.find_by_id(sprint_id)
+        if not sprint:
+            raise SprintNotFound(sprint_id)
+        current = sprint.get("status") or "planning"
+        if NEXT_STATUS.get(current) != new_status:
+            raise SprintStatusConflict(f"A {current} sprint cannot be moved to {new_status}.")
+
+        now = datetime.now(timezone.utc).isoformat()
+        changes = {"status": new_status, "updated_at": now}
+        if new_status == "active":
+            running = await self.sprint_repo.find_active(sprint["project_id"])
+            if running and running.get("id") != sprint_id:
+                raise SprintStatusConflict(
+                    f"Sprint {running.get('name') or running.get('id')} is already active in this project. Complete it first."
+                )
+            changes["started_at"] = now
+        else:
+            health = await self.calculate_sprint_health(sprint_id)
+            changes["completion_pct"] = health.get("completion_pct", 0.0)
+            changes["velocity"] = health.get("completed_points", 0)
+            changes["completed_at"] = now
+
+        # Conditional on the status read above, so two clicks cannot both apply.
+        updated = await self.sprint_repo.update_one(
+            {"id": sprint_id, "status": sprint.get("status")}, {"$set": changes}
+        )
+        if not updated:
+            raise SprintStatusConflict("The sprint changed meanwhile. Reload and try again.")
+        return Sprint(**{**sprint, **changes})
+
+    async def live_completion_pct(self, sprint_id: str) -> Optional[float]:
+        """Completion from the sprint's work items now (the stored figure is
+        only final once the sprint is completed)."""
+        health = await self.calculate_sprint_health(sprint_id)
+        return None if "error" in health else float(health["completion_pct"])
 
     async def get_project_sprints(self, project_id: str) -> list[Sprint]:
         """Get all sprints in a project."""

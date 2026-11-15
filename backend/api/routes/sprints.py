@@ -3,8 +3,8 @@ Sprint API endpoints.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from domain.models.sprint import SprintCreate, Sprint
-from domain.services.sprint_service import SprintService
+from domain.models.sprint import SprintCreate, Sprint, SprintStatusUpdate
+from domain.services.sprint_service import SprintService, SprintNotFound, SprintStatusConflict
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from core.authorization import verify_project_access
@@ -32,6 +32,31 @@ async def create_sprint(
         return sprint
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{sprint_id}/status", response_model=Sprint)
+async def change_sprint_status(
+    sprint_id: str,
+    change: SprintStatusUpdate,
+    user: dict = Depends(require_permission(Permission.CREATE_SPRINT)),
+):
+    """
+    Start (planning -> active) or complete (active -> completed) a sprint.
+
+    Same rule as creating a sprint: CREATE_SPRINT plus write access to the
+    sprint's project (PM for projects they manage, Lead for their team's).
+    One active sprint per project.
+    """
+    sprint = await sprint_repo.find_by_id(sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    await verify_project_access(user, sprint.get("project_id"), require_write=True)
+    try:
+        return await sprint_service.change_status(sprint_id, change.status)
+    except SprintNotFound:
+        raise HTTPException(status_code=404, detail="Sprint not found")
+    except SprintStatusConflict as error:
+        raise HTTPException(status_code=409, detail=str(error))
 
 
 @router.get("/{sprint_id}", response_model=Sprint)

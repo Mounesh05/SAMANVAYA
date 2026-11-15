@@ -4,7 +4,7 @@ Sprints represent time-boxed iterations with goals and stories.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, model_validator
 
@@ -37,6 +37,12 @@ class SprintCreate(BaseModel):
             raise ValueError("Sprint end date must be on or after its start date")
 
         return self
+
+
+class SprintStatusUpdate(BaseModel):
+    """Moves a sprint forward: planning -> active -> completed."""
+
+    status: Literal["active", "completed"]
 
 
 class Sprint(SprintCreate):

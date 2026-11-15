@@ -15,15 +15,20 @@ import { ProgressBar } from '../../components/common/ProgressBar';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Plus, Activity, AlertTriangle } from 'lucide-react';
+import { Plus, Activity, AlertTriangle, Play, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '../../utils/dates';
 import { PermissionGuard } from '../../auth/PermissionGuard';
-import { PERMISSIONS } from '../../auth/permissions';
+import { PERMISSIONS, hasPermission } from '../../auth/permissions';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export function SprintsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedHealthSprint, setSelectedHealthSprint] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [completing, setCompleting] = useState(null);
+  const { user } = useAuthStore();
+  // Same permission the backend checks for creating, starting and completing sprints.
+  const canManageSprints = hasPermission(user, PERMISSIONS.CREATE_SPRINT);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -70,6 +75,15 @@ export function SprintsPage() {
     },
   });
 
+  const statusMutation = useMutation({
+    mutationFn: ({ sprintId, status }) => sprintsApi.changeStatus(sprintId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sprints'] });
+      queryClient.invalidateQueries({ queryKey: ['role-dashboard'] });
+      setCompleting(null);
+    },
+  });
+
   const handleCreate = (e) => {
     e.preventDefault();
     createMutation.mutate({
@@ -87,19 +101,49 @@ export function SprintsPage() {
     { key: 'end_date', header: 'End Date', render: (s) => formatDate(s.end_date) },
     {
       key: 'actions',
-      header: 'Intelligence',
+      header: 'Actions',
       render: (s) => (
-        <Button
-          variant="secondary"
-          size="sm"
-          leftIcon={<Activity size={14} />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedHealthSprint(s);
-          }}
-        >
-          Plan vs Reality
-        </Button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Activity size={14} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedHealthSprint(s);
+            }}
+          >
+            Plan vs Reality
+          </Button>
+          {canManageSprints && s.status === 'planning' && (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Play size={14} />}
+              isLoading={statusMutation.isPending && statusMutation.variables?.sprintId === s.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                statusMutation.mutate({ sprintId: s.id, status: 'active' });
+              }}
+            >
+              Start sprint
+            </Button>
+          )}
+          {canManageSprints && s.status === 'active' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<CheckCircle2 size={14} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                statusMutation.reset();
+                setCompleting(s);
+              }}
+            >
+              Complete sprint
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -144,8 +188,44 @@ export function SprintsPage() {
       ) : sprintsError ? (
         <ErrorState message={sprintsError.message} onRetry={refetch} />
       ) : (
-        <Table columns={columns} data={sprints} emptyMessage="No sprints found for this project." />
+        <>
+          {statusMutation.error && !completing && (
+            <p role="alert" style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--danger)' }}>
+              {statusMutation.error.message}
+            </p>
+          )}
+          <Table columns={columns} data={sprints} emptyMessage="No sprints found for this project." />
+        </>
       )}
+
+      <Modal
+        isOpen={!!completing}
+        onClose={() => setCompleting(null)}
+        title="Complete sprint"
+        subtitle={completing?.name}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCompleting(null)}>Cancel</Button>
+            <Button
+              variant="primary"
+              isLoading={statusMutation.isPending}
+              onClick={() => statusMutation.mutate({ sprintId: completing.id, status: 'completed' })}
+            >
+              Complete sprint
+            </Button>
+          </>
+        }
+      >
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+          Final completion and velocity are recorded from the sprint's tasks. Unfinished tasks stay open.
+          This cannot be undone.
+        </p>
+        {statusMutation.error && (
+          <p role="alert" style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--danger)' }}>
+            {statusMutation.error.message}
+          </p>
+        )}
+      </Modal>
 
       {/* Sprint Health Modal (Plan vs Reality) */}
       <Modal

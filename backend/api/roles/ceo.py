@@ -9,6 +9,7 @@ from core.dependencies import require_roles
 from repositories.project_repository import ProjectRepository
 from repositories.risk_repository import RiskRepository
 from repositories.sprint_repository import SprintRepository
+from domain.services.sprint_service import SprintService
 
 router = APIRouter()
 
@@ -52,8 +53,11 @@ async def ceo_dashboard(user: dict = Depends(require_roles("CEO"))):
     completion_values = []
     for project in projects:
         for sprint in await sprint_repo.find_by_project(project["id"]):
-            if sprint.get("status") == "active" and sprint.get("completion_pct") is not None:
-                completion_values.append(float(sprint["completion_pct"]))
+            # Live from the sprint's tasks: the stored figure is only final at completion.
+            if sprint.get("status") == "active":
+                live = await SprintService().live_completion_pct(sprint["id"])
+                if live is not None:
+                    completion_values.append(live)
 
     return {
         "role": "CEO",

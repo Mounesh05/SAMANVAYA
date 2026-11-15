@@ -41,8 +41,11 @@ async def pm_dashboard(user: dict = Depends(require_roles("PM"))):
             1 for risk in risks if str(risk.get("risk_level", "")).upper() in {"HIGH", "CRITICAL"}
         )
         for sprint in sprints:
-            if sprint.get("status") == "active" and sprint.get("completion_pct") is not None:
-                completion_values.append(float(sprint["completion_pct"]))
+            # Live from the sprint's tasks: the stored figure is only final at completion.
+            if sprint.get("status") == "active":
+                live = await SprintService().live_completion_pct(sprint["id"])
+                if live is not None:
+                    completion_values.append(live)
 
     delivery_confidence = (
         f"{round(sum(completion_values) / len(completion_values))}%"
