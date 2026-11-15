@@ -1,0 +1,59 @@
+{
+  "schema_version": "pr-evaluation-corpus-v1",
+  "cases": [
+    {
+      "id": "python-reachability", "language": "python", "path": "reachability.py", "scenario": "facts",
+      "source": "def explore(graph, start):\n    queue = [start]\n    visited = {start}\n    while queue:\n        node = queue.pop(0)\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append(neighbor)\n    return visited\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 2},
+      "description": "Reachability structure; no shortest-path result. CI records two failures; no correctness or coverage guarantee."
+    },
+    {
+      "id": "javascript-filter", "language": "javascript", "path": "filter.js", "scenario": "facts",
+      "source": "function select(values) { return values.filter(value => value >= 0); }\n",
+      "expected": {"function_count": 2, "ci_reported_failed_tests": 0},
+      "description": "Named function plus filter callback; zero recorded failures is not proof that every relevant behavior was tested."
+    },
+    {
+      "id": "typescript-sort", "language": "typescript", "path": "sort.ts", "scenario": "facts",
+      "source": "export function arrange(values: number[]): number[] { return values.slice().sort((a, b) => a - b); }\n",
+      "expected": {"function_count": 2, "ci_reported_failed_tests": 1},
+      "description": "Exported function plus comparator; no automatic benchmark, stability or superiority claim."
+    },
+    {
+      "id": "python-misleading-name", "language": "python", "path": "shortest.py", "scenario": "conflict",
+      "source": "# shortest path guaranteed: a misleading comment, not a contract\ndef shortest_path(graph, start):\n    stack = [start]\n    seen = set()\n    while stack:\n        node = stack.pop()\n        if node not in seen:\n            seen.add(node)\n            stack.extend(graph[node])\n    return seen\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 2},
+      "description": "Name/comment cannot prove shortest-path semantics. Seed one incorrect function-count assertion and a correcting QA assertion."
+    },
+    {
+      "id": "javascript-recursion", "language": "javascript", "path": "recursive.js", "scenario": "conflict",
+      "source": "function depth(tree) { if (!tree) return 0; return 1 + depth(tree.child); }\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 1},
+      "description": "Recursive structure does not prove termination for cyclic inputs. Seed a typed factual disagreement."
+    },
+    {
+      "id": "typescript-dynamic-table", "language": "typescript", "path": "table.ts", "scenario": "conflict",
+      "source": "export function accumulate(values: number[]): number { const table: number[] = [0]; for (let i = 0; i < values.length; i++) { table[i + 1] = table[i] + values[i]; } return table[values.length]; }\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 0},
+      "description": "Iterative table accumulation; no universal optimality claim. Seed a typed factual disagreement."
+    },
+    {
+      "id": "python-custom", "language": "python", "path": "custom.py", "scenario": "agreement",
+      "source": "def transform(values):\n    state = 17\n    for value in values:\n        state = (state * 31) ^ value\n    return state\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 0},
+      "description": "Unfamiliar transform; two agents agree on an unsupported security interpretation. Agreement must remain proposed."
+    },
+    {
+      "id": "javascript-custom", "language": "javascript", "path": "custom.js", "scenario": "agreement",
+      "source": "function transform(values) { let state = 17; for (const value of values) { state = (state * 31) ^ value; } return state; }\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 0},
+      "description": "Unknown computational purpose; no fabricated cryptographic guarantee despite model agreement."
+    },
+    {
+      "id": "typescript-custom", "language": "typescript", "path": "custom.ts", "scenario": "agreement",
+      "source": "export function transform(values: number[]): number { let state = 17; for (const value of values) { state = (state * 31) ^ value; } return state; }\n",
+      "expected": {"function_count": 1, "ci_reported_failed_tests": 0},
+      "description": "Typed unfamiliar transform; interpretation authority is unchanged by TypeScript annotations."
+    }
+  ]
+}
