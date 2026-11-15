@@ -81,7 +81,10 @@ export const PAGE_ACCESS = Object.freeze({
   // CR-001: Developers cannot list teams (the API refuses); they open their own.
   // CR-008: mirrors GET /api/teams; admins manage teams through MANAGE_TEAMS.
   teams: { anyOf: [...TEAM_LIST_PERMISSIONS, P.MANAGE_TEAMS], menuRoles: [CEO, LEAD], menuAnyOf: [P.MANAGE_TEAMS] },
-  teamDetail: { roles: [PM, LEAD, DEVELOPER, HR, CEO], menuRoles: [DEVELOPER], convertIn: 'CR-004 (Lead)' },
+  // Mirrors verify_team_access: everyone may open their own team; CEO, HR and
+  // admins any team; a PM the teams owning their projects. QA and DevOps were
+  // missing, so a DevOps admin was sent back to their dashboard.
+  teamDetail: { roles: [CEO, HR, ...DELIVERY], menuRoles: [DEVELOPER], convertIn: 'CR-004 (Lead)' },
   // CR-001: Developers request and follow their own transfers.
   // CR-004: Leads approve transfers at their manager stage, so it's in their menu.
   // CR-008: everyone who can request a transfer or act on others' requests.

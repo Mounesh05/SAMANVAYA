@@ -25,4 +25,9 @@ export const teamsApi = {
   update: async (teamId, updates) => {
     return apiClient.put(`/teams/${teamId}`, updates);
   },
+
+  // Places an employee in this team (admins: ASSIGN_PROJECT).
+  addMember: async (teamId, employeeId) => {
+    return apiClient.post(`/teams/${teamId}/members/${employeeId}`);
+  },
 };

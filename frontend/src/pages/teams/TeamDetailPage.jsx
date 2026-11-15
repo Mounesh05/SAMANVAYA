@@ -1,22 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { teamsApi } from '../../api/teams.api';
+import { employeesApi } from '../../api/employees.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
+import { Modal } from '../../components/common/Modal';
+import { Select } from '../../components/common/Select';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { Users, UserCheck, ArrowLeft, MessageSquareQuote, Award } from 'lucide-react';
+import { Users, UserCheck, ArrowLeft, MessageSquareQuote, Award, UserPlus } from 'lucide-react';
 import { ROLE_LABELS } from '../../utils/constants';
 import { useAuthStore } from '../../store/useAuthStore';
 import { canOpenPage } from '../../routes/access';
 import {
+  hasPermission,
   hasAnyPermission,
   FEEDBACK_SUBMIT_PERMISSIONS,
   PERMISSIONS,
 } from '../../auth/permissions';
+
+// CEO and HR work across the organisation and are not placed in a team.
+const ORG_WIDE_ROLES = new Set(['CEO', 'HR']);
 
 export function TeamDetailPage() {
   const { teamId } = useParams();
@@ -30,6 +37,11 @@ export function TeamDetailPage() {
   ]);
   const canSubmitFeedback = hasAnyPermission(user, FEEDBACK_SUBMIT_PERMISSIONS);
   const canListTeams = canOpenPage(user, 'teams');
+  // The backend places employees in a team only for ASSIGN_PROJECT holders (admins).
+  const canAddMembers = hasPermission(user, PERMISSIONS.ASSIGN_PROJECT);
+  const queryClient = useQueryClient();
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newMemberId, setNewMemberId] = useState('');
 
   const {
     data: team,
@@ -48,6 +60,33 @@ export function TeamDetailPage() {
     queryFn: () => teamsApi.getMembers(teamId),
     enabled: !!teamId,
   });
+
+  // Only people without a team are offered: moving someone from another team
+  // goes through a transfer request. CEO and HR work org-wide, not in a team.
+  const { data: employees = [], isLoading: isEmployeesLoading } = useQuery({
+    queryKey: ['employees', { is_active: true }],
+    queryFn: () => employeesApi.list({ is_active: true }),
+    enabled: canAddMembers && isAddOpen,
+  });
+  const candidates = employees.filter(
+    (e) => e.is_active !== false && !e.team_id && !ORG_WIDE_ROLES.has(e.role),
+  );
+
+  const addMember = useMutation({
+    mutationFn: (employeeId) => teamsApi.addMember(teamId, employeeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team', teamId] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setNewMemberId('');
+      setIsAddOpen(false);
+    },
+  });
+
+  const closeAdd = () => {
+    setIsAddOpen(false);
+    setNewMemberId('');
+    addMember.reset();
+  };
 
   if (isTeamLoading || isMembersLoading) return <LoadingState message="Loading team details..." />;
   if (teamError) return <ErrorState message={teamError.message} onRetry={() => window.location.reload()} />;
@@ -161,11 +200,65 @@ export function TeamDetailPage() {
       </div>
 
       {/* Team Members Table */}
-      <Card title="Team Members" subtitle="Engineers currently assigned to this team unit">
+      <Card
+        title="Team members"
+        action={canAddMembers && (
+          <Button variant="primary" size="sm" leftIcon={<UserPlus size={14} />} onClick={() => setIsAddOpen(true)}>
+            Add member
+          </Button>
+        )}
+      >
         <Table
           columns={canViewMemberPerformance ? memberColumns : memberColumns.filter((column) => column.key !== 'actions')}
           data={members} emptyMessage="No members assigned to this team." />
       </Card>
+
+      <Modal
+        isOpen={isAddOpen}
+        onClose={closeAdd}
+        title="Add team member"
+        subtitle={team?.name}
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeAdd}>Cancel</Button>
+            <Button
+              variant="primary"
+              onClick={() => addMember.mutate(newMemberId)}
+              disabled={!newMemberId}
+              isLoading={addMember.isPending}
+            >
+              Add to team
+            </Button>
+          </>
+        }
+      >
+        {isEmployeesLoading ? (
+          <LoadingState message="Loading employees..." />
+        ) : candidates.length === 0 ? (
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Everyone is already in a team. Use a transfer request to move someone between teams.
+          </p>
+        ) : (
+          <Select
+            label="Employee"
+            value={newMemberId}
+            onChange={(e) => setNewMemberId(e.target.value)}
+            placeholder="Select an employee"
+            options={candidates.map((e) => ({
+              value: e.employee_id,
+              label: `${e.name.trim()} · ${e.employee_id} · ${ROLE_LABELS[e.role] || e.role}`,
+            }))}
+          />
+        )}
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
+          Only employees without a team are listed.
+        </p>
+        {addMember.error && (
+          <p role="alert" style={{ fontSize: '0.8125rem', color: 'var(--danger)', marginTop: '0.5rem' }}>
+            {addMember.error.message}
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }
