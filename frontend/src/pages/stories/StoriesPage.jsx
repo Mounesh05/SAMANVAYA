@@ -16,7 +16,7 @@ import { Badge } from '../../components/common/Badge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { BookOpen, Plus, ArrowRight } from 'lucide-react';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS, hasPermission } from '../../auth/permissions';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -30,6 +30,7 @@ const STORY_STATUS = {
 };
 
 export function StoriesPage() {
+  const sessionScope = useSessionScope();
   const { user } = useAuthStore();
   // Backlog owners (Lead/PM) add stories directly and accept drafts.
   // Everyone else with CREATE_STORY proposes a draft assigned to themselves.
@@ -55,8 +56,8 @@ export function StoriesPage() {
   const queryClient = useQueryClient();
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
   });
 
   const activeProjectId = selectedProjectId || projects[0]?.id || '';

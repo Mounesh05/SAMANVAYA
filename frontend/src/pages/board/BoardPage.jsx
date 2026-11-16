@@ -26,7 +26,7 @@ import { Select } from '../../components/common/Select';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GripVertical, AlertCircle } from 'lucide-react';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { canUpdateTask, isSignOffOnly, SIGN_OFF_TARGETS } from '../../utils/taskPermissions';
 
 // Sortable Task Card Component
@@ -168,6 +168,7 @@ function KanbanColumn({ id, title, count, items = [], onItemClick, user }) {
 }
 
 export function BoardPage() {
+  const sessionScope = useSessionScope();
   const { user } = useAuthStore();
   // Same rule as PATCH /api/boards/move.
   const canMoveTasks = hasPermission(user, PERMISSIONS.TRANSITION_TASK);
@@ -179,8 +180,8 @@ export function BoardPage() {
   const queryClient = useQueryClient();
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
   });
 
   const activeProjectId = selectedProjectId || projects[0]?.id || '';

@@ -123,6 +123,7 @@ class AuthService:
             is_admin=is_admin,
             designation=user.get("designation"),
             permissions=sorted(permission.value for permission in permissions),
+            org_id=user.get("org_id") or user.get("organization_id") or user.get("organisation_id"),
         )
 
     def _login_response(self, user: dict) -> LoginResponse:

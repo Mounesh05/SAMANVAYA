@@ -14,17 +14,17 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { Plus, ArrowRight } from 'lucide-react';
 import { formatDate } from '../../utils/dates';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { hasAnyPermission, hasPermission, PERMISSIONS, TEAM_LIST_PERMISSIONS } from '../../auth/permissions';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function ProjectsPage() {
+  const sessionScope = useSessionScope();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    org_id: DEFAULT_ORG_ID,
     team_id: '',
     start_date: '',
     end_date: '',
@@ -34,10 +34,11 @@ export function ProjectsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const [formError, setFormError] = useState('');
 
   const { data: projects = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
   });
 
   // Teams are only needed by the Create Project form, and only people who can
@@ -58,7 +59,6 @@ export function ProjectsPage() {
       setFormData({
         name: '',
         description: '',
-        org_id: DEFAULT_ORG_ID,
         team_id: '',
         start_date: '',
         end_date: '',
@@ -69,8 +69,14 @@ export function ProjectsPage() {
 
   const handleCreate = (e) => {
     e.preventDefault();
+    if (!user?.org_id) {
+      setFormError('Your account needs an organisation assignment before creating a project.');
+      return;
+    }
+    setFormError('');
     createMutation.mutate({
       ...formData,
+      org_id: user.org_id,
       team_id: formData.team_id || null,
       start_date: formData.start_date || null,
       end_date: formData.end_date || null,
@@ -142,6 +148,7 @@ export function ProjectsPage() {
         }
       >
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {formError && <p role="alert">{formError}</p>}
           <Input
             label="Project Name"
             value={formData.name}

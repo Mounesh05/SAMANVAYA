@@ -3,7 +3,8 @@ CEO role-specific dashboard endpoints.
 Shows: Organization health, delivery confidence, critical risks, portfolio view.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
+from core.organization import resolve_organization
 from core.database import col
 from core.dependencies import require_roles
 from repositories.project_repository import ProjectRepository
@@ -14,16 +15,13 @@ from domain.services.sprint_service import SprintService
 router = APIRouter()
 
 
-def _own_org(user: dict, org_id: str) -> str:
+def _own_org(user: dict, org_id: str | None) -> str:
     """CR-011 fix: a CEO reads only their own organisation.
 
     Accounts without an organisation (single-organisation installs, such as the
     first-run CEO) keep the requested value.
     """
-    own = user.get("org_id")
-    if own and org_id != own:
-        raise HTTPException(status_code=403, detail="You can only view your own organisation")
-    return own or org_id
+    return resolve_organization(user, org_id)
 
 
 @router.get("/dashboard")
@@ -80,7 +78,7 @@ async def ceo_dashboard(user: dict = Depends(require_roles("CEO"))):
 
 @router.get("/execution-health")
 async def execution_health(
-    org_id: str = Query(...),
+    org_id: str | None = Query(None),
     user: dict = Depends(require_roles("CEO")),
 ):
     """
@@ -117,7 +115,7 @@ async def execution_health(
 
 @router.get("/critical-risks")
 async def critical_risks(
-    org_id: str = Query(...),
+    org_id: str | None = Query(None),
     user: dict = Depends(require_roles("CEO")),
 ):
     """Get all critical risks across the organization."""

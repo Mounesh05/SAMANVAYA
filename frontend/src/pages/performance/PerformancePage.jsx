@@ -247,7 +247,7 @@ export function PerformancePage() {
             grade={curr?.grade || 'N/A'}
             aiScore={null}
             humanScore={null}
-            confidence={curr?.ai_evaluation?.confidence_score || 85}
+            confidence={curr?.ai_evaluation?.confidence_score ?? null}
             period={curr?.period || curr?.period_label || 'Current Period'}
           />
 
@@ -361,7 +361,7 @@ export function PerformancePage() {
             grade={curr?.grade || 'N/A'}
             aiScore={null}
             humanScore={null}
-            confidence={curr?.contribution_credit?.confidence === 'high' ? 100 : curr?.contribution_credit?.confidence === 'medium' ? 70 : 40}
+            confidence={null}
             period={curr?.period || curr?.period_label || 'No evaluation period'}
           />
 

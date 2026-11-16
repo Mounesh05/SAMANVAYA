@@ -9,7 +9,7 @@ import { Button } from '../../components/common/Button';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { BarList, SegmentedBar } from '../../components/charts/Charts';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import '../../components/dashboard/Dashboard.css';
 import {
   TrendingUp,
@@ -33,6 +33,7 @@ function portfolioSummary({ total, healthy, atRisk, critical, incidents }) {
 }
 
 export function CEODashboardPage() {
+  const sessionScope = useSessionScope();
   const navigate = useNavigate();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -40,8 +41,8 @@ export function CEODashboardPage() {
     queryFn: () => rolesApi.getCEODashboard(),
   });
   const { data: executionHealth } = useQuery({
-    queryKey: ['ceo-execution-health', DEFAULT_ORG_ID],
-    queryFn: () => rolesApi.getExecutionHealth(DEFAULT_ORG_ID),
+    queryKey: ['ceo-execution-health', sessionScope],
+    queryFn: () => rolesApi.getExecutionHealth(),
   });
 
   if (isLoading) return <LoadingState message="Loading the executive dashboard..." />;

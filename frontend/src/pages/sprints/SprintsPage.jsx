@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sprintsApi } from '../../api/sprints.api';
 import { projectsApi } from '../../api/projects.api';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
@@ -22,6 +22,7 @@ import { PERMISSIONS, hasPermission } from '../../auth/permissions';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export function SprintsPage() {
+  const sessionScope = useSessionScope();
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedHealthSprint, setSelectedHealthSprint] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -41,8 +42,8 @@ export function SprintsPage() {
   const queryClient = useQueryClient();
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
   });
 
   // Select first project by default if available

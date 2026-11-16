@@ -435,7 +435,7 @@ export function EmployeesPage() {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="name@organization.com"
+              placeholder="employee@example.com"
               required
             />
             {!editEmployee && (

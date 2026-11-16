@@ -4,7 +4,7 @@ import { incidentsApi } from '../../api/incidents.api';
 import { projectsApi } from '../../api/projects.api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
@@ -44,6 +44,7 @@ const EMPTY_INCIDENT = {
 };
 
 export function IncidentsPage() {
+  const sessionScope = useSessionScope();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   // DevOps/Lead/PM/CEO see every incident in their projects; reporters such as
@@ -67,8 +68,8 @@ export function IncidentsPage() {
   });
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
     enabled: canReport,
   });
 

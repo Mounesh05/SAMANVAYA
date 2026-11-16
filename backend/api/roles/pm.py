@@ -9,6 +9,8 @@ from repositories.project_repository import ProjectRepository
 from repositories.sprint_repository import SprintRepository
 from repositories.risk_repository import RiskRepository
 from domain.services.sprint_service import SprintService
+from core.organization import resolve_organization
+from core.authorization import managed_project_ids
 
 router = APIRouter()
 
@@ -68,12 +70,14 @@ async def pm_dashboard(user: dict = Depends(require_roles("PM"))):
 
 @router.get("/projects")
 async def pm_projects(
-    org_id: str = Query(...),
+    org_id: str | None = Query(None),
     user: dict = Depends(require_roles("PM")),
 ):
     """Get all projects managed by PM."""
+    org_id = resolve_organization(user, org_id)
     project_repo = ProjectRepository()
     projects = await project_repo.find_active(org_id)
+    projects = [project for project in projects if project.get("id") in managed_project_ids(user)]
     
     return {
         "org_id": org_id,

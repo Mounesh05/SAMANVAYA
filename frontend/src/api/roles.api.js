@@ -1,5 +1,4 @@
 import apiClient from './client';
-import { DEFAULT_ORG_ID } from '../utils/constants';
 
 export const rolesApi = {
   // Developer
@@ -28,8 +27,8 @@ export const rolesApi = {
   getPMDashboard: async () => {
     return apiClient.get('/role/pm/dashboard');
   },
-  getPMProjects: async (orgId = DEFAULT_ORG_ID) => {
-    return apiClient.get('/role/pm/projects', { params: { org_id: orgId } });
+  getPMProjects: async (orgId) => {
+    return apiClient.get('/role/pm/projects', { params: orgId ? { org_id: orgId } : {} });
   },
   getProjectHealth: async (projectId) => {
     return apiClient.get(`/role/pm/project/${projectId}/health`);
@@ -42,11 +41,11 @@ export const rolesApi = {
   getCEODashboard: async () => {
     return apiClient.get('/role/ceo/dashboard');
   },
-  getExecutionHealth: async (orgId = DEFAULT_ORG_ID) => {
-    return apiClient.get('/role/ceo/execution-health', { params: { org_id: orgId } });
+  getExecutionHealth: async (orgId) => {
+    return apiClient.get('/role/ceo/execution-health', { params: orgId ? { org_id: orgId } : {} });
   },
-  getCriticalRisks: async (orgId = DEFAULT_ORG_ID) => {
-    return apiClient.get('/role/ceo/critical-risks', { params: { org_id: orgId } });
+  getCriticalRisks: async (orgId) => {
+    return apiClient.get('/role/ceo/critical-risks', { params: orgId ? { org_id: orgId } : {} });
   },
 
   // HR

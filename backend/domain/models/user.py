@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     is_active: bool = True
     github_username: Optional[str] = None
     team_id: Optional[str] = None
+    org_id: Optional[str] = None
     is_admin: bool = False
     designation: Optional[str] = None
     # Effective permissions computed server-side; the frontend's only source.

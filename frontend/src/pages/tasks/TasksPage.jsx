@@ -1,3 +1,4 @@
+import { useSessionScope } from '../../store/useSessionScope';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -17,12 +18,13 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { Plus, KanbanSquare } from 'lucide-react';
-import { TASK_STATUS, STATUS_LABELS, DEFAULT_ORG_ID } from '../../utils/constants';
+import { TASK_STATUS, STATUS_LABELS } from '../../utils/constants';
 import { canUpdateTask, isSignOffOnly, SIGN_OFF_TARGETS } from '../../utils/taskPermissions';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS, hasPermission } from '../../auth/permissions';
 
 export function TasksPage() {
+  const sessionScope = useSessionScope();
   const { user } = useAuthStore();
   // Leads/PMs plan work for others; contributors create tasks for themselves
   // (the backend refuses anything else).
@@ -48,8 +50,8 @@ export function TasksPage() {
   const navigate = useNavigate();
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
   });
 
   const activeProjectId = selectedProjectId || projects[0]?.id || '';

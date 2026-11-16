@@ -11,6 +11,7 @@ from domain.models.project import ProjectCreate, Project
 from domain.services.project_service import ProjectService
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
+from core.organization import resolve_organization
 from core.authorization import (
     verify_project_access,
     verify_team_access,
@@ -32,6 +33,8 @@ async def create_project(
     Requires CREATE_PROJECT permission (PM role by default).
     """
     try:
+        if user.get("org_id"):
+            resolve_organization(user, project_data.org_id)
         project = await project_service.create_project(
             project_data, created_by=user["employee_id"]
         )
@@ -66,7 +69,7 @@ async def get_project(
 
 @router.get("/", response_model=list[Project])
 async def list_projects(
-    org_id: str = Query(..., description="Organization ID"),
+    org_id: str | None = Query(None, description="Organization ID; defaults to the authenticated account"),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -74,8 +77,7 @@ async def list_projects(
     Results are filtered based on user's role and project assignments.
     """
     # CR-013: never another organisation's projects.
-    if user.get("org_id") and org_id != user["org_id"]:
-        raise HTTPException(status_code=403, detail="You can only list your own organisation's projects")
+    org_id = resolve_organization(user, org_id)
 
     # Get all projects in the org
     all_projects = await project_service.get_active_projects(org_id)

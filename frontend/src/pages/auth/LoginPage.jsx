@@ -176,7 +176,7 @@ export function LoginPage() {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="e.g. EMP-1042 or name@company.com"
+              placeholder="e.g. EMP-1042 or employee@example.com"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               leftIcon={<UserCheck size={16} />}

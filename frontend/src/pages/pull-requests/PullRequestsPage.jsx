@@ -17,12 +17,13 @@ import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { GitPullRequest, ExternalLink, RefreshCw, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { formatDate, timeAgo } from '../../utils/dates';
 import { PRAlgorithmIntelligencePanel } from '../code-quality/PRAlgorithmIntelligencePanel';
 
 export function PullRequestsPage() {
+  const sessionScope = useSessionScope();
   const { user } = useAuthStore();
   const [search, setSearch] = useState('');
   const [algorithmPR, setAlgorithmPR] = useState(null);
@@ -43,8 +44,8 @@ export function PullRequestsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
 
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
     enabled: browsesProjects,
   });
   const activeProjectId = selectedProjectId || projects[0]?.id || '';

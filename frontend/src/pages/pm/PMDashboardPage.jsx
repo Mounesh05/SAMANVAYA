@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { projectsApi } from '../../api/projects.api';
 import { rolesApi } from '../../api/roles.api';
-import { DEFAULT_ORG_ID } from '../../utils/constants';
+import { useSessionScope } from '../../store/useSessionScope';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { MetricCard } from '../../components/common/MetricCard';
 import { Card } from '../../components/common/Card';
@@ -21,11 +21,12 @@ const OPEN_STATUSES = new Set(['active', 'paused']);
 const statusLabel = (status) => (status ? status.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : 'No status');
 
 export function PMDashboardPage() {
+  const sessionScope = useSessionScope();
   const navigate = useNavigate();
 
   const { data: projects = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: () => projectsApi.list(DEFAULT_ORG_ID),
+    queryKey: ['projects', 'list', sessionScope],
+    queryFn: () => projectsApi.list(),
   });
   const { data: dashboardData } = useQuery({
     queryKey: ['role-dashboard', 'pm'],

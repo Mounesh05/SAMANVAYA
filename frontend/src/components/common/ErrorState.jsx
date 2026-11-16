@@ -10,6 +10,7 @@ export function ErrorState({
 }) {
   return (
     <div
+      role="alert"
       style={{
         display: 'flex',
         flexDirection: 'column',
