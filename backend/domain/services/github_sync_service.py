@@ -90,7 +90,7 @@ class GitHubSyncService:
         task_progress = await apply_task_progress(project_id, github_pr, github_data.get("reviews"))
 
         file_stats = self.normalizer.normalize_pr_files(files)
-        ci_data = self.normalizer.normalize_check_runs(check_runs)
+        ci_data = self.normalizer.normalize_ci_evidence(check_runs, github_data.get("actions_ci"))
         pr_age_hours = self.normalizer.calculate_pr_age_hours(github_pr["created_at"])
         
         # Update PR with file stats and CI status
@@ -99,6 +99,9 @@ class GitHubSyncService:
             "ci_status": ci_data["ci_status"],
             "ci_evidence_status": ci_data.get("ci_evidence_status", "available"),
             "ci_unavailable_reason": ci_data.get("ci_unavailable_reason"),
+            "github_actions_ci": ci_data.get("github_actions_ci"),
+            "ci_scope": ci_data.get("ci_scope", "checks_api"),
+            "non_actions_checks": ci_data.get("non_actions_checks"),
         })
         
         # Step 3: Analyze risk

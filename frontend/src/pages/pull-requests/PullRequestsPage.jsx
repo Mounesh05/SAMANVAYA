@@ -122,6 +122,22 @@ export function PullRequestsPage() {
       ),
     },
     { key: 'author', header: 'Author', render: (pr) => pr.author || '—' },
+    { key: 'ci_status', header: 'CI', render: (pr) => {
+      const actions = pr.github_actions_ci;
+      if (!pr.ci_status && actions?.runs?.length) {
+        return (
+          <div title="GitHub-reported workflow/job outcome. Not independent test verification or proof of correctness.">
+            <span>Actions: {actions.reported_outcome || 'unknown'}{actions.status === 'partial' ? ' (partial)' : ''}</span>
+            <small style={{ display: 'block', color: 'var(--text-muted)' }}>Other check providers unavailable</small>
+          </div>
+        );
+      }
+      return (
+        <span title={pr.ci_unavailable_reason || ''}>
+          {pr.ci_evidence_status === 'unavailable' ? 'Unavailable' : pr.ci_status || 'No check evidence'}
+        </span>
+      );
+    } },
     {
       key: 'status',
       header: 'Status',

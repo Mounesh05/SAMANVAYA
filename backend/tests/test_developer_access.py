@@ -371,8 +371,10 @@ class TestPullRequestSync:
         sync = AsyncMock(return_value={"pr": {"id": "PR-1", "risk_level": "LOW", "risk_score": 1}})
         projects = AsyncMock()
         projects.find_one = AsyncMock(return_value=project)
+        configs = AsyncMock()
+        configs.find_one = AsyncMock(return_value={"project_id": project["id"], "repository_owner": "o", "repository_name": "r"})
         service = type("Sync", (), {"sync_pull_request": sync})()
-        with patch.object(github, "col", side_effect=lambda name: projects), \
+        with patch.object(github, "col", side_effect=lambda name: projects if name == "projects" else configs), \
                 patch("core.authorization._project_repo") as repo, \
                 patch.object(github, "GitHubSyncService", return_value=service):
             repo.find_by_id = project_lookup(project)

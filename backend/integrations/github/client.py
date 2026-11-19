@@ -193,6 +193,19 @@ class GitHubClient:
         url = f"{self.base_url}/repos/{owner}/{repo}/commits/{sha}/check-runs"
         response = await self._make_request("GET", url)
         return response.json()
+
+    async def list_workflow_runs(self, owner: str, repo: str, sha: str, *, page: int = 1) -> Dict[str, Any]:
+        """Read Actions runs filtered to an exact commit; never a branch fallback."""
+        response = await self._make_request("GET", f"{self.base_url}/repos/{owner}/{repo}/actions/runs",
+            params={"head_sha": sha, "per_page": 100, "page": page})
+        return response.json()
+
+    async def list_workflow_jobs(self, owner: str, repo: str, run_id: int, attempt: int, *, page: int = 1) -> Dict[str, Any]:
+        """Pin jobs to a run attempt so reruns cannot silently replace evidence."""
+        response = await self._make_request("GET",
+            f"{self.base_url}/repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt}/jobs",
+            params={"per_page": 100, "page": page})
+        return response.json()
     
     async def list_pull_requests(
         self, 

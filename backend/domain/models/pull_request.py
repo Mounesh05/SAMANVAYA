@@ -30,6 +30,12 @@ class PullRequest(PRCreate):
     status: str = "open"  # open|merged|closed
     review_status: str = "pending"  # pending|in_review|approved|changes_requested
     ci_status: Optional[str] = None  # pending|passing|failing
+    # Additive versioned provider observations; never independent test proof.
+    ci_evidence_status: Optional[str] = None
+    ci_unavailable_reason: Optional[str] = None
+    ci_scope: Optional[str] = None
+    github_actions_ci: Optional[dict] = None
+    non_actions_checks: Optional[dict] = None
     
     # AI-calculated fields (from Layer 5 Intelligence + Layer 6 Agents)
     alignment_score: Optional[int] = None  # 0-100

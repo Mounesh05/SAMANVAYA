@@ -14,6 +14,7 @@ import base64
 from typing import Optional, List, Dict, Any
 
 from integrations.github.client import GitHubClient
+from integrations.github.ci_evidence import collect_actions_ci, failure_details, unavailable_actions_ci
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class GitHubAPIService:
         
         # Get CI status
         head_sha = github_pr["head"]["sha"]
+        actions_ci = None
         try:
             check_runs = await self.client.get_commit_check_runs(owner, repo, head_sha)
         except Exception as e:
@@ -66,12 +68,21 @@ class GitHubAPIService:
             # Preserve the API response shape without claiming an empty CI run
             # was observed. Optional evidence failure must not abort PR sync.
             check_runs = {"check_runs": [], "evidence_status": "unavailable", "unavailable_reason": reason}
+            failure = failure_details(e)
+            check_runs.update(failure_kind=failure["kind"], http_status=failure["http_status"])
+            # Actions is a separate API source, not permission expansion and
+            # not a synthetic replacement for third-party check-run records.
+            if failure["kind"] == "rate_limited":
+                actions_ci = unavailable_actions_ci(owner, repo, head_sha, {"resource": "checks_api", **failure})
+            else:
+                actions_ci = await collect_actions_ci(self.client, owner, repo, head_sha)
         
         return {
             "pr": github_pr,
             "files": files,
             "commits": commits,
             "check_runs": check_runs,
+            "actions_ci": actions_ci,
         }
 
     async def fetch_pull_request_evidence(
@@ -90,6 +101,7 @@ class GitHubAPIService:
             "files": evidence["files"],
             "commits": evidence["commits"],
             "check_runs": evidence["check_runs"],
+            "actions_ci": evidence.get("actions_ci"),
             "reviews": reviews,
             "comments": comments,
         }

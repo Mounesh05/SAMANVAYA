@@ -234,6 +234,23 @@ class GitHubNormalizer:
         }
 
     @staticmethod
+    def normalize_ci_evidence(checks: Dict[str, Any], actions: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        """Keep provider-specific outcomes separate from an all-provider status."""
+        result = GitHubNormalizer.normalize_check_runs(checks)
+        if actions is None:
+            return result
+        result["github_actions_ci"] = actions
+        result["checks_evidence_status"] = checks.get("evidence_status", "available")
+        result["non_actions_checks"] = {"status": "unavailable",
+            "reason": "Checks API evidence is unavailable; non-Actions providers cannot be enumerated or validated"}
+        result["ci_scope"] = "github_actions_only"
+        if actions.get("status") in ("available", "partial"):
+            result["ci_evidence_status"] = "partial"
+        # ci_status remains unknown when Checks is denied. An Actions success
+        # does not certify all third-party checks or required workflow coverage.
+        return result
+
+    @staticmethod
     def normalize_branch(
         github_branch: Dict[str, Any]
     ) -> Dict[str, Any]:

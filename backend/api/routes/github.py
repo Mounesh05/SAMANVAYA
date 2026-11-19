@@ -339,6 +339,13 @@ async def sync_pull_request(
     # unusable: no role holding SYNC_PR has write access.
     await verify_project_access(user, project_id)
 
+    # Bind server-fetched CI provenance to this project's configured repository,
+    # including when the caller supplies project_id explicitly.
+    link = await col(GITHUB_PROJECT_CONFIGS).find_one({"project_id": project_id})
+    if (not link or str(link.get("repository_owner", "")).casefold() != request.owner.casefold()
+            or str(link.get("repository_name", "")).casefold() != request.repo.casefold()):
+        raise HTTPException(status_code=403, detail="Repository is not linked to this project")
+
     try:
         github_service = GitHubSyncService()
 
