@@ -379,6 +379,13 @@ class EvidenceMerger:
             failed_tests=total_failed,
             skipped_tests=total_skipped,
             coverage_percentage=avg_coverage,
+            coverage_status=("available" if all(t.coverage_percentage is not None for t in valid) else "partial")
+                if avg_coverage is not None else "unavailable",
+            coverage_unavailable_reason=None if all(t.coverage_percentage is not None for t in valid)
+                else "Coverage is unavailable for one or more language evidence sources",
+            coverage_provenance={"method": "existing-test-count-weighted-aggregation",
+                "sources": [{"coverage_percentage": t.coverage_percentage, "test_count": t.total_tests,
+                             "status": t.coverage_status, "provenance": t.coverage_provenance} for t in valid]},
             changed_code_coverage=avg_changed_cov,
             untested_critical_paths=all_untested,
         )

@@ -97,6 +97,9 @@ class TestingEvidence(BaseModel):
     failed_tests: int = 0
     skipped_tests: int = 0
     coverage_percentage: Optional[float] = None
+    coverage_status: str = "unavailable"
+    coverage_unavailable_reason: Optional[str] = None
+    coverage_provenance: Dict[str, Any] = Field(default_factory=dict)
     changed_code_coverage: Optional[float] = None   # Coverage on only the changed lines
     untested_critical_paths: List[str] = Field(default_factory=list)
 

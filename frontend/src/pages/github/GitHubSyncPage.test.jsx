@@ -90,4 +90,16 @@ describe('GitHubSyncPage report compatibility', () => {
     await submitResult(null, null);
     await waitFor(() => expect(screen.queryByText('AI Code Review')).not.toBeInTheDocument());
   });
+
+  it('shows missing-source analysis without inventing quality measurements', async () => {
+    const analysis = { status: 'failed', analysis: null, errors: ['MISSING_SOURCE_EVIDENCE'],
+      quality_analysis_status: 'not_run', quality_score: null, risk_score: null,
+      quality_unavailable_reason: 'No validated source worktree is available' };
+    await submitResult(analysis, null);
+    const output = screen.getByText((_, element) => element.tagName === 'P' && element.textContent === JSON.stringify(analysis, null, 2));
+    expect(output).toHaveTextContent('MISSING_SOURCE_EVIDENCE');
+    expect(output).toHaveTextContent('"quality_score": null');
+    expect(output).toHaveTextContent('"risk_score": null');
+    expect(output).not.toHaveTextContent('"quality_score": 100');
+  });
 });

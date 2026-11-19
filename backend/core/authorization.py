@@ -522,37 +522,46 @@ async def verify_can_view_person_evaluations(user: dict, employee_id: str) -> No
 
 
 async def get_accessible_project_ids(user: dict) -> list[str]:
+    """Enumerate existing projects only within an established organization.
+
+    CEO visibility is organization-wide; Leads see team/assigned projects;
+    other roles retain their assigned scope. Missing tenant provenance fails
+    closed rather than turning a role, team label or stale assignment into access.
     """
-    Get list of project IDs that the user can access.
-
-    Access rules:
-    - CEO: All projects in database
-    - PM: All projects in their organization (currently all projects)
-    - LEAD: All projects for their team
-    - Others: Only projects they're assigned to
-
-    Args:
-        user: Current user from JWT token
-
-    Returns:
-        List of project IDs the user can access
-    """
-    # CEO has global access - fetch all projects
-    if has_global_access(user):
-        all_projects = await _project_repo.find_all({})
-        return [p.get("id", p.get("_id", "")) for p in all_projects]
-
-    role = user.get("role", user.get("organizational_role", "")).upper()
-    # CR-013: a PM's projects are the ones they manage.
-    if role == "PM":
-        return sorted(managed_project_ids(user))
-
-    # LEAD can access all projects for their team
+    organization = user.get("org_id")
+    if not isinstance(organization, str) or not organization.strip():
+        return []
+    query: dict = {"org_id": organization}
+    assigned = [p for p in user.get("project_ids", []) or [] if isinstance(p, str) and p]
+    role = _role(user)
     if role == "LEAD":
-        user_team_id = user.get("team_id")
-        if user_team_id:
-            team_projects = await _project_repo.find_all({"team_id": user_team_id})
-            return [p.get("id", p.get("_id", "")) for p in team_projects]
+        scope = [{"id": {"$in": assigned}}]
+        if user.get("team_id"):
+            scope.append({"team_id": user["team_id"]})
+        query["$or"] = scope
+    elif role != "CEO":
+        query["id"] = {"$in": assigned}
+    projects = await _project_repo.find_all(query)
+    return sorted({p["id"] for p in projects if isinstance(p.get("id"), str)
+                   and p.get("org_id") == organization
+                   and p.get("organization_id", organization) == organization})
 
-    # Others: return only assigned projects
-    return user.get("project_ids", [])
+
+def code_quality_tenant_filter(user: dict) -> dict:
+    """Legacy records inherit their project tenant; explicit conflicts never do."""
+    return {"$and": [{"$or": [{key: {"$exists": False}},
+                     {key: {"$eq": user.get("org_id"), "$not": {"$type": "array"}}}]}
+                     for key in ("org_id", "organization_id")]}
+
+
+async def verify_code_quality_access(user: dict, project_id: str, record: dict | None = None) -> None:
+    """Technical evidence uses current project scope, including management reads."""
+    role = _role(user)
+    allowed = get_user_permissions(role, user.get("is_admin", False), user.get("designation"))
+    view_rights = {Permission.VIEW_CODE_QUALITY, Permission.VIEW_PROJECT_DATA, Permission.VIEW_ALL_DATA}
+    if (role == "HR" or not allowed.intersection(view_rights)
+            or not isinstance(project_id, str) or not project_id
+            or record is not None and any(key in record and record[key] != user.get("org_id")
+                                         for key in ("org_id", "organization_id"))
+            or project_id not in await get_accessible_project_ids(user)):
+        raise HTTPException(status_code=403, detail="Access denied")

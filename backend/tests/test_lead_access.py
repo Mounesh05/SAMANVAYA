@@ -18,7 +18,7 @@ from core.permissions import Permission, ROLE_PERMISSIONS
 
 def make_user(employee_id="LEAD-1", role="LEAD", project_ids=None, team_id="TEAM-A", **extra):
     return {"employee_id": employee_id, "id": employee_id, "name": f"User {employee_id}", "role": role,
-            "organizational_role": role, "project_ids": project_ids or [], "team_id": team_id, **extra}
+            "organizational_role": role, "project_ids": project_ids or [], "team_id": team_id, "org_id": "O1", **extra}
 
 
 LEAD = make_user()
@@ -35,16 +35,16 @@ def holders(permission):
 async def people(mock_db, monkeypatch):
     """TEAM-A: LEAD-1, DEV-A. TEAM-B: DEV-B. DEV-P is on TEAM-B but assigned to PRJ-A."""
     monkeypatch.setattr(database, "col", lambda name: mock_db[name])
+    monkeypatch.setattr(database, "get_db", lambda: mock_db)
+    await mock_db.projects.insert_many([dict(PROJECT_A), dict(PROJECT_B)])
     await mock_db.users.insert_many([
         {"employee_id": "LEAD-1", "team_id": "TEAM-A"},
         {"employee_id": "DEV-A", "team_id": "TEAM-A"},
         {"employee_id": "DEV-B", "team_id": "TEAM-B"},
         {"employee_id": "DEV-P", "team_id": "TEAM-B", "project_ids": ["PRJ-A"]},
     ])
-    projects = AsyncMock()
-    projects.find_all = AsyncMock(side_effect=lambda query: [p for p in (PROJECT_A, PROJECT_B)
-                                                             if all(p.get(k) == v for k, v in query.items())])
-    projects.find_by_id = AsyncMock(side_effect=lambda pid: {"PRJ-A": PROJECT_A, "PRJ-B": PROJECT_B}.get(pid))
+    from repositories.project_repository import ProjectRepository
+    projects = ProjectRepository()
     with patch("core.authorization._project_repo", projects):
         yield mock_db
 

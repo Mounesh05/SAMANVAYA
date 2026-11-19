@@ -99,6 +99,21 @@ class CodeQualityService:
             for path in changed_files:
                 absolute = (root / path).resolve()
                 if safe_relative_path(path) and absolute.is_relative_to(root) and absolute.is_file():
+                    # Verify accessibility and, when a revision snapshot exists,
+                    # that local source is actually that snapshot's content.
+                    try:
+                        with absolute.open("rb") as handle:
+                            content = handle.read(200_001)
+                        if len(content) > 200_000:
+                            raise ValueError("Source exceeds analysis bound")
+                        snapshots = pr_context.get("source_files")
+                        if isinstance(snapshots, dict) and (
+                            path not in snapshots or content.decode("utf-8-sig") != snapshots[path]
+                        ):
+                            raise ValueError("Local source differs from the supplied revision snapshot")
+                    except (OSError, UnicodeError, ValueError):
+                        missing_files.append(path)
+                        continue
                     available_files.append(path)
                 else:
                     missing_files.append(path)

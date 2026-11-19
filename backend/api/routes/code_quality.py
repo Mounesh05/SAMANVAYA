@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from core.database import col
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
-from core.authorization import get_accessible_project_ids, verify_project_access
+from core.authorization import code_quality_tenant_filter, verify_code_quality_access, verify_project_access
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
 from domain.services.ai_run_access import invocation_scope, permissions, ACCESS_VERSION
@@ -149,9 +149,7 @@ async def get_run(run_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Run not found")
     
     # Authorization: verify user has access to the run's repository
-    accessible = await get_accessible_project_ids(user)
-    if run.get("repository_id") not in accessible:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await verify_code_quality_access(user, run.get("repository_id"), run)
     
     return await _visible_ai_result(run, user)
 
@@ -168,16 +166,16 @@ async def get_run_findings(
     """Get paginated findings for a completed analysis run."""
     # First verify user has access to this run
     runs_collection = col(RUNS_COLLECTION)
-    run = await runs_collection.find_one({"run_id": run_id}, {"repository_id": 1})
+    run = await runs_collection.find_one({"run_id": run_id}, {"repository_id": 1, "org_id": 1, "organization_id": 1})
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     
     # Authorization: verify user has access to the run's repository
-    accessible = await get_accessible_project_ids(user)
-    if run.get("repository_id") not in accessible:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await verify_code_quality_access(user, run.get("repository_id"), run)
     
-    query: dict = {"run_id": run_id}
+    query: dict = {"run_id": {"$eq": run_id, "$not": {"$type": "array"}}, **code_quality_tenant_filter(user),
+                   "$or": [{"repository_id": {"$exists": False}},
+                           {"repository_id": {"$eq": run["repository_id"], "$not": {"$type": "array"}}}]}
     if severity:
         query["severity"] = severity
     if category:
@@ -216,13 +214,11 @@ async def get_latest_run(
 ):
     """Get the most recent completed analysis run for a repository."""
     # Authorization: verify user has access to this repository
-    accessible = await get_accessible_project_ids(user)
-    if repository_id not in accessible:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await verify_code_quality_access(user, repository_id)
     
     collection = col(RUNS_COLLECTION)
     run = await collection.find_one(
-        {"repository_id": repository_id, "status": "completed"},
+        {"repository_id": {"$eq": repository_id, "$not": {"$type": "array"}}, "status": "completed", **code_quality_tenant_filter(user)},
         {"_id": 0},
         sort=[("created_at", -1)],
     )
@@ -239,14 +235,12 @@ async def get_run_history(
 ):
     """Get historical quality/risk trend for a repository."""
     # Authorization: verify user has access to this repository
-    accessible = await get_accessible_project_ids(user)
-    if repository_id not in accessible:
-        raise HTTPException(status_code=403, detail="Access denied")
+    await verify_code_quality_access(user, repository_id)
     
     collection = col(RUNS_COLLECTION)
     runs = (
         await collection.find(
-            {"repository_id": repository_id},
+            {"repository_id": {"$eq": repository_id, "$not": {"$type": "array"}}, **code_quality_tenant_filter(user)},
             {"_id": 0, "run_id": 1, "created_at": 1, "language": 1,
              "quality_score": 1, "quality_grade": 1, "risk_score": 1,
              "risk_level": 1, "status": 1, "pr_number": 1,
@@ -287,13 +281,14 @@ async def get_project_config(
 ):
     """Get per-project code quality configuration."""
     # Authorization: verify user has access to this project
-    await verify_project_access(user, project_id)
+    await verify_code_quality_access(user, project_id)
     
     collection = col(CONFIGS_COLLECTION)
-    doc = await collection.find_one({"project_id": project_id}, {"_id": 0})
+    doc = await collection.find_one({"project_id": {"$eq": project_id, "$not": {"$type": "array"}}}, {"_id": 0})
     if not doc:
         # Return defaults if not configured
         return ProjectCodeConfig(project_id=project_id).model_dump()
+    await verify_code_quality_access(user, project_id, doc)
     return doc
 
 

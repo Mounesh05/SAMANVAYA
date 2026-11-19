@@ -10,8 +10,6 @@ Responsibilities:
 
 import logging
 import time
-import tempfile
-import os
 from typing import Dict, Any
 
 from intelligence.risk_engine import RiskEngine
@@ -163,126 +161,82 @@ class GitHubAnalysisService:
         
         Runs static analysis, security scanning, complexity metrics, etc.
         """
-        from intelligence.analyzers.language_detector import LanguageDetector
-        from intelligence.analyzers.registry import get_analyzers_for_profile
+        from domain.services.code_quality_service import CodeQualityService
         if not isinstance(authority, CodeAuthority):
             return {"ai_analysis": failed_interpretation("AUTHORIZATION_MISSING"), "code_quality_report": None, "ai_run_data": None}
-        
         start_time = time.time()
-        
-        # Use platform-appropriate temp directory
-        temp_dir = tempfile.gettempdir()
-        owner, repo = pr_data.get("repo", "/").split("/")
-        repo_work_dir = os.path.join(temp_dir, f"samanvaya-repo-{owner}-{repo}")
-        
         pr_context = {
-            "pr_title": pr_data.get("title", ""),
-            "author": pr_data.get("author", ""),
-            "pr_number": pr_data.get("pr_number"),
-            "repo": pr_data.get("repo"),
-            "project_id": pr_data.get("project_id"),
-            "commit_sha": pr_data.get("commit_sha"),
+            "pr_title": pr_data.get("title", ""), "author": pr_data.get("author", ""),
+            "pr_number": pr_data.get("pr_number"), "repo": pr_data.get("repo"),
+            "project_id": pr_data.get("project_id"), "commit_sha": pr_data.get("commit_sha"),
             "organization_id": authority.scope["organization_id"],
-            "source_files": pr_data.get("source_files", {}),
-            "source_diagnostics": pr_data.get("source_diagnostics", []),
+            # A local path must be explicitly supplied by the server-owned caller.
+            # Never guess a temporary checkout or fall back to the server CWD.
+            "repo_path": pr_data.get("repo_path"),
         }
-        
-        changed_file_paths = pr_data.get("changed_files", [])
-        
-        # Detect languages and get appropriate analyzers
-        detector = LanguageDetector()
-        language_profile = detector.detect_from_files(changed_file_paths)
-        analyzers = get_analyzers_for_profile(language_profile)
-        
-        if not analyzers:
-            logger.warning(
-                f"No analyzers available for languages: {language_profile.detected_languages}"
-            )
-            # Return error - no fake scores
-            # Quality and risk will be calculated by engines if possible
-            failed = failed_interpretation("NO_ANALYZER_AVAILABLE")
-            return {"ai_analysis": failed, "code_quality_report": None,
-                    "ai_run_data": internal_run(authority, "code_review_deep", {}, pr_context, failed, triggered_by)}
-        else:
-            # Run analysis with ALL detected language analyzers and MERGE results
-            # Filter files per language to avoid wasting work
-            from intelligence.evidence.merger import EvidenceMerger
-            from intelligence.analyzers.language_detector import filter_files_for_language
-            
-            evidence_list = []
-            for lang, analyzer in analyzers.items():
-                # Filter to only files relevant to this language
-                lang_files = filter_files_for_language(changed_file_paths, lang)
-                
-                if not lang_files:
-                    logger.info(f"No {lang} files found in PR, skipping analyzer")
-                    continue
-                
-                logger.info(f"Running {lang} analyzer on {len(lang_files)} files")
-                evidence_obj = await analyzer.analyze(
-                    changed_files=lang_files,  # Only pass relevant files
-                    repo_path=repo_work_dir,
-                    pr_context=pr_context
-                )
-                evidence_list.append(evidence_obj)
-            
-            # Merge all evidence from all analyzers
-            if not evidence_list:
-                # No analyzers produced evidence (shouldn't happen, but defensive)
-                raise ValueError("No evidence produced from any analyzer")
-            
-            evidence_obj = EvidenceMerger.merge(evidence_list)
-            logger.info(f"Merged evidence from {len(evidence_list)} analyzers")
-            
-            # Convert CodeQualityEvidence to dict format for code_agent compatibility
-            evidence = {
-                "static_analysis": {
-                    "findings": [
-                        {
-                            "file": f.file_path,
-                            "line": f.line_number,
-                            "rule_id": f.rule_id,
-                            "category": f.category,
-                            "severity": f.severity.value,
-                            "message": f.message,
-                            "source": f.source_tool,
-                        }
-                        for f in evidence_obj.static_findings
-                    ],
-                    "tools_used": evidence_obj.tools_executed,
-                },
-                "complexity": {
-                    "average_complexity": evidence_obj.complexity.average_complexity if evidence_obj.complexity else None,
-                    "max_complexity": evidence_obj.complexity.max_complexity if evidence_obj.complexity else None,
-                    "high_complexity_functions": evidence_obj.complexity.high_complexity_functions if evidence_obj.complexity else [],
-                    "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else None,
-                },
-                "security": {
-                    "critical_count": evidence_obj.security.critical_count if evidence_obj.security else 0,
-                    "high_count": evidence_obj.security.high_count if evidence_obj.security else 0,
-                    "findings": [
-                        {"file": f.file_path, "line": f.line_number, "type": f.rule_id, "severity": f.severity.value}
-                        for f in (evidence_obj.security.findings if evidence_obj.security else [])
-                    ],
-                },
-                "tests": {
-                    "total_tests": evidence_obj.testing.total_tests if evidence_obj.testing else 0,
-                    "passed_tests": evidence_obj.testing.passed_tests if evidence_obj.testing else 0,
-                    "failed_tests": evidence_obj.testing.failed_tests if evidence_obj.testing else 0,
-                    "coverage_percentage": evidence_obj.testing.coverage_percentage if evidence_obj.testing else None,
-                },
-                "dependencies": {
-                    "new_packages": [],
-                    "updated_packages": [],
-                    "vulnerability_count": len(evidence_obj.security.dependency_vulnerabilities) if evidence_obj.security else 0,
-                },
-                "architecture": {
-                    "layer_violations": [],
-                    "circular_dependencies": [],
-                },
-                # NO FAKE SCORES - Let QualityEngine and RiskEngine calculate
-            }
-        
+        if "source_files" in pr_data:
+            pr_context["source_files"] = pr_data["source_files"]
+        evidence_obj = await CodeQualityService()._analyze_quality_pr(
+            pr_data.get("changed_files", []), pr_context, deep_analysis=True)
+        if evidence_obj.files_analyzed == 0:
+            failed = failed_interpretation("MISSING_SOURCE_EVIDENCE")
+            unavailable = {"analysis_scope": "purpose_discovery", "quality_analysis_status": "not_run",
+                           "quality_unavailable_reason": evidence_obj.analysis_quality.reason,
+                           "quality_score": None, "risk_score": None}
+            return {"ai_analysis": {**failed, **unavailable}, "code_quality_report": None,
+                    "quality_analysis_status": "not_run", "quality_unavailable_reason": unavailable["quality_unavailable_reason"],
+                    "quality_result": None, "risk_result": None,
+                    "ai_run_data": internal_run(authority, "code_review_deep", unavailable, pr_context, failed, triggered_by)}
+
+        # Convert CodeQualityEvidence to dict format for code_agent compatibility
+        evidence: Dict[str, Any] = {
+            "static_analysis": {
+                "findings": [
+                    {
+                        "file": f.file_path,
+                        "line": f.line_number,
+                        "rule_id": f.rule_id,
+                        "category": f.category,
+                        "severity": f.severity.value,
+                        "message": f.message,
+                        "source": f.source_tool,
+                    }
+                    for f in evidence_obj.static_findings
+                ],
+                "tools_used": evidence_obj.tools_executed,
+            },
+            "complexity": {
+                "average_complexity": evidence_obj.complexity.average_complexity if evidence_obj.complexity else None,
+                "max_complexity": evidence_obj.complexity.max_complexity if evidence_obj.complexity else None,
+                "high_complexity_functions": evidence_obj.complexity.high_complexity_functions if evidence_obj.complexity else [],
+                "lines_of_code": evidence_obj.complexity.lines_of_code if evidence_obj.complexity else None,
+            },
+            "security": {
+                "critical_count": evidence_obj.security.critical_count if evidence_obj.security else 0,
+                "high_count": evidence_obj.security.high_count if evidence_obj.security else 0,
+                "findings": [
+                    {"file": f.file_path, "line": f.line_number, "type": f.rule_id, "severity": f.severity.value}
+                    for f in (evidence_obj.security.findings if evidence_obj.security else [])
+                ],
+            },
+            "tests": {
+                "total_tests": evidence_obj.testing.total_tests if evidence_obj.testing else 0,
+                "passed_tests": evidence_obj.testing.passed_tests if evidence_obj.testing else 0,
+                "failed_tests": evidence_obj.testing.failed_tests if evidence_obj.testing else 0,
+                "coverage_percentage": evidence_obj.testing.coverage_percentage if evidence_obj.testing else None,
+            },
+            "dependencies": {
+                "new_packages": [],
+                "updated_packages": [],
+                "vulnerability_count": len(evidence_obj.security.dependency_vulnerabilities) if evidence_obj.security else 0,
+            },
+            "architecture": {
+                "layer_violations": [],
+                "circular_dependencies": [],
+            },
+            # NO FAKE SCORES - Let QualityEngine and RiskEngine calculate
+        }
+
         # Calculate quality and risk using engines (NOT AI)
         from intelligence.quality_engine import QualityEngine
         from intelligence.risk_engine import RiskEngine
@@ -342,6 +296,9 @@ class GitHubAnalysisService:
         ai_analysis = {
             **ai_result,
             "engine_results_v1": engine_results,
+            "quality_analysis_status": "partial" if evidence_obj.tools_skipped or evidence_obj.analysis_quality.confidence < 1 else "available",
+            "quality_unavailable_reason": evidence_obj.analysis_quality.reason,
+            "tools_skipped": evidence_obj.tools_skipped,
             # Engine scores provided separately for reference
             "quality_score": quality_result["quality_score"],
             "risk_score": risk_result["risk_score"],

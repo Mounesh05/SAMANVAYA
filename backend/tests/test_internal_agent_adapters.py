@@ -34,8 +34,13 @@ PR = {"pr_id": "PR1", "pr_number": 7, "title": "Review", "author": "developer", 
 
 
 @pytest.fixture
-async def environment(mock_db, monkeypatch):
+async def environment(mock_db, monkeypatch, tmp_path):
     monkeypatch.setattr(database, "get_db", lambda: mock_db)
+    from core import authorization
+    from repositories.project_repository import ProjectRepository
+    monkeypatch.setattr(authorization, "_project_repo", ProjectRepository())
+    (tmp_path / "example.py").write_bytes(PR["source_files"]["example.py"].encode())
+    monkeypatch.setitem(PR, "repo_path", str(tmp_path))
     user = {"employee_id": "A", "role": "DEVELOPER", "org_id": "O1", "project_ids": ["P1"],
             "email": "a@example.invalid", "is_active": True}
     await mock_db.users.insert_one(dict(user))
@@ -47,8 +52,8 @@ async def environment(mock_db, monkeypatch):
     evidence = CodeQualityEvidence(repository_id="P1", primary_language="python", files_analyzed=1)
     monkeypatch.setattr(QualityEngine, "calculate", AsyncMock(return_value=deepcopy(QUALITY)))
     monkeypatch.setattr(RiskEngine, "analyze_evidence", AsyncMock(return_value=deepcopy(RISK)))
-    from intelligence.analyzers import registry
-    monkeypatch.setattr(registry, "get_analyzers_for_profile", lambda profile: {
+    import domain.services.code_quality_service as quality_service
+    monkeypatch.setattr(quality_service, "get_analyzers_for_profile", lambda profile: {
         "python": SimpleNamespace(analyze=AsyncMock(return_value=evidence))})
     return mock_db, user, node, evidence
 
@@ -105,7 +110,10 @@ async def test_failed_model_cannot_erase_measurements_or_create_completed_run(en
     assert result["ai_run_data"]["status"] == "failed"
     assert result["ai_analysis"]["analysis"] is None
     assert "PRIVATE_PROVIDER_DATA" not in str(result)
-    if deep:
+    if deep and failure == "missing-evidence":
+        assert result["code_quality_report"] is None
+        assert result.get("engine_results_v1") is None
+    elif deep:
         assert result["code_quality_report"].quality_score == QUALITY["quality_score"]
         assert result["code_quality_report"].failure_risk == RISK["risk_score"]
 
@@ -380,10 +388,16 @@ async def test_cicd_persistence_failure_clears_interpretation_fields(environment
 ])
 async def test_code_quality_reads_apply_ai_scope_even_if_legacy_project_helper_allows(environment, monkeypatch, viewer, visible):
     db, _, _, _ = environment
-    monkeypatch.setattr(code_quality, "get_accessible_project_ids", AsyncMock(return_value=["P1"]))
     await db.code_quality_runs.insert_one({"run_id": "readable-static", "repository_id": "P1", "status": "completed",
         "quality_score": 83, "created_at": "2026-11-13", "ai_analysis": {"analysis": "PRIVATE_AI_TEXT", "nested": {"secret": "PRIVATE_AI_TEXT"}},
         "ai_status": "completed", "ai_authorization_scope": {"access_version": "ai-run-access-v1", "owner_id": "A", "project_id": "P1", "organization_id": "O1"}})
+    if not visible:
+        from fastapi import HTTPException
+        for request in [code_quality.get_run("readable-static", viewer), code_quality.get_latest_run("P1", viewer)]:
+            with pytest.raises(HTTPException) as error:
+                await request
+            assert error.value.status_code == 403
+        return
     for result in [await code_quality.get_run("readable-static", viewer), await code_quality.get_latest_run("P1", viewer)]:
         assert result["quality_score"] == 83
         assert ("PRIVATE_AI_TEXT" in str(result)) is visible
@@ -393,7 +407,6 @@ async def test_code_quality_reads_apply_ai_scope_even_if_legacy_project_helper_a
 
 async def test_unprovenanced_legacy_code_quality_ai_text_is_withheld(environment, monkeypatch):
     db, user, _, _ = environment
-    monkeypatch.setattr(code_quality, "get_accessible_project_ids", AsyncMock(return_value=["P1"]))
     await db.code_quality_runs.insert_one({"run_id": "legacy", "repository_id": "P1", "status": "completed",
         "ai_analysis": {"analysis": "PRIVATE_LEGACY_TEXT"}, "quality_score": 83})
     result = await code_quality.get_run("legacy", user)

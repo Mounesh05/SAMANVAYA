@@ -19,12 +19,12 @@ from domain.models.incident import IncidentUpdate
 def person(employee_id, role, **extra):
     return {"employee_id": employee_id, "id": employee_id, "name": employee_id, "role": role,
             "organizational_role": role, "project_ids": ["P1"], "team_id": None, "is_admin": False,
-            "is_active": True, **extra}
+            "is_active": True, "org_id": "O1", **extra}
 
 
 OPS, LEAD, PM = person("OPS-1", "DEVOPS"), person("LEAD-1", "LEAD", team_id="T1"), person("PM-1", "PM")
 CEO, DEV = person("CEO-1", "CEO"), person("DEV-1", "DEVELOPER")
-PROJECT = {"id": "P1", "team_id": "T1"}
+PROJECT = {"id": "P1", "team_id": "T1", "org_id": "O1"}
 
 
 @pytest.fixture

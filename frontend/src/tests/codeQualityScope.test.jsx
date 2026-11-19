@@ -48,3 +48,12 @@ it('does not replace retrieval failures with zero findings', async () => {
   expect(await screen.findByText('Evidence unavailable')).toBeInTheDocument();
   expect(screen.getByText('Retrieval failed')).toBeInTheDocument();
 });
+
+it('preserves a measured zero score as distinct from unavailable', async () => {
+  codeQualityApi.getRun.mockResolvedValue({ run_id: 'fixture', status: 'completed',
+    quality_analysis_status: 'available', tools_executed: ['ruff'], quality_score: 0, quality_grade: 'F', risk_score: 0 });
+  show();
+  await screen.findByText('Completed');
+  expect(screen.getByText('Quality Score').parentElement).toHaveTextContent(/^Quality Score0/);
+  expect(screen.queryByText('Quality score unavailable')).not.toBeInTheDocument();
+});

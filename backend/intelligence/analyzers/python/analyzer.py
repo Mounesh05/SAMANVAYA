@@ -9,6 +9,8 @@ import json
 import os
 import re
 import shutil
+import hashlib
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -35,7 +37,7 @@ if not hasattr(AnalysisQuality, "penalties"):
     )
 
 
-async def _run(cmd: List[str], cwd: Optional[str] = None) -> Optional[str]:
+async def _run(cmd: List[str], cwd: Optional[str] = None, require_success: bool = False) -> Optional[str]:
     proc = None
     try:
         if not cmd:
@@ -51,7 +53,7 @@ async def _run(cmd: List[str], cwd: Optional[str] = None) -> Optional[str]:
             cwd=cwd,
         )
         stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
-        if proc.returncode and not stdout:
+        if proc.returncode and (require_success or not stdout):
             return None
         return stdout.decode("utf-8", errors="replace")
     except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
@@ -450,24 +452,76 @@ class PythonAnalyzer(BaseAnalyzer):
         else:
             evidence.tools_executed.append("ast-test-discovery")
 
-        # Coverage (if .coverage file exists from previous run)
+        # Export existing data only. Never run a repository test or load its
+        # coverage plugins/configuration merely to obtain a percentage.
         coverage_available = False
-        if self._tool_available("coverage"):
-            cov_out = await _run(["coverage", "report", "--format=json"], cwd=repo_path)
-            if cov_out:
+        data_file = Path(repo_path).resolve() / ".coverage"
+        if not self._tool_available("coverage"):
+            te.coverage_status = "unavailable"
+        elif not data_file.is_file() or data_file.is_symlink():
+            te.coverage_status = "missing-data"
+        else:
+            cov_out = None
+            data_digest = ""
+            try:
+                with data_file.open("rb") as handle:
+                    data = handle.read(50_000_001)
+                if len(data) > 50_000_000:
+                    raise ValueError("Coverage data exceeds analysis bound")
+                data_digest = hashlib.sha256(data).hexdigest()
+                # Export a private snapshot, not the project's live data file.
+                with tempfile.TemporaryDirectory(prefix="samanvaya-coverage-") as directory:
+                    snapshot = Path(directory) / ".coverage"
+                    snapshot.write_bytes(data)
+                    cov_out = await _run(["coverage", "json", "--rcfile=" + os.devnull,
+                        "--data-file=" + str(snapshot), "-o", "-"], cwd=repo_path, require_success=True)
+            except (OSError, ValueError):
+                pass
+            if cov_out is None:
+                te.coverage_status = "export-failed"
+            else:
                 try:
+                    if len(cov_out.encode("utf-8")) > 5_000_000:
+                        raise ValueError("Coverage report exceeds analysis bound")
                     cov_data = json.loads(cov_out)
+                except (ValueError, TypeError):
+                    te.coverage_status = "invalid-json"
+                    cov_data = None
+                try:
+                    if not isinstance(cov_data, dict):
+                        raise ValueError("Invalid coverage document")
                     percent = cov_data.get("totals", {}).get("percent_covered")
                     if type(percent) not in (int, float) or not 0 <= percent <= 100:
                         raise ValueError("Coverage percentage unavailable")
+                    files = cov_data.get("files")
+                    if not isinstance(files, dict) or not files or len(files) > 5000:
+                        raise ValueError("Coverage source scope unavailable")
+                    root = Path(repo_path).resolve()
+                    hashes = {}
+                    source_bytes = 0
+                    for name in files:
+                        source = (root / name).resolve()
+                        if not source.is_relative_to(root) or not source.is_file():
+                            raise ValueError("Coverage source outside worktree or unavailable")
+                        source_bytes += source.stat().st_size
+                        if source_bytes > 20_000_000:
+                            raise ValueError("Coverage source scope exceeds analysis bound")
+                        with source.open("rb") as handle:
+                            hashes[source.relative_to(root).as_posix()] = hashlib.file_digest(handle, "sha256").hexdigest()
+                    te.coverage_provenance = {"method": "coverage-json-export", "tool_version": cov_data.get("meta", {}).get("version"),
+                        "data_sha256": data_digest, "source_hashes": hashes,
+                        "limitation": "Existing local coverage data; original execution revision and test correctness are not independently established."}
                     te.coverage_percentage = round(percent, 1)
+                    te.coverage_status = "available"
                     evidence.tools_executed.append("coverage")
                     coverage_available = True
-                except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
-                    pass
+                except (ValueError, TypeError, AttributeError, OSError):
+                    if te.coverage_status != "invalid-json":
+                        te.coverage_status = "invalid-report"
 
         # Degrade confidence if coverage data unavailable
         if not coverage_available:
+            te.coverage_unavailable_reason = "Coverage unavailable: " + te.coverage_status
             self._degrade_quality(evidence, "testing", "coverage", penalty=0.10)
 
         return te

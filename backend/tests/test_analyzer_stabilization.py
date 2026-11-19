@@ -119,6 +119,7 @@ async def test_bandit_invalid_response_is_explicit_failure(monkeypatch):
 async def test_empty_coverage_totals_stay_unknown(tmp_path, monkeypatch):
     import intelligence.analyzers.python.analyzer as py
     analyzer = py.PythonAnalyzer()
+    (tmp_path / ".coverage").write_bytes(b"controlled coverage data")
     monkeypatch.setattr(analyzer, "_tool_available", lambda _: True)
     monkeypatch.setattr(py, "_run", AsyncMock(return_value='{"totals": {}}'))
     evidence = CodeQualityEvidence(repository_id="fixture", primary_language="python")

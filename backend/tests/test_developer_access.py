@@ -423,8 +423,10 @@ async def test_devops_sees_all_incidents_in_its_projects(mock_db):
     from api.routes import incidents
     from repositories import incident_repository
     await mock_db["incidents"].insert_many([_incident("INC-A", "PRJ-A", "DEV-1"), _incident("INC-B", "PRJ-B", "DEV-9")])
-    ops = make_user("OPS-1", "DEVOPS", project_ids=["PRJ-A"])
-    with patch.object(incident_repository, "col", side_effect=lambda name: mock_db[name]):
+    ops = make_user("OPS-1", "DEVOPS", project_ids=["PRJ-A"], org_id="O1")
+    with patch.object(incident_repository, "col", side_effect=lambda name: mock_db[name]), \
+            patch("core.authorization._project_repo") as projects:
+        projects.find_all = AsyncMock(return_value=[{"id": "PRJ-A", "org_id": "O1"}])
         seen = await incidents.list_incidents(project_id=None, user=ops)
     assert [incident.id for incident in seen] == ["INC-A"]
 

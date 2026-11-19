@@ -25,7 +25,7 @@ SOURCE = "def transform(values):\n    return sorted(values)\n"
 
 async def test_registered_analysis_collects_discovery_without_model(monkeypatch, tmp_path):
     import domain.services.code_quality_service as module
-    (tmp_path / "module.py").write_text(SOURCE, encoding="utf-8")
+    (tmp_path / "module.py").write_bytes(SOURCE.encode("utf-8"))
     adapter = SimpleNamespace(analyze=AsyncMock(return_value=CodeQualityEvidence(repository_id="P1", primary_language="python")))
     monkeypatch.setattr(module, "get_analyzers_for_profile", lambda profile: {"python": adapter})
     evidence = await CodeQualityService().analyze_pr(["module.py"], {
@@ -42,9 +42,12 @@ async def test_discovery_snapshot_uses_existing_runs_and_authorization(mock_db, 
     monkeypatch.setattr(code_quality, "col", lambda name: mock_db[name])
     report = await discover_sources({"module.py": SOURCE}, "P1", "immutable-head")
     run_id = await CodeQualityRepository().save_discovery("P1", report, 5, "actor")
-    user = {"employee_id": "actor", "role": "DEVELOPER"}
-    accessible = AsyncMock(return_value=["P1"])
-    monkeypatch.setattr(code_quality, "get_accessible_project_ids", accessible)
+    from core import database, authorization
+    from repositories.project_repository import ProjectRepository
+    monkeypatch.setattr(database, "get_db", lambda: mock_db)
+    monkeypatch.setattr(authorization, "_project_repo", ProjectRepository())
+    await mock_db.projects.insert_one({"id": "P1", "org_id": "O1"})
+    user = {"employee_id": "actor", "role": "DEVELOPER", "org_id": "O1", "project_ids": ["P1"]}
     app = FastAPI()
     app.include_router(code_quality.router, prefix="/quality")
     app.dependency_overrides[get_current_user] = lambda: user
@@ -57,7 +60,7 @@ async def test_discovery_snapshot_uses_existing_runs_and_authorization(mock_db, 
         assert "_id" not in response.json()
         second_page = await client.get(f"/quality/runs/{run_id}/functions?limit=1&skip=1")
         assert second_page.json()["functions"] == []
-        accessible.return_value = []
+        user["project_ids"] = []
         forbidden = await client.get(f"/quality/runs/{run_id}/functions")
         assert forbidden.status_code == 403
         missing = await client.get("/quality/runs/not-found/functions")
@@ -69,9 +72,14 @@ async def test_discovery_snapshot_uses_existing_runs_and_authorization(mock_db, 
 
 async def test_legacy_run_reports_not_analyzed_instead_of_inventing_evidence(mock_db, monkeypatch):
     monkeypatch.setattr(code_quality, "col", lambda name: mock_db[name])
-    monkeypatch.setattr(code_quality, "get_accessible_project_ids", AsyncMock(return_value=["P1"]))
+    from core import database, authorization
+    from repositories.project_repository import ProjectRepository
+    monkeypatch.setattr(database, "get_db", lambda: mock_db)
+    monkeypatch.setattr(authorization, "_project_repo", ProjectRepository())
+    await mock_db.projects.insert_one({"id": "P1", "org_id": "O1"})
     await mock_db.code_quality_runs.insert_one({"run_id": "old", "repository_id": "P1"})
-    data = await code_quality.get_discovered_functions("old", limit=50, skip=0, user={})
+    data = await code_quality.get_discovered_functions("old", limit=50, skip=0,
+        user={"role": "DEVELOPER", "org_id": "O1", "project_ids": ["P1"]})
     assert data["status"] == "not_analyzed" and data["functions"] == []
 
 

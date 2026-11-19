@@ -41,7 +41,8 @@ class TestScope:
 
     @pytest.mark.asyncio
     async def test_accessible_projects_are_the_managed_ones(self):
-        assert await authorization.get_accessible_project_ids(PM) == ["P1"]
+        with patch.object(authorization._project_repo, "find_all", AsyncMock(return_value=[{"id": "P1", "org_id": "O1"}])):
+            assert await authorization.get_accessible_project_ids(PM) == ["P1"]
 
     @pytest.mark.asyncio
     async def test_other_organisations_are_refused_for_everyone(self):
