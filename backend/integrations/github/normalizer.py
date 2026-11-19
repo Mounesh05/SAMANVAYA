@@ -178,6 +178,17 @@ class GitHubNormalizer:
         Returns:
             Normalized CI status
         """
+        if check_runs_response.get("evidence_status") == "unavailable":
+            return {
+                "ci_status": None,
+                "ci_evidence_status": "unavailable",
+                "ci_unavailable_reason": check_runs_response.get("unavailable_reason"),
+                # Counts of loaded checks, not claims about checks on GitHub.
+                "total_checks": 0,
+                "passed_checks": 0,
+                "failed_checks": 0,
+                "pending_checks": 0,
+            }
         check_runs = check_runs_response.get("check_runs", [])
         
         if not check_runs:

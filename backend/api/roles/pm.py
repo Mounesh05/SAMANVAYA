@@ -15,6 +15,13 @@ from core.authorization import managed_project_ids
 router = APIRouter()
 
 
+def _managed_active_query(user: dict) -> dict:
+    query = {"status": "active", "id": {"$in": sorted(managed_project_ids(user))}}
+    if user.get("org_id"):
+        query["org_id"] = user["org_id"]
+    return query
+
+
 @router.get("/dashboard")
 async def pm_dashboard(user: dict = Depends(require_roles("PM"))):
     """
@@ -30,7 +37,7 @@ async def pm_dashboard(user: dict = Depends(require_roles("PM"))):
     sprint_repo = SprintRepository()
     risk_repo = RiskRepository()
 
-    projects = await project_repo.find_all({"status": "active"})
+    projects = await project_repo.find_all(_managed_active_query(user))
     active_sprints = []
     high_risk_count = 0
     completion_values = []
@@ -126,7 +133,7 @@ async def pm_risks(user: dict = Depends(require_roles("PM"))):
     """Get all high-priority risks across projects."""
     project_repo = ProjectRepository()
     risk_repo = RiskRepository()
-    projects = await project_repo.find_all({"status": "active"})
+    projects = await project_repo.find_all(_managed_active_query(user))
     risks = []
     for project in projects:
         project_risks = await risk_repo.find_open(project["id"])

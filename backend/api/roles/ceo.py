@@ -38,7 +38,8 @@ async def ceo_dashboard(user: dict = Depends(require_roles("CEO"))):
     project_repo = ProjectRepository()
     risk_repo = RiskRepository()
     sprint_repo = SprintRepository()
-    projects = await project_repo.find_all({"status": "active"})
+    scope = {"org_id": user["org_id"]} if user.get("org_id") else {"id": {"$in": []}}
+    projects = await project_repo.find_all({"status": "active", **scope})
     project_risks = [await risk_repo.find_open(project["id"]) for project in projects]
     all_risks = [risk for risks in project_risks for risk in risks]
     critical_risks = [
@@ -47,7 +48,9 @@ async def ceo_dashboard(user: dict = Depends(require_roles("CEO"))):
     ]
     healthy_projects = sum(1 for risks in project_risks if not risks)
     at_risk_projects = sum(1 for risks in project_risks if risks)
-    incidents = await col("incidents").count_documents({"status": {"$in": ["open", "active"]}})
+    incidents = await col("incidents").count_documents({
+        "status": {"$in": ["open", "active"]}, "project_id": {"$in": [project["id"] for project in projects]}
+    })
     completion_values = []
     for project in projects:
         for sprint in await sprint_repo.find_by_project(project["id"]):

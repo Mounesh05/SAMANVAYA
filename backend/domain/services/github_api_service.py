@@ -59,8 +59,13 @@ class GitHubAPIService:
         try:
             check_runs = await self.client.get_commit_check_runs(owner, repo, head_sha)
         except Exception as e:
-            logger.warning(f"Failed to fetch check runs for {owner}/{repo}#{pr_number}: {e}")
-            check_runs = []
+            response = getattr(e, "response", None)
+            status = getattr(response, "status_code", None)
+            reason = f"GitHub check runs unavailable (HTTP {status})" if status else "GitHub check runs unavailable"
+            logger.warning("%s for %s/%s#%s", reason, owner, repo, pr_number)
+            # Preserve the API response shape without claiming an empty CI run
+            # was observed. Optional evidence failure must not abort PR sync.
+            check_runs = {"check_runs": [], "evidence_status": "unavailable", "unavailable_reason": reason}
         
         return {
             "pr": github_pr,

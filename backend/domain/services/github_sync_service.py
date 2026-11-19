@@ -97,6 +97,8 @@ class GitHubSyncService:
         normalized_pr.update({
             "files_changed_count": file_stats["files_changed"],
             "ci_status": ci_data["ci_status"],
+            "ci_evidence_status": ci_data.get("ci_evidence_status", "available"),
+            "ci_unavailable_reason": ci_data.get("ci_unavailable_reason"),
         })
         
         # Step 3: Analyze risk

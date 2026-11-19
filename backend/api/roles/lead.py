@@ -9,8 +9,21 @@ from core.dependencies import require_permission, require_roles
 from repositories.user_repository import UserRepository
 from repositories.pr_repository import PRRepository
 from repositories.task_repository import TaskRepository
+from domain.schemas.hr_views import EmployeeHRView
 
 router = APIRouter()
+
+
+async def _team_members(user_repo: UserRepository, user: dict) -> list[dict]:
+    scope = {"org_id": user["org_id"]} if user.get("org_id") else {"employee_id": user["employee_id"]}
+    return await user_repo.find_all({"team_id": user.get("team_id"), "is_active": True, **scope})
+
+
+def _team_member_view(member: dict) -> dict:
+    # Reuse the existing employee allowlist, with the engineering identity that
+    # leads legitimately need. Credentials and unknown nested fields never leave.
+    return {**EmployeeHRView.from_employee(member).model_dump(mode="json"),
+            "github_username": member.get("github_username")}
 
 
 @router.get("/dashboard")
@@ -35,7 +48,7 @@ async def lead_dashboard(user: dict = Depends(require_roles("LEAD"))):
     task_repo = TaskRepository()
     
     # Team members
-    team_members = await user_repo.find_by_team(team_id)
+    team_members = await _team_members(user_repo, user)
     
     # Active sprints (assuming one active sprint per project)
     # For simplicity, we'll get all sprints - in production, filter by team's projects
@@ -69,7 +82,7 @@ async def lead_dashboard(user: dict = Depends(require_roles("LEAD"))):
             "blocked_tasks": len(blocked_tasks),
             "total_active_tasks": len([t for t in all_tasks if t.get("status") in ["in_progress", "todo"]]),
         },
-        "team_members": team_members,
+        "team_members": [_team_member_view(member) for member in team_members],
         "pr_review_queue": open_prs[:15],  # Top 15
         "high_risk_prs": high_risk_prs,
         "blockers": blocked_tasks,
@@ -87,7 +100,7 @@ async def team_overview(user: dict = Depends(require_roles("LEAD"))):
     user_repo = UserRepository()
     task_repo = TaskRepository()
     
-    team_members = await user_repo.find_by_team(team_id)
+    team_members = await _team_members(user_repo, user)
     
     # Calculate workload for each member
     team_workload = []
@@ -119,7 +132,7 @@ async def review_queue(user: dict = Depends(require_permission(Permission.VIEW_T
     user_repo = UserRepository()
     pr_repo = PRRepository()
     
-    team_members = await user_repo.find_by_team(team_id)
+    team_members = await _team_members(user_repo, user)
     
     all_prs = []
     for member in team_members:

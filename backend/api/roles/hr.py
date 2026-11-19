@@ -6,8 +6,16 @@ Shows: Employee management, capacity, performance, team allocation.
 from fastapi import APIRouter, Depends
 from core.dependencies import require_roles
 from repositories.user_repository import UserRepository
+from domain.schemas.hr_views import EmployeeHRView
 
 router = APIRouter()
+
+
+async def _employees_for_hr(user: dict) -> list[dict]:
+    """Apply tenant scope before counting, then serialize only HR-safe fields."""
+    scope = {"org_id": user["org_id"]} if user.get("org_id") else {"employee_id": user["employee_id"]}
+    employees = await UserRepository().find_all({"is_active": True, **scope})
+    return [EmployeeHRView.from_employee(employee).model_dump(mode="json") for employee in employees]
 
 
 @router.get("/dashboard")
@@ -21,10 +29,7 @@ async def hr_dashboard(user: dict = Depends(require_roles("HR"))):
         - Performance trends
         - Resource allocation
     """
-    user_repo = UserRepository()
-    
-    # Get all active employees
-    all_users = await user_repo.find_all({"is_active": True})
+    all_users = await _employees_for_hr(user)
     
     # Count by role
     role_distribution = {}
@@ -50,8 +55,7 @@ async def hr_dashboard(user: dict = Depends(require_roles("HR"))):
 @router.get("/employees")
 async def list_employees(user: dict = Depends(require_roles("HR"))):
     """Get all employees."""
-    user_repo = UserRepository()
-    employees = await user_repo.find_all({"is_active": True})
+    employees = await _employees_for_hr(user)
     
     return {
         "employees": employees,
