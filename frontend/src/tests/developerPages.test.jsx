@@ -22,7 +22,7 @@ vi.mock('../api/employees.api', () => ({ employeesApi: { list: vi.fn() } }));
 vi.mock('../api/roles.api', () => ({ rolesApi: { getMyPRs: vi.fn(), getReviewQueue: vi.fn() } }));
 vi.mock('../api/github.api', () => ({ githubApi: { syncPullRequest: vi.fn() } }));
 
-const DEVELOPER = roleUser('DEVELOPER', { employee_id: 'DEV-1', name: 'Dana Dev', team_id: 'TEAM-A' });
+const DEVELOPER = roleUser('DEVELOPER', { employee_id: 'DEV-1', name: 'Dana Dev', team_id: 'TEAM-A', github_username: 'developer-login' });
 
 function renderAt(ui, path = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

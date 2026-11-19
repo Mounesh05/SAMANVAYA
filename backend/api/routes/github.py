@@ -293,6 +293,8 @@ async def list_project_pull_requests(
     For people who review or test a project's changes without authoring them
     (QA, DevOps). Same project scope as the rest of the project's data.
     """
+    if not isinstance(user.get("org_id"), str) or not user["org_id"].strip():
+        raise HTTPException(status_code=403, detail="Project scope requires an organization")
     await verify_project_access(user, project_id)
     from repositories.pr_repository import PRRepository
     prs = await PRRepository().find_by_project(project_id)

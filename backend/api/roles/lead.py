@@ -26,6 +26,10 @@ def _team_member_view(member: dict) -> dict:
             "github_username": member.get("github_username")}
 
 
+async def _team_pull_requests(user: dict) -> list[dict]:
+    return await PRRepository().find_for_member(user)
+
+
 @router.get("/dashboard")
 async def lead_dashboard(user: dict = Depends(require_roles("LEAD"))):
     """
@@ -44,7 +48,6 @@ async def lead_dashboard(user: dict = Depends(require_roles("LEAD"))):
         return {"error": "User not assigned to a team"}
     
     user_repo = UserRepository()
-    pr_repo = PRRepository()
     task_repo = TaskRepository()
     
     # Team members
@@ -55,10 +58,7 @@ async def lead_dashboard(user: dict = Depends(require_roles("LEAD"))):
     # This would require project_repository and cross-referencing
     
     # PR review queue - all open PRs from team
-    all_prs = []
-    for member in team_members:
-        member_prs = await pr_repo.find_by_author(member["employee_id"])
-        all_prs.extend(member_prs)
+    all_prs = await _team_pull_requests(user)
     
     open_prs = [pr for pr in all_prs if pr.get("status") == "open"]
     high_risk_prs = [pr for pr in open_prs if pr.get("risk_level") in ["HIGH", "CRITICAL"]]
@@ -126,18 +126,10 @@ async def review_queue(user: dict = Depends(require_permission(Permission.VIEW_T
     """Get PRs waiting for review from team."""
     team_id = user.get("team_id")
     
-    if not team_id:
-        return {"error": "User not assigned to a team"}
-    
-    user_repo = UserRepository()
-    pr_repo = PRRepository()
-    
-    team_members = await _team_members(user_repo, user)
-    
-    all_prs = []
-    for member in team_members:
-        member_prs = await pr_repo.find_by_author(member["employee_id"])
-        all_prs.extend(member_prs)
+    if not team_id and not user.get("project_ids"):
+        return {"error": "User not assigned to a team or project"}
+
+    all_prs = await _team_pull_requests(user)
     
     pending_review = [
         pr for pr in all_prs

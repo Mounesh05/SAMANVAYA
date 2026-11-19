@@ -61,18 +61,10 @@ class GitHubNormalizer:
         else:
             status = "open"
         
-        # Review status (requires separate API call for detailed review info)
-        # For now, use mergeable_state as proxy
-        mergeable_state = github_pr.get("mergeable_state", "unknown")
-        
-        if mergeable_state == "clean":
-            review_status = "approved"
-        elif mergeable_state == "blocked":
-            review_status = "changes_requested"
-        elif mergeable_state == "behind" or mergeable_state == "dirty":
-            review_status = "in_review"
-        else:
-            review_status = "pending"
+        # Mergeability describes conflicts/branch rules, not human review.
+        # This PR payload has no independent review evidence, so it must never
+        # create an approval or a changes-requested conclusion.
+        review_status = "pending"
         
         return {
             "id": pr_id,

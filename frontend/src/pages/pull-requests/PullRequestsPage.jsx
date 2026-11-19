@@ -38,12 +38,13 @@ export function PullRequestsPage() {
   // Sync is offered to SYNC_PR holders (backend: assigned projects only).
   const canSyncPr = hasPermission(user, PERMISSIONS.SYNC_PR);
   const canLoadPersonalPRs = isLead || canSyncPr;
+  const missingGitHubIdentity = canSyncPr && !isLead && !(typeof user?.github_username === 'string' && user.github_username.trim());
   // CR-002: reviewers and testers who don't author PRs (QA, DevOps) browse a
   // project's pull requests instead of "my PRs".
-  const browsesProjects = !canLoadPersonalPRs;
+  const browsesProjects = !canLoadPersonalPRs || missingGitHubIdentity;
   const [selectedProjectId, setSelectedProjectId] = useState('');
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = useQuery({
     queryKey: ['projects', 'list', sessionScope],
     queryFn: () => projectsApi.list(),
     enabled: browsesProjects,
@@ -51,16 +52,16 @@ export function PullRequestsPage() {
   const activeProjectId = selectedProjectId || projects[0]?.id || '';
 
   const projectPrQuery = useQuery({
-    queryKey: ['pull-requests', 'project', activeProjectId],
+    queryKey: ['pull-requests', 'project', activeProjectId, sessionScope],
     queryFn: () => githubApi.listProjectPullRequests(activeProjectId),
     enabled: browsesProjects && Boolean(activeProjectId),
     retry: 1,
   });
 
   const { data: prData, isLoading, error, refetch } = useQuery({
-    queryKey: ['pull-requests', role],
+    queryKey: ['pull-requests', role, sessionScope],
     queryFn: () => isLead ? rolesApi.getReviewQueue() : rolesApi.getMyPRs(),
-    enabled: canLoadPersonalPRs,
+    enabled: canLoadPersonalPRs && !browsesProjects,
     retry: 1,
   });
 
@@ -87,7 +88,7 @@ export function PullRequestsPage() {
     const matchesSearch = !search ||
       pr.title?.toLowerCase().includes(search.toLowerCase()) ||
       pr.pr_number?.toString().includes(search) ||
-      pr.author?.toLowerCase().includes(search.toLowerCase());
+      (pr.author_login || pr.author)?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || pr.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -121,7 +122,7 @@ export function PullRequestsPage() {
         </div>
       ),
     },
-    { key: 'author', header: 'Author', render: (pr) => pr.author || '—' },
+    { key: 'author', header: 'Author', render: (pr) => pr.author_login || pr.author || '—' },
     { key: 'ci_status', header: 'CI', render: (pr) => {
       const actions = pr.github_actions_ci;
       if (!pr.ci_status && actions?.runs?.length) {
@@ -175,13 +176,13 @@ export function PullRequestsPage() {
       render: (pr) => (
         <div style={{ display: 'flex', gap: '0.35rem' }}>
           <Button variant="secondary" size="sm" onClick={e => { e.stopPropagation(); setAlgorithmPR(pr.id); }}>Algorithm findings</Button>
-          {pr.html_url && (
+          {(pr.html_url || pr.github_url) && (
             <Button
               variant="ghost"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                window.open(pr.html_url, '_blank');
+                window.open(pr.html_url || pr.github_url, '_blank', 'noopener,noreferrer');
               }}
             >
               <ExternalLink size={14} />
@@ -192,11 +193,11 @@ export function PullRequestsPage() {
     },
   ];
 
-  const listLoading = browsesProjects ? projectPrQuery.isLoading : isLoading;
-  const listError = browsesProjects ? projectPrQuery.error : error;
+  const listLoading = browsesProjects ? projectsLoading || projectPrQuery.isLoading : isLoading;
+  const listError = browsesProjects ? projectsError || projectPrQuery.error : error;
   if (listLoading) return <LoadingState message="Loading pull requests..." />;
   if (listError) {
-    return <ErrorState message={listError.message} onRetry={browsesProjects ? projectPrQuery.refetch : refetch} />;
+    return <ErrorState message={listError.message} onRetry={browsesProjects ? projectsError ? refetchProjects : projectPrQuery.refetch : refetch} />;
   }
 
   return (
@@ -222,6 +223,11 @@ export function PullRequestsPage() {
         }
       />
 
+      {missingGitHubIdentity && (
+        <p role="status" style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+          Your GitHub account is not linked. Showing authorized project pull requests; an administrator can link your identity in Employees for the personal view.
+        </p>
+      )}
       {/* Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <Card variant="flat" padding="md">
@@ -237,7 +243,7 @@ export function PullRequestsPage() {
         <Card variant="flat" padding="md">
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Pending Review</div>
           <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warning)' }}>
-            {prs.filter((pr) => pr.review_status === 'pending').length}
+            {prs.filter((pr) => pr.status === 'open' && (pr.review_status || 'pending') === 'pending').length}
           </div>
         </Card>
         <Card variant="flat" padding="md">

@@ -6,6 +6,7 @@ from .base import BaseRepository
 from core.database import col
 from pymongo.errors import DuplicateKeyError
 from intelligence.algorithms.decision import fingerprint
+import re
 
 
 class PRRepository(BaseRepository):
@@ -16,13 +17,75 @@ class PRRepository(BaseRepository):
         """Find all PRs by an author."""
         return await self.find_all({"author_id": author_id})
 
+    @staticmethod
+    def _organization(record):
+        organization = record.get("org_id")
+        if (not isinstance(organization, str) or not organization.strip()
+                or record.get("organization_id", organization) != organization):
+            return None
+        return organization
+
+    @staticmethod
+    def _project_scope(project_ids, organization):
+        # Mongo scalar equality/$in also matches arrays: ambiguous identities
+        # must not inherit access through one matching array element.
+        return {"project_id": {"$in": project_ids, "$not": {"$type": "array"}},
+                "$and": [{"$or": [{key: {"$exists": False}},
+                    {key: {"$eq": organization, "$not": {"$type": "array"}}}]}
+                    for key in ("org_id", "organization_id")]}
+
+    async def _member_project_ids(self, person):
+        organization = self._organization(person)
+        if organization is None or person.get("is_active", True) is not True:
+            return []
+        assigned = person.get("project_ids")
+        assigned = [p for p in assigned if isinstance(p, str) and p] if isinstance(assigned, list) else []
+        team = person.get("team_id")
+        team = team if isinstance(team, str) and team else None
+        membership = [{"id": {"$in": assigned}}]
+        if team:
+            membership.append({"team_id": team})
+        projects = await col("projects").find({"org_id": organization, "$or": membership},
+            {"id": 1, "org_id": 1, "organization_id": 1, "team_id": 1}).to_list(None)
+        return sorted({p["id"] for p in projects if isinstance(p.get("id"), str)
+                       and p["id"] and self._organization(p) == organization
+                       and (p["id"] in assigned or team is not None and p.get("team_id") == team)})
+
+    async def find_by_employee(self, employee_id: str) -> list:
+        """Explicit GitHub identity and legacy employee identity, within current scope."""
+        person = await col("users").find_one({"employee_id": employee_id})
+        if not person:
+            return []
+        projects = await self._member_project_ids(person)
+        if not projects:
+            return []
+        authors = [{"author_id": {"$eq": employee_id, "$not": {"$type": "array"}}}]
+        login = person.get("github_username")
+        if isinstance(login, str) and login.strip():
+            match = {"$regex": "^" + re.escape(login.strip()) + "$", "$options": "i", "$not": {"$type": "array"}}
+            authors.extend([{"author_id": match}, {"author_login": match}])
+        return await self.find_all({**self._project_scope(projects, self._organization(person)), "$or": authors})
+
+    async def find_for_member(self, person: dict) -> list:
+        """Project/team read membership; author mappings do not grant project access."""
+        projects = await self._member_project_ids(person)
+        if not projects:
+            return []
+        return await self.find_all(self._project_scope(projects, self._organization(person)))
+
     async def find_open(self, project_id: str) -> list:
         """Find all open PRs in a project."""
         return await self.find_all({"project_id": project_id, "status": "open"})
 
     async def find_by_project(self, project_id: str) -> list:
         """Find all PRs in a project."""
-        return await self.find_all({"project_id": project_id})
+        if not isinstance(project_id, str) or not project_id:
+            return []
+        project = await col("projects").find_one({"id": {"$eq": project_id, "$not": {"$type": "array"}}})
+        organization = self._organization(project or {})
+        if organization is None:
+            return []
+        return await self.find_all(self._project_scope([project_id], organization))
 
     async def find_by_date_range(self, repo_id: str, start_date, end_date) -> list:
         """Find repository PRs created within an inclusive date range."""

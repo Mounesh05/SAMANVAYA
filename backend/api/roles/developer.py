@@ -42,7 +42,7 @@ async def developer_dashboard(user: dict = Depends(require_roles("DEVELOPER"))):
     my_stories = await story_repo.find_by_assignee(employee_id)
     
     # My PRs
-    my_prs = await pr_repo.find_by_author(employee_id)
+    my_prs = await pr_repo.find_by_employee(employee_id)
     open_prs = [pr for pr in my_prs if pr.get("status") == "open"]
     
     return {
@@ -80,7 +80,7 @@ async def my_tasks(user: dict = Depends(require_roles("DEVELOPER"))):
 async def my_pull_requests(user: dict = Depends(require_roles("DEVELOPER"))):
     """Get all my pull requests."""
     pr_repo = PRRepository()
-    prs = await pr_repo.find_by_author(user["employee_id"])
+    prs = await pr_repo.find_by_employee(user["employee_id"])
     
     return {
         "employee_id": user["employee_id"],

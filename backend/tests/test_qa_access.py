@@ -233,17 +233,20 @@ class TestStorySignOff:
 async def test_qa_lists_pull_requests_of_assigned_projects_only(mock_db):
     from api.routes import github
     from repositories import pr_repository
+    own_project, other_project = {**PROJECT_A, "org_id": "O1"}, {**PROJECT_B, "org_id": "O1"}
+    await mock_db.projects.insert_many([own_project, other_project])
+    current_qa = {**QA, "org_id": "O1"}
     await mock_db["pull_requests"].insert_many([
         {"id": "PR-1", "project_id": "PRJ-A", "title": "a", "updated_at": "2026-11-10"},
         {"id": "PR-2", "project_id": "PRJ-B", "title": "b", "updated_at": "2026-11-11"},
     ])
     with patch.object(pr_repository, "col", side_effect=lambda name: mock_db[name]), \
             patch("core.authorization._project_repo") as projects:
-        projects.find_by_id = project_lookup(PROJECT_A, PROJECT_B)
-        result = await github.list_project_pull_requests("PRJ-A", user=QA)
+        projects.find_by_id = project_lookup(own_project, other_project)
+        result = await github.list_project_pull_requests("PRJ-A", user=current_qa)
         assert [pr["id"] for pr in result["pull_requests"]] == ["PR-1"]
         with pytest.raises(HTTPException) as error:
-            await github.list_project_pull_requests("PRJ-B", user=QA)
+            await github.list_project_pull_requests("PRJ-B", user=current_qa)
         assert error.value.status_code == 403
 
 
