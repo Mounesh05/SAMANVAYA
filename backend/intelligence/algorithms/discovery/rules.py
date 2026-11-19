@@ -32,7 +32,8 @@ def traversal(function, removal):
     for take in facts(function, removal):
         if not take.related or take.subject not in sequences:
             continue
-        adjacency = [e for e in facts(function, "adjacency_iteration") if e.related == take.related]
+        adjacency = [e for e in facts(function, "adjacency_iteration") if e.related == take.related
+                     and (function.language != "python" or f"remove_line:{take.line}" in e.arguments)]
         append = [e for e in facts(function, "sequence_append") if e.subject == take.subject
                   and e.related and any(a.binding == e.related for a in adjacency)]
         loops = [e for e in facts(function, "while_loop") if e.subject == take.subject]

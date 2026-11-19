@@ -76,13 +76,41 @@ class CodeQualityService:
             CodeQualityEvidence from unified analyzer system
         """
         repo_id = pr_context.get("project_id", "")
-        repo_path = pr_context.get("repo_path", ".")
+        repo_path = pr_context.get("repo_path")
 
         start = time.monotonic()
 
         try:
             # Detect primary language and get appropriate analyzers
             profile = self._detector.detect_from_files(changed_files)
+            from pathlib import Path
+            if not repo_path or not Path(repo_path).is_dir():
+                return CodeQualityEvidence(
+                    repository_id=repo_id, pr_number=pr_context.get("pr_number"),
+                    commit_sha=pr_context.get("commit_sha"), primary_language=profile.primary_language,
+                    detected_languages=profile.detected_languages,
+                    tools_skipped=["quality-tools:repository-worktree-unavailable"],
+                    analysis_quality=AnalysisQuality(level=AnalysisLevelEnum.INFERRED_ONLY, confidence=0.1,
+                        reason="Quality tools require a local repository worktree; source snapshots support static purpose discovery only."),
+                )
+            from intelligence.algorithms.discovery.service import safe_relative_path
+            root = Path(repo_path).resolve()
+            available_files, missing_files = [], []
+            for path in changed_files:
+                absolute = (root / path).resolve()
+                if safe_relative_path(path) and absolute.is_relative_to(root) and absolute.is_file():
+                    available_files.append(path)
+                else:
+                    missing_files.append(path)
+            changed_files = available_files
+            if not changed_files:
+                return CodeQualityEvidence(
+                    repository_id=repo_id, commit_sha=pr_context.get("commit_sha"),
+                    primary_language=profile.primary_language, detected_languages=profile.detected_languages,
+                    tools_skipped=["quality-tools:selected-source-unavailable"],
+                    analysis_quality=AnalysisQuality(level=AnalysisLevelEnum.INFERRED_ONLY, confidence=0.1,
+                        reason="None of the selected files is available within the repository worktree."),
+                )
             analyzers = get_analyzers_for_profile(profile)
 
             if not analyzers:
@@ -143,6 +171,9 @@ class CodeQualityService:
                 )
             
             evidence = EvidenceMerger.merge(evidence_list)
+            if missing_files:
+                evidence.tools_skipped.append("selected-source-unavailable")
+                evidence.analysis_quality.degrade("source", "selected-source-unavailable")
             logger.info(f"Merged evidence from {len(evidence_list)} analyzers")
 
             elapsed_ms = (time.monotonic() - start) * 1000

@@ -202,8 +202,43 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         self, repo_path: str, evidence: CodeQualityEvidence,
         changed_files: Optional[List[str]] = None,
     ) -> List[Finding]:
-        tsconfig = Path(repo_path) / "tsconfig.json"
+        # A monorepo can contain several independently configured TS projects.
+        # Resolve the nearest ancestor config for each changed file, within root.
+        root = Path(repo_path).resolve()
+        projects = set()
+        for file in changed_files or []:
+            candidate = (root / file).resolve()
+            if not candidate.is_relative_to(root):
+                continue
+            for directory in [candidate.parent, *candidate.parent.parents]:
+                if not directory.is_relative_to(root):
+                    break
+                if (directory / "tsconfig.json").is_file():
+                    projects.add(directory)
+                    break
+        nested = sorted(p for p in projects if p != root)
+        if nested:
+            findings = []
+            for project in sorted(projects):
+                prefix = project.relative_to(root).as_posix()
+                scoped = [Path(root / f).resolve().relative_to(project).as_posix() for f in changed_files or []
+                          if (root / f).resolve().is_relative_to(project)]
+                found = await self._tsc(str(project), evidence, changed_files=None)
+                changed = {f.casefold() for f in scoped}
+                for finding in found:
+                    in_change = finding.file_path.casefold() in changed
+                    finding.file_path = posixpath.join(prefix, finding.file_path) if prefix != "." else finding.file_path
+                    if in_change:
+                        finding.rule_id = finding.rule_id.replace("TSC-REPO-", "TSC-")
+                        finding.source_tool = "tsc"
+                    else:
+                        finding.rule_id = finding.rule_id.replace("TSC-", "TSC-REPO-", 1)
+                        finding.source_tool = "tsc-repo-wide"
+                findings.extend(found)
+            return findings
+        tsconfig = root / "tsconfig.json"
         if not tsconfig.exists():
+            self._degrade_quality(evidence, "static_analysis", "tsc:configuration-unavailable", penalty=0.1)
             return []
 
         for cmd in [
@@ -212,8 +247,12 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         ]:
             result = await _run(cmd, cwd=repo_path)
             if result is not None:
+                findings = self._parse_tsc(result, changed_files, repo_path)
+                if result.strip() and not findings:
+                    self._degrade_quality(evidence, "static_analysis", "tsc:unrecognized-diagnostics", penalty=0.1)
+                    return []
                 evidence.tools_executed.append("tsc")
-                return self._parse_tsc(result, changed_files, repo_path)
+                return findings
 
         self._degrade_quality(evidence, "static_analysis", "tsc", penalty=0.1)
         return []
@@ -225,6 +264,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
     ) -> List[Dict]:
         pkg_json = Path(repo_path) / "package.json"
         if not pkg_json.exists():
+            self._degrade_quality(evidence, "security", "npm-audit:package-manifest-unavailable", penalty=0.05)
             return []
 
         result = await _run(["npm", "audit", "--json"], cwd=repo_path)
@@ -237,7 +277,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             return []
 
         evidence.tools_executed.append("npm-audit")
-        return self._parse_npm_audit(result)
+        return self._parse_npm_audit(result or "")
 
     # ── Test framework detection ──────────────────────────────────────────────
 
@@ -333,6 +373,12 @@ class JavaScriptAnalyzer(BaseAnalyzer):
                     source_tool="tsc" if in_change else "tsc-repo-wide",
                     message=m.group(6),
                 ))
+            else:
+                global_error = re.match(r"(?:error|warning) (TS\d+):\s+(.+)", line)
+                if global_error:
+                    findings.append(Finding(file_path="tsconfig.json", rule_id=f"TSC-{global_error.group(1)}",
+                        category="type", severity=SeverityEnum.HIGH, source_tool="tsc",
+                        message=global_error.group(2)))
         return findings
 
     @staticmethod

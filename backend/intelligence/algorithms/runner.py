@@ -51,6 +51,8 @@ class DockerBenchmarkRunner:
                 "docker", *args, stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             )
+        except NotImplementedError as exc:
+            raise BenchmarkUnavailable("Docker subprocess unavailable; check the daemon and use a single Windows worker without --reload") from exc
         except OSError as exc:
             raise BenchmarkUnavailable("Docker CLI unavailable; install Docker and start its daemon") from exc
         consumed = 0

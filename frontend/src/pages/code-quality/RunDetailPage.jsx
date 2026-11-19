@@ -32,7 +32,7 @@ export function RunDetailPage() {
   });
 
   // 2. Fetch Findings
-  const { data: findingsData, isLoading: isFindingsLoading } = useQuery({
+  const { data: findingsData, isLoading: isFindingsLoading, error: findingsError } = useQuery({
     queryKey: ['code-quality-findings', runId, { severity: severityFilter, category: categoryFilter }],
     queryFn: () =>
       codeQualityApi.getRunFindings(runId, {
@@ -47,6 +47,8 @@ export function RunDetailPage() {
 
   const findings = findingsData?.findings || [];
   const isCompleted = run?.status === 'completed';
+  const discoveryOnly = run?.analysis_scope === 'purpose_discovery' || run?.analysis_level === 'purpose_discovery';
+  const qualityRan = !discoveryOnly && (['available', 'partial'].includes(run?.quality_analysis_status) || run?.tools_executed?.length > 0);
   const qualityGrade = isCompleted ? (run?.quality_grade || '—') : '—';
   const gradeColor = getGradeColor(qualityGrade);
   const statusLabel = {
@@ -55,6 +57,8 @@ export function RunDetailPage() {
     completed: 'Completed',
     failed: 'Failed',
   }[run?.status] || 'Unknown';
+  const completionLabel = isCompleted && discoveryOnly ? 'Discovery finished · quality not run'
+    : isCompleted && run?.quality_analysis_status === 'partial' ? 'Partially analyzed' : statusLabel;
 
   const findingColumns = [
     {
@@ -86,12 +90,12 @@ export function RunDetailPage() {
       header: 'Location',
       render: (f) => (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>
-          <span>{f.file}</span>
-          {f.line && <span style={{ color: 'var(--text-muted)' }}>:L{f.line}</span>}
+          <span>{f.file_path || f.file}</span>
+          {(f.line_number || f.line) && <span style={{ color: 'var(--text-muted)' }}>:L{f.line_number || f.line}</span>}
         </div>
       ),
     },
-    { key: 'description', header: 'Finding Description', render: (f) => f.description },
+    { key: 'description', header: 'Finding Description', render: (f) => f.message || f.description },
     {
       key: 'recommendation',
       header: 'Fix Recommendation',
@@ -112,10 +116,17 @@ export function RunDetailPage() {
         subtitle={`Repository: ${run?.repository_id} ${run?.pr_number ? `• PR #${run.pr_number}` : ''}`}
         badge={
           <span style={{ color: isCompleted ? 'var(--success)' : 'var(--warning)', fontWeight: '700' }}>
-            {statusLabel}
+            {completionLabel}
           </span>
         }
       />
+
+      {(discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope">
+        <p>{run?.quality_unavailable_reason || (discoveryOnly ? 'Static function discovery only. Quality and risk were not measured.' : run?.error)}</p>
+        <p>Tools executed: {run?.tools_executed?.join(', ') || 'None recorded'}</p>
+        <p>Tools skipped or unavailable: {run?.tools_skipped?.join(', ') || 'None recorded'}</p>
+        <p>Test coverage: {run?.testing?.coverage_percentage != null ? `${run.testing.coverage_percentage}%` : 'Not measured'}</p>
+      </Card>}
 
       {/* Overview Score Cards */}
       <div
@@ -137,6 +148,7 @@ export function RunDetailPage() {
               {isCompleted && `(${qualityGrade})`}
             </span>
           </div>
+          {run?.quality_score == null && <p>Quality score unavailable</p>}
         </Card>
 
         <Card padding="md">
@@ -155,14 +167,14 @@ export function RunDetailPage() {
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Detected Language</span>
           <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '0.35rem', textTransform: 'capitalize' }}>
-            {isCompleted ? (run?.language || 'Multi-language') : 'Pending analysis'}
+            {run?.language || 'Pending analysis'}
           </div>
         </Card>
 
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Total Findings</span>
           <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
-            {isCompleted ? `${findingsData?.total || 0} issues` : 'Not available yet'}
+            {findingsError ? 'Retrieval failed' : qualityRan && isCompleted && findingsData ? `${findingsData.total} recorded findings` : 'Quality checks not established'}
           </div>
         </Card>
       </div>
@@ -204,13 +216,13 @@ export function RunDetailPage() {
           </div>
         </div>
 
-        {isFindingsLoading ? (
+        {findingsError ? <ErrorState message={findingsError.message} /> : isFindingsLoading ? (
           <LoadingState message="Loading findings..." />
         ) : (
           <Table
             columns={findingColumns}
             data={findings}
-            emptyMessage="No findings detected. Code passes all quality and security checks!"
+            emptyMessage={qualityRan ? 'No findings recorded by the checks that ran. See tool availability and analysis limitations.' : 'Quality checks were not run or their evidence is unavailable. No clean-code conclusion can be made.'}
           />
         )}
       </Card>

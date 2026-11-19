@@ -235,6 +235,12 @@ class PythonAnalyzer(BaseAnalyzer):
                 cwd=repo_path,
             )
             if result is not None:
+                try:
+                    if not isinstance(json.loads(result), list):
+                        result = None
+                except (ValueError, TypeError):
+                    result = None
+            if result is not None:
                 evidence.tools_executed.append("ruff")
                 findings.extend(self._parse_ruff(result, files))
                 # Supplement with mypy if available
@@ -278,14 +284,16 @@ class PythonAnalyzer(BaseAnalyzer):
         result = await _run(
             ["bandit", "-r", "-f", "json", "-q"] + abs_files, cwd=repo_path
         )
-        if not result:
-            return []
-
-        evidence.tools_executed.append("bandit")
         try:
-            data = json.loads(result)
-        except json.JSONDecodeError:
+            data = json.loads(result) if result is not None else None
+            if not isinstance(data, dict) or not isinstance(data.get("results"), list):
+                raise ValueError("Malformed Bandit report")
+        except (ValueError, TypeError):
+            self._degrade_quality(evidence, "security", "bandit-failed", penalty=0.1)
             return []
+        evidence.tools_executed.append("bandit")
+        if data.get("errors"):
+            self._degrade_quality(evidence, "security", "bandit-source-errors", penalty=0.1)
 
         findings = []
         sev_map = {"HIGH": SeverityEnum.HIGH, "MEDIUM": SeverityEnum.MEDIUM, "LOW": SeverityEnum.LOW}
@@ -307,9 +315,12 @@ class PythonAnalyzer(BaseAnalyzer):
     async def _dependencies(
         self, repo_path: str, evidence: CodeQualityEvidence
     ) -> List[Dict]:
+        if not (Path(repo_path) / "requirements.txt").is_file():
+            self._degrade_quality(evidence, "security", "dependency-manifest-unavailable", penalty=0.05)
+            return []
         tools = [
             ("pip-audit", ["pip-audit", "--format=json", "-r", "requirements.txt"]),
-            ("safety",    ["safety", "check", "--json"]),
+            ("safety",    ["safety", "check", "--json", "-r", "requirements.txt"]),
         ]
         for tool, cmd in tools:
             if self._tool_available(tool):
@@ -437,7 +448,7 @@ class PythonAnalyzer(BaseAnalyzer):
         if not pytest_available and te.total_tests == 0:
             self._degrade_quality(evidence, "testing", "pytest", penalty=0.15)
         else:
-            evidence.tools_executed.append("pytest-collect")
+            evidence.tools_executed.append("ast-test-discovery")
 
         # Coverage (if .coverage file exists from previous run)
         coverage_available = False
@@ -446,10 +457,13 @@ class PythonAnalyzer(BaseAnalyzer):
             if cov_out:
                 try:
                     cov_data = json.loads(cov_out)
-                    te.coverage_percentage = round(cov_data.get("totals", {}).get("percent_covered", 0), 1)
+                    percent = cov_data.get("totals", {}).get("percent_covered")
+                    if type(percent) not in (int, float) or not 0 <= percent <= 100:
+                        raise ValueError("Coverage percentage unavailable")
+                    te.coverage_percentage = round(percent, 1)
                     evidence.tools_executed.append("coverage")
                     coverage_available = True
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
                     pass
 
         # Degrade confidence if coverage data unavailable

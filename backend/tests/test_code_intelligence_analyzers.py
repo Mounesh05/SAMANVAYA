@@ -1803,9 +1803,10 @@ class TestTier1PythonAnalyzer:
 
     # ── Feature 15: Explicit Dependency Tool Failure Handling ──────────────────
 
-    def test_f15_pip_audit_clean_scan_does_not_fall_through_to_safety(self):
+    def test_f15_pip_audit_clean_scan_does_not_fall_through_to_safety(self, tmp_path):
         """F15: A clean pip-audit scan (0 vulns) must return [] and not unnecessarily run safety."""
         py_mod = sys.modules[PythonAnalyzer.__module__]
+        (tmp_path / "requirements.txt").write_text("", encoding="utf-8")
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-clean", primary_language="python")
         clean_pip_audit = json.dumps({"dependencies": []})
@@ -1818,14 +1819,15 @@ class TestTier1PythonAnalyzer:
 
         with patch.object(analyzer, "_tool_available", return_value=True):
             with patch.object(py_mod, "_run", fake_run):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(str(tmp_path), evidence))
                 assert vulns == []
                 assert "pip-audit" in evidence.tools_executed
                 assert call_count == 1
 
-    def test_f15_pip_audit_failure_records_degraded_quality(self):
+    def test_f15_pip_audit_failure_records_degraded_quality(self, tmp_path):
         """F15: A failed dependency tool (None output) must record explicit quality degradation."""
         py_mod = sys.modules[PythonAnalyzer.__module__]
+        (tmp_path / "requirements.txt").write_text("", encoding="utf-8")
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-fail", primary_language="python")
 
@@ -1834,13 +1836,14 @@ class TestTier1PythonAnalyzer:
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "pip-audit"):
             with patch.object(py_mod, "_run", fake_run_fail):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(str(tmp_path), evidence))
                 assert vulns == []
                 assert evidence.analysis_quality.penalties or evidence.tools_skipped or (evidence.analysis_quality.confidence < 1.0)
 
-    def test_f15_dependency_tool_timeout_handled_cleanly(self):
+    def test_f15_dependency_tool_timeout_handled_cleanly(self, tmp_path):
         """F15: Subprocess timeout in dependency tool must be handled gracefully without exception."""
         py_mod = sys.modules[PythonAnalyzer.__module__]
+        (tmp_path / "requirements.txt").write_text("", encoding="utf-8")
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-timeout", primary_language="python")
 
@@ -1849,12 +1852,13 @@ class TestTier1PythonAnalyzer:
 
         with patch.object(analyzer, "_tool_available", return_value=True):
             with patch.object(py_mod, "_run", fake_run_none):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(str(tmp_path), evidence))
                 assert vulns == []
 
-    def test_f15_safety_executed_when_pip_audit_not_available(self):
+    def test_f15_safety_executed_when_pip_audit_not_available(self, tmp_path):
         """F15: Fallback to safety occurs when pip-audit is not available on host."""
         py_mod = sys.modules[PythonAnalyzer.__module__]
+        (tmp_path / "requirements.txt").write_text("", encoding="utf-8")
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-fallback", primary_language="python")
         safety_output = json.dumps([{"name": "django", "id": "CVE-2022-1234", "description": "SQLi"}])
@@ -1864,17 +1868,18 @@ class TestTier1PythonAnalyzer:
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "safety"):
             with patch.object(py_mod, "_run", fake_run_safety):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(str(tmp_path), evidence))
                 assert len(vulns) == 1
                 assert "safety" in evidence.tools_executed
 
-    def test_f15_both_dependency_tools_failing_records_quality_penalty(self):
+    def test_f15_both_dependency_tools_failing_records_quality_penalty(self, tmp_path):
         """F15: When all dependency tools fail or are unavailable, degradation is recorded."""
+        (tmp_path / "requirements.txt").write_text("", encoding="utf-8")
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-none", primary_language="python")
 
         with patch.object(analyzer, "_tool_available", return_value=False):
-            vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+            vulns = sync_run(analyzer._dependencies(str(tmp_path), evidence))
             assert vulns == []
 
     # ── Feature 16: Flake8 Clean Run & Format Compatibility ────────────────────

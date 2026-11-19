@@ -249,13 +249,15 @@ async def get_run_history(
             {"repository_id": repository_id},
             {"_id": 0, "run_id": 1, "created_at": 1, "language": 1,
              "quality_score": 1, "quality_grade": 1, "risk_score": 1,
-             "risk_level": 1, "status": 1, "pr_number": 1},
+             "risk_level": 1, "status": 1, "pr_number": 1,
+             "analysis_level": 1, "analysis_scope": 1, "quality_analysis_status": 1,
+             "quality_unavailable_reason": 1, "tools_executed": 1, "tools_skipped": 1},
         )
         .sort("created_at", -1)
         .limit(limit)
         .to_list(limit)
     )
-    return {"repository_id": repository_id, "history": runs, "count": len(runs)}
+    return {"repository_id": repository_id, "history": [analysis_scope(run) for run in runs], "count": len(runs)}
 
 
 @router.post("/projects/{project_id}/config")
@@ -305,6 +307,7 @@ async def supported_languages():
 
 async def _visible_ai_result(run, user):
     """Apply the AI tenant/permission boundary to optional interpretation fields."""
+    run = analysis_scope(run)
     if "ai_analysis" not in run:
         return run
     if run.get("ai_status") == "skipped":
@@ -324,6 +327,19 @@ async def _visible_ai_result(run, user):
             pass
     return {**run, "ai_analysis": {"status": "unavailable", "analysis": None, "errors": ["AI_RESULT_ACCESS_DENIED"]},
             "ai_status": "unavailable", "ai_provenance": {}, "ai_authorization_scope": None}
+
+
+def analysis_scope(run):
+    """Read-time metadata for historical discovery snapshots; never rewrite them."""
+    result = dict(run)
+    if run.get("analysis_level") == "purpose_discovery" or (
+        run.get("function_discovery") and not run.get("tools_executed")
+        and run.get("quality_score") is None and run.get("risk_score") is None
+    ):
+        result.setdefault("analysis_scope", "purpose_discovery")
+        result.setdefault("quality_analysis_status", "not_run")
+        result.setdefault("quality_unavailable_reason", "This snapshot contains static function discovery only. Quality and risk tools were not run.")
+    return result
 
 
 async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any, actor_id: Optional[str] = None) -> None:
@@ -381,13 +397,15 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any, actor_i
         # Calculate quality score
         from intelligence.quality_engine import QualityEngine
         quality_engine = QualityEngine()
-        quality_result = await quality_engine.calculate(evidence)
+        quality_result = (await quality_engine.calculate(evidence) if evidence.files_analyzed else
+                          {"quality_score": None, "quality_grade": None, "dimension_scores": {}})
 
         # Calculate risk score
         from intelligence.risk_engine import RiskEngine
         from intelligence.baselines.repository_baseline import RepositoryBaseline
         baseline = RepositoryBaseline()
-        risk_result = await RiskEngine().analyze_evidence(evidence, baseline)
+        risk_result = (await RiskEngine().analyze_evidence(evidence, baseline) if evidence.files_analyzed else
+                       {"risk_score": None, "risk_level": None, "risk_factors": [], "dimension_scores": {}})
 
         # AI Code Agent (if requested and not quick)
         from domain.services.internal_agent_adapter import resolve_code_authority, interpret_code, failed_interpretation
@@ -431,17 +449,17 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any, actor_i
             await findings_col.insert_many(finding_docs)
 
         # Update baseline with this run's metrics
-        await baseline.update_baseline(
-            body.repository_id,
-            {
+        if evidence.files_analyzed:
+            metrics = {
                 "files_changed": float(evidence.files_analyzed),
                 "lines_added": float(evidence.lines_added),
                 "lines_deleted": float(evidence.lines_deleted),
                 "lines_changed": float(evidence.lines_added + evidence.lines_deleted),  # Combined metric for Z-score
                 "complexity_avg": evidence.complexity.average_complexity,
-                "test_coverage": evidence.testing.coverage_percentage or 0.0,
-            },
-        )
+            }
+            if evidence.testing.coverage_percentage is not None:
+                metrics["test_coverage"] = evidence.testing.coverage_percentage
+            await baseline.update_baseline(body.repository_id, metrics)
 
         # Update run document with final results
         now = datetime.now(timezone.utc).isoformat()
@@ -450,6 +468,13 @@ async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any, actor_i
             {
                 "$set": {
                     "status": "completed",
+                    "analysis_scope": "code_quality" if evidence.files_analyzed else "purpose_discovery",
+                    "quality_analysis_status": ("partial" if evidence.tools_skipped else "available") if evidence.files_analyzed else "not_run",
+                    "quality_unavailable_reason": evidence.analysis_quality.reason,
+                    "analysis_quality": evidence.analysis_quality.model_dump(mode="json"),
+                    "testing": evidence.testing.model_dump(mode="json"),
+                    "files_analyzed": evidence.files_analyzed,
+                    "commit_sha": evidence.commit_sha,
                     "completed_at": now,
                     "language": evidence.primary_language,
                     "quality_score": quality_result["quality_score"],

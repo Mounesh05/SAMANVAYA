@@ -23,12 +23,13 @@ pytestmark = pytest.mark.anyio
 SOURCE = "def transform(values):\n    return sorted(values)\n"
 
 
-async def test_registered_analysis_collects_discovery_without_model(monkeypatch):
+async def test_registered_analysis_collects_discovery_without_model(monkeypatch, tmp_path):
     import domain.services.code_quality_service as module
+    (tmp_path / "module.py").write_text(SOURCE, encoding="utf-8")
     adapter = SimpleNamespace(analyze=AsyncMock(return_value=CodeQualityEvidence(repository_id="P1", primary_language="python")))
     monkeypatch.setattr(module, "get_analyzers_for_profile", lambda profile: {"python": adapter})
     evidence = await CodeQualityService().analyze_pr(["module.py"], {
-        "project_id": "P1", "commit_sha": "sha-1", "source_files": {"module.py": SOURCE},
+        "project_id": "P1", "commit_sha": "sha-1", "source_files": {"module.py": SOURCE}, "repo_path": str(tmp_path),
     })
     adapter.analyze.assert_awaited_once()
     assert evidence.function_discovery.functions[0].possible_task == "collection_ordering"

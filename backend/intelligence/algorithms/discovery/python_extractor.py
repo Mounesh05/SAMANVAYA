@@ -34,7 +34,9 @@ def extract(source: str, path: str) -> dict:
                     module_bindings.add(target.id)
     for function, qualified_name, binding in discovered[:128]:
         structure = _observe(function, qualified_name, binding, {"calls": 512, "allocations": 1024, "truncated": False})
-        facts, calls, returns, assertions = [], [], [], []
+        facts: list[dict] = []
+        calls: list[dict] = []
+        returns, assertions = [], []
         collections = {}
         queue = list(function.body if not isinstance(function, ast.Lambda) else [function.body])
         nodes = []
@@ -64,14 +66,67 @@ def extract(source: str, path: str) -> dict:
             if isinstance(value, ast.Call):
                 label = symbol(value.func)
                 canonical = imports.get(label, label)
+                if label.split(".")[0] in local_bindings or label in {"list", "set", "dict"} & module_bindings:
+                    return None
                 return {"list": "sequence", "set": "set", "dict": "mapping",
-                        "collections.deque": "sequence", "deque": "sequence"}.get(canonical)
+                        "collections.deque": "sequence"}.get(canonical)
             return None
 
-        shadowed = module_bindings | {arg.arg for arg in [*function.args.posonlyargs, *function.args.args, *function.args.kwonlyargs]}
+        local_bindings = {arg.arg for arg in [*function.args.posonlyargs, *function.args.args, *function.args.kwonlyargs]}
         for node in nodes:
             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-                shadowed.add(node.id)
+                local_bindings.add(node.id)
+        shadowed = module_bindings | local_bindings
+
+        def adjacency(value):
+            # Only a known builtin wrapper is transparent. Calls are syntax,
+            # never evaluated, and arbitrary wrappers remain unknown.
+            if (isinstance(value, ast.Call) and symbol(value.func) == "reversed"
+                    and "reversed" not in shadowed and len(value.args) == 1 and not value.keywords):
+                value = value.args[0]
+            if isinstance(value, ast.Subscript):
+                return value.value, value.slice
+            if (isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute)
+                    and value.func.attr == "get" and len(value.args) == 2 and not value.keywords
+                    and isinstance(value.args[1], (ast.List, ast.Tuple)) and not value.args[1].elts):
+                return value.func.value, value.args[0]
+            return None
+
+        def linked_removals(loop, receiver, key, neighbor):
+            """Conservative lexical dominance, not runtime/data-flow proof."""
+            if not all(isinstance(n, ast.Name) for n in (receiver, key, loop.target)):
+                return []
+            parameters = {a.arg for a in [*function.args.posonlyargs, *function.args.args, *function.args.kwonlyargs]}
+            if receiver.id not in parameters:
+                return []
+            stores = [n.id for n in nodes if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)]
+            if stores.count(receiver.id) or stores.count(key.id) != 1 or stores.count(neighbor) != 1:
+                return []
+            for outer in nodes:
+                if not isinstance(outer, ast.While) or not isinstance(outer.test, ast.Name):
+                    continue
+                sequence = outer.test.id
+                if loop not in outer.body or stores.count(sequence) != 1:
+                    continue
+                initializers = [n for n in nodes if isinstance(n, (ast.Assign, ast.AnnAssign))
+                                and n.lineno < outer.lineno and collection_kind(n.value) == "sequence"
+                                and any(isinstance(t, ast.Name) and t.id == sequence for t in
+                                        (n.targets if isinstance(n, ast.Assign) else [n.target]))]
+                if not initializers:
+                    continue
+                preceding = outer.body[:outer.body.index(loop)]
+                for take in preceding:
+                    if not (isinstance(take, ast.Assign) and len(take.targets) == 1
+                            and isinstance(take.targets[0], ast.Name) and take.targets[0].id == key.id
+                            and isinstance(take.value, ast.Call) and isinstance(take.value.func, ast.Attribute)
+                            and symbol(take.value.func.value) == sequence):
+                        continue
+                    appends = [n for n in ast.walk(loop) if isinstance(n, ast.Call)
+                               and symbol(n.func) == sequence + ".append" and len(n.args) == 1
+                               and symbol(n.args[0]) == neighbor]
+                    if appends:
+                        return [f"remove_line:{take.value.lineno}"]
+            return []
 
         for node in nodes:
             if isinstance(node, (ast.Assign, ast.AnnAssign)):
@@ -94,9 +149,13 @@ def extract(source: str, path: str) -> dict:
                                 fact("lifo_remove", call, receiver, target.id)
             if isinstance(node, (ast.For, ast.AsyncFor)):
                 fact("iteration", node, symbol(node.iter), symbol(node.target))
-                if isinstance(node.iter, ast.Subscript):
-                    fact("adjacency_iteration", node, symbol(node.iter.value), symbol(node.iter.slice),
-                         "Iterates an indexed collection; graph interpretation requires corroborating traversal evidence.", binding=symbol(node.target))
+                indexed = adjacency(node.iter)
+                if indexed:
+                    receiver, key = indexed
+                    links = linked_removals(node, receiver, key, symbol(node.target))
+                    fact("adjacency_iteration", node, symbol(receiver), symbol(key),
+                         "Static adjacency access; graph interpretation requires connected traversal evidence.",
+                         binding=symbol(node.target), arguments=links or ["traversal_unresolved"])
             if isinstance(node, ast.While):
                 fact("while_loop", node, symbol(node.test))
             if isinstance(node, ast.If):
@@ -167,5 +226,7 @@ def extract(source: str, path: str) -> dict:
                             return_annotation=ast.unparse(function.returns)[:120] if getattr(function, "returns", None) else None,
                             facts=sorted(facts, key=lambda f: (f["line"], f["kind"])), calls=calls,
                             returns=returns[:16], structure=structure, collections=collections,
-                            imports=imports, assertions=assertions[:32]))
+                            imports={key: value for key, value in imports.items()
+                                     if not any(isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store) and n.id == key for n in nodes)},
+                            assertions=assertions[:32]))
     return {"functions": records, "diagnostics": [], "truncated": truncated}

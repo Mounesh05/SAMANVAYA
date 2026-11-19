@@ -117,7 +117,8 @@ export function CodeQualityPage() {
       header: 'Status',
       render: (r) => (
         <span style={{ color: statusColor(r.status), fontWeight: '700', fontSize: '0.8125rem' }}>
-          {statusLabel(r.status)}
+          {r.status === 'completed' && (r.analysis_scope === 'purpose_discovery' || r.analysis_level === 'purpose_discovery')
+            ? 'Discovery finished · quality not run' : r.quality_analysis_status === 'partial' ? 'Partially analyzed' : statusLabel(r.status)}
         </span>
       ),
     },

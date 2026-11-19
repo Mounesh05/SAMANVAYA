@@ -38,14 +38,25 @@ def _module(path):
     return path.rsplit(".", 1)[0].replace("/", ".").removesuffix(".__init__")
 
 
-def _resolve_calls(records, raw_records):
+def _resolve_calls(records, raw_records, source_paths=()):
     by_location = {}
     for function in records:
         by_location.setdefault((function.path, function.qualified_name), []).append(function)
     by_module = {}
+    # Package markers establish possible import roots without assuming directory
+    # names such as backend/src. Conflicting candidates remain unresolved.
+    package_roots = {posixpath.dirname(posixpath.dirname(p)) for p in source_paths
+                     if p.endswith("/__init__.py") and safe_relative_path(p)}
     for function in records:
         if "." not in function.qualified_name:
             by_module.setdefault((_module(function.path), function.qualified_name), []).append(function)
+            if function.language == "python":
+                for root in package_roots:
+                    if root and function.path.startswith(root + "/"):
+                        alias = _module(function.path[len(root) + 1:])
+                        bucket = by_module.setdefault((alias, function.qualified_name), [])
+                        if function not in bucket:
+                            bucket.append(function)
 
     def target_for(caller, label, imports):
         if label.split(".")[0] in {p["name"] for p in caller.parameters}:
@@ -69,7 +80,9 @@ def _resolve_calls(records, raw_records):
                     module = ".".join(base + [module.lstrip(".")]).strip(".")
             elif module.startswith("."):
                 module = _module(posixpath.normpath(posixpath.join(posixpath.dirname(caller.path), module)) + ".js")
-            candidates = by_module.get((module, name), [])
+            candidates = [f for f in by_module.get((module, name), [])
+                          if f.repository_id == caller.repository_id
+                          and (f.language == "python") == (caller.language == "python")]
             return candidates[0] if len(candidates) == 1 else None
         return None
 
@@ -159,7 +172,7 @@ async def discover_sources(sources: dict[str, str], repository_id: str, revision
             report.diagnostics.append({"path": path, "kind": type(error).__name__,
                                        "line": getattr(error, "lineno", None),
                                        "message": "Static extraction unavailable for this source; no task conclusion was made."})
-    _resolve_calls(report.functions, raw_records)
+    _resolve_calls(report.functions, raw_records, sources)
     for function in report.functions:
         resolve(function)
     # Bound embedded MongoDB evidence independently of source-file bounds.
