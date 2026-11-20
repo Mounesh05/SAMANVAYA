@@ -1,0 +1,611 @@
+{
+  "job_id": "90487b7d2b0de7be03c7fb2f5010ea4b21e20e3ddb2a488ea4b04892d11ba415",
+  "schema_version": "pr-workflow-job-v1",
+  "workflow_type": "pr_multi_agent_v1",
+  "scope": {
+    "owner_id": "DEMO_LEAD",
+    "organization_id": "TASKFLOW-DEMO",
+    "project_id": "PRJ-A7E48B66",
+    "repository": "Mounesh05/taskflow-samanvaya-lab",
+    "pr_number": 4,
+    "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+    "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+  },
+  "request": {
+    "project_id": "PRJ-A7E48B66",
+    "pr_number": 4,
+    "expected_head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+  },
+  "snapshot": {
+    "schema_version": "pr-evidence-v1",
+    "snapshot_id": "db9c334d8cd8d9a20706bc0d6747125211972377ec7b3c9d5d8c6185bb6d1f1c",
+    "scope": {
+      "owner_id": "DEMO_LEAD",
+      "organization_id": "TASKFLOW-DEMO",
+      "project_id": "PRJ-A7E48B66",
+      "repository": "Mounesh05/taskflow-samanvaya-lab",
+      "pr_number": 4,
+      "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+      "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+    },
+    "references": [
+      {
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "scope": {
+          "owner_id": "DEMO_LEAD",
+          "organization_id": "TASKFLOW-DEMO",
+          "project_id": "PRJ-A7E48B66",
+          "repository": "Mounesh05/taskflow-samanvaya-lab",
+          "pr_number": 4,
+          "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+        },
+        "kind": "STATIC_SOURCE",
+        "source_reference": "github://Mounesh05/taskflow-samanvaya-lab/backend/app/advanced_algorithms.py@8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "content_sha256": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+        "method": "github-blob-and-static-discovery-v1",
+        "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+      },
+      {
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "scope": {
+          "owner_id": "DEMO_LEAD",
+          "organization_id": "TASKFLOW-DEMO",
+          "project_id": "PRJ-A7E48B66",
+          "repository": "Mounesh05/taskflow-samanvaya-lab",
+          "pr_number": 4,
+          "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+        },
+        "kind": "STATIC_SOURCE",
+        "source_reference": "github://Mounesh05/taskflow-samanvaya-lab/backend/tests/test_advanced_algorithms.py@8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "content_sha256": "911d1a447a2c1f947e996d61b3e9bba5f764819f2a865f58f11fa17379b6d417",
+        "method": "github-blob-and-static-discovery-v1",
+        "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+      }
+    ],
+    "observations": [
+      {
+        "observation_id": "f4db4281f577e6c3baca4860e64be4de8682e867e499aa4efaff05325369564e",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "function_count",
+        "value": 6,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "1b2f714a0c502c612cb0527f8a171f558253fbefe2c2d632d63eeca070033223",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "source_bytes",
+        "value": 3002,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "5927d4b477152a0ee4cb0d9d4a070dd186be6b611ac4c45fa77f0e35f731cb96",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "static_structure_adjacency_iteration",
+        "value": 2,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "87fab06a5349a72c732579925151768170fbefb4d53f9dfc6c6f5d63f76d52f1",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "static_structure_call",
+        "value": 32,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "85b3ac108794e243740796650cc8bf1faab22de7072d764cd99cd2d6a211c28c",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "static_structure_collection_binding",
+        "value": 13,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "1c98c5b89599ea4afbe407684d7f0ba373669e4056b5f26c81893f8f9bffb9b2",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "static_structure_conditional",
+        "value": 8,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "c90e08cffd06865fb07ecf815f60c260ae70301ec3ece3719fe2b03453f41dff",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "static_structure_conditional_return",
+        "value": 3,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "71025a0dfa8e379177f0cd645836210522408c8e0fb3afd0b74a33060dd328f8",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py",
+        "metric": "static_structure_fifo_remove",
+        "value": 1,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "923c026f928306991187366a6a1d1eb4abfd94b61dbbc5da936d5e69c55ac3df",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py:12",
+        "metric": "declared_function",
+        "value": "schedule_with_heap",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "6eec72d766609b765a5aa71cc1cf38ea171a2c219b9b94f1bb1eeae53db639ad",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py:30",
+        "metric": "declared_function",
+        "value": "schedule_with_repeated_sort",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "f548de99db010dc5d2d44f2f98ec8ccbc65eafa7d6547842fc684406150a0ed8",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py:39",
+        "metric": "declared_function",
+        "value": "schedule_with_repeated_sort.<lambda>@39:16",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "e179baf5612be0bd91e79cfaef98fc16d7de0e16518b532d89652284425248fd",
+        "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+        "subject": "backend/app/advanced_algorithms.py:47",
+        "metric": "declared_function",
+        "value": "bfs_dependencies",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "acb37e19dfe75f163225ab9f384eac5922206e67d79b246cec5579b7f3490894",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py",
+        "metric": "function_count",
+        "value": 12,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "2278534ecfb8d012feb3046f3a2ff47e8c11ac29c12a844a5405b31c4520a8d8",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py",
+        "metric": "source_bytes",
+        "value": 2121,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "3ca173a0cccb2539dc450baf7b7741fa8484baf8830d700838e31041924c3fd5",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py",
+        "metric": "static_structure_call",
+        "value": 21,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "564b21671964a31980f385994bef7219518ea52ed6adafc0f25d7026665077b8",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py",
+        "metric": "static_structure_collection_binding",
+        "value": 5,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "0e6d43929b495f231db0f54bc8395101002064f644681ea9ad0af644d99f06bc",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py",
+        "metric": "static_structure_return_value",
+        "value": 1,
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "566148028d961645140c139599d4d6de9ef7e1952b9c0a8f41e7c514d69542d2",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py:11",
+        "metric": "declared_function",
+        "value": "sample_tasks",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "9962bda5af2ee5579d41f7e3c0a58c8257753bc4c95d956dca7667d6ac92930b",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py:20",
+        "metric": "declared_function",
+        "value": "test_heap_scheduling_priority",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "c923e78fa0b60eab8516d3c4cd9a96f291ad2e89b8a51dacf601ef5114d9259c",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py:28",
+        "metric": "declared_function",
+        "value": "test_scheduling_implementations_agree",
+        "status": "OBSERVED"
+      },
+      {
+        "observation_id": "7ecd3374ca004f68efa401af4b576f89eff75bb2a60014a0ce178c798534069b",
+        "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+        "subject": "backend/tests/test_advanced_algorithms.py:36",
+        "metric": "declared_function",
+        "value": "test_scheduling_does_not_mutate_input",
+        "status": "OBSERVED"
+      }
+    ],
+    "limitations": [
+      "STRUCTURAL_OBSERVATIONS_BOUNDED",
+      "FUNCTION_IDENTITIES_BOUNDED",
+      "REGISTERED_QA_SOURCE_UNAVAILABLE"
+    ]
+  },
+  "snapshot_id": "db9c334d8cd8d9a20706bc0d6747125211972377ec7b3c9d5d8c6185bb6d1f1c",
+  "status": "FINALIZED",
+  "generation": 1,
+  "attempts": 1,
+  "step_results": [
+    {
+      "schema_version": "pr-workflow-step-v1",
+      "sequence": 1,
+      "generation": 1,
+      "attempt": 1,
+      "snapshot_id": "db9c334d8cd8d9a20706bc0d6747125211972377ec7b3c9d5d8c6185bb6d1f1c",
+      "outcome": {
+        "specialist": "code_analysis",
+        "status": "FAILED",
+        "summary": null,
+        "claims": [],
+        "limitations": [],
+        "error_code": "INVALID_MODEL_OUTPUT",
+        "consumed_outputs": [],
+        "model": null,
+        "method": "pr-specialist-v1"
+      },
+      "content_sha256": "92de5ab7f6d648c23f2119cd320bc8289ae80908149aa5d611d615e25d17aed9",
+      "advances_checkpoint": true
+    },
+    {
+      "schema_version": "pr-workflow-step-v1",
+      "sequence": 2,
+      "generation": 1,
+      "attempt": 1,
+      "snapshot_id": "db9c334d8cd8d9a20706bc0d6747125211972377ec7b3c9d5d8c6185bb6d1f1c",
+      "outcome": {
+        "specialist": "qa_analysis",
+        "status": "SKIPPED",
+        "summary": null,
+        "claims": [],
+        "limitations": [],
+        "error_code": "NO_QA_EVIDENCE",
+        "consumed_outputs": [],
+        "model": null,
+        "method": "pr-specialist-v1"
+      },
+      "content_sha256": "4eca8c0fcc6ca9453068eee3272f6e5c8020691c670d7e88d508e8b9026f7b13",
+      "advances_checkpoint": true
+    }
+  ],
+  "checkpoint": {
+    "schema_version": "pr-workflow-checkpoint-v1",
+    "sequence": 2,
+    "snapshot_id": "db9c334d8cd8d9a20706bc0d6747125211972377ec7b3c9d5d8c6185bb6d1f1c",
+    "outcomes": {
+      "code_analysis": {
+        "specialist": "code_analysis",
+        "status": "FAILED",
+        "summary": null,
+        "claims": [],
+        "limitations": [],
+        "error_code": "INVALID_MODEL_OUTPUT",
+        "consumed_outputs": [],
+        "model": null,
+        "method": "pr-specialist-v1"
+      },
+      "qa_analysis": {
+        "specialist": "qa_analysis",
+        "status": "SKIPPED",
+        "summary": null,
+        "claims": [],
+        "limitations": [],
+        "error_code": "NO_QA_EVIDENCE",
+        "consumed_outputs": [],
+        "model": null,
+        "method": "pr-specialist-v1"
+      }
+    }
+  },
+  "created_at": "2026-11-20T13:32:06.973862+00:00",
+  "worker_id": "d8a985bb0dc449e1b7651629f85878b0",
+  "lease_expires_at": "2026-11-20 13:33:36.998000",
+  "analysis_status": "FAILED",
+  "report": {
+    "scope": {
+      "owner_id": "DEMO_LEAD",
+      "organization_id": "TASKFLOW-DEMO",
+      "project_id": "PRJ-A7E48B66",
+      "repository": "Mounesh05/taskflow-samanvaya-lab",
+      "pr_number": 4,
+      "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+      "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+    },
+    "snapshot": {
+      "schema_version": "pr-evidence-v1",
+      "snapshot_id": "db9c334d8cd8d9a20706bc0d6747125211972377ec7b3c9d5d8c6185bb6d1f1c",
+      "scope": {
+        "owner_id": "DEMO_LEAD",
+        "organization_id": "TASKFLOW-DEMO",
+        "project_id": "PRJ-A7E48B66",
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "pr_number": 4,
+        "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+      },
+      "references": [
+        {
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "scope": {
+            "owner_id": "DEMO_LEAD",
+            "organization_id": "TASKFLOW-DEMO",
+            "project_id": "PRJ-A7E48B66",
+            "repository": "Mounesh05/taskflow-samanvaya-lab",
+            "pr_number": 4,
+            "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+            "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://Mounesh05/taskflow-samanvaya-lab/backend/app/advanced_algorithms.py@8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "content_sha256": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        },
+        {
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "scope": {
+            "owner_id": "DEMO_LEAD",
+            "organization_id": "TASKFLOW-DEMO",
+            "project_id": "PRJ-A7E48B66",
+            "repository": "Mounesh05/taskflow-samanvaya-lab",
+            "pr_number": 4,
+            "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+            "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59"
+          },
+          "kind": "STATIC_SOURCE",
+          "source_reference": "github://Mounesh05/taskflow-samanvaya-lab/backend/tests/test_advanced_algorithms.py@8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "content_sha256": "911d1a447a2c1f947e996d61b3e9bba5f764819f2a865f58f11fa17379b6d417",
+          "method": "github-blob-and-static-discovery-v1",
+          "verification_scope": "SOURCE_IDENTITY_AND_BYTES"
+        }
+      ],
+      "observations": [
+        {
+          "observation_id": "f4db4281f577e6c3baca4860e64be4de8682e867e499aa4efaff05325369564e",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "function_count",
+          "value": 6,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "1b2f714a0c502c612cb0527f8a171f558253fbefe2c2d632d63eeca070033223",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "source_bytes",
+          "value": 3002,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "5927d4b477152a0ee4cb0d9d4a070dd186be6b611ac4c45fa77f0e35f731cb96",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "static_structure_adjacency_iteration",
+          "value": 2,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "87fab06a5349a72c732579925151768170fbefb4d53f9dfc6c6f5d63f76d52f1",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "static_structure_call",
+          "value": 32,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "85b3ac108794e243740796650cc8bf1faab22de7072d764cd99cd2d6a211c28c",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "static_structure_collection_binding",
+          "value": 13,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "1c98c5b89599ea4afbe407684d7f0ba373669e4056b5f26c81893f8f9bffb9b2",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "static_structure_conditional",
+          "value": 8,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "c90e08cffd06865fb07ecf815f60c260ae70301ec3ece3719fe2b03453f41dff",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "static_structure_conditional_return",
+          "value": 3,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "71025a0dfa8e379177f0cd645836210522408c8e0fb3afd0b74a33060dd328f8",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py",
+          "metric": "static_structure_fifo_remove",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "923c026f928306991187366a6a1d1eb4abfd94b61dbbc5da936d5e69c55ac3df",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py:12",
+          "metric": "declared_function",
+          "value": "schedule_with_heap",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "6eec72d766609b765a5aa71cc1cf38ea171a2c219b9b94f1bb1eeae53db639ad",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py:30",
+          "metric": "declared_function",
+          "value": "schedule_with_repeated_sort",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "f548de99db010dc5d2d44f2f98ec8ccbc65eafa7d6547842fc684406150a0ed8",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py:39",
+          "metric": "declared_function",
+          "value": "schedule_with_repeated_sort.<lambda>@39:16",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "e179baf5612be0bd91e79cfaef98fc16d7de0e16518b532d89652284425248fd",
+          "evidence_id": "59b4f82f21fcadd775583fc2b3b3b0d01c7fb8008ddb346c5b88d35733a30b39",
+          "subject": "backend/app/advanced_algorithms.py:47",
+          "metric": "declared_function",
+          "value": "bfs_dependencies",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "acb37e19dfe75f163225ab9f384eac5922206e67d79b246cec5579b7f3490894",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py",
+          "metric": "function_count",
+          "value": 12,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "2278534ecfb8d012feb3046f3a2ff47e8c11ac29c12a844a5405b31c4520a8d8",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py",
+          "metric": "source_bytes",
+          "value": 2121,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "3ca173a0cccb2539dc450baf7b7741fa8484baf8830d700838e31041924c3fd5",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py",
+          "metric": "static_structure_call",
+          "value": 21,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "564b21671964a31980f385994bef7219518ea52ed6adafc0f25d7026665077b8",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py",
+          "metric": "static_structure_collection_binding",
+          "value": 5,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "0e6d43929b495f231db0f54bc8395101002064f644681ea9ad0af644d99f06bc",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py",
+          "metric": "static_structure_return_value",
+          "value": 1,
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "566148028d961645140c139599d4d6de9ef7e1952b9c0a8f41e7c514d69542d2",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py:11",
+          "metric": "declared_function",
+          "value": "sample_tasks",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "9962bda5af2ee5579d41f7e3c0a58c8257753bc4c95d956dca7667d6ac92930b",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py:20",
+          "metric": "declared_function",
+          "value": "test_heap_scheduling_priority",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "c923e78fa0b60eab8516d3c4cd9a96f291ad2e89b8a51dacf601ef5114d9259c",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py:28",
+          "metric": "declared_function",
+          "value": "test_scheduling_implementations_agree",
+          "status": "OBSERVED"
+        },
+        {
+          "observation_id": "7ecd3374ca004f68efa401af4b576f89eff75bb2a60014a0ce178c798534069b",
+          "evidence_id": "7b05ca02801404081790936c1169ceb7ac2abc94d9fe609a51b8663719451b1c",
+          "subject": "backend/tests/test_advanced_algorithms.py:36",
+          "metric": "declared_function",
+          "value": "test_scheduling_does_not_mutate_input",
+          "status": "OBSERVED"
+        }
+      ],
+      "limitations": [
+        "STRUCTURAL_OBSERVATIONS_BOUNDED",
+        "FUNCTION_IDENTITIES_BOUNDED",
+        "REGISTERED_QA_SOURCE_UNAVAILABLE"
+      ]
+    },
+    "status": "FAILED",
+    "collaboration": "NONE",
+    "eligible_specialists": [
+      "code_analysis"
+    ],
+    "outcomes": [
+      {
+        "specialist": "code_analysis",
+        "status": "FAILED",
+        "summary": null,
+        "claims": [],
+        "limitations": [],
+        "error_code": "INVALID_MODEL_OUTPUT",
+        "consumed_outputs": [],
+        "model": null,
+        "method": "pr-specialist-v1"
+      },
+      {
+        "specialist": "qa_analysis",
+        "status": "SKIPPED",
+        "summary": null,
+        "claims": [],
+        "limitations": [],
+        "error_code": "NO_QA_EVIDENCE",
+        "consumed_outputs": [],
+        "model": null,
+        "method": "pr-specialist-v1"
+      }
+    ],
+    "claims": [],
+    "transitions": [
+      "resolve_evidence",
+      "code_analysis",
+      "qa_analysis",
+      "reconcile",
+      "finalize"
+    ],
+    "limitations": [
+      "STRUCTURAL_OBSERVATIONS_BOUNDED",
+      "FUNCTION_IDENTITIES_BOUNDED",
+      "REGISTERED_QA_SOURCE_UNAVAILABLE",
+      "MODEL_STATEMENTS_ARE_ADVISORY",
+      "STRUCTURAL_FACTS_DO_NOT_PROVE_CORRECTNESS",
+      "CONFLICT_DETECTION_ONLY_MATCHING_TYPED_TOPICS_AND_OBSERVATIONS"
+    ],
+    "read_only": true,
+    "authoritative_score": null,
+    "schema_version": "pr-multi-agent-report-v2",
+    "workflow_type": "pr_multi_agent_v1",
+    "durable": true,
+    "job_id": "90487b7d2b0de7be03c7fb2f5010ea4b21e20e3ddb2a488ea4b04892d11ba415",
+    "generation": 1,
+    "published_at": "2026-11-20T13:32:24.315515+00:00"
+  },
+  "report_sha256": "bf2be2833a81117d05fa52d2b8e074f6d65254a3e2b3df04256b3e0d91e06703"
+}

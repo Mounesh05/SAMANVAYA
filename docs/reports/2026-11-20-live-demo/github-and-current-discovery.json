@@ -1,0 +1,304 @@
+{
+  "repository": "Mounesh05/taskflow-samanvaya-lab",
+  "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+  "base_sha": "f9e996fecf517a9985fbfd920112a1173b369b59",
+  "pr": 4,
+  "runs": [
+    {
+      "id": 44521347474,
+      "name": "TaskFlow CI",
+      "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+      "run_attempt": 1,
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-19T12:10:00Z",
+      "updated_at": "2026-11-19T12:10:43Z",
+      "jobs": [
+        {
+          "id": 135550472089,
+          "name": "Backend Tests",
+          "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "run_id": 44521347474,
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-19T12:10:04Z",
+          "completed_at": "2026-11-19T12:10:42Z"
+        },
+        {
+          "id": 135550472483,
+          "name": "Frontend Tests",
+          "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "run_id": 44521347474,
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-19T12:10:03Z",
+          "completed_at": "2026-11-19T12:10:21Z"
+        }
+      ]
+    },
+    {
+      "id": 44521183772,
+      "name": "TaskFlow CI",
+      "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+      "run_attempt": 1,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-19T12:08:55Z",
+      "updated_at": "2026-11-19T12:09:43Z",
+      "jobs": [
+        {
+          "id": 135549896560,
+          "name": "Frontend Tests",
+          "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "run_id": 44521183772,
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-19T12:08:58Z",
+          "completed_at": "2026-11-19T12:09:11Z"
+        },
+        {
+          "id": 135549897403,
+          "name": "Backend Tests",
+          "head_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+          "run_id": 44521183772,
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-19T12:08:59Z",
+          "completed_at": "2026-11-19T12:09:42Z"
+        }
+      ]
+    }
+  ],
+  "current_discovery": {
+    "status": "available",
+    "execution_performed": false,
+    "functions": [
+      {
+        "name": "schedule_with_heap",
+        "path": "backend/app/advanced_algorithms.py",
+        "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "source_hash": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+        "detected_patterns": [
+          {
+            "kind": "priority_queue_operations",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "02f23dc9ab61ebed207fd776",
+              "9bcc09a22c6f03e35b127326"
+            ],
+            "supported_conclusion": "Calls resolve syntactically through a heapq import; heap operations are indicated.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          }
+        ],
+        "possible_task": null,
+        "task_status": "UNKNOWN",
+        "callers": [],
+        "requirement_evidence_refs": [],
+        "uncertainty": [
+          "No authoritative contract is bound to this source hash; inferred purpose is not a functional requirement.",
+          "Names, comments and type annotations do not prove behavior; dynamic calls, aliases and rebinding remain unresolved.",
+          "Structural metadata is available, but supported rules do not establish a computational task.",
+          "No caller was linked in the inspected snapshot; external callers may exist.",
+          "No matching static test expectation was linked in the inspected snapshot."
+        ]
+      },
+      {
+        "name": "schedule_with_repeated_sort",
+        "path": "backend/app/advanced_algorithms.py",
+        "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "source_hash": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+        "detected_patterns": [
+          {
+            "kind": "sorting_operations",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "e9f6edd9176cca540af5829b"
+            ],
+            "supported_conclusion": "A sorted/sort call is present; runtime dispatch and ordering semantics remain unverified.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          }
+        ],
+        "possible_task": "collection_ordering",
+        "task_status": "INFERRED",
+        "callers": [],
+        "requirement_evidence_refs": [],
+        "uncertainty": [
+          "No authoritative contract is bound to this source hash; inferred purpose is not a functional requirement.",
+          "Names, comments and type annotations do not prove behavior; dynamic calls, aliases and rebinding remain unresolved.",
+          "No caller was linked in the inspected snapshot; external callers may exist.",
+          "No matching static test expectation was linked in the inspected snapshot."
+        ]
+      },
+      {
+        "name": "bfs_dependencies",
+        "path": "backend/app/advanced_algorithms.py",
+        "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "source_hash": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+        "detected_patterns": [
+          {
+            "kind": "fifo_graph_traversal",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "42d2fd56d7a85a08c8af7bb3",
+              "820619859033d45f322db07f",
+              "5fdfded3a1be776a8867354c",
+              "7d33402f4e75f1b34d08389d",
+              "4c9422025d25ec7f63c2db59"
+            ],
+            "supported_conclusion": "FIFO removal, re-enqueueing and indexed adjacency iteration share lexical bindings; BFS-like structure.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          },
+          {
+            "kind": "visited_set_tracking",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "56b82ddfb432b64a65703972",
+              "4226680e600dfe4d2293bee6"
+            ],
+            "supported_conclusion": "A set-like receiver is checked for membership and updated.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          },
+          {
+            "kind": "collection_search",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "20f41f5ab38b47ede83165de"
+            ],
+            "supported_conclusion": "Search-like calls or conditional returns within an iterative function are present.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          }
+        ],
+        "possible_task": "graph_traversal",
+        "task_status": "INFERRED",
+        "callers": [],
+        "requirement_evidence_refs": [],
+        "uncertainty": [
+          "No authoritative contract is bound to this source hash; inferred purpose is not a functional requirement.",
+          "Names, comments and type annotations do not prove behavior; dynamic calls, aliases and rebinding remain unresolved.",
+          "No caller was linked in the inspected snapshot; external callers may exist.",
+          "No matching static test expectation was linked in the inspected snapshot."
+        ]
+      },
+      {
+        "name": "dfs_dependencies",
+        "path": "backend/app/advanced_algorithms.py",
+        "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "source_hash": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+        "detected_patterns": [
+          {
+            "kind": "lifo_graph_exploration",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "b447bef5b555f82f4625ef1e",
+              "b61e0cda298478780d84e314",
+              "a447992b271dba4cf8c2c5f9",
+              "6cd774d1bfc2be088d8b4253",
+              "03356b900709576fa81f7ed0"
+            ],
+            "supported_conclusion": "LIFO removal and indexed adjacency exploration share lexical bindings; DFS-like structure.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          },
+          {
+            "kind": "visited_set_tracking",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "bc48a31ccc4f771f58d6651d",
+              "b7d9cb441a9b0e6b2bdb576d",
+              "54a388edc3cb86b49d75ea56"
+            ],
+            "supported_conclusion": "A set-like receiver is checked for membership and updated.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          },
+          {
+            "kind": "collection_search",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "59f94dfb2a41f78b9f3c5260"
+            ],
+            "supported_conclusion": "Search-like calls or conditional returns within an iterative function are present.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          }
+        ],
+        "possible_task": "graph_traversal",
+        "task_status": "INFERRED",
+        "callers": [],
+        "requirement_evidence_refs": [],
+        "uncertainty": [
+          "No authoritative contract is bound to this source hash; inferred purpose is not a functional requirement.",
+          "Names, comments and type annotations do not prove behavior; dynamic calls, aliases and rebinding remain unresolved.",
+          "No caller was linked in the inspected snapshot; external callers may exist.",
+          "No matching static test expectation was linked in the inspected snapshot."
+        ]
+      },
+      {
+        "name": "has_dependency_cycle",
+        "path": "backend/app/advanced_algorithms.py",
+        "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "source_hash": "e948c9feb3dce5b73550cd05c32d8833e67aace1dd6010eaef0aefc44f9d31f5",
+        "detected_patterns": [
+          {
+            "kind": "collection_search",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "ce198c73831de3eb5ccdd903"
+            ],
+            "supported_conclusion": "Search-like calls or conditional returns within an iterative function are present.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": "8ad02ac50587c6bb668dc480ae68efdc9f411b68"
+          }
+        ],
+        "possible_task": "collection_search_or_selection",
+        "task_status": "INFERRED",
+        "callers": [],
+        "requirement_evidence_refs": [],
+        "uncertainty": [
+          "No authoritative contract is bound to this source hash; inferred purpose is not a functional requirement.",
+          "Names, comments and type annotations do not prove behavior; dynamic calls, aliases and rebinding remain unresolved.",
+          "No caller was linked in the inspected snapshot; external callers may exist.",
+          "No matching static test expectation was linked in the inspected snapshot."
+        ]
+      }
+    ]
+  }
+}

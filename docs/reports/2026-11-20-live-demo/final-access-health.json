@@ -1,0 +1,28 @@
+{
+  "MOUNESH": {
+    "/api/ai/workflows/v1/projects": 403,
+    "/api/ai/workflows/v1/jobs/90487b7d2b0de7be03c7fb2f5010ea4b21e20e3ddb2a488ea4b04892d11ba415/report": 404
+  },
+  "DEMO_HR": {
+    "/api/ai/workflows/v1/projects": 403,
+    "/api/ai/workflows/v1/jobs/90487b7d2b0de7be03c7fb2f5010ea4b21e20e3ddb2a488ea4b04892d11ba415/report": 404
+  },
+  "health_8000": {
+    "status": "healthy",
+    "dependencies": {
+      "database": "connected",
+      "ollama": "connected",
+      "github": "configured"
+    },
+    "version": "1.0.0"
+  },
+  "health_8001": {
+    "status": "healthy",
+    "dependencies": {
+      "database": "connected",
+      "ollama": "connected",
+      "github": "configured"
+    },
+    "version": "1.0.0"
+  }
+}

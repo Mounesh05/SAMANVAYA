@@ -19,6 +19,7 @@ export function CicdLogsPage() {
 
   const analyzeMutation = useMutation({
     mutationFn: (data) => cicdLogsApi.analyzeLog(data),
+    onMutate: () => setAnalysisResult(null),
     onSuccess: (res) => {
       setAnalysisResult(res);
     },
@@ -97,8 +98,19 @@ export function CicdLogsPage() {
         <Card title="AI Diagnostic & Root Cause" subtitle="Extracted evidence and fix recommendations">
           {analyzeMutation.isPending ? (
             <LoadingState message="Parsing log patterns and running AI agent..." />
+          ) : analyzeMutation.isError ? (
+            <p role="alert">Log analysis failed: {analyzeMutation.error?.message || 'Service unavailable. Try again.'}</p>
           ) : analysisResult ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {analysisResult.ai_status === 'completed' ? (
+                <p role="status">AI-assisted advisory interpretation. Review suggestions against the supplied log; they are not verified fixes.</p>
+              ) : (
+                <p role="alert">
+                  AI analysis {analysisResult.ai_status || 'unavailable'}. No validated AI diagnosis is available.
+                  {(analysisResult.ai_errors || []).length > 0 && ` Details: ${analysisResult.ai_errors.join(', ')}`}
+                </p>
+              )}
+              <p>Deterministic log risk below is separate from AI availability and does not establish that the build passed.</p>
               {/* Header Risk & Type */}
               <div
                 style={{

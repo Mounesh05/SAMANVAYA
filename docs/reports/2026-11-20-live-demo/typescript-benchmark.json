@@ -1,0 +1,3504 @@
+{
+  "run_id": "ALG-88B4A36EC13C46A1",
+  "project_id": "PRJ-A7E48B66",
+  "protocol": "numeric-ascending-sort-v1",
+  "contract_key": "ddfa64b11a833df5ddb670617c794f76e9338226655a6b9e776789c8f99e05e1",
+  "status": "completed",
+  "active": false,
+  "created_at": "2026-11-20T13:44:00.490993+00:00",
+  "completed_at": "2026-11-20T13:44:02.856585+00:00",
+  "lease_expires_at": "2026-11-20T13:54:00.490993+00:00",
+  "triggered_by": "DEMO_LEAD",
+  "request": {
+    "project_id": "PRJ-A7E48B66",
+    "language": "typescript",
+    "candidates": [
+      {
+        "name": "typed_copy",
+        "source": "function order(values: number[]): number[] { return values.slice().sort((a,b) => a-b); }",
+        "entrypoint": "order"
+      },
+      {
+        "name": "typed_spread",
+        "source": "function order(values: number[]): number[] { return [...values].sort((a,b) => a-b); }",
+        "entrypoint": "order"
+      }
+    ],
+    "contract": null,
+    "datasets": [],
+    "resources": {},
+    "decision_policy": {
+      "id": "discovered-requirements",
+      "version": "1",
+      "objective": "MINIMIZE_TIME",
+      "memory_metric": null,
+      "required_dataset_ids": [],
+      "constraints": [],
+      "unknown_requirements": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+        }
+      ],
+      "timing": {
+        "version": "1",
+        "minimum_samples": 3,
+        "practical_difference_ratio": 0.05,
+        "maximum_variability_ratio": 0.2
+      }
+    },
+    "requirement_context": null,
+    "sizes": [
+      0,
+      1,
+      16,
+      64
+    ],
+    "distributions": [
+      "random",
+      "sorted",
+      "reversed",
+      "duplicates"
+    ],
+    "repetitions": 1,
+    "seed": 42,
+    "objective": "time",
+    "memory_limit_bytes": null,
+    "requirements_discovery": {
+      "method": "requirement-discovery-v1",
+      "project_id": "PRJ-A7E48B66",
+      "context": {
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "source_revision": null,
+        "contract_ids": [],
+        "function_ids": [],
+        "discovery_run_ids": [],
+        "task_ids": [],
+        "story_ids": [],
+        "pr_ids": [],
+        "benchmark_run_ids": []
+      },
+      "established": [],
+      "observations": [],
+      "suggestions": [],
+      "unknown": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+          "status": "UNKNOWN"
+        }
+      ],
+      "conflicts": [],
+      "excluded": [],
+      "limitations": [
+        "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+        "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+      ],
+      "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+      "policy_input": {
+        "required_dataset_ids": []
+      }
+    }
+  },
+  "workload_key": "e5ecdbe5cfc960df566e8d285a34bf5882870a1144557d1f4065c001ff9cad3d",
+  "source_hashes": {
+    "typed_copy": "c8451e0a49b9d9a6066eea8476fd0d5e416f542597941e0c281c4f8d416a2c85",
+    "typed_spread": "65162d112faba559eb37a80dd6fb25689212038bbd480b5931ee985e8195c0a9"
+  },
+  "results": [
+    {
+      "candidate": "typed_copy",
+      "cases": [
+        {
+          "size": 0,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.0000010010000000306717
+          ],
+          "memory_bytes": 3568,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            8.129999999937354e-7
+          ],
+          "memory_bytes": 3568,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            9.800000000268483e-7
+          ],
+          "memory_bytes": 3568,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.0000010189999999852262
+          ],
+          "memory_bytes": 3568,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.000008477999999968234
+          ],
+          "memory_bytes": 3984,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            0.0000022020000000111396
+          ],
+          "memory_bytes": 3720,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.000001737999999988915
+          ],
+          "memory_bytes": 368,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            7.910000000492801e-7
+          ],
+          "memory_bytes": 368,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.0000022700000000099864
+          ],
+          "memory_bytes": 1464,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            9.339999999724569e-7
+          ],
+          "memory_bytes": 1464,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.0000016869999999471474
+          ],
+          "memory_bytes": 1464,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.000034272999999984674
+          ],
+          "memory_bytes": 1464,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.000005280999999968117
+          ],
+          "memory_bytes": 2504,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            0.0000028869999999869833
+          ],
+          "memory_bytes": 2232,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.0000017100000000027649
+          ],
+          "memory_bytes": 2232,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.00003645099999994272
+          ],
+          "memory_bytes": 2504,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        }
+      ],
+      "error": null,
+      "structure": {
+        "status": "available",
+        "parser": "typescript",
+        "entrypoint": "order",
+        "functions": [
+          {
+            "name": "order",
+            "line": 1,
+            "end_line": 1,
+            "loops": 0,
+            "max_loop_nesting": 0,
+            "branches": 0,
+            "direct_recursive_calls": 0,
+            "calls": [
+              "values.slice"
+            ],
+            "allocations": []
+          },
+          {
+            "name": "<anonymous@1>",
+            "line": 1,
+            "end_line": 1,
+            "loops": 0,
+            "max_loop_nesting": 0,
+            "branches": 0,
+            "direct_recursive_calls": 0,
+            "calls": [],
+            "allocations": []
+          }
+        ],
+        "limitations": [
+          "Syntactic observations only; no Big-O inference, type checking, or call resolution.",
+          "Counts cover each function body, excluding nested function bodies; lines are 1-based inclusive.",
+          "Branches count if, conditional expressions, switch clauses, and catch clauses.",
+          "Direct recursion counts identifier calls to the function name or its variable binding only.",
+          "Allocations count array literals, object literals, and new expressions, not runtime allocations.",
+          "Reports retain at most 128 functions, 512 call labels, and 1024 allocation sites; labels are bounded."
+        ]
+      }
+    },
+    {
+      "candidate": "typed_spread",
+      "cases": [
+        {
+          "size": 0,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.0000010379999999940992
+          ],
+          "memory_bytes": 3656,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            8.01999999993086e-7
+          ],
+          "memory_bytes": 3656,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.00000101399999999785
+          ],
+          "memory_bytes": 3656,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.0000011980000000164636
+          ],
+          "memory_bytes": 3656,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.000008603999999991175
+          ],
+          "memory_bytes": 4256,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            0.0000015169999999784522
+          ],
+          "memory_bytes": 3992,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.000001029000000016822
+          ],
+          "memory_bytes": 640,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            7.459999999923639e-7
+          ],
+          "memory_bytes": 640,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.000002823000000034881
+          ],
+          "memory_bytes": 2192,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            0.0000025329999999712527
+          ],
+          "memory_bytes": 2192,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.0000012800000000083854
+          ],
+          "memory_bytes": 2192,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.000001687000000003991
+          ],
+          "memory_bytes": 2192,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.000006690000000048712
+          ],
+          "memory_bytes": 6256,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            0.0000052620000000160875
+          ],
+          "memory_bytes": 5984,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.000003179999999986194
+          ],
+          "memory_bytes": 5984,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.000041596000000026834
+          ],
+          "memory_bytes": 6256,
+          "memory_metric": "node_heap_used_delta_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        }
+      ],
+      "error": null,
+      "structure": {
+        "status": "available",
+        "parser": "typescript",
+        "entrypoint": "order",
+        "functions": [
+          {
+            "name": "order",
+            "line": 1,
+            "end_line": 1,
+            "loops": 0,
+            "max_loop_nesting": 0,
+            "branches": 0,
+            "direct_recursive_calls": 0,
+            "calls": [],
+            "allocations": [
+              {
+                "kind": "array_literal",
+                "line": 1
+              }
+            ]
+          },
+          {
+            "name": "<anonymous@1>",
+            "line": 1,
+            "end_line": 1,
+            "loops": 0,
+            "max_loop_nesting": 0,
+            "branches": 0,
+            "direct_recursive_calls": 0,
+            "calls": [],
+            "allocations": []
+          }
+        ],
+        "limitations": [
+          "Syntactic observations only; no Big-O inference, type checking, or call resolution.",
+          "Counts cover each function body, excluding nested function bodies; lines are 1-based inclusive.",
+          "Branches count if, conditional expressions, switch clauses, and catch clauses.",
+          "Direct recursion counts identifier calls to the function name or its variable binding only.",
+          "Allocations count array literals, object literals, and new expressions, not runtime allocations.",
+          "Reports retain at most 128 functions, 512 call labels, and 1024 allocation sites; labels are bounded."
+        ]
+      }
+    }
+  ],
+  "environment": {
+    "docker_version": "29.9.3",
+    "images": {
+      "samanvaya-benchmark-node:1": "sha256:d658cc0e04da1ab1a79a5674a79cb45f414cd5bea00a2a201a354996ac553436"
+    },
+    "isolation": "docker",
+    "network": "none",
+    "cpus": 1,
+    "memory_limit_bytes": 536870912,
+    "pids_limit": 64,
+    "timeout_seconds": 120,
+    "timing_method": "warmups_then_repeated_samples_not_calibrated",
+    "seed": 42,
+    "language": "typescript",
+    "protocol": "numeric-ascending-sort-v1",
+    "workers": [
+      {
+        "runtime": "v22.14.0",
+        "platform": "linux x64",
+        "warmups": 2,
+        "input_generator": "lcg32-v1",
+        "measurement_protocol": "independent-v1",
+        "candidate": "typed_copy",
+        "measurement_tools": {
+          "node": "v22.14.0",
+          "typescript": "5.7.3",
+          "timing": "node:perf_hooks.performance.now repeated samples",
+          "memory": "node_heap_used_delta_bytes"
+        }
+      },
+      {
+        "runtime": "v22.14.0",
+        "platform": "linux x64",
+        "warmups": 2,
+        "input_generator": "lcg32-v1",
+        "measurement_protocol": "independent-v1",
+        "candidate": "typed_spread",
+        "measurement_tools": {
+          "node": "v22.14.0",
+          "typescript": "5.7.3",
+          "timing": "node:perf_hooks.performance.now repeated samples",
+          "memory": "node_heap_used_delta_bytes"
+        }
+      }
+    ]
+  },
+  "tools": {
+    "node": "v22.14.0",
+    "typescript": "5.7.3",
+    "timing": "node:perf_hooks.performance.now repeated samples",
+    "memory": "node_heap_used_delta_bytes"
+  },
+  "recommendation": {
+    "status": "insufficient_evidence",
+    "winner": null,
+    "reason": "Discovered requirements are evaluated by the preserved deterministic policy decision; legacy aggregate rankings cannot establish requirement compliance.",
+    "rankings": [],
+    "limitations": [
+      "Results apply only to sampled sizes, distributions, repetitions and the benchmark environment; there is no universal best sorting algorithm.",
+      "Only numeric ascending correctness was tested; stability and custom comparator behavior are not proven.",
+      "No Big-O complexity is derived from these samples.",
+      "Timing rank uses an equal-weight geometric mean of per-case medians; median_seconds is the median of those medians, not the ranking score.",
+      "The 5% timing margin is a practical noise guard, not a statistical significance test or confidence interval.",
+      "Worker measurements are not tamper-proof against deliberately malicious submissions.",
+      "Timing samples are uncalibrated; close results require longer controlled benchmarks.",
+      "Historical matches are context only, never substituted for this run's measurements."
+    ]
+  },
+  "historical_evidence": [],
+  "error": null,
+  "structural_analysis": {
+    "typed_copy": {
+      "status": "available",
+      "parser": "typescript",
+      "entrypoint": "order",
+      "functions": [
+        {
+          "name": "order",
+          "line": 1,
+          "end_line": 1,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": 0,
+          "direct_recursive_calls": 0,
+          "calls": [
+            "values.slice"
+          ],
+          "allocations": []
+        },
+        {
+          "name": "<anonymous@1>",
+          "line": 1,
+          "end_line": 1,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": 0,
+          "direct_recursive_calls": 0,
+          "calls": [],
+          "allocations": []
+        }
+      ],
+      "limitations": [
+        "Syntactic observations only; no Big-O inference, type checking, or call resolution.",
+        "Counts cover each function body, excluding nested function bodies; lines are 1-based inclusive.",
+        "Branches count if, conditional expressions, switch clauses, and catch clauses.",
+        "Direct recursion counts identifier calls to the function name or its variable binding only.",
+        "Allocations count array literals, object literals, and new expressions, not runtime allocations.",
+        "Reports retain at most 128 functions, 512 call labels, and 1024 allocation sites; labels are bounded."
+      ]
+    },
+    "typed_spread": {
+      "status": "available",
+      "parser": "typescript",
+      "entrypoint": "order",
+      "functions": [
+        {
+          "name": "order",
+          "line": 1,
+          "end_line": 1,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": 0,
+          "direct_recursive_calls": 0,
+          "calls": [],
+          "allocations": [
+            {
+              "kind": "array_literal",
+              "line": 1
+            }
+          ]
+        },
+        {
+          "name": "<anonymous@1>",
+          "line": 1,
+          "end_line": 1,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": 0,
+          "direct_recursive_calls": 0,
+          "calls": [],
+          "allocations": []
+        }
+      ],
+      "limitations": [
+        "Syntactic observations only; no Big-O inference, type checking, or call resolution.",
+        "Counts cover each function body, excluding nested function bodies; lines are 1-based inclusive.",
+        "Branches count if, conditional expressions, switch clauses, and catch clauses.",
+        "Direct recursion counts identifier calls to the function name or its variable binding only.",
+        "Allocations count array literals, object literals, and new expressions, not runtime allocations.",
+        "Reports retain at most 128 functions, 512 call labels, and 1024 allocation sites; labels are bounded."
+      ]
+    }
+  },
+  "requirements_discovery": {
+    "method": "requirement-discovery-v1",
+    "project_id": "PRJ-A7E48B66",
+    "context": {
+      "repository": "Mounesh05/taskflow-samanvaya-lab",
+      "source_revision": null,
+      "contract_ids": [],
+      "function_ids": [],
+      "discovery_run_ids": [],
+      "task_ids": [],
+      "story_ids": [],
+      "pr_ids": [],
+      "benchmark_run_ids": []
+    },
+    "established": [],
+    "observations": [],
+    "suggestions": [],
+    "unknown": [
+      {
+        "id": "discovered-max_latency",
+        "description": "Production latency acceptance limit is unknown",
+        "status": "UNKNOWN"
+      },
+      {
+        "id": "discovered-max_memory",
+        "description": "Production peak-memory acceptance limit and metric are unknown",
+        "status": "UNKNOWN"
+      },
+      {
+        "id": "discovered-workload",
+        "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+        "status": "UNKNOWN"
+      }
+    ],
+    "conflicts": [],
+    "excluded": [],
+    "limitations": [
+      "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+      "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+    ],
+    "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+    "policy_input": {
+      "required_dataset_ids": []
+    }
+  },
+  "policy_established_by": {
+    "employee_id": "DEMO_LEAD",
+    "sub": "DEMO_LEAD",
+    "org_id": "TASKFLOW-DEMO"
+  },
+  "started_at": "2026-11-20T13:44:00.498547+00:00",
+  "decision": {
+    "engine_version": "deterministic-decision-v1",
+    "policy_id": "discovered-requirements",
+    "policy_version": "1",
+    "policy_snapshot": {
+      "id": "discovered-requirements",
+      "version": "1",
+      "objective": "MINIMIZE_TIME",
+      "memory_metric": null,
+      "required_dataset_ids": [],
+      "constraints": [],
+      "unknown_requirements": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+        }
+      ],
+      "timing": {
+        "version": "1",
+        "minimum_samples": 3,
+        "practical_difference_ratio": 0.05,
+        "maximum_variability_ratio": 0.2
+      }
+    },
+    "policy_fingerprint": "typed-json-sha256-v1:ac6b00a582a7993b0dc34f6c5860ed4bd8ce5b798c961e23ea2a1597cb9ef66c",
+    "identities": {
+      "fingerprint_version": "typed-json-sha256-v1",
+      "contract": "typed-json-sha256-v1:ed9057e1f7a6a1f9781e1ecedfc70a655a979803bf847cefeb93207b121ae742",
+      "datasets": {
+        "sort:0:random": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+        },
+        "sort:0:sorted": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+        },
+        "sort:0:reversed": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+        },
+        "sort:0:duplicates": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+        },
+        "sort:1:random": {
+          "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+          "validation": "typed-json-sha256-v1:6c39452087ba88d573781800737c100a8d168377729e3bb716b1e5ae026f37fa"
+        },
+        "sort:1:sorted": {
+          "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+          "validation": "typed-json-sha256-v1:6c39452087ba88d573781800737c100a8d168377729e3bb716b1e5ae026f37fa"
+        },
+        "sort:1:reversed": {
+          "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+          "validation": "typed-json-sha256-v1:6c39452087ba88d573781800737c100a8d168377729e3bb716b1e5ae026f37fa"
+        },
+        "sort:1:duplicates": {
+          "inputs": "typed-json-sha256-v1:9ac88b41696ea07c10d4c76899aa1d7c3fffc801d06849c50fb268ccf1ff121a",
+          "validation": "typed-json-sha256-v1:b574b731f07644cb5fe55530dc9687c9d5291d6be1c922c93117bca0e085f27a"
+        },
+        "sort:16:random": {
+          "inputs": "typed-json-sha256-v1:59b0a7f6af796aba05e23dcaec0708b4d1d2a82f196b0cc47839cc91ccbef01f",
+          "validation": "typed-json-sha256-v1:7c5340de5d9284a4f0e24240d0136254dd815975479ff4d408eb97804c8f0b90"
+        },
+        "sort:16:sorted": {
+          "inputs": "typed-json-sha256-v1:b15219d82e82e466f71048c553e92ad3e1fbaab352596269eb7e9d14ba559003",
+          "validation": "typed-json-sha256-v1:7c5340de5d9284a4f0e24240d0136254dd815975479ff4d408eb97804c8f0b90"
+        },
+        "sort:16:reversed": {
+          "inputs": "typed-json-sha256-v1:00757166685cd3ccfe373c7905598b73872b33a051e08bdfdf7060377a5c056b",
+          "validation": "typed-json-sha256-v1:7c5340de5d9284a4f0e24240d0136254dd815975479ff4d408eb97804c8f0b90"
+        },
+        "sort:16:duplicates": {
+          "inputs": "typed-json-sha256-v1:f7794009c8866b9b0cd6f5f1186ffa0006996700d7a794509faea2fb82f1d733",
+          "validation": "typed-json-sha256-v1:1132d7c3fa2d706839cb9e453e4c9e98cd3fd87933af4b5f653b5b2a5c2dd6fe"
+        },
+        "sort:64:random": {
+          "inputs": "typed-json-sha256-v1:39f0430bdc87c0e8b368b5d42a581233efd56f24db861e32b1556970670f6651",
+          "validation": "typed-json-sha256-v1:e6f375139294cc5d2bc35eac89d9ac63541ee9109158d948dd2d7c3b00018615"
+        },
+        "sort:64:sorted": {
+          "inputs": "typed-json-sha256-v1:ff91f1c6f2f31a7148e8e8105de7beaa5862b4d9676497fd86128ddbaef83fb4",
+          "validation": "typed-json-sha256-v1:e6f375139294cc5d2bc35eac89d9ac63541ee9109158d948dd2d7c3b00018615"
+        },
+        "sort:64:reversed": {
+          "inputs": "typed-json-sha256-v1:fa6be21a1659ac3e9ffba1934bf6a7e4d983c56e4ba10566a9aa36441b0fca13",
+          "validation": "typed-json-sha256-v1:e6f375139294cc5d2bc35eac89d9ac63541ee9109158d948dd2d7c3b00018615"
+        },
+        "sort:64:duplicates": {
+          "inputs": "typed-json-sha256-v1:642b93f11685b1dd8e98c482318a89d09454b0ee3b3ecdc0f76b09fbd5ad36ae",
+          "validation": "typed-json-sha256-v1:4aa33ad2ae6fc67cb5813f0001e4575583f2848f7c1acc0aa8c5fd401e9d8f04"
+        }
+      },
+      "implementations": {
+        "typed_copy": "typed-json-sha256-v1:df7e4e4a63472fdbdd012b364b4e90415cb879590ee659e0c500241841ce89bd",
+        "typed_spread": "typed-json-sha256-v1:b37f99a2ef1cb33f74b1f68f2d3ec52bb48d42b3d65974d8a13b65fbe04b66a8"
+      },
+      "execution": "typed-json-sha256-v1:dacefc29d7ed78f53658b130179ace75b9f9f1a7e72a9a55fd27fbc3f77f7026",
+      "evidence": "typed-json-sha256-v1:67d03d1ae9710713f1519fb37242001762f8f5c731b7a2fb3c6fe49ff41951df"
+    },
+    "candidates": [
+      {
+        "candidate": "typed_copy",
+        "correctness": "PASS",
+        "datasets": [
+          {
+            "dataset_id": "sort:0:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000010010000000306717,
+              "minimum": 0.0000010010000000306717,
+              "maximum": 0.0000010010000000306717,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3568
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 8.129999999937354e-7,
+              "minimum": 8.129999999937354e-7,
+              "maximum": 8.129999999937354e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3568
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 9.800000000268483e-7,
+              "minimum": 9.800000000268483e-7,
+              "maximum": 9.800000000268483e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3568
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000010189999999852262,
+              "minimum": 0.0000010189999999852262,
+              "maximum": 0.0000010189999999852262,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3568
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000008477999999968234,
+              "minimum": 0.000008477999999968234,
+              "maximum": 0.000008477999999968234,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3984
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000022020000000111396,
+              "minimum": 0.0000022020000000111396,
+              "maximum": 0.0000022020000000111396,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3720
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000001737999999988915,
+              "minimum": 0.000001737999999988915,
+              "maximum": 0.000001737999999988915,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 368
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.910000000492801e-7,
+              "minimum": 7.910000000492801e-7,
+              "maximum": 7.910000000492801e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 368
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000022700000000099864,
+              "minimum": 0.0000022700000000099864,
+              "maximum": 0.0000022700000000099864,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 1464
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 9.339999999724569e-7,
+              "minimum": 9.339999999724569e-7,
+              "maximum": 9.339999999724569e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 1464
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000016869999999471474,
+              "minimum": 0.0000016869999999471474,
+              "maximum": 0.0000016869999999471474,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 1464
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000034272999999984674,
+              "minimum": 0.000034272999999984674,
+              "maximum": 0.000034272999999984674,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 1464
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000005280999999968117,
+              "minimum": 0.000005280999999968117,
+              "maximum": 0.000005280999999968117,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2504
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000028869999999869833,
+              "minimum": 0.0000028869999999869833,
+              "maximum": 0.0000028869999999869833,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2232
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000017100000000027649,
+              "minimum": 0.0000017100000000027649,
+              "maximum": 0.0000017100000000027649,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2232
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.00003645099999994272,
+              "minimum": 0.00003645099999994272,
+              "maximum": 0.00003645099999994272,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2504
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "constraint_evaluations": [],
+        "task_eligibility": "ELIGIBLE",
+        "missing_required_dataset_ids": [],
+        "requirement_conflict": false,
+        "methodology_fingerprint": "typed-json-sha256-v1:f588b3fb9823ed9d504330d554f39684f94a45c0dd54f414433dae35c240a477"
+      },
+      {
+        "candidate": "typed_spread",
+        "correctness": "PASS",
+        "datasets": [
+          {
+            "dataset_id": "sort:0:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000010379999999940992,
+              "minimum": 0.0000010379999999940992,
+              "maximum": 0.0000010379999999940992,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3656
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 8.01999999993086e-7,
+              "minimum": 8.01999999993086e-7,
+              "maximum": 8.01999999993086e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3656
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.00000101399999999785,
+              "minimum": 0.00000101399999999785,
+              "maximum": 0.00000101399999999785,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3656
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000011980000000164636,
+              "minimum": 0.0000011980000000164636,
+              "maximum": 0.0000011980000000164636,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3656
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000008603999999991175,
+              "minimum": 0.000008603999999991175,
+              "maximum": 0.000008603999999991175,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 4256
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000015169999999784522,
+              "minimum": 0.0000015169999999784522,
+              "maximum": 0.0000015169999999784522,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 3992
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000001029000000016822,
+              "minimum": 0.000001029000000016822,
+              "maximum": 0.000001029000000016822,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 640
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.459999999923639e-7,
+              "minimum": 7.459999999923639e-7,
+              "maximum": 7.459999999923639e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 640
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000002823000000034881,
+              "minimum": 0.000002823000000034881,
+              "maximum": 0.000002823000000034881,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2192
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000025329999999712527,
+              "minimum": 0.0000025329999999712527,
+              "maximum": 0.0000025329999999712527,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2192
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000012800000000083854,
+              "minimum": 0.0000012800000000083854,
+              "maximum": 0.0000012800000000083854,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2192
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000001687000000003991,
+              "minimum": 0.000001687000000003991,
+              "maximum": 0.000001687000000003991,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 2192
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000006690000000048712,
+              "minimum": 0.000006690000000048712,
+              "maximum": 0.000006690000000048712,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 6256
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000052620000000160875,
+              "minimum": 0.0000052620000000160875,
+              "maximum": 0.0000052620000000160875,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 5984
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000003179999999986194,
+              "minimum": 0.000003179999999986194,
+              "maximum": 0.000003179999999986194,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 5984
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000041596000000026834,
+              "minimum": 0.000041596000000026834,
+              "maximum": 0.000041596000000026834,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "node_heap_used_delta_bytes",
+              "bytes": 6256
+            },
+            "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "constraint_evaluations": [],
+        "task_eligibility": "ELIGIBLE",
+        "missing_required_dataset_ids": [],
+        "requirement_conflict": false,
+        "methodology_fingerprint": "typed-json-sha256-v1:f588b3fb9823ed9d504330d554f39684f94a45c0dd54f414433dae35c240a477"
+      }
+    ],
+    "dataset_comparisons": [
+      {
+        "dataset_id": "sort:0:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:random",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:0:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:sorted",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:0:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:reversed",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:0:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:duplicates",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:random",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:sorted",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:reversed",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:duplicates",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:random",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:sorted",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:reversed",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:duplicates",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:random",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:sorted",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:reversed",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "evidence_references": [
+          "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:duplicates",
+          "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      }
+    ],
+    "unknown_requirements": [
+      {
+        "id": "discovered-max_latency",
+        "description": "Production latency acceptance limit is unknown"
+      },
+      {
+        "id": "discovered-max_memory",
+        "description": "Production peak-memory acceptance limit and metric are unknown"
+      },
+      {
+        "id": "discovered-workload",
+        "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+      }
+    ],
+    "missing_evidence": [],
+    "unverified_requirements": [],
+    "task_suitability": {
+      "status": "CONDITIONAL_COMPARISON",
+      "eligible_candidates": [
+        "typed_copy",
+        "typed_spread"
+      ],
+      "global_winner": null,
+      "required_dataset_ids": [
+        "sort:0:random",
+        "sort:0:sorted",
+        "sort:0:reversed",
+        "sort:0:duplicates",
+        "sort:1:random",
+        "sort:1:sorted",
+        "sort:1:reversed",
+        "sort:1:duplicates",
+        "sort:16:random",
+        "sort:16:sorted",
+        "sort:16:reversed",
+        "sort:16:duplicates",
+        "sort:64:random",
+        "sort:64:sorted",
+        "sort:64:reversed",
+        "sort:64:duplicates"
+      ]
+    },
+    "limitations": [
+      "Expected-output success establishes tested correctness only, not universal equivalence.",
+      "Dataset winners do not establish global optimality or performance on untested inputs.",
+      "Unknown requirements are not acceptance constraints; no compliance with them is claimed.",
+      "Practical difference and variability thresholds are deterministic policies, not statistical confidence.",
+      "Worker evidence is not tamper-proof against deliberately malicious submissions."
+    ],
+    "requirements_discovery": {
+      "method": "requirement-discovery-v1",
+      "project_id": "PRJ-A7E48B66",
+      "context": {
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "source_revision": null,
+        "contract_ids": [],
+        "function_ids": [],
+        "discovery_run_ids": [],
+        "task_ids": [],
+        "story_ids": [],
+        "pr_ids": [],
+        "benchmark_run_ids": []
+      },
+      "established": [],
+      "observations": [],
+      "suggestions": [],
+      "unknown": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+          "status": "UNKNOWN"
+        }
+      ],
+      "conflicts": [],
+      "excluded": [],
+      "limitations": [
+        "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+        "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+      ],
+      "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+      "policy_input": {
+        "required_dataset_ids": []
+      }
+    },
+    "revision_id": "DEC-d40cc38922624b36a4f9610655988374",
+    "revision_number": 1,
+    "created_at": "2026-11-20T13:44:02.855584+00:00",
+    "provenance": {
+      "kind": "project-authorized-submission",
+      "established_by": "DEMO_LEAD",
+      "organization_id": "TASKFLOW-DEMO",
+      "project_id": "PRJ-A7E48B66",
+      "authority_basis": "existing engineering role and project access; not an organizational approval claim"
+    }
+  },
+  "decision_authoritative": true,
+  "decision_revision_count": 1,
+  "decision_revisions": [
+    {
+      "engine_version": "deterministic-decision-v1",
+      "policy_id": "discovered-requirements",
+      "policy_version": "1",
+      "policy_snapshot": {
+        "id": "discovered-requirements",
+        "version": "1",
+        "objective": "MINIMIZE_TIME",
+        "memory_metric": null,
+        "required_dataset_ids": [],
+        "constraints": [],
+        "unknown_requirements": [
+          {
+            "id": "discovered-max_latency",
+            "description": "Production latency acceptance limit is unknown"
+          },
+          {
+            "id": "discovered-max_memory",
+            "description": "Production peak-memory acceptance limit and metric are unknown"
+          },
+          {
+            "id": "discovered-workload",
+            "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+          }
+        ],
+        "timing": {
+          "version": "1",
+          "minimum_samples": 3,
+          "practical_difference_ratio": 0.05,
+          "maximum_variability_ratio": 0.2
+        }
+      },
+      "policy_fingerprint": "typed-json-sha256-v1:ac6b00a582a7993b0dc34f6c5860ed4bd8ce5b798c961e23ea2a1597cb9ef66c",
+      "identities": {
+        "fingerprint_version": "typed-json-sha256-v1",
+        "contract": "typed-json-sha256-v1:ed9057e1f7a6a1f9781e1ecedfc70a655a979803bf847cefeb93207b121ae742",
+        "datasets": {
+          "sort:0:random": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+          },
+          "sort:0:sorted": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+          },
+          "sort:0:reversed": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+          },
+          "sort:0:duplicates": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:b9455a650595f72432541565f1dfc5fcefcda7ed156f090f397ef95a4522e14e"
+          },
+          "sort:1:random": {
+            "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+            "validation": "typed-json-sha256-v1:6c39452087ba88d573781800737c100a8d168377729e3bb716b1e5ae026f37fa"
+          },
+          "sort:1:sorted": {
+            "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+            "validation": "typed-json-sha256-v1:6c39452087ba88d573781800737c100a8d168377729e3bb716b1e5ae026f37fa"
+          },
+          "sort:1:reversed": {
+            "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+            "validation": "typed-json-sha256-v1:6c39452087ba88d573781800737c100a8d168377729e3bb716b1e5ae026f37fa"
+          },
+          "sort:1:duplicates": {
+            "inputs": "typed-json-sha256-v1:9ac88b41696ea07c10d4c76899aa1d7c3fffc801d06849c50fb268ccf1ff121a",
+            "validation": "typed-json-sha256-v1:b574b731f07644cb5fe55530dc9687c9d5291d6be1c922c93117bca0e085f27a"
+          },
+          "sort:16:random": {
+            "inputs": "typed-json-sha256-v1:59b0a7f6af796aba05e23dcaec0708b4d1d2a82f196b0cc47839cc91ccbef01f",
+            "validation": "typed-json-sha256-v1:7c5340de5d9284a4f0e24240d0136254dd815975479ff4d408eb97804c8f0b90"
+          },
+          "sort:16:sorted": {
+            "inputs": "typed-json-sha256-v1:b15219d82e82e466f71048c553e92ad3e1fbaab352596269eb7e9d14ba559003",
+            "validation": "typed-json-sha256-v1:7c5340de5d9284a4f0e24240d0136254dd815975479ff4d408eb97804c8f0b90"
+          },
+          "sort:16:reversed": {
+            "inputs": "typed-json-sha256-v1:00757166685cd3ccfe373c7905598b73872b33a051e08bdfdf7060377a5c056b",
+            "validation": "typed-json-sha256-v1:7c5340de5d9284a4f0e24240d0136254dd815975479ff4d408eb97804c8f0b90"
+          },
+          "sort:16:duplicates": {
+            "inputs": "typed-json-sha256-v1:f7794009c8866b9b0cd6f5f1186ffa0006996700d7a794509faea2fb82f1d733",
+            "validation": "typed-json-sha256-v1:1132d7c3fa2d706839cb9e453e4c9e98cd3fd87933af4b5f653b5b2a5c2dd6fe"
+          },
+          "sort:64:random": {
+            "inputs": "typed-json-sha256-v1:39f0430bdc87c0e8b368b5d42a581233efd56f24db861e32b1556970670f6651",
+            "validation": "typed-json-sha256-v1:e6f375139294cc5d2bc35eac89d9ac63541ee9109158d948dd2d7c3b00018615"
+          },
+          "sort:64:sorted": {
+            "inputs": "typed-json-sha256-v1:ff91f1c6f2f31a7148e8e8105de7beaa5862b4d9676497fd86128ddbaef83fb4",
+            "validation": "typed-json-sha256-v1:e6f375139294cc5d2bc35eac89d9ac63541ee9109158d948dd2d7c3b00018615"
+          },
+          "sort:64:reversed": {
+            "inputs": "typed-json-sha256-v1:fa6be21a1659ac3e9ffba1934bf6a7e4d983c56e4ba10566a9aa36441b0fca13",
+            "validation": "typed-json-sha256-v1:e6f375139294cc5d2bc35eac89d9ac63541ee9109158d948dd2d7c3b00018615"
+          },
+          "sort:64:duplicates": {
+            "inputs": "typed-json-sha256-v1:642b93f11685b1dd8e98c482318a89d09454b0ee3b3ecdc0f76b09fbd5ad36ae",
+            "validation": "typed-json-sha256-v1:4aa33ad2ae6fc67cb5813f0001e4575583f2848f7c1acc0aa8c5fd401e9d8f04"
+          }
+        },
+        "implementations": {
+          "typed_copy": "typed-json-sha256-v1:df7e4e4a63472fdbdd012b364b4e90415cb879590ee659e0c500241841ce89bd",
+          "typed_spread": "typed-json-sha256-v1:b37f99a2ef1cb33f74b1f68f2d3ec52bb48d42b3d65974d8a13b65fbe04b66a8"
+        },
+        "execution": "typed-json-sha256-v1:dacefc29d7ed78f53658b130179ace75b9f9f1a7e72a9a55fd27fbc3f77f7026",
+        "evidence": "typed-json-sha256-v1:67d03d1ae9710713f1519fb37242001762f8f5c731b7a2fb3c6fe49ff41951df"
+      },
+      "candidates": [
+        {
+          "candidate": "typed_copy",
+          "correctness": "PASS",
+          "datasets": [
+            {
+              "dataset_id": "sort:0:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000010010000000306717,
+                "minimum": 0.0000010010000000306717,
+                "maximum": 0.0000010010000000306717,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3568
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 8.129999999937354e-7,
+                "minimum": 8.129999999937354e-7,
+                "maximum": 8.129999999937354e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3568
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 9.800000000268483e-7,
+                "minimum": 9.800000000268483e-7,
+                "maximum": 9.800000000268483e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3568
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000010189999999852262,
+                "minimum": 0.0000010189999999852262,
+                "maximum": 0.0000010189999999852262,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3568
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000008477999999968234,
+                "minimum": 0.000008477999999968234,
+                "maximum": 0.000008477999999968234,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3984
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000022020000000111396,
+                "minimum": 0.0000022020000000111396,
+                "maximum": 0.0000022020000000111396,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3720
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000001737999999988915,
+                "minimum": 0.000001737999999988915,
+                "maximum": 0.000001737999999988915,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 368
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.910000000492801e-7,
+                "minimum": 7.910000000492801e-7,
+                "maximum": 7.910000000492801e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 368
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000022700000000099864,
+                "minimum": 0.0000022700000000099864,
+                "maximum": 0.0000022700000000099864,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 1464
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 9.339999999724569e-7,
+                "minimum": 9.339999999724569e-7,
+                "maximum": 9.339999999724569e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 1464
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000016869999999471474,
+                "minimum": 0.0000016869999999471474,
+                "maximum": 0.0000016869999999471474,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 1464
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000034272999999984674,
+                "minimum": 0.000034272999999984674,
+                "maximum": 0.000034272999999984674,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 1464
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000005280999999968117,
+                "minimum": 0.000005280999999968117,
+                "maximum": 0.000005280999999968117,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2504
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000028869999999869833,
+                "minimum": 0.0000028869999999869833,
+                "maximum": 0.0000028869999999869833,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2232
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000017100000000027649,
+                "minimum": 0.0000017100000000027649,
+                "maximum": 0.0000017100000000027649,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2232
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.00003645099999994272,
+                "minimum": 0.00003645099999994272,
+                "maximum": 0.00003645099999994272,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2504
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            }
+          ],
+          "constraint_evaluations": [],
+          "task_eligibility": "ELIGIBLE",
+          "missing_required_dataset_ids": [],
+          "requirement_conflict": false,
+          "methodology_fingerprint": "typed-json-sha256-v1:f588b3fb9823ed9d504330d554f39684f94a45c0dd54f414433dae35c240a477"
+        },
+        {
+          "candidate": "typed_spread",
+          "correctness": "PASS",
+          "datasets": [
+            {
+              "dataset_id": "sort:0:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000010379999999940992,
+                "minimum": 0.0000010379999999940992,
+                "maximum": 0.0000010379999999940992,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3656
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 8.01999999993086e-7,
+                "minimum": 8.01999999993086e-7,
+                "maximum": 8.01999999993086e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3656
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.00000101399999999785,
+                "minimum": 0.00000101399999999785,
+                "maximum": 0.00000101399999999785,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3656
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000011980000000164636,
+                "minimum": 0.0000011980000000164636,
+                "maximum": 0.0000011980000000164636,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3656
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000008603999999991175,
+                "minimum": 0.000008603999999991175,
+                "maximum": 0.000008603999999991175,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 4256
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000015169999999784522,
+                "minimum": 0.0000015169999999784522,
+                "maximum": 0.0000015169999999784522,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 3992
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000001029000000016822,
+                "minimum": 0.000001029000000016822,
+                "maximum": 0.000001029000000016822,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 640
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.459999999923639e-7,
+                "minimum": 7.459999999923639e-7,
+                "maximum": 7.459999999923639e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 640
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000002823000000034881,
+                "minimum": 0.000002823000000034881,
+                "maximum": 0.000002823000000034881,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2192
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000025329999999712527,
+                "minimum": 0.0000025329999999712527,
+                "maximum": 0.0000025329999999712527,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2192
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000012800000000083854,
+                "minimum": 0.0000012800000000083854,
+                "maximum": 0.0000012800000000083854,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2192
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000001687000000003991,
+                "minimum": 0.000001687000000003991,
+                "maximum": 0.000001687000000003991,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 2192
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000006690000000048712,
+                "minimum": 0.000006690000000048712,
+                "maximum": 0.000006690000000048712,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 6256
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000052620000000160875,
+                "minimum": 0.0000052620000000160875,
+                "maximum": 0.0000052620000000160875,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 5984
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000003179999999986194,
+                "minimum": 0.000003179999999986194,
+                "maximum": 0.000003179999999986194,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 5984
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000041596000000026834,
+                "minimum": 0.000041596000000026834,
+                "maximum": 0.000041596000000026834,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "node_heap_used_delta_bytes",
+                "bytes": 6256
+              },
+              "evidence_reference": "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            }
+          ],
+          "constraint_evaluations": [],
+          "task_eligibility": "ELIGIBLE",
+          "missing_required_dataset_ids": [],
+          "requirement_conflict": false,
+          "methodology_fingerprint": "typed-json-sha256-v1:f588b3fb9823ed9d504330d554f39684f94a45c0dd54f414433dae35c240a477"
+        }
+      ],
+      "dataset_comparisons": [
+        {
+          "dataset_id": "sort:0:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:random",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:0:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:sorted",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:0:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:reversed",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:0:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:0:duplicates",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:0:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:random",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:sorted",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:reversed",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:1:duplicates",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:1:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:random",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:sorted",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:reversed",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:16:duplicates",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:16:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:random",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:sorted",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:reversed",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "typed_copy",
+            "typed_spread"
+          ],
+          "evidence_references": [
+            "ALG-88B4A36EC13C46A1/results/typed_copy/datasets/sort:64:duplicates",
+            "ALG-88B4A36EC13C46A1/results/typed_spread/datasets/sort:64:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        }
+      ],
+      "unknown_requirements": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+        }
+      ],
+      "missing_evidence": [],
+      "unverified_requirements": [],
+      "task_suitability": {
+        "status": "CONDITIONAL_COMPARISON",
+        "eligible_candidates": [
+          "typed_copy",
+          "typed_spread"
+        ],
+        "global_winner": null,
+        "required_dataset_ids": [
+          "sort:0:random",
+          "sort:0:sorted",
+          "sort:0:reversed",
+          "sort:0:duplicates",
+          "sort:1:random",
+          "sort:1:sorted",
+          "sort:1:reversed",
+          "sort:1:duplicates",
+          "sort:16:random",
+          "sort:16:sorted",
+          "sort:16:reversed",
+          "sort:16:duplicates",
+          "sort:64:random",
+          "sort:64:sorted",
+          "sort:64:reversed",
+          "sort:64:duplicates"
+        ]
+      },
+      "limitations": [
+        "Expected-output success establishes tested correctness only, not universal equivalence.",
+        "Dataset winners do not establish global optimality or performance on untested inputs.",
+        "Unknown requirements are not acceptance constraints; no compliance with them is claimed.",
+        "Practical difference and variability thresholds are deterministic policies, not statistical confidence.",
+        "Worker evidence is not tamper-proof against deliberately malicious submissions."
+      ],
+      "requirements_discovery": {
+        "method": "requirement-discovery-v1",
+        "project_id": "PRJ-A7E48B66",
+        "context": {
+          "repository": "Mounesh05/taskflow-samanvaya-lab",
+          "source_revision": null,
+          "contract_ids": [],
+          "function_ids": [],
+          "discovery_run_ids": [],
+          "task_ids": [],
+          "story_ids": [],
+          "pr_ids": [],
+          "benchmark_run_ids": []
+        },
+        "established": [],
+        "observations": [],
+        "suggestions": [],
+        "unknown": [
+          {
+            "id": "discovered-max_latency",
+            "description": "Production latency acceptance limit is unknown",
+            "status": "UNKNOWN"
+          },
+          {
+            "id": "discovered-max_memory",
+            "description": "Production peak-memory acceptance limit and metric are unknown",
+            "status": "UNKNOWN"
+          },
+          {
+            "id": "discovered-workload",
+            "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+            "status": "UNKNOWN"
+          }
+        ],
+        "conflicts": [],
+        "excluded": [],
+        "limitations": [
+          "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+          "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+        ],
+        "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+        "policy_input": {
+          "required_dataset_ids": []
+        }
+      },
+      "revision_id": "DEC-d40cc38922624b36a4f9610655988374",
+      "revision_number": 1,
+      "created_at": "2026-11-20T13:44:02.855584+00:00",
+      "provenance": {
+        "kind": "project-authorized-submission",
+        "established_by": "DEMO_LEAD",
+        "organization_id": "TASKFLOW-DEMO",
+        "project_id": "PRJ-A7E48B66",
+        "authority_basis": "existing engineering role and project access; not an organizational approval claim"
+      }
+    }
+  ],
+  "environment_key": "04fea46fc621a6cb6223ed21314db16df0558520d753cf9e80d9eb57c505a132",
+  "immutable_evidence_fingerprint": "typed-json-sha256-v1:67d03d1ae9710713f1519fb37242001762f8f5c731b7a2fb3c6fe49ff41951df",
+  "immutable_execution_fingerprint": "typed-json-sha256-v1:dacefc29d7ed78f53658b130179ace75b9f9f1a7e72a9a55fd27fbc3f77f7026"
+}

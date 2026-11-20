@@ -1,0 +1,27 @@
+{
+  "status": 200,
+  "result": {
+    "log_type": "build",
+    "risk_score": 10,
+    "risk_level": "LOW",
+    "error_count": 2,
+    "warning_count": 0,
+    "failure_patterns": [],
+    "failure_type": "unknown",
+    "ai_analysis": "The error 'Cannot find name missingValue' indicates that the TypeScript compiler is unable to locate the variable 'missingValue', which suggests a typo in the code.",
+    "root_cause": "The error 'Cannot find name missingValue' indicates that the TypeScript compiler is unable to locate the variable 'missingValue', which suggests a typo in the code.",
+    "affected_component": "TypeScript Compiler",
+    "fix_recommendations": [
+      "Check for typos in your code and ensure all variable names are correctly spelled.",
+      "Ensure that the variable 'missingValue' is declared before it is used.",
+      "Review the import statements to make sure all necessary modules or files are included."
+    ],
+    "prevention": "Implement strict type checking in your TypeScript configuration (e.g., using `strict: true` in tsconfig.json) to catch such errors at compile time.",
+    "urgency": "medium",
+    "confidence": 0.9,
+    "ai_status": "completed",
+    "ai_errors": [],
+    "execution_time_ms": 8095.326662063599,
+    "ai_run_id": "dddd2038-3fee-4cde-8018-6cade60d73d6"
+  }
+}

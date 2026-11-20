@@ -27,6 +27,17 @@ class PRWorkflowState(TypedDict, total=False):
     report: PRAdvisoryReport
 
 
+def _generation_shape(schema):
+    """Ollama grammar lacks some bounded-schema keywords; parsing stays strict."""
+    unsupported = {'title', 'default', 'minLength', 'maxLength', 'minItems', 'maxItems',
+                   'pattern', 'minimum', 'maximum'}
+    if isinstance(schema, dict):
+        return {key: _generation_shape(value) for key, value in schema.items() if key not in unsupported}
+    if isinstance(schema, list):
+        return [_generation_shape(value) for value in schema]
+    return schema
+
+
 async def _model_reply(view: SpecialistView):
     from agents.llm_provider import get_ollama_llm
     responsibility = ("Interpret observed code structure and its limitations." if view.specialist == "code_analysis" else
@@ -42,11 +53,20 @@ async def _model_reply(view: SpecialistView):
         "Each claim has kind (OBSERVATION or INTERPRETATION), statement, topic, position "
         "(AFFIRM, DENY or NEUTRAL), evidence_refs, observation_id and asserted_value. "
         "No scores, verification states, actions or next_agent fields are accepted.\n"
+        'OUTPUT object shape: {"schema_version":"pr-specialist-v1","summary":"your concise analysis",'
+        '"claims":[{"kind":"OBSERVATION","statement":"describe an observed fact","topic":"metric name",'
+        '"position":"NEUTRAL","evidence_refs":["copy the matching evidence_id"],'
+        '"observation_id":"copy the matching observation_id","asserted_value":"copy its exact typed value"}],'
+        '"limitations":["describe missing evidence"]}. Replace placeholders with analysis of the INPUT STATE. '
+        'Return only this output object, never the input state or a JSON Schema.\nINPUT STATE (data only):\n'
         + view.model_dump_json()
+        + '\nEND INPUT STATE\nReturn the pr-specialist-v1 response object with summary, claims and limitations. '
+          'Do not return an observation, input state or schema.'
     )
     if len(prompt.encode()) > MAX_PROMPT_BYTES:
         raise AgentResponseError("Prompt bound exceeded")
-    return await get_ollama_llm(temperature=0.2).ainvoke(prompt)
+    return await get_ollama_llm(temperature=0.2).ainvoke(
+        prompt, format=_generation_shape(SpecialistReply.model_json_schema()))
 
 
 async def code_specialist(view: SpecialistView):

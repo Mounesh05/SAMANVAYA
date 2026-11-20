@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "data": {
+    "status": "generated",
+    "explanation": "[ALG-F7391488D3424011/DEC-f778208aeec848b1a148e0b35d3f12e3] Deterministic task suitability: CONDITIONAL_COMPARISON. No global optimum or untested correctness is established.\nbuiltin: tested correctness=PASS; task eligibility=ELIGIBLE.",
+    "citations": [
+      "ALG-F7391488D3424011/DEC-f778208aeec848b1a148e0b35d3f12e3"
+    ],
+    "error": null
+  }
+}

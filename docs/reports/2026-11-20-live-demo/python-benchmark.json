@@ -1,0 +1,3421 @@
+{
+  "run_id": "ALG-F7391488D3424011",
+  "project_id": "PRJ-A7E48B66",
+  "protocol": "numeric-ascending-sort-v1",
+  "contract_key": "7814144c60d08bc28f80ef08af450791479090eacea64b6ace8998947eaa771e",
+  "status": "completed",
+  "active": false,
+  "created_at": "2026-11-20T13:42:34.006655+00:00",
+  "completed_at": "2026-11-20T13:42:41.584055+00:00",
+  "lease_expires_at": "2026-11-20T13:52:34.006655+00:00",
+  "triggered_by": "DEMO_LEAD",
+  "request": {
+    "project_id": "PRJ-A7E48B66",
+    "language": "python",
+    "candidates": [
+      {
+        "name": "builtin",
+        "source": "def order(values):\n    return sorted(values)\n",
+        "entrypoint": "order"
+      },
+      {
+        "name": "copy_sort",
+        "source": "def order(values):\n    result = list(values)\n    result.sort()\n    return result\n",
+        "entrypoint": "order"
+      }
+    ],
+    "contract": null,
+    "datasets": [],
+    "resources": {},
+    "decision_policy": {
+      "id": "discovered-requirements",
+      "version": "1",
+      "objective": "MINIMIZE_TIME",
+      "memory_metric": null,
+      "required_dataset_ids": [],
+      "constraints": [],
+      "unknown_requirements": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+        }
+      ],
+      "timing": {
+        "version": "1",
+        "minimum_samples": 3,
+        "practical_difference_ratio": 0.05,
+        "maximum_variability_ratio": 0.2
+      }
+    },
+    "requirement_context": null,
+    "sizes": [
+      0,
+      1,
+      16,
+      64
+    ],
+    "distributions": [
+      "random",
+      "sorted",
+      "reversed",
+      "duplicates"
+    ],
+    "repetitions": 1,
+    "seed": 42,
+    "objective": "time",
+    "memory_limit_bytes": null,
+    "requirements_discovery": {
+      "method": "requirement-discovery-v1",
+      "project_id": "PRJ-A7E48B66",
+      "context": {
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "source_revision": null,
+        "contract_ids": [],
+        "function_ids": [],
+        "discovery_run_ids": [],
+        "task_ids": [],
+        "story_ids": [],
+        "pr_ids": [],
+        "benchmark_run_ids": []
+      },
+      "established": [],
+      "observations": [],
+      "suggestions": [],
+      "unknown": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+          "status": "UNKNOWN"
+        }
+      ],
+      "conflicts": [],
+      "excluded": [],
+      "limitations": [
+        "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+        "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+      ],
+      "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+      "policy_input": {
+        "required_dataset_ids": []
+      }
+    }
+  },
+  "workload_key": "5e790f40c56217bad010f0f231fffc2314483d45288013172a6cc92a20a14c8f",
+  "source_hashes": {
+    "builtin": "f2958f7fc8d57f53447a87e326cc5aec8c0014fbf344769c15d13fc49ba57b2a",
+    "copy_sort": "4e3911e951a142a90793948bbada8aa2c58ab24263ae771ec9bbf5a0a8c1638a"
+  },
+  "results": [
+    {
+      "candidate": "builtin",
+      "cases": [
+        {
+          "size": 0,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.0000010199999991300501
+          ],
+          "memory_bytes": 312,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            8.429999995840376e-7
+          ],
+          "memory_bytes": 240,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            6.350000001376088e-7
+          ],
+          "memory_bytes": 240,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            6.820000004736926e-7
+          ],
+          "memory_bytes": 240,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            5.63999999592113e-7
+          ],
+          "memory_bytes": 256,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            7.909999997224304e-7
+          ],
+          "memory_bytes": 256,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            7.040000005176239e-7
+          ],
+          "memory_bytes": 256,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            6.619999997070636e-7
+          ],
+          "memory_bytes": 256,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            7.819999998659455e-7
+          ],
+          "memory_bytes": 368,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            7.56999999573793e-7
+          ],
+          "memory_bytes": 368,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            7.619999999874949e-7
+          ],
+          "memory_bytes": 368,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            6.849999998337353e-7
+          ],
+          "memory_bytes": 368,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.0000016440000001338717
+          ],
+          "memory_bytes": 752,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            9.499999995554731e-7
+          ],
+          "memory_bytes": 752,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.0000010680000004370527
+          ],
+          "memory_bytes": 752,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.0000015680000000628525
+          ],
+          "memory_bytes": 752,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "candidate": "copy_sort",
+      "cases": [
+        {
+          "size": 0,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            8.129999997663617e-7
+          ],
+          "memory_bytes": 376,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            5.289999993607353e-7
+          ],
+          "memory_bytes": 304,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            9.79999999373149e-7
+          ],
+          "memory_bytes": 304,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 0,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            6.429999999113534e-7
+          ],
+          "memory_bytes": 304,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.0000015709999994228951
+          ],
+          "memory_bytes": 320,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            8.080000002408383e-7
+          ],
+          "memory_bytes": 320,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            7.589999997392738e-7
+          ],
+          "memory_bytes": 320,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 1,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            6.849999998337353e-7
+          ],
+          "memory_bytes": 320,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            8.189999993746255e-7
+          ],
+          "memory_bytes": 432,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            7.32000000169819e-7
+          ],
+          "memory_bytes": 432,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            7.609999999047545e-7
+          ],
+          "memory_bytes": 432,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 16,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            9.389999995335074e-7
+          ],
+          "memory_bytes": 432,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "random",
+          "correct": true,
+          "timings_seconds": [
+            0.000001485999999495391
+          ],
+          "memory_bytes": 816,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "sorted",
+          "correct": true,
+          "timings_seconds": [
+            9.560000000519153e-7
+          ],
+          "memory_bytes": 816,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "reversed",
+          "correct": true,
+          "timings_seconds": [
+            0.0000010130000003272244
+          ],
+          "memory_bytes": 816,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        },
+        {
+          "size": 64,
+          "distribution": "duplicates",
+          "correct": true,
+          "timings_seconds": [
+            0.000002022999999518049
+          ],
+          "memory_bytes": 816,
+          "memory_metric": "memray_peak_tracked_allocations_bytes",
+          "error": null,
+          "measurement_version": "independent-v1",
+          "timing_status": "AVAILABLE",
+          "timing_error": null,
+          "memory_status": "AVAILABLE",
+          "memory_error": null,
+          "behavioral_validation": {
+            "version": "functional-validation-v1",
+            "status": "PASS",
+            "validated_calls": 4,
+            "reason": "All configured invocations validated"
+          }
+        }
+      ],
+      "error": null
+    }
+  ],
+  "environment": {
+    "docker_version": "29.9.3",
+    "images": {
+      "samanvaya-benchmark-python:1": "sha256:4e518aaec4a220b4ea27f6c1a4898af7f576abea0f7b4459500f670f355f387c"
+    },
+    "isolation": "docker",
+    "network": "none",
+    "cpus": 1,
+    "memory_limit_bytes": 536870912,
+    "pids_limit": 64,
+    "timeout_seconds": 120,
+    "timing_method": "warmups_then_repeated_samples_not_calibrated",
+    "seed": 42,
+    "language": "python",
+    "protocol": "numeric-ascending-sort-v1",
+    "workers": [
+      {
+        "runtime": "3.12.8",
+        "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.36",
+        "warmups": 2,
+        "input_generator": "lcg32-v1",
+        "measurement_protocol": "independent-v1",
+        "candidate": "builtin",
+        "measurement_tools": {
+          "pyperf": "2.9.0",
+          "memray": "1.15.0",
+          "timing": "pyperf.perf_counter repeated samples; not calibrated pyperf.Runner",
+          "memory": "memray_peak_tracked_allocations_bytes"
+        }
+      },
+      {
+        "runtime": "3.12.8",
+        "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.36",
+        "warmups": 2,
+        "input_generator": "lcg32-v1",
+        "measurement_protocol": "independent-v1",
+        "candidate": "copy_sort",
+        "measurement_tools": {
+          "pyperf": "2.9.0",
+          "memray": "1.15.0",
+          "timing": "pyperf.perf_counter repeated samples; not calibrated pyperf.Runner",
+          "memory": "memray_peak_tracked_allocations_bytes"
+        }
+      }
+    ]
+  },
+  "tools": {
+    "pyperf": "2.9.0",
+    "memray": "1.15.0",
+    "timing": "pyperf.perf_counter repeated samples; not calibrated pyperf.Runner",
+    "memory": "memray_peak_tracked_allocations_bytes"
+  },
+  "recommendation": {
+    "status": "insufficient_evidence",
+    "winner": null,
+    "reason": "Discovered requirements are evaluated by the preserved deterministic policy decision; legacy aggregate rankings cannot establish requirement compliance.",
+    "rankings": [],
+    "limitations": [
+      "Results apply only to sampled sizes, distributions, repetitions and the benchmark environment; there is no universal best sorting algorithm.",
+      "Only numeric ascending correctness was tested; stability and custom comparator behavior are not proven.",
+      "No Big-O complexity is derived from these samples.",
+      "Timing rank uses an equal-weight geometric mean of per-case medians; median_seconds is the median of those medians, not the ranking score.",
+      "The 5% timing margin is a practical noise guard, not a statistical significance test or confidence interval.",
+      "Worker measurements are not tamper-proof against deliberately malicious submissions.",
+      "Timing samples are uncalibrated; close results require longer controlled benchmarks.",
+      "Historical matches are context only, never substituted for this run's measurements."
+    ]
+  },
+  "historical_evidence": [],
+  "error": null,
+  "structural_analysis": {
+    "builtin": {
+      "status": "available",
+      "parser": "python.ast",
+      "entrypoint": "order",
+      "functions": [
+        {
+          "name": "order",
+          "line": 1,
+          "end_line": 2,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": {
+            "if": 0,
+            "ifexp": 0,
+            "match": 0,
+            "match_cases": 0,
+            "boolop": 0,
+            "try": 0,
+            "except_handlers": 0,
+            "comprehension_filters": 0
+          },
+          "direct_recursive_calls": 0,
+          "calls": [
+            "sorted"
+          ],
+          "allocations": []
+        }
+      ],
+      "limitations": [
+        "Static observations only: no proven asymptotic complexity or Big-O bound, execution time, or runtime call graph is inferred.",
+        "Calls are lexical names or dotted attributes only. Direct recursive calls count bare calls to the function's syntactic name, not runtime-resolved recursion; aliases, shadowing, dynamic dispatch, decorators and rebinding can change behavior.",
+        "Loops include comprehension generator clauses. Nesting is syntactic, including generator expressions, not a statement about evaluation frequency or laziness.",
+        "Branches are descriptive syntax counts, not McCabe/cyclomatic complexity: if, ifexp, match, match cases, boolop expressions, try blocks, except handlers and comprehension filters.",
+        "Allocations are collection literal/comprehension and generator-expression sites only, not allocated bytes or peak allocation. Constructor calls are not proven allocations; constant folding and runtime behavior may differ.",
+        "Function bodies exclude nested function/lambda bodies; their defaults, annotations and decorators are observed in the enclosing scope. Module-level code is not summarized. Names and entrypoint are labels only; entrypoint existence or callability is not validated.",
+        "Lexical labels are limited to 120 characters and can be shortened; call labels are unique per function, not call-frequency counts.",
+        "This source-only report is not a replacement for security review, quality analysis or testing."
+      ]
+    },
+    "copy_sort": {
+      "status": "available",
+      "parser": "python.ast",
+      "entrypoint": "order",
+      "functions": [
+        {
+          "name": "order",
+          "line": 1,
+          "end_line": 4,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": {
+            "if": 0,
+            "ifexp": 0,
+            "match": 0,
+            "match_cases": 0,
+            "boolop": 0,
+            "try": 0,
+            "except_handlers": 0,
+            "comprehension_filters": 0
+          },
+          "direct_recursive_calls": 0,
+          "calls": [
+            "list",
+            "result.sort"
+          ],
+          "allocations": []
+        }
+      ],
+      "limitations": [
+        "Static observations only: no proven asymptotic complexity or Big-O bound, execution time, or runtime call graph is inferred.",
+        "Calls are lexical names or dotted attributes only. Direct recursive calls count bare calls to the function's syntactic name, not runtime-resolved recursion; aliases, shadowing, dynamic dispatch, decorators and rebinding can change behavior.",
+        "Loops include comprehension generator clauses. Nesting is syntactic, including generator expressions, not a statement about evaluation frequency or laziness.",
+        "Branches are descriptive syntax counts, not McCabe/cyclomatic complexity: if, ifexp, match, match cases, boolop expressions, try blocks, except handlers and comprehension filters.",
+        "Allocations are collection literal/comprehension and generator-expression sites only, not allocated bytes or peak allocation. Constructor calls are not proven allocations; constant folding and runtime behavior may differ.",
+        "Function bodies exclude nested function/lambda bodies; their defaults, annotations and decorators are observed in the enclosing scope. Module-level code is not summarized. Names and entrypoint are labels only; entrypoint existence or callability is not validated.",
+        "Lexical labels are limited to 120 characters and can be shortened; call labels are unique per function, not call-frequency counts.",
+        "This source-only report is not a replacement for security review, quality analysis or testing."
+      ]
+    }
+  },
+  "requirements_discovery": {
+    "method": "requirement-discovery-v1",
+    "project_id": "PRJ-A7E48B66",
+    "context": {
+      "repository": "Mounesh05/taskflow-samanvaya-lab",
+      "source_revision": null,
+      "contract_ids": [],
+      "function_ids": [],
+      "discovery_run_ids": [],
+      "task_ids": [],
+      "story_ids": [],
+      "pr_ids": [],
+      "benchmark_run_ids": []
+    },
+    "established": [],
+    "observations": [],
+    "suggestions": [],
+    "unknown": [
+      {
+        "id": "discovered-max_latency",
+        "description": "Production latency acceptance limit is unknown",
+        "status": "UNKNOWN"
+      },
+      {
+        "id": "discovered-max_memory",
+        "description": "Production peak-memory acceptance limit and metric are unknown",
+        "status": "UNKNOWN"
+      },
+      {
+        "id": "discovered-workload",
+        "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+        "status": "UNKNOWN"
+      }
+    ],
+    "conflicts": [],
+    "excluded": [],
+    "limitations": [
+      "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+      "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+    ],
+    "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+    "policy_input": {
+      "required_dataset_ids": []
+    }
+  },
+  "policy_established_by": {
+    "employee_id": "DEMO_LEAD",
+    "sub": "DEMO_LEAD",
+    "org_id": "TASKFLOW-DEMO"
+  },
+  "started_at": "2026-11-20T13:42:34.014176+00:00",
+  "decision": {
+    "engine_version": "deterministic-decision-v1",
+    "policy_id": "discovered-requirements",
+    "policy_version": "1",
+    "policy_snapshot": {
+      "id": "discovered-requirements",
+      "version": "1",
+      "objective": "MINIMIZE_TIME",
+      "memory_metric": null,
+      "required_dataset_ids": [],
+      "constraints": [],
+      "unknown_requirements": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+        }
+      ],
+      "timing": {
+        "version": "1",
+        "minimum_samples": 3,
+        "practical_difference_ratio": 0.05,
+        "maximum_variability_ratio": 0.2
+      }
+    },
+    "policy_fingerprint": "typed-json-sha256-v1:ac6b00a582a7993b0dc34f6c5860ed4bd8ce5b798c961e23ea2a1597cb9ef66c",
+    "identities": {
+      "fingerprint_version": "typed-json-sha256-v1",
+      "contract": "typed-json-sha256-v1:6fd3d39026cbee5c9fe87476723e4f66a35cce1dce61e6fa00731800f6834d35",
+      "datasets": {
+        "sort:0:random": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+        },
+        "sort:0:sorted": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+        },
+        "sort:0:reversed": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+        },
+        "sort:0:duplicates": {
+          "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+          "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+        },
+        "sort:1:random": {
+          "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+          "validation": "typed-json-sha256-v1:ac5b7ab456d3be330b2c113b458177077313d5a5bd4e7c6f438bf05f94c11616"
+        },
+        "sort:1:sorted": {
+          "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+          "validation": "typed-json-sha256-v1:ac5b7ab456d3be330b2c113b458177077313d5a5bd4e7c6f438bf05f94c11616"
+        },
+        "sort:1:reversed": {
+          "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+          "validation": "typed-json-sha256-v1:ac5b7ab456d3be330b2c113b458177077313d5a5bd4e7c6f438bf05f94c11616"
+        },
+        "sort:1:duplicates": {
+          "inputs": "typed-json-sha256-v1:9ac88b41696ea07c10d4c76899aa1d7c3fffc801d06849c50fb268ccf1ff121a",
+          "validation": "typed-json-sha256-v1:e14fb265966bc1b899a8d24a9211671c520ec174d22f5ddd79b13b155fe4f945"
+        },
+        "sort:16:random": {
+          "inputs": "typed-json-sha256-v1:59b0a7f6af796aba05e23dcaec0708b4d1d2a82f196b0cc47839cc91ccbef01f",
+          "validation": "typed-json-sha256-v1:fc549dd3797794b7d830825b7e0481752e11e430f3a0cf0164d500bf94f33454"
+        },
+        "sort:16:sorted": {
+          "inputs": "typed-json-sha256-v1:b15219d82e82e466f71048c553e92ad3e1fbaab352596269eb7e9d14ba559003",
+          "validation": "typed-json-sha256-v1:fc549dd3797794b7d830825b7e0481752e11e430f3a0cf0164d500bf94f33454"
+        },
+        "sort:16:reversed": {
+          "inputs": "typed-json-sha256-v1:00757166685cd3ccfe373c7905598b73872b33a051e08bdfdf7060377a5c056b",
+          "validation": "typed-json-sha256-v1:fc549dd3797794b7d830825b7e0481752e11e430f3a0cf0164d500bf94f33454"
+        },
+        "sort:16:duplicates": {
+          "inputs": "typed-json-sha256-v1:f7794009c8866b9b0cd6f5f1186ffa0006996700d7a794509faea2fb82f1d733",
+          "validation": "typed-json-sha256-v1:d19dad00970700e9bfccf4a8a501806cae853272cd327b8fb75dc640bb879a01"
+        },
+        "sort:64:random": {
+          "inputs": "typed-json-sha256-v1:39f0430bdc87c0e8b368b5d42a581233efd56f24db861e32b1556970670f6651",
+          "validation": "typed-json-sha256-v1:775fa1da1932fb5d45d9c9e669c64f46bccbd0d1212a8affbb87be352cda6d1b"
+        },
+        "sort:64:sorted": {
+          "inputs": "typed-json-sha256-v1:ff91f1c6f2f31a7148e8e8105de7beaa5862b4d9676497fd86128ddbaef83fb4",
+          "validation": "typed-json-sha256-v1:775fa1da1932fb5d45d9c9e669c64f46bccbd0d1212a8affbb87be352cda6d1b"
+        },
+        "sort:64:reversed": {
+          "inputs": "typed-json-sha256-v1:fa6be21a1659ac3e9ffba1934bf6a7e4d983c56e4ba10566a9aa36441b0fca13",
+          "validation": "typed-json-sha256-v1:775fa1da1932fb5d45d9c9e669c64f46bccbd0d1212a8affbb87be352cda6d1b"
+        },
+        "sort:64:duplicates": {
+          "inputs": "typed-json-sha256-v1:642b93f11685b1dd8e98c482318a89d09454b0ee3b3ecdc0f76b09fbd5ad36ae",
+          "validation": "typed-json-sha256-v1:a0d0d343e11b4c45552c0a9a5624b500f52d0a79ceba7a9d326e0c6a9f37bce6"
+        }
+      },
+      "implementations": {
+        "builtin": "typed-json-sha256-v1:3ed0c47cc06c958e1353045534fb9fb3c4c2e82537d22ff0d3869ca055a7e771",
+        "copy_sort": "typed-json-sha256-v1:165b705be7f77c7197bd9908fa414f72a3025417f71d71ab08a07fc145c70fe1"
+      },
+      "execution": "typed-json-sha256-v1:164ea2d403939dc4debe4250022813b26fe5fc7f5af78d1c3a2c92e3bb651b8d",
+      "evidence": "typed-json-sha256-v1:fb77e03565b700cbdb5474b7b8692655d3b0371c731f929f2c9493ddffcf0e6f"
+    },
+    "candidates": [
+      {
+        "candidate": "builtin",
+        "correctness": "PASS",
+        "datasets": [
+          {
+            "dataset_id": "sort:0:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000010199999991300501,
+              "minimum": 0.0000010199999991300501,
+              "maximum": 0.0000010199999991300501,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 312
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 8.429999995840376e-7,
+              "minimum": 8.429999995840376e-7,
+              "maximum": 8.429999995840376e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 240
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 6.350000001376088e-7,
+              "minimum": 6.350000001376088e-7,
+              "maximum": 6.350000001376088e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 240
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 6.820000004736926e-7,
+              "minimum": 6.820000004736926e-7,
+              "maximum": 6.820000004736926e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 240
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 5.63999999592113e-7,
+              "minimum": 5.63999999592113e-7,
+              "maximum": 5.63999999592113e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 256
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.909999997224304e-7,
+              "minimum": 7.909999997224304e-7,
+              "maximum": 7.909999997224304e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 256
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.040000005176239e-7,
+              "minimum": 7.040000005176239e-7,
+              "maximum": 7.040000005176239e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 256
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 6.619999997070636e-7,
+              "minimum": 6.619999997070636e-7,
+              "maximum": 6.619999997070636e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 256
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.819999998659455e-7,
+              "minimum": 7.819999998659455e-7,
+              "maximum": 7.819999998659455e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 368
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.56999999573793e-7,
+              "minimum": 7.56999999573793e-7,
+              "maximum": 7.56999999573793e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 368
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.619999999874949e-7,
+              "minimum": 7.619999999874949e-7,
+              "maximum": 7.619999999874949e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 368
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 6.849999998337353e-7,
+              "minimum": 6.849999998337353e-7,
+              "maximum": 6.849999998337353e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 368
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000016440000001338717,
+              "minimum": 0.0000016440000001338717,
+              "maximum": 0.0000016440000001338717,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 752
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 9.499999995554731e-7,
+              "minimum": 9.499999995554731e-7,
+              "maximum": 9.499999995554731e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 752
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000010680000004370527,
+              "minimum": 0.0000010680000004370527,
+              "maximum": 0.0000010680000004370527,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 752
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000015680000000628525,
+              "minimum": 0.0000015680000000628525,
+              "maximum": 0.0000015680000000628525,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 752
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "constraint_evaluations": [],
+        "task_eligibility": "ELIGIBLE",
+        "missing_required_dataset_ids": [],
+        "requirement_conflict": false,
+        "methodology_fingerprint": "typed-json-sha256-v1:3588aa993cd5b9f68906bdeb81e1e987b9a701f145932aae9eb321098c458bc1"
+      },
+      {
+        "candidate": "copy_sort",
+        "correctness": "PASS",
+        "datasets": [
+          {
+            "dataset_id": "sort:0:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 8.129999997663617e-7,
+              "minimum": 8.129999997663617e-7,
+              "maximum": 8.129999997663617e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 376
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 5.289999993607353e-7,
+              "minimum": 5.289999993607353e-7,
+              "maximum": 5.289999993607353e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 304
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 9.79999999373149e-7,
+              "minimum": 9.79999999373149e-7,
+              "maximum": 9.79999999373149e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 304
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:0:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 6.429999999113534e-7,
+              "minimum": 6.429999999113534e-7,
+              "maximum": 6.429999999113534e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 304
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000015709999994228951,
+              "minimum": 0.0000015709999994228951,
+              "maximum": 0.0000015709999994228951,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 320
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 8.080000002408383e-7,
+              "minimum": 8.080000002408383e-7,
+              "maximum": 8.080000002408383e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 320
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.589999997392738e-7,
+              "minimum": 7.589999997392738e-7,
+              "maximum": 7.589999997392738e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 320
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:1:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 6.849999998337353e-7,
+              "minimum": 6.849999998337353e-7,
+              "maximum": 6.849999998337353e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 320
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 8.189999993746255e-7,
+              "minimum": 8.189999993746255e-7,
+              "maximum": 8.189999993746255e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 432
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.32000000169819e-7,
+              "minimum": 7.32000000169819e-7,
+              "maximum": 7.32000000169819e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 432
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 7.609999999047545e-7,
+              "minimum": 7.609999999047545e-7,
+              "maximum": 7.609999999047545e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 432
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:16:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 9.389999995335074e-7,
+              "minimum": 9.389999995335074e-7,
+              "maximum": 9.389999995335074e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 432
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:random",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000001485999999495391,
+              "minimum": 0.000001485999999495391,
+              "maximum": 0.000001485999999495391,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 816
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:random",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:sorted",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 9.560000000519153e-7,
+              "minimum": 9.560000000519153e-7,
+              "maximum": 9.560000000519153e-7,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 816
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:sorted",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:reversed",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.0000010130000003272244,
+              "minimum": 0.0000010130000003272244,
+              "maximum": 0.0000010130000003272244,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 816
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:reversed",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "dataset_id": "sort:64:duplicates",
+            "correctness": "PASS",
+            "timing": {
+              "status": "AVAILABLE",
+              "count": 1,
+              "median": 0.000002022999999518049,
+              "minimum": 0.000002022999999518049,
+              "maximum": 0.000002022999999518049,
+              "variability_ratio": 0
+            },
+            "memory": {
+              "status": "AVAILABLE",
+              "metric": "memray_peak_tracked_allocations_bytes",
+              "bytes": 816
+            },
+            "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:duplicates",
+            "protocol_error": null,
+            "evaluations": [],
+            "requirement_conflict": false,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "constraint_evaluations": [],
+        "task_eligibility": "ELIGIBLE",
+        "missing_required_dataset_ids": [],
+        "requirement_conflict": false,
+        "methodology_fingerprint": "typed-json-sha256-v1:3588aa993cd5b9f68906bdeb81e1e987b9a701f145932aae9eb321098c458bc1"
+      }
+    ],
+    "dataset_comparisons": [
+      {
+        "dataset_id": "sort:0:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:0:random",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:0:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:0:sorted",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:0:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:0:reversed",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:0:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:0:duplicates",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:1:random",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:1:sorted",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:1:reversed",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:1:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:1:duplicates",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:16:random",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:16:sorted",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:16:reversed",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:16:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:16:duplicates",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:random",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:64:random",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:random"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:sorted",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:64:sorted",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:sorted"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:reversed",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:64:reversed",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:reversed"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      },
+      {
+        "dataset_id": "sort:64:duplicates",
+        "objective": "MINIMIZE_TIME",
+        "winner": null,
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "evidence_references": [
+          "ALG-F7391488D3424011/results/builtin/datasets/sort:64:duplicates",
+          "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:duplicates"
+        ],
+        "status": "INSUFFICIENT_EVIDENCE",
+        "reason": "Complete timing and the minimum sample count are required."
+      }
+    ],
+    "unknown_requirements": [
+      {
+        "id": "discovered-max_latency",
+        "description": "Production latency acceptance limit is unknown"
+      },
+      {
+        "id": "discovered-max_memory",
+        "description": "Production peak-memory acceptance limit and metric are unknown"
+      },
+      {
+        "id": "discovered-workload",
+        "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+      }
+    ],
+    "missing_evidence": [],
+    "unverified_requirements": [],
+    "task_suitability": {
+      "status": "CONDITIONAL_COMPARISON",
+      "eligible_candidates": [
+        "builtin",
+        "copy_sort"
+      ],
+      "global_winner": null,
+      "required_dataset_ids": [
+        "sort:0:random",
+        "sort:0:sorted",
+        "sort:0:reversed",
+        "sort:0:duplicates",
+        "sort:1:random",
+        "sort:1:sorted",
+        "sort:1:reversed",
+        "sort:1:duplicates",
+        "sort:16:random",
+        "sort:16:sorted",
+        "sort:16:reversed",
+        "sort:16:duplicates",
+        "sort:64:random",
+        "sort:64:sorted",
+        "sort:64:reversed",
+        "sort:64:duplicates"
+      ]
+    },
+    "limitations": [
+      "Expected-output success establishes tested correctness only, not universal equivalence.",
+      "Dataset winners do not establish global optimality or performance on untested inputs.",
+      "Unknown requirements are not acceptance constraints; no compliance with them is claimed.",
+      "Practical difference and variability thresholds are deterministic policies, not statistical confidence.",
+      "Worker evidence is not tamper-proof against deliberately malicious submissions."
+    ],
+    "requirements_discovery": {
+      "method": "requirement-discovery-v1",
+      "project_id": "PRJ-A7E48B66",
+      "context": {
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "source_revision": null,
+        "contract_ids": [],
+        "function_ids": [],
+        "discovery_run_ids": [],
+        "task_ids": [],
+        "story_ids": [],
+        "pr_ids": [],
+        "benchmark_run_ids": []
+      },
+      "established": [],
+      "observations": [],
+      "suggestions": [],
+      "unknown": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown",
+          "status": "UNKNOWN"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+          "status": "UNKNOWN"
+        }
+      ],
+      "conflicts": [],
+      "excluded": [],
+      "limitations": [
+        "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+        "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+      ],
+      "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+      "policy_input": {
+        "required_dataset_ids": []
+      }
+    },
+    "revision_id": "DEC-f778208aeec848b1a148e0b35d3f12e3",
+    "revision_number": 1,
+    "created_at": "2026-11-20T13:42:41.581517+00:00",
+    "provenance": {
+      "kind": "project-authorized-submission",
+      "established_by": "DEMO_LEAD",
+      "organization_id": "TASKFLOW-DEMO",
+      "project_id": "PRJ-A7E48B66",
+      "authority_basis": "existing engineering role and project access; not an organizational approval claim"
+    }
+  },
+  "decision_authoritative": true,
+  "decision_revision_count": 1,
+  "decision_revisions": [
+    {
+      "engine_version": "deterministic-decision-v1",
+      "policy_id": "discovered-requirements",
+      "policy_version": "1",
+      "policy_snapshot": {
+        "id": "discovered-requirements",
+        "version": "1",
+        "objective": "MINIMIZE_TIME",
+        "memory_metric": null,
+        "required_dataset_ids": [],
+        "constraints": [],
+        "unknown_requirements": [
+          {
+            "id": "discovered-max_latency",
+            "description": "Production latency acceptance limit is unknown"
+          },
+          {
+            "id": "discovered-max_memory",
+            "description": "Production peak-memory acceptance limit and metric are unknown"
+          },
+          {
+            "id": "discovered-workload",
+            "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+          }
+        ],
+        "timing": {
+          "version": "1",
+          "minimum_samples": 3,
+          "practical_difference_ratio": 0.05,
+          "maximum_variability_ratio": 0.2
+        }
+      },
+      "policy_fingerprint": "typed-json-sha256-v1:ac6b00a582a7993b0dc34f6c5860ed4bd8ce5b798c961e23ea2a1597cb9ef66c",
+      "identities": {
+        "fingerprint_version": "typed-json-sha256-v1",
+        "contract": "typed-json-sha256-v1:6fd3d39026cbee5c9fe87476723e4f66a35cce1dce61e6fa00731800f6834d35",
+        "datasets": {
+          "sort:0:random": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+          },
+          "sort:0:sorted": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+          },
+          "sort:0:reversed": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+          },
+          "sort:0:duplicates": {
+            "inputs": "typed-json-sha256-v1:d62bbea55e66cfeb2d39cc7f411d79814b8d2d1ac4479e2d83865b4f21a2b08f",
+            "validation": "typed-json-sha256-v1:edff5e7a12d4ab7c81093373994a462f48527f957b37b3b7929a3e1c6bd86b08"
+          },
+          "sort:1:random": {
+            "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+            "validation": "typed-json-sha256-v1:ac5b7ab456d3be330b2c113b458177077313d5a5bd4e7c6f438bf05f94c11616"
+          },
+          "sort:1:sorted": {
+            "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+            "validation": "typed-json-sha256-v1:ac5b7ab456d3be330b2c113b458177077313d5a5bd4e7c6f438bf05f94c11616"
+          },
+          "sort:1:reversed": {
+            "inputs": "typed-json-sha256-v1:58dfb74ec3ff7d5379145ce30dca5f919d2afbb732b47cd68246dfd6c6c58dfc",
+            "validation": "typed-json-sha256-v1:ac5b7ab456d3be330b2c113b458177077313d5a5bd4e7c6f438bf05f94c11616"
+          },
+          "sort:1:duplicates": {
+            "inputs": "typed-json-sha256-v1:9ac88b41696ea07c10d4c76899aa1d7c3fffc801d06849c50fb268ccf1ff121a",
+            "validation": "typed-json-sha256-v1:e14fb265966bc1b899a8d24a9211671c520ec174d22f5ddd79b13b155fe4f945"
+          },
+          "sort:16:random": {
+            "inputs": "typed-json-sha256-v1:59b0a7f6af796aba05e23dcaec0708b4d1d2a82f196b0cc47839cc91ccbef01f",
+            "validation": "typed-json-sha256-v1:fc549dd3797794b7d830825b7e0481752e11e430f3a0cf0164d500bf94f33454"
+          },
+          "sort:16:sorted": {
+            "inputs": "typed-json-sha256-v1:b15219d82e82e466f71048c553e92ad3e1fbaab352596269eb7e9d14ba559003",
+            "validation": "typed-json-sha256-v1:fc549dd3797794b7d830825b7e0481752e11e430f3a0cf0164d500bf94f33454"
+          },
+          "sort:16:reversed": {
+            "inputs": "typed-json-sha256-v1:00757166685cd3ccfe373c7905598b73872b33a051e08bdfdf7060377a5c056b",
+            "validation": "typed-json-sha256-v1:fc549dd3797794b7d830825b7e0481752e11e430f3a0cf0164d500bf94f33454"
+          },
+          "sort:16:duplicates": {
+            "inputs": "typed-json-sha256-v1:f7794009c8866b9b0cd6f5f1186ffa0006996700d7a794509faea2fb82f1d733",
+            "validation": "typed-json-sha256-v1:d19dad00970700e9bfccf4a8a501806cae853272cd327b8fb75dc640bb879a01"
+          },
+          "sort:64:random": {
+            "inputs": "typed-json-sha256-v1:39f0430bdc87c0e8b368b5d42a581233efd56f24db861e32b1556970670f6651",
+            "validation": "typed-json-sha256-v1:775fa1da1932fb5d45d9c9e669c64f46bccbd0d1212a8affbb87be352cda6d1b"
+          },
+          "sort:64:sorted": {
+            "inputs": "typed-json-sha256-v1:ff91f1c6f2f31a7148e8e8105de7beaa5862b4d9676497fd86128ddbaef83fb4",
+            "validation": "typed-json-sha256-v1:775fa1da1932fb5d45d9c9e669c64f46bccbd0d1212a8affbb87be352cda6d1b"
+          },
+          "sort:64:reversed": {
+            "inputs": "typed-json-sha256-v1:fa6be21a1659ac3e9ffba1934bf6a7e4d983c56e4ba10566a9aa36441b0fca13",
+            "validation": "typed-json-sha256-v1:775fa1da1932fb5d45d9c9e669c64f46bccbd0d1212a8affbb87be352cda6d1b"
+          },
+          "sort:64:duplicates": {
+            "inputs": "typed-json-sha256-v1:642b93f11685b1dd8e98c482318a89d09454b0ee3b3ecdc0f76b09fbd5ad36ae",
+            "validation": "typed-json-sha256-v1:a0d0d343e11b4c45552c0a9a5624b500f52d0a79ceba7a9d326e0c6a9f37bce6"
+          }
+        },
+        "implementations": {
+          "builtin": "typed-json-sha256-v1:3ed0c47cc06c958e1353045534fb9fb3c4c2e82537d22ff0d3869ca055a7e771",
+          "copy_sort": "typed-json-sha256-v1:165b705be7f77c7197bd9908fa414f72a3025417f71d71ab08a07fc145c70fe1"
+        },
+        "execution": "typed-json-sha256-v1:164ea2d403939dc4debe4250022813b26fe5fc7f5af78d1c3a2c92e3bb651b8d",
+        "evidence": "typed-json-sha256-v1:fb77e03565b700cbdb5474b7b8692655d3b0371c731f929f2c9493ddffcf0e6f"
+      },
+      "candidates": [
+        {
+          "candidate": "builtin",
+          "correctness": "PASS",
+          "datasets": [
+            {
+              "dataset_id": "sort:0:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000010199999991300501,
+                "minimum": 0.0000010199999991300501,
+                "maximum": 0.0000010199999991300501,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 312
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 8.429999995840376e-7,
+                "minimum": 8.429999995840376e-7,
+                "maximum": 8.429999995840376e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 240
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 6.350000001376088e-7,
+                "minimum": 6.350000001376088e-7,
+                "maximum": 6.350000001376088e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 240
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 6.820000004736926e-7,
+                "minimum": 6.820000004736926e-7,
+                "maximum": 6.820000004736926e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 240
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:0:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 5.63999999592113e-7,
+                "minimum": 5.63999999592113e-7,
+                "maximum": 5.63999999592113e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 256
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.909999997224304e-7,
+                "minimum": 7.909999997224304e-7,
+                "maximum": 7.909999997224304e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 256
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.040000005176239e-7,
+                "minimum": 7.040000005176239e-7,
+                "maximum": 7.040000005176239e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 256
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 6.619999997070636e-7,
+                "minimum": 6.619999997070636e-7,
+                "maximum": 6.619999997070636e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 256
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:1:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.819999998659455e-7,
+                "minimum": 7.819999998659455e-7,
+                "maximum": 7.819999998659455e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 368
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.56999999573793e-7,
+                "minimum": 7.56999999573793e-7,
+                "maximum": 7.56999999573793e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 368
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.619999999874949e-7,
+                "minimum": 7.619999999874949e-7,
+                "maximum": 7.619999999874949e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 368
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 6.849999998337353e-7,
+                "minimum": 6.849999998337353e-7,
+                "maximum": 6.849999998337353e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 368
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:16:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000016440000001338717,
+                "minimum": 0.0000016440000001338717,
+                "maximum": 0.0000016440000001338717,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 752
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 9.499999995554731e-7,
+                "minimum": 9.499999995554731e-7,
+                "maximum": 9.499999995554731e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 752
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000010680000004370527,
+                "minimum": 0.0000010680000004370527,
+                "maximum": 0.0000010680000004370527,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 752
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000015680000000628525,
+                "minimum": 0.0000015680000000628525,
+                "maximum": 0.0000015680000000628525,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 752
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/builtin/datasets/sort:64:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            }
+          ],
+          "constraint_evaluations": [],
+          "task_eligibility": "ELIGIBLE",
+          "missing_required_dataset_ids": [],
+          "requirement_conflict": false,
+          "methodology_fingerprint": "typed-json-sha256-v1:3588aa993cd5b9f68906bdeb81e1e987b9a701f145932aae9eb321098c458bc1"
+        },
+        {
+          "candidate": "copy_sort",
+          "correctness": "PASS",
+          "datasets": [
+            {
+              "dataset_id": "sort:0:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 8.129999997663617e-7,
+                "minimum": 8.129999997663617e-7,
+                "maximum": 8.129999997663617e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 376
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 5.289999993607353e-7,
+                "minimum": 5.289999993607353e-7,
+                "maximum": 5.289999993607353e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 304
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 9.79999999373149e-7,
+                "minimum": 9.79999999373149e-7,
+                "maximum": 9.79999999373149e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 304
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:0:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 6.429999999113534e-7,
+                "minimum": 6.429999999113534e-7,
+                "maximum": 6.429999999113534e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 304
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000015709999994228951,
+                "minimum": 0.0000015709999994228951,
+                "maximum": 0.0000015709999994228951,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 320
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 8.080000002408383e-7,
+                "minimum": 8.080000002408383e-7,
+                "maximum": 8.080000002408383e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 320
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.589999997392738e-7,
+                "minimum": 7.589999997392738e-7,
+                "maximum": 7.589999997392738e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 320
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:1:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 6.849999998337353e-7,
+                "minimum": 6.849999998337353e-7,
+                "maximum": 6.849999998337353e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 320
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 8.189999993746255e-7,
+                "minimum": 8.189999993746255e-7,
+                "maximum": 8.189999993746255e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 432
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.32000000169819e-7,
+                "minimum": 7.32000000169819e-7,
+                "maximum": 7.32000000169819e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 432
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 7.609999999047545e-7,
+                "minimum": 7.609999999047545e-7,
+                "maximum": 7.609999999047545e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 432
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:16:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 9.389999995335074e-7,
+                "minimum": 9.389999995335074e-7,
+                "maximum": 9.389999995335074e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 432
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:random",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000001485999999495391,
+                "minimum": 0.000001485999999495391,
+                "maximum": 0.000001485999999495391,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 816
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:random",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:sorted",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 9.560000000519153e-7,
+                "minimum": 9.560000000519153e-7,
+                "maximum": 9.560000000519153e-7,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 816
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:sorted",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:reversed",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.0000010130000003272244,
+                "minimum": 0.0000010130000003272244,
+                "maximum": 0.0000010130000003272244,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 816
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:reversed",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            },
+            {
+              "dataset_id": "sort:64:duplicates",
+              "correctness": "PASS",
+              "timing": {
+                "status": "AVAILABLE",
+                "count": 1,
+                "median": 0.000002022999999518049,
+                "minimum": 0.000002022999999518049,
+                "maximum": 0.000002022999999518049,
+                "variability_ratio": 0
+              },
+              "memory": {
+                "status": "AVAILABLE",
+                "metric": "memray_peak_tracked_allocations_bytes",
+                "bytes": 816
+              },
+              "evidence_reference": "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:duplicates",
+              "protocol_error": null,
+              "evaluations": [],
+              "requirement_conflict": false,
+              "eligibility": "ELIGIBLE"
+            }
+          ],
+          "constraint_evaluations": [],
+          "task_eligibility": "ELIGIBLE",
+          "missing_required_dataset_ids": [],
+          "requirement_conflict": false,
+          "methodology_fingerprint": "typed-json-sha256-v1:3588aa993cd5b9f68906bdeb81e1e987b9a701f145932aae9eb321098c458bc1"
+        }
+      ],
+      "dataset_comparisons": [
+        {
+          "dataset_id": "sort:0:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:0:random",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:0:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:0:sorted",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:0:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:0:reversed",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:0:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:0:duplicates",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:0:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:1:random",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:1:sorted",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:1:reversed",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:1:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:1:duplicates",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:1:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:16:random",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:16:sorted",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:16:reversed",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:16:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:16:duplicates",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:16:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:random",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:64:random",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:random"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:sorted",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:64:sorted",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:sorted"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:reversed",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:64:reversed",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:reversed"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        },
+        {
+          "dataset_id": "sort:64:duplicates",
+          "objective": "MINIMIZE_TIME",
+          "winner": null,
+          "eligible_candidates": [
+            "builtin",
+            "copy_sort"
+          ],
+          "evidence_references": [
+            "ALG-F7391488D3424011/results/builtin/datasets/sort:64:duplicates",
+            "ALG-F7391488D3424011/results/copy_sort/datasets/sort:64:duplicates"
+          ],
+          "status": "INSUFFICIENT_EVIDENCE",
+          "reason": "Complete timing and the minimum sample count are required."
+        }
+      ],
+      "unknown_requirements": [
+        {
+          "id": "discovered-max_latency",
+          "description": "Production latency acceptance limit is unknown"
+        },
+        {
+          "id": "discovered-max_memory",
+          "description": "Production peak-memory acceptance limit and metric are unknown"
+        },
+        {
+          "id": "discovered-workload",
+          "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them"
+        }
+      ],
+      "missing_evidence": [],
+      "unverified_requirements": [],
+      "task_suitability": {
+        "status": "CONDITIONAL_COMPARISON",
+        "eligible_candidates": [
+          "builtin",
+          "copy_sort"
+        ],
+        "global_winner": null,
+        "required_dataset_ids": [
+          "sort:0:random",
+          "sort:0:sorted",
+          "sort:0:reversed",
+          "sort:0:duplicates",
+          "sort:1:random",
+          "sort:1:sorted",
+          "sort:1:reversed",
+          "sort:1:duplicates",
+          "sort:16:random",
+          "sort:16:sorted",
+          "sort:16:reversed",
+          "sort:16:duplicates",
+          "sort:64:random",
+          "sort:64:sorted",
+          "sort:64:reversed",
+          "sort:64:duplicates"
+        ]
+      },
+      "limitations": [
+        "Expected-output success establishes tested correctness only, not universal equivalence.",
+        "Dataset winners do not establish global optimality or performance on untested inputs.",
+        "Unknown requirements are not acceptance constraints; no compliance with them is claimed.",
+        "Practical difference and variability thresholds are deterministic policies, not statistical confidence.",
+        "Worker evidence is not tamper-proof against deliberately malicious submissions."
+      ],
+      "requirements_discovery": {
+        "method": "requirement-discovery-v1",
+        "project_id": "PRJ-A7E48B66",
+        "context": {
+          "repository": "Mounesh05/taskflow-samanvaya-lab",
+          "source_revision": null,
+          "contract_ids": [],
+          "function_ids": [],
+          "discovery_run_ids": [],
+          "task_ids": [],
+          "story_ids": [],
+          "pr_ids": [],
+          "benchmark_run_ids": []
+        },
+        "established": [],
+        "observations": [],
+        "suggestions": [],
+        "unknown": [
+          {
+            "id": "discovered-max_latency",
+            "description": "Production latency acceptance limit is unknown",
+            "status": "UNKNOWN"
+          },
+          {
+            "id": "discovered-max_memory",
+            "description": "Production peak-memory acceptance limit and metric are unknown",
+            "status": "UNKNOWN"
+          },
+          {
+            "id": "discovered-workload",
+            "description": "Production workload sizes and frequencies are unknown; tested or required datasets do not establish them",
+            "status": "UNKNOWN"
+          }
+        ],
+        "conflicts": [],
+        "excluded": [],
+        "limitations": [
+          "Project configuration is absent; code-quality defaults and worker resource limits are not acceptance budgets",
+          "Approved applicable functional contract is missing, proposed or conflicting; purpose hypotheses cannot approve one"
+        ],
+        "fingerprint": "typed-json-sha256-v1:26a886b8b58ff93b4d6aecece5aaae6ecfedb4811cda2baecffd1479e4c46ccc",
+        "policy_input": {
+          "required_dataset_ids": []
+        }
+      },
+      "revision_id": "DEC-f778208aeec848b1a148e0b35d3f12e3",
+      "revision_number": 1,
+      "created_at": "2026-11-20T13:42:41.581517+00:00",
+      "provenance": {
+        "kind": "project-authorized-submission",
+        "established_by": "DEMO_LEAD",
+        "organization_id": "TASKFLOW-DEMO",
+        "project_id": "PRJ-A7E48B66",
+        "authority_basis": "existing engineering role and project access; not an organizational approval claim"
+      }
+    }
+  ],
+  "environment_key": "7056e419afce6083445c8dda6ff98068f48834c8fc4dd8c857e9a739b6fa8352",
+  "immutable_evidence_fingerprint": "typed-json-sha256-v1:fb77e03565b700cbdb5474b7b8692655d3b0371c731f929f2c9493ddffcf0e6f",
+  "immutable_execution_fingerprint": "typed-json-sha256-v1:164ea2d403939dc4debe4250022813b26fe5fc7f5af78d1c3a2c92e3bb651b8d"
+}

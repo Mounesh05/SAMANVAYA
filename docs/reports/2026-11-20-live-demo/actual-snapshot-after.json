@@ -1,0 +1,31 @@
+{
+  "raw": "{\n  \"summary\": \"The codebase contains several declared functions related to scheduling algorithms, including `schedule_with_heap`, `schedule_with_repeated_sort`, and `bfs_dependencies`. The codebase also includes a test suite for these functions.\",\n  \"claims\": [\n    {\n      \"kind\": \"OBSERVATION\",\n      \"statement\": \"The codebase contains several declared functions related to scheduling algorithms, including `schedule_with_heap`, `schedule_with_repeated_sort`, and `bfs_dependencies`.\",\n      \"topic\": \"Code Structure\"\n    },\n    {\n      \"kind\": \"OBSERVATION\",\n      \"statement\": \"The codebase also includes a test suite for these functions.\",\n      \"topic\": \"Testing\"\n    }\n  ],\n  \"limitations\": [\n    \"This analysis does not provide information about the correctness or efficiency of the scheduling algorithms implemented in the codebase.\"\n  ]\n}",
+  "validated": {
+    "schema_version": "pr-specialist-v1",
+    "summary": "The codebase contains several declared functions related to scheduling algorithms, including `schedule_with_heap`, `schedule_with_repeated_sort`, and `bfs_dependencies`. The codebase also includes a test suite for these functions.",
+    "claims": [
+      {
+        "kind": "OBSERVATION",
+        "statement": "The codebase contains several declared functions related to scheduling algorithms, including `schedule_with_heap`, `schedule_with_repeated_sort`, and `bfs_dependencies`.",
+        "topic": "Code Structure",
+        "position": "NEUTRAL",
+        "evidence_refs": [],
+        "observation_id": null,
+        "asserted_value": null
+      },
+      {
+        "kind": "OBSERVATION",
+        "statement": "The codebase also includes a test suite for these functions.",
+        "topic": "Testing",
+        "position": "NEUTRAL",
+        "evidence_refs": [],
+        "observation_id": null,
+        "asserted_value": null
+      }
+    ],
+    "limitations": [
+      "This analysis does not provide information about the correctness or efficiency of the scheduling algorithms implemented in the codebase."
+    ]
+  },
+  "valid": true
+}

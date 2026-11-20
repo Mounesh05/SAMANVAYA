@@ -99,7 +99,9 @@ Return ONLY a JSON object:
     
     try:
         llm = get_ollama_llm(temperature=0.2)  # Lower temp for technical analysis
-        response = llm.invoke(prompt)
+        response = llm.invoke(prompt + "\nThe urgency value must be exactly one lowercase string: "
+                              "critical, high, medium, low. Do not capitalize it. "
+                              "Return the requested analysis object, not the input or a schema.")
         
         # Parse response
         analysis = _parse_cicd_response(response)

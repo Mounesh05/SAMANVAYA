@@ -1,0 +1,22 @@
+{
+  "source": "const value: number = \"wrong\";",
+  "tools_executed": [
+    "tsc"
+  ],
+  "tools_skipped": [],
+  "findings": [
+    {
+      "id": "FND-3D77737E",
+      "file_path": "frontend/src/sample.ts",
+      "line_number": 1,
+      "end_line": null,
+      "rule_id": "TSC-TS2322",
+      "category": "type",
+      "severity": "high",
+      "source_tool": "tsc",
+      "message": "Type 'string' is not assignable to type 'number'.",
+      "code_snippet": null,
+      "suggested_fix": null
+    }
+  ]
+}

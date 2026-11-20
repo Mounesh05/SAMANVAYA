@@ -1,0 +1,7 @@
+{
+  "repo_path": "C:\\Users\\Mounesh\\AppData\\Local\\Temp\\vscode-agent-codex-sandbox-Tj1miM\\samanvaya-live-quality-aco8j1b3",
+  "changed_files": [
+    "sample.py"
+  ],
+  "source": "import os\n\ndef total(values):\n    return missing_symbol + sum(values)\n"
+}

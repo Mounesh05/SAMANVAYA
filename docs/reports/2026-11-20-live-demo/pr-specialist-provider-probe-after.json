@@ -1,0 +1,26 @@
+{
+  "not_a_live_workflow": true,
+  "synthetic_provider_probe": true,
+  "raw_response": "{\n  \"schema_version\": \"pr-specialist-v1\",\n  \"summary\": \"The code analysis identified a single Python file named 'synthetic.py' with one function, resulting in a function_count metric of 1.\",\n  \"claims\": [\n    {\n      \"kind\": \"OBSERVATION\",\n      \"statement\": \"A single Python file named 'synthetic.py' was found with one function.\",\n      \"topic\": \"function_count\",\n      \"position\": \"NEUTRAL\",\n      \"evidence_refs\": [\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"],\n      \"observation_id\": \"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\n      \"asserted_value\": 1\n    }\n  ],\n  \"limitations\": [\n    \"The analysis does not provide information about the complexity or purpose of the function.\"\n  ]\n}",
+  "validated": {
+    "schema_version": "pr-specialist-v1",
+    "summary": "The code analysis identified a single Python file named 'synthetic.py' with one function, resulting in a function_count metric of 1.",
+    "claims": [
+      {
+        "kind": "OBSERVATION",
+        "statement": "A single Python file named 'synthetic.py' was found with one function.",
+        "topic": "function_count",
+        "position": "NEUTRAL",
+        "evidence_refs": [
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "observation_id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "asserted_value": 1
+      }
+    ],
+    "limitations": [
+      "The analysis does not provide information about the complexity or purpose of the function."
+    ]
+  },
+  "valid": true
+}

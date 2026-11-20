@@ -1,0 +1,28 @@
+{
+  "DEMO_LEAD": {
+    "status": 200,
+    "data": {
+      "schema_version": "pr-workflow-projects-v1",
+      "projects": [
+        {
+          "id": "PRJ-A7E48B66",
+          "name": "TaskFlow"
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "MOUNESH": {
+    "status": 403,
+    "data": {
+      "detail": "Insufficient permissions for manual PR interpretation"
+    }
+  },
+  "DEMO_HR": {
+    "status": 403,
+    "data": {
+      "detail": "Insufficient permissions for manual PR interpretation"
+    }
+  },
+  "job_counts": {}
+}

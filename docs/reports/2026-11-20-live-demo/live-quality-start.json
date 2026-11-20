@@ -1,0 +1,9 @@
+{
+  "run_id": "RUN-63E31CCDCD8A",
+  "status": "pending",
+  "language": "python",
+  "detected_languages": [
+    "python"
+  ],
+  "message": "Analysis started. Poll GET /api/code-quality/runs/RUN-63E31CCDCD8A for results."
+}

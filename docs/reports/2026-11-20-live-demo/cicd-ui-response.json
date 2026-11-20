@@ -1,0 +1,25 @@
+{
+  "status": 200,
+  "result": {
+    "log_type": "build",
+    "risk_score": 10,
+    "risk_level": "LOW",
+    "error_count": 5,
+    "warning_count": 0,
+    "failure_patterns": [],
+    "failure_type": "unknown",
+    "ai_analysis": null,
+    "root_cause": null,
+    "affected_component": null,
+    "fix_recommendations": [],
+    "prevention": null,
+    "urgency": null,
+    "confidence": null,
+    "ai_status": "failed",
+    "ai_errors": [
+      "INVALID_MODEL_RESPONSE"
+    ],
+    "execution_time_ms": 9077.102661132812,
+    "ai_run_id": "ce1723ea-14d8-4664-bffc-1266fc117da0"
+  }
+}

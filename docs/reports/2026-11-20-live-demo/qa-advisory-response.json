@@ -1,0 +1,22 @@
+{
+  "actor": "DEMO_LEAD",
+  "role": "LEAD",
+  "status": 200,
+  "result": {
+    "run_id": null,
+    "task_type": "qa_analysis",
+    "analysis": "The test coverage has decreased by 8 percentage points, indicating a potential decrease in the quality of the tests and overall system reliability. There are 2 new tests added but there are still 3 files without any tests, which increases the risk level to high. The missing coverage includes negative-input and boundary tests for synthetic fixtures, suggesting that these areas may need more comprehensive testing.",
+    "recommendations": [
+      "Add negative-input and boundary tests for synthetic fixtures",
+      "Review and add tests to the 3 files without tests",
+      "Consider refactoring existing tests to improve their quality and coverage"
+    ],
+    "risk_level": "high",
+    "confidence": 0.9,
+    "agent_history": [
+      "qa_agent"
+    ],
+    "errors": [],
+    "execution_time_ms": 19900.733
+  }
+}

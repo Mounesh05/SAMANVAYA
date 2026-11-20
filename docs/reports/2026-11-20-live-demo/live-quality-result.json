@@ -1,0 +1,267 @@
+{
+  "run_id": "RUN-63E31CCDCD8A",
+  "repository_id": "PRJ-A7E48B66",
+  "pr_number": null,
+  "language": "python",
+  "detected_languages": [
+    "python"
+  ],
+  "analysis_level": "deep",
+  "use_ai": false,
+  "status": "completed",
+  "triggered_by": "SHREYAS",
+  "triggered_by_name": "Shreyas",
+  "created_at": "2026-11-20T13:34:56.321130+00:00",
+  "completed_at": "2026-11-20T13:34:56.391619+00:00",
+  "quality_score": 100,
+  "quality_grade": "A",
+  "risk_score": 27,
+  "risk_level": "LOW",
+  "risk_factors": [
+    "No test coverage data available"
+  ],
+  "tools_executed": [
+    "ast-syntax-fallback",
+    "python-ast-fallback",
+    "ast-test-discovery"
+  ],
+  "tools_skipped": [
+    "flake8",
+    "bandit",
+    "dependency-manifest-unavailable",
+    "lizard",
+    "coverage"
+  ],
+  "analysis_duration_ms": 31.000000002677552,
+  "error": null,
+  "ai_analysis": {
+    "status": "skipped",
+    "errors": []
+  },
+  "ai_authorization_scope": null,
+  "ai_provenance": {
+    "schema_version": "ai-internal-observation-v1",
+    "source_status": "SERVER_OBSERVED",
+    "caller_context_status": "UNVERIFIED",
+    "model_interpretation": "ADVISORY"
+  },
+  "ai_status": "skipped",
+  "analysis_confidence": 0.55,
+  "analysis_quality": {
+    "level": "partial",
+    "confidence": 0.55,
+    "degraded_dimensions": [
+      "static_analysis",
+      "security",
+      "testing"
+    ],
+    "reason": "Tool 'flake8' not available on host; 'bandit' not available; 'dependency-manifest-unavailable' not available; 'coverage' not available"
+  },
+  "analysis_scope": "code_quality",
+  "commit_sha": null,
+  "files_analyzed": 1,
+  "findings_count": 0,
+  "function_discovery": {
+    "method": "function-purpose-v1",
+    "status": "available",
+    "source_revision": null,
+    "functions": [
+      {
+        "function_id": "0ba01d34f2f3236d57655fde",
+        "repository_id": "PRJ-A7E48B66",
+        "path": "sample.py",
+        "name": "total",
+        "qualified_name": "total",
+        "language": "python",
+        "line": 3,
+        "end_line": 4,
+        "column": 0,
+        "end_column": 39,
+        "definition_line": 3,
+        "source_revision": null,
+        "source_hash": "b1ab47db6f207ec5deacd27663db2298431b308bc66b593a7bac2e1dac21129b",
+        "method": "function-purpose-v1",
+        "is_async": false,
+        "parameters": [
+          {
+            "name": "values",
+            "annotation": null,
+            "has_default": false,
+            "kind": "positional"
+          }
+        ],
+        "return_annotation": null,
+        "calls": [
+          {
+            "target": "sum",
+            "line": 4,
+            "resolved_function_id": null,
+            "resolution": "unresolved"
+          }
+        ],
+        "callers": [],
+        "returns": [
+          {
+            "line": 4,
+            "symbol": "",
+            "kind": "expression"
+          }
+        ],
+        "structure": {
+          "name": "total",
+          "line": 3,
+          "end_line": 4,
+          "loops": 0,
+          "max_loop_nesting": 0,
+          "branches": {
+            "if": 0,
+            "ifexp": 0,
+            "match": 0,
+            "match_cases": 0,
+            "boolop": 0,
+            "try": 0,
+            "except_handlers": 0,
+            "comprehension_filters": 0
+          },
+          "direct_recursive_calls": 0,
+          "calls": [
+            "sum"
+          ],
+          "allocations": []
+        },
+        "evidence": [
+          {
+            "id": "f608fd57c553d30b8e34b43a",
+            "kind": "aggregation_call",
+            "status": "OBSERVED",
+            "path": "sample.py",
+            "line": 4,
+            "end_line": 4,
+            "source_revision": null,
+            "source_hash": "b1ab47db6f207ec5deacd27663db2298431b308bc66b593a7bac2e1dac21129b",
+            "method": "function-purpose-v1",
+            "subject": "sum",
+            "related": "",
+            "binding": "",
+            "arguments": [],
+            "detail": ""
+          },
+          {
+            "id": "59ce285c190a4e8ec0bf743e",
+            "kind": "call",
+            "status": "OBSERVED",
+            "path": "sample.py",
+            "line": 4,
+            "end_line": 4,
+            "source_revision": null,
+            "source_hash": "b1ab47db6f207ec5deacd27663db2298431b308bc66b593a7bac2e1dac21129b",
+            "method": "function-purpose-v1",
+            "subject": "sum",
+            "related": "",
+            "binding": "",
+            "arguments": [],
+            "detail": ""
+          },
+          {
+            "id": "e310b5095ecc28532efe0b0f",
+            "kind": "return_value",
+            "status": "OBSERVED",
+            "path": "sample.py",
+            "line": 4,
+            "end_line": 4,
+            "source_revision": null,
+            "source_hash": "b1ab47db6f207ec5deacd27663db2298431b308bc66b593a7bac2e1dac21129b",
+            "method": "function-purpose-v1",
+            "subject": "",
+            "related": "expression",
+            "binding": "",
+            "arguments": [],
+            "detail": ""
+          }
+        ],
+        "detected_patterns": [
+          {
+            "kind": "collection_accumulation",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "f608fd57c553d30b8e34b43a"
+            ],
+            "supported_conclusion": "Reduction or accumulation syntax is present.",
+            "missing_information": [
+              "Runtime value types and dispatch are not proven by syntax."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": null
+          }
+        ],
+        "task_hypotheses": [
+          {
+            "kind": "collection_aggregation",
+            "status": "INFERRED",
+            "evidence_refs": [
+              "f608fd57c553d30b8e34b43a"
+            ],
+            "supported_conclusion": "Combining values into an accumulated result is a plausible purpose.",
+            "missing_information": [
+              "No authoritative function contract has been verified.",
+              "Behavior on uninspected inputs and external call targets is unknown."
+            ],
+            "method": "function-purpose-v1",
+            "source_revision": null
+          }
+        ],
+        "task_status": "INFERRED",
+        "possible_task": "collection_aggregation",
+        "verified_contract": null,
+        "requirement_evidence_refs": [],
+        "uncertainty": [
+          "No authoritative contract is bound to this source hash; inferred purpose is not a functional requirement.",
+          "Names, comments and type annotations do not prove behavior; dynamic calls, aliases and rebinding remain unresolved.",
+          "Commit revision was not supplied; only the source-content hash is established.",
+          "No caller was linked in the inspected snapshot; external callers may exist.",
+          "No matching static test expectation was linked in the inspected snapshot."
+        ]
+      }
+    ],
+    "requirement_sources": [],
+    "diagnostics": [],
+    "limitations": [
+      "Syntax and lexical bindings only; dynamic dispatch, rebinding and aliases can change runtime behavior.",
+      "Patterns and task hypotheses do not establish correctness, equivalence, optimality or functional requirements.",
+      "Test assertions are observed expectations; tests are not executed and their authority is not inferred.",
+      "Only available source within the documented analysis bounds is inspected; absent context stays unknown.",
+      "Source hashes identify parsed bytes. Local or supplied revision labels are not independently checked against Git; GitHub snapshots are fetched at their head SHA.",
+      "No candidate execution, automatic benchmarking, RAG or model availability is required."
+    ]
+  },
+  "quality_analysis_status": "partial",
+  "quality_dimensions": {
+    "static_security": 100,
+    "testing": 100,
+    "complexity": 100,
+    "architecture": 100,
+    "duplication": 100
+  },
+  "quality_unavailable_reason": "Tool 'flake8' not available on host; 'bandit' not available; 'dependency-manifest-unavailable' not available; 'coverage' not available",
+  "risk_dimensions": {
+    "size_deviation": 0.0,
+    "hotspot_files": 0.0,
+    "dependency_vulnerabilities": 0.0,
+    "test_coverage_gap": 70.0,
+    "security_findings": 0.0,
+    "complexity_spike": 0.0
+  },
+  "testing": {
+    "test_framework": "pytest",
+    "total_tests": 0,
+    "passed_tests": 0,
+    "failed_tests": 0,
+    "skipped_tests": 0,
+    "coverage_percentage": null,
+    "coverage_status": "missing-data",
+    "coverage_unavailable_reason": "Coverage unavailable: missing-data",
+    "coverage_provenance": {},
+    "changed_code_coverage": null,
+    "untested_critical_paths": []
+  }
+}

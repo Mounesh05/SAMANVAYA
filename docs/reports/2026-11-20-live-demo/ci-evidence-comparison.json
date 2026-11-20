@@ -1,0 +1,106 @@
+{
+  "retrieved_at": "2026-11-20T11:29:12.930364+00:00",
+  "stored_ci": {
+    "schema_version": "github-actions-ci-v1",
+    "source": "github_actions",
+    "authority": "GITHUB_REPORTED_OUTCOME",
+    "verification_scope": "SOURCE_IDENTITY_ONLY",
+    "repository": "Mounesh05/taskflow-samanvaya-lab",
+    "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+    "status": "available",
+    "reported_outcome": "success",
+    "runs": [
+      {
+        "run_id": 44521347474,
+        "run_attempt": 1,
+        "workflow_id": 423511795,
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "name": "TaskFlow CI",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "source_reference": "https://api.github.com/repos/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521347474",
+        "html_url": "https://github.com/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521347474",
+        "jobs": [
+          {
+            "job_id": 135550472089,
+            "run_id": 44521347474,
+            "run_attempt": 1,
+            "repository": "Mounesh05/taskflow-samanvaya-lab",
+            "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+            "name": "Backend Tests",
+            "status": "completed",
+            "conclusion": "success",
+            "source_reference": "https://api.github.com/repos/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521347474/attempts/1/jobs#job-135550472089"
+          },
+          {
+            "job_id": 135550472483,
+            "run_id": 44521347474,
+            "run_attempt": 1,
+            "repository": "Mounesh05/taskflow-samanvaya-lab",
+            "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+            "name": "Frontend Tests",
+            "status": "completed",
+            "conclusion": "success",
+            "source_reference": "https://api.github.com/repos/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521347474/attempts/1/jobs#job-135550472483"
+          }
+        ]
+      },
+      {
+        "run_id": 44521183772,
+        "run_attempt": 1,
+        "workflow_id": 423511795,
+        "repository": "Mounesh05/taskflow-samanvaya-lab",
+        "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+        "name": "TaskFlow CI",
+        "event": "push",
+        "status": "completed",
+        "conclusion": "success",
+        "source_reference": "https://api.github.com/repos/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521183772",
+        "html_url": "https://github.com/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521183772",
+        "jobs": [
+          {
+            "job_id": 135549896560,
+            "run_id": 44521183772,
+            "run_attempt": 1,
+            "repository": "Mounesh05/taskflow-samanvaya-lab",
+            "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+            "name": "Frontend Tests",
+            "status": "completed",
+            "conclusion": "success",
+            "source_reference": "https://api.github.com/repos/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521183772/attempts/1/jobs#job-135549896560"
+          },
+          {
+            "job_id": 135549897403,
+            "run_id": 44521183772,
+            "run_attempt": 1,
+            "repository": "Mounesh05/taskflow-samanvaya-lab",
+            "commit_sha": "8ad02ac50587c6bb668dc480ae68efdc9f411b68",
+            "name": "Backend Tests",
+            "status": "completed",
+            "conclusion": "success",
+            "source_reference": "https://api.github.com/repos/Mounesh05/taskflow-samanvaya-lab/actions/runs/44521183772/attempts/1/jobs#job-135549897403"
+          }
+        ]
+      }
+    ],
+    "errors": [],
+    "retrieved_at": "2026-11-19T13:10:18.794000+00:00",
+    "limitations": [
+      "Workflow/job conclusions are GitHub-reported outcomes, not independent test results or correctness proof",
+      "Only exact-head GitHub Actions runs are covered; third-party check providers are not covered"
+    ],
+    "content_sha256": "2d7eb32db8ad0bfbed60c8a5c20e008e032ec49e30f695ac41759e8f78620582"
+  },
+  "ci_status": null,
+  "ci_scope": "github_actions_only",
+  "ci_evidence_status": "partial",
+  "non_actions_checks": {
+    "status": "unavailable",
+    "reason": "Checks API evidence is unavailable; non-Actions providers cannot be enumerated or validated"
+  },
+  "exact_head_match": true,
+  "runs_match": true,
+  "current_checks_http": 403
+}
