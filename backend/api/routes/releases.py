@@ -93,6 +93,19 @@ async def release_history(project_id: str, release_id: ReleaseId, offset: int = 
     return {"history": entries[:limit], "has_more": len(entries) > limit}
 
 
+@router.get("/{project_id}/releases/{release_id}/history/{version}")
+async def historical_manifest(project_id: str, release_id: ReleaseId, version: int, response: Response,
+                              user=Depends(get_current_user)):
+    org = await releases.authorize(project_id, user)
+    await visible_candidate(project_id, org, release_id, user)
+    historical = await col("release_revisions").find_one({"release_id": release_id, "version": version},
+        {"_id": 0, "version": 1, "manifest": 1, "manifest_digest": 1, "record": 1})
+    if not historical:
+        raise releases.error("RELEASE_VERSION_UNAVAILABLE", "Historical release version unavailable.", 404)
+    response.headers["Cache-Control"] = "no-store"
+    return historical
+
+
 @router.get("/{project_id}/releases/{release_id}")
 async def release_detail(project_id: str, release_id: ReleaseId, response: Response, user=Depends(get_current_user)):
     org = await releases.authorize(project_id, user)

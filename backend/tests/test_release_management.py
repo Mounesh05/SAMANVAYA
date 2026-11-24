@@ -212,3 +212,23 @@ async def test_observation_requires_matching_repository_environment_and_artifact
         await observe("failure", "2040-01-01T11:00:00+00:00", ARTIFACT["digest"])
         assert (await client.get(path)).json()["state"] == "deployed"
         assert (await check()).status_code == 409
+
+
+async def test_expanded_release_needs_its_own_review_and_production_slot(mock_db, monkeypatch):
+    client, actor, _ = await pilot(mock_db, monkeypatch)
+    async with client:
+        path, row, _ = await approved(client, actor)
+        call = await gate_client(client, row)
+        new_target = "e" * 40
+        root = f"/api/projects/{PROJECT}/releases"
+        proposed = await client.post(root, json={"baseline_sha": BASE, "target_sha": new_target,
+                                               "run_id": 21, "artifact_id": 31})
+        assert proposed.status_code == 201
+        candidate = proposed.json()
+        assert candidate["id"] != row["id"]
+        assert (await call(release_id=candidate["id"], revision=new_target)).status_code == 409
+        new_path = f"{root}/{candidate['id']}"
+        held = await decision(client, new_path, candidate, "submit")
+        assert held.status_code == 409 and held.json()["detail"]["code"] == "ACTIVE_RELEASE_EXISTS"
+        history = await client.get(path + "/history/1")
+        assert history.status_code == 200 and history.json()["manifest"]["target_sha"] == TARGET

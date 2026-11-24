@@ -53,12 +53,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       '/approvals', // CR-010: HR requests and approves role changes
       '/reports', // CR-011: HR downloads the aggregated performance report
     ];
-      const releaseWorkspaces = [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS];
-      const expectedRoutes = releaseWorkspaces.includes(spec.role)
-        ? [...spec.expectedRoutes, '/releases'] : spec.expectedRoutes;
-      expect(renderedHrefs.sort(), `Failed route set for role ${spec.role}`).toEqual(expectedRoutes.sort());
-
-      // Verify forbidden routes are absent
+    expect(renderedHrefs.sort()).toEqual(expectedHRRoutes.sort());
 
     // Verify HR dynamic label contract (R2)
     const performanceItem = rendered.find((r) => r.href === '/performance');
@@ -339,7 +334,10 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       const renderedHrefs = rendered.map((r) => r.href);
 
       // Verify exact expected routes match
-      expect(renderedHrefs.sort(), `Failed route set for role ${spec.role}`).toEqual(spec.expectedRoutes.sort());
+      const releaseWorkspaces = [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS];
+      const expectedRoutes = releaseWorkspaces.includes(spec.role)
+        ? [...spec.expectedRoutes, '/releases'] : spec.expectedRoutes;
+      expect(renderedHrefs.sort(), `Failed route set for role ${spec.role}`).toEqual(expectedRoutes.sort());
 
       // Verify forbidden routes are absent
       for (const forbidden of spec.forbiddenRoutes) {
