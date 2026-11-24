@@ -17,6 +17,7 @@ This addresses Critical Gaps #1, #4, #5, #6 from the vision analysis.
 import uuid
 import asyncio
 from typing import Dict, Any, List, Optional
+from urllib.parse import urlencode
 from datetime import datetime, timezone, timedelta
 
 from domain.models.webhook_event import WebhookEvent
@@ -25,7 +26,9 @@ from repositories.pr_repository import PRRepository
 from repositories.project_repository import ProjectRepository
 from repositories.user_repository import UserRepository
 from domain.services.github_sync_service import GitHubSyncService
+from domain.services.ai_evidence_service import _repository
 from domain.services.task_progress_service import apply_task_progress
+from domain.services.production_evidence import scoped_production_status
 from domain.services.enhanced_notification_service import EnhancedNotificationService as NotificationService
 from domain.services.traceability_service import TraceabilityService
 from domain.services.recommendation_engine import RecommendationEngine
@@ -33,7 +36,9 @@ from intelligence.risk_engine import RiskEngine
 import logging
 import hashlib
 import json
+import re
 from pymongo.errors import DuplicateKeyError
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -146,26 +151,27 @@ class WebhookEventProcessor:
             logger.warning(f"Error looking up team lead for project {project_id}: {e}")
             return None
     
-    async def _get_project_devops_members(self, project_id: str) -> List[str]:
-        """
-        Look up DevOps team members for a project.
-        
-        Returns: list of employee_ids with DEVOPS role on the project's team
-        """
-        try:
-            project = await self.project_repo.find_by_id(project_id)
-            if not project:
-                return []
-            
-            team_id = project.get("team_id")
-            if not team_id:
-                return []
-            
-            members = await self.user_repo.find_by_team(team_id)
-            return [m["employee_id"] for m in members if m.get("role", "").upper() == "DEVOPS"]
-        except Exception as e:
-            logger.warning(f"Error looking up DevOps members for project {project_id}: {e}")
+    async def _get_project_devops_members(self, project_id: str, repository: str) -> List[str]:
+        """Delivery notifications follow the same assignment as DevOps reporting."""
+        project = await self.project_repo.find_by_id(project_id)
+        organization = (project or {}).get("org_id")
+        if not isinstance(organization, str) or not organization.strip() or project.get("organization_id", organization) != organization:
             return []
+        try:
+            owner, name = await _repository(project_id, organization)
+        except HTTPException as error:
+            if error.status_code != 409:
+                raise
+            return []
+        if repository.lower() != f"{owner}/{name}".lower():
+            return []
+        members = await self.user_repo.find_all({
+            "role": "DEVOPS", "is_active": True, "org_id": organization, "project_ids": project_id,
+        })
+        return [m["employee_id"] for m in members if isinstance(m.get("employee_id"), str)
+                and m.get("role") == "DEVOPS" and m.get("is_active") is True
+                and m.get("org_id") == m.get("organization_id", organization) == organization
+                and isinstance(m.get("project_ids"), list) and project_id in m["project_ids"]]
     
     async def process_github_event(
         self,
@@ -209,9 +215,15 @@ class WebhookEventProcessor:
         
         # Save event to database
         delivery_key = hashlib.sha256(json.dumps([event_type, payload], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        document = {**webhook_event.model_dump(), "delivery_key": delivery_key}
+        if project_id and event_type == "deployment_status":
+            project = await self.project_repo.find_by_id(project_id) or {}
+            production = await scoped_production_status(payload, project, repository)
+            if production:
+                document["production"] = production
         await self.event_repo.collection.create_index("delivery_key", unique=True, sparse=True)
         try:
-            await self.event_repo.insert({**webhook_event.model_dump(), "delivery_key": delivery_key})
+            await self.event_repo.insert(document)
         except DuplicateKeyError:
             existing = await self.event_repo.collection.find_one({"delivery_key": delivery_key})
             return {"event_id": existing["id"], "status": "accepted", "duplicate": True}
@@ -462,8 +474,17 @@ class WebhookEventProcessor:
                 # TODO: Trigger delivery metrics calculation
             else:
                 triggers_executed.append("pr_closed")
-            # Tasks named in the pull request: merged -> done, closed -> in progress.
-            if await apply_task_progress(event.project_id, pr):
+            # Closing can produce a new squash/merge SHA. Refresh the stored
+            # PR and task together. A delayed close can arrive after a reopen.
+            if event.project_id and pr.get("head", {}).get("sha") and pr_number:
+                sync_result = await self.github_service.sync_pull_request(
+                    owner, repo_name, pr_number, event.project_id, use_ai=False,
+                    triggered_by="webhook-closed",
+                )
+                triggers_executed.append("pr_sync")
+                if sync_result.get("task_progress"):
+                    triggers_executed.append("task_progress")
+            elif await apply_task_progress(event.project_id, pr):
                 triggers_executed.append("task_progress")
         elif action in ("ready_for_review", "converted_to_draft"):
             if await apply_task_progress(event.project_id, pr):
@@ -634,20 +655,24 @@ class WebhookEventProcessor:
         risks_detected = []
         notifications_sent = []
         
-        if state == "failure" and event.project_id:
+        if state in ("failure", "error") and event.project_id:
             # Deployment failed - critical risk
             risks_detected.append(f"deployment-failure-{uuid.uuid4().hex[:8]}")
             
             # Look up actual DevOps members
-            devops_members = await self._get_project_devops_members(event.project_id)
+            devops_members = await self._get_project_devops_members(event.project_id, event.repository)
             
+            params = {"repository": event.repository}
+            deployment_id = payload.get("deployment", {}).get("id")
+            if type(deployment_id) is int and deployment_id > 0:
+                params["deployment_id"] = deployment_id
             for member_id in devops_members:
                 notification = await self.notification_service.notify(
                     user_id=member_id,
                     notification_type="deployment_failed",
                     title="Deployment Failed",
                     body=f"Deployment failed for {event.repository}",
-                    link=f"/deployments/{event.repository}"
+                    link=f"/deployments?{urlencode(params)}"
                 )
                 notifications_sent.append(notification["id"])
         
@@ -708,14 +733,17 @@ class WebhookEventProcessor:
         """
         Match GitHub repository to Samanvaya project.
         
-        TODO: Implement proper project-repository mapping in database.
-        For now, we'll search for projects with matching repo URL.
+        Repository names are case-insensitive. Avoid choosing between projects
+        if the same repository was configured more than once.
         """
         try:
             from core.database import col
             from urllib.parse import urlparse
             owner, name = repository.split("/")
-            configs = await col("github_project_configs").find({"repository_owner": owner, "repository_name": name}).limit(2).to_list(2)
+            configs = await col("github_project_configs").find({
+                "repository_owner": {"$regex": "^" + re.escape(owner) + "$", "$options": "i"},
+                "repository_name": {"$regex": "^" + re.escape(name) + "$", "$options": "i"},
+            }).limit(2).to_list(2)
             if len(configs) == 1:
                 return configs[0]["project_id"]
             if configs:

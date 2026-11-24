@@ -86,9 +86,6 @@ class GitHubSyncService:
             github_pr, project_id, repo_id
         )
         
-        # Tasks named in the pull request follow its state (best effort).
-        task_progress = await apply_task_progress(project_id, github_pr, github_data.get("reviews"))
-
         file_stats = self.normalizer.normalize_pr_files(files)
         ci_data = self.normalizer.normalize_ci_evidence(check_runs, github_data.get("actions_ci"))
         pr_age_hours = self.normalizer.calculate_pr_age_hours(github_pr["created_at"])
@@ -125,9 +122,16 @@ class GitHubSyncService:
         async def validate_current():
             latest = await self.api_service.client.get_pull_request(owner, repo, pr_number)
             return (latest.get("head", {}).get("sha") == github_pr.get("head", {}).get("sha")
-                    and latest.get("base", {}).get("sha") == github_pr.get("base", {}).get("sha"))
+                    and latest.get("base", {}).get("sha") == github_pr.get("base", {}).get("sha")
+                    and latest.get("state") == github_pr.get("state")
+                    and latest.get("merged_at") == github_pr.get("merged_at")
+                    and (normalized_pr["status"] != "merged" or
+                         latest.get("merge_commit_sha") == normalized_pr["merge_commit_sha"]))
         normalized_pr, current_revision = await self.pr_repo.store_revision(normalized_pr,
             validate_current=validate_current if github_pr.get("base", {}).get("sha") else None)
+        # A superseded sync must never advance the task it used to reference.
+        task_progress = (await apply_task_progress(project_id, github_pr, github_data.get("reviews"))
+                         if current_revision else [])
         if not current_revision:
             return {"pr": normalized_pr, "file_stats": {}, "ci_data": {}, "commit_count": None,
                     "task_progress": task_progress,

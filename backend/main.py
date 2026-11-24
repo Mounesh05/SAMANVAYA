@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
 
         from core.security import ensure_revocation_indexes
         await ensure_revocation_indexes()
+
+        from domain.services.release_management import ensure_indexes as ensure_release_indexes
+        await ensure_release_indexes()
         
         logger.info("✓ Database indexes created/verified")
     except Exception as e:
@@ -115,7 +118,8 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     )
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"detail": exc.detail},
+        headers=exc.headers,
     )
 
 
@@ -272,7 +276,7 @@ from api.routes import (
     cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
     recommendations, traceability, risk_configurations, audit, transfers,
-    reports, pr_workflows,
+    reports, pr_workflows, release_decisions, release_gates,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -283,9 +287,14 @@ app.include_router(employees.router, prefix="/api/employees", tags=["Employee Ma
 app.include_router(teams.router, prefix="/api/teams", tags=["Team Management"])
 app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])
 app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
+from api.routes import release_gate_settings, releases
+app.include_router(release_gate_settings.router, prefix="/api/projects", tags=["Release gate settings"])
+app.include_router(releases.router, prefix="/api/projects", tags=["Release management"])
 app.include_router(sprints.router, prefix="/api/sprints", tags=["Sprints"])
 app.include_router(stories.router, prefix="/api/stories", tags=["Stories"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
+app.include_router(release_decisions.router, prefix="/api/tasks", tags=["Task release decisions"])
+app.include_router(release_gates.router, prefix="/api/release-gates", tags=["Release gates"])
 app.include_router(intelligence.router, prefix="/api/intelligence", tags=["Intelligence Engine"])
 app.include_router(github.router, prefix="/api/github", tags=["GitHub Integration"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])

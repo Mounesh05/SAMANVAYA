@@ -101,9 +101,18 @@ class WorkflowService:
             )
         
         # TODO: Wrap in transaction when repository layer supports sessions (DB-02)
-        # Update status
+        # Store the transition identity with the status even if a later history write fails.
+        now = datetime.now(timezone.utc).isoformat()
+        transition_id = f"TR-{uuid.uuid4().hex.upper()}"
+        state = {"status": new_status, "blocked_since": now if new_status == "blocked" else None,
+                 "last_transition_id": transition_id}
         try:
-            await self.task_repo.update({"id": task_id}, {"status": new_status})
+            changed = await self.task_repo.update({
+                "id": task_id, "project_id": task.get("project_id"), "status": task.get("status"),
+                "last_transition_id": task.get("last_transition_id"),
+            }, state)
+            if not changed:
+                raise ValueError("Task state changed. Refresh before retrying the transition.")
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
@@ -111,9 +120,8 @@ class WorkflowService:
             raise
         
         # Record transition
-        now = datetime.now(timezone.utc).isoformat()
         transition = StatusTransition(
-            id=f"TR-{uuid.uuid4().hex[:8].upper()}",
+            id=transition_id,
             item_id=task_id,
             item_type="task",
             from_status=current_status,
@@ -157,7 +165,7 @@ class WorkflowService:
             # Status and transition already recorded - inconsistent state
             raise
         
-        return {**task, "status": new_status}
+        return {**task, **state}
     
     async def transition_story(
         self,

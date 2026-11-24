@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     PR_MULTI_AGENT_INTERNAL_ENABLED: bool = False
     PR_MULTI_AGENT_MANUAL_ENABLED: bool = False  # Manual API/UI worker, development/test only.
+    RELEASE_MANAGEMENT_ENABLED: bool = False
+    RELEASE_TRUSTED_WORKFLOW_PATH: str = ""
+    RELEASE_TRUSTED_WORKFLOW_SHA256: str = ""
+    RELEASE_TRUSTED_BUILD_REF: str = "main"
+    RELEASE_REQUIRED_TEST_SUITES: str = ""  # Comma-separated artifact-name/JUnit-path identities.
+    RELEASE_MIN_COVERAGE_PERCENT: float = Field(default=0, ge=0, le=100)
     
     # ── Database ──────────────────────────────────────────────────
     MONGO_URI: str = "mongodb://localhost:27017"

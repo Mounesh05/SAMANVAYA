@@ -48,3 +48,4 @@ class PullRequest(PRCreate):
     
     created_at: str = ""
     merged_at: Optional[str] = None
+    merge_commit_sha: Optional[str] = None
