@@ -10,6 +10,7 @@ import { Input } from '../../components/common/Input';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ManualPRAnalysisPanel } from '../../components/github/ManualPRAnalysisPanel';
+import { ReleaseGateSettings } from './ReleaseGateSettings';
 
 import { GitPullRequest, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
 
@@ -233,6 +234,10 @@ export function GitHubSyncPage() {
         )}
       </Card>
 
+      {hasPermission(user, PERMISSIONS.RECORD_RELEASE_DECISION) && (
+        <ReleaseGateSettings key={JSON.stringify([user.org_id, user.employee_id, projectConfigForm.project_id])}
+          projectId={projectConfigForm.project_id} />
+      )}
       {canSyncPr && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
         <Card title="Synchronize Single PR" subtitle="Fetch PR metadata and analyze risk">

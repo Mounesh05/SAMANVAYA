@@ -1,4 +1,5 @@
 import { useSessionScope } from '../../store/useSessionScope';
+import { TaskDeliveryPanel } from './TaskDeliveryPanel';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -315,7 +316,9 @@ export function TasksPage() {
               <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                 Transition Status:
               </h4>
-              {canUpdateTask(user, taskDetail) ? (
+              <TaskDeliveryPanel key={JSON.stringify([sessionScope, taskDetail.id])} taskId={taskDetail.id} />
+
+            {canUpdateTask(user, taskDetail) ? (
                 isTransitionsLoading ? (
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading valid transitions...</p>
                 ) : transitionsError ? (
