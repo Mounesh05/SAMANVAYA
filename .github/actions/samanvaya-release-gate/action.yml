@@ -1,0 +1,47 @@
+name: Samanvaya production release gate
+description: Check independent QA and DevOps decisions for a production release
+inputs:
+  api-url:
+    description: HTTPS base URL of the Samanvaya server
+    required: true
+  project-id:
+    description: Connected Samanvaya project
+    required: true
+  task-id:
+    description: Task ID for the single-PR release check
+    required: false
+  release-id:
+    description: Samanvaya release candidate ID for the manifest-based check
+    required: false
+  artifact-id:
+    description: Immutable GitHub Actions artifact ID for the release candidate
+    required: false
+  artifact-digest:
+    description: SHA-256 digest of the release artifact archive, without a prefix
+    required: false
+  revision:
+    description: Full target commit SHA of the artifact to deploy
+    required: true
+  token:
+    description: Project release gate credential
+    required: true
+  environment:
+    description: Protected deployment environment
+    required: false
+    default: production
+runs:
+  using: composite
+  steps:
+    - name: Verify human release approval
+      shell: bash
+      env:
+        SAMANVAYA_API_URL: ${{ inputs.api-url }}
+        SAMANVAYA_PROJECT_ID: ${{ inputs.project-id }}
+        SAMANVAYA_TASK_ID: ${{ inputs.task-id }}
+        SAMANVAYA_RELEASE_ID: ${{ inputs.release-id }}
+        SAMANVAYA_ARTIFACT_ID: ${{ inputs.artifact-id }}
+        SAMANVAYA_ARTIFACT_DIGEST: ${{ inputs.artifact-digest }}
+        SAMANVAYA_ENVIRONMENT: ${{ inputs.environment }}
+        SAMANVAYA_RELEASE_SHA: ${{ inputs.revision }}
+        SAMANVAYA_RELEASE_GATE_TOKEN: ${{ inputs.token }}
+      run: python3 "$GITHUB_ACTION_PATH/check.py"
