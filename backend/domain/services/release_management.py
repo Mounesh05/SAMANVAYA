@@ -321,6 +321,9 @@ async def action(row, revision, user, request):
         required = sorted(task["id"] for task in revision["manifest"]["tasks"])
         if not required or sorted(request.verified_task_ids) != required:
             raise error("QA_TASKS_INCOMPLETE", "QA must review every included task before verifying the release.")
+        if (any(revert.get("status") == "review_required" for revert in revision["manifest"]["reverts"])
+                and not request.reviewed_uncertain_reverts):
+            raise error("QA_REVERT_REVIEW_REQUIRED", "QA must explicitly review uncertain revert effects.")
     successor = dict(revision)
     record = {"action": request.action, "decision": request.action, "reason": request.reason,
               "actor_id": user["employee_id"], "actor_name": user.get("name") or user["employee_id"],
@@ -349,6 +352,7 @@ async def action(row, revision, user, request):
         successor["superseded"] = True
     elif request.action == "verify_qa":
         record["verified_task_ids"] = required
+        record["reviewed_uncertain_reverts"] = request.reviewed_uncertain_reverts
         successor["qa_verification"] = record
     else:
         successor["release_decision"] = record

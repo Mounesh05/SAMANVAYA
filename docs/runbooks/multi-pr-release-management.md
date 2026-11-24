@@ -2,7 +2,7 @@
 
 ## Activation
 
-Set `RELEASE_MANAGEMENT_ENABLED=true` in the controlled backend environment and restart the API. It defaults to false. Configure `RELEASE_TRUSTED_BUILD_REF` (default `main`), `RELEASE_TRUSTED_WORKFLOW_PATH` and `RELEASE_TRUSTED_WORKFLOW_SHA256` with the exact protected branch, workflow path and workflow file SHA-256. Set `RELEASE_REQUIRED_TEST_SUITES` to a comma-separated list of required `artifact-name/report.xml` identities. See the [TaskFlow rehearsal](taskflow-multi-pr-pilot.md) for workflow examples and exact configuration. The frontend reads availability from the API.
+Set `RELEASE_MANAGEMENT_ENABLED=true` in the controlled backend environment and restart the API. It defaults to false. Configure `RELEASE_TRUSTED_BUILD_REF` (default `main`), `RELEASE_TRUSTED_WORKFLOW_PATH` and `RELEASE_TRUSTED_WORKFLOW_SHA256` with the exact protected branch, workflow path and workflow file SHA-256. Set `RELEASE_REQUIRED_TEST_SUITES` to a comma-separated list of required `artifact-name/report.xml` identities. Set `RELEASE_MIN_COVERAGE_PERCENT` to a positive threshold to require measured coverage. It defaults to 0. The frontend reads availability from the API. [TaskFlow rehearsal and workflow examples](taskflow-multi-pr-pilot.md)
 
 ## Scope and evidence
 
@@ -30,7 +30,7 @@ Only an assigned QA reviewer can verify every task against the exact manifest, b
 
 Drafts become actionable when scope, artifact and QA evidence are complete. Submit claims the active production release slot. A hold remains until a current independent approval or supersession. Changed scope and evidence require fresh review. A released candidate needs a matching signed GitHub deployment status carrying its release ID, artifact ID, digest and manifest digest after receipt of an allow decision. The gate's successful response alone leaves deployment unconfirmed. A new hold can stop a subsequent check. GitHub may already have started a deployment by then.
 
-Collections:
+MongoDB stores the following records.
 
 - `release_environments` stores the initialized baseline and active candidate for each project, organization and environment.
 - `release_candidates` stores a deterministic candidate key from the immutable inputs. Indexes support project and repository/target lookups.
@@ -48,7 +48,8 @@ Project endpoints require an authenticated user with current project membership.
 | Discover candidate | `POST` with baseline SHA, target SHA, run ID, artifact ID and kind |
 | Evidence and current state | `GET /{release_id}` |
 | Historical decisions | `GET /{release_id}/history` with pagination |
-| Review and lifecycle changes | `POST /{release_id}/actions` with action, version, reason and current evidence digest. QA verification includes the complete set of reviewed task IDs. |
+| Historical manifest | `GET /{release_id}/history/{version}` |
+| Review and lifecycle changes | `POST /{release_id}/actions` with action, version, reason and current evidence digest. QA verification includes the complete set of reviewed task IDs and explicit acknowledgement of uncertain reverts when present. |
 
 The existing `POST /api/release-gates/check` also accepts release ID, revision, artifact ID and digest. It uses the same project credential. With release management enabled, the legacy mode additionally requires a verified baseline and a provider-discovered delta containing exactly the approved task and PR. A registered candidate must use its release ID. Disabled mode preserves the existing pilot API behavior.
 

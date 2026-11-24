@@ -391,6 +391,7 @@ function ReviewActions({ release, projectId, scope, queryKey }) {
   const ready = selection && !stale && allowed.includes(selection.action);
   const verification = selection?.action === 'verify_qa';
   const reviewedTasks = release.manifest?.tasks?.map(({ id }) => id) ?? [];
+  const uncertainReverts = release.manifest?.reverts?.some((revert) => revert.status === 'review_required');
   function submit(event) {
     event.preventDefault();
     if (!ready || mutation.isPending || (verification && (!attested || !reviewedTasks.length))) return;
@@ -403,6 +404,7 @@ function ReviewActions({ release, projectId, scope, queryKey }) {
     mutation.mutate({
       ...selection, reason: reason.trim(),
       ...(verification && { verified_task_ids: reviewedTasks }),
+      ...(verification && uncertainReverts && { reviewed_uncertain_reverts: true }),
     });
   }
   if (!allowed.length && !selection && !mutation.error && !mutation.isSuccess) return null;
@@ -419,6 +421,7 @@ function ReviewActions({ release, projectId, scope, queryKey }) {
         <input type="checkbox" checked={attested} disabled={!ready || mutation.isPending || !reviewedTasks.length}
           onChange={(event) => setAttested(event.target.checked)} />
         I reviewed all {reviewedTasks.length} included tasks and their requirements against the combined test evidence.
+        {uncertainReverts && ' I also reviewed the effects of the uncertain reverts.'}
       </label>}
       {ready && !conflict && <div><Button type="submit" disabled={verification && (!attested || !reviewedTasks.length)}
         isLoading={mutation.isPending}>{confirmations[selection.action]}</Button></div>}

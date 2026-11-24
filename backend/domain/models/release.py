@@ -35,3 +35,4 @@ class ReleaseAction(ReleaseRequest):
     verified_task_ids: list[Annotated[str, Field(pattern=r"^TSK-[0-9A-F]{8}$")]] = Field(
         default_factory=list, max_length=100
     )
+    reviewed_uncertain_reverts: bool = Field(default=False, strict=True)

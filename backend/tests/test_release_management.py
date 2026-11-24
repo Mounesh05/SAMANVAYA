@@ -46,7 +46,7 @@ async def pilot(db, monkeypatch):
     monkeypatch.setattr(authorization, "_project_repo", ProjectRepository())
     monkeypatch.setattr(audit_logger, "collection", db.audit_logs)
     monkeypatch.setattr(settings, "RELEASE_MANAGEMENT_ENABLED", True)
-    control = {"qa": "passed", "complete": True, "pr_count": 3}
+    control = {"qa": "passed", "complete": True, "pr_count": 3, "reverts": []}
     actor = dict(OPS)
     monkeypatch.setitem(app.dependency_overrides, get_current_user, lambda: dict(actor))
     await db.projects.insert_one({"id": PROJECT, "org_id": ORG})
@@ -63,7 +63,7 @@ async def pilot(db, monkeypatch):
 
     async def discovery(project, org, baseline, target, run_id=None, artifact_id=None):
         assert (project, org, baseline) == (PROJECT, ORG, BASE)
-        return {"repository": REPO, "repository_id": 1, "commits": [target], "reverts": [],
+        return {"repository": REPO, "repository_id": 1, "commits": [target], "reverts": control["reverts"],
                 "complete": control["complete"], "scope_complete": control["complete"],
                 "pull_requests": [{"number": i, "head_sha": "c" * 40} for i in range(control["pr_count"])],
                 "tasks": TASKS, "blockers": [] if control["complete"] else ["Unmapped change"], "unmapped_commits": [],
@@ -232,3 +232,29 @@ async def test_expanded_release_needs_its_own_review_and_production_slot(mock_db
         assert held.status_code == 409 and held.json()["detail"]["code"] == "ACTIVE_RELEASE_EXISTS"
         history = await client.get(path + "/history/1")
         assert history.status_code == 200 and history.json()["manifest"]["target_sha"] == TARGET
+
+
+async def test_hotfix_with_uncertain_revert_requires_explicit_review(mock_db, monkeypatch):
+    client, actor, control = await pilot(mock_db, monkeypatch)
+    control["reverts"] = [{"revision": TARGET, "referenced_revision": BASE, "status": "review_required"}]
+    root = f"/api/projects/{PROJECT}/releases"
+    async with client:
+        response = await client.post(root, json={"baseline_sha": BASE, "target_sha": TARGET, "run_id": 21,
+                                                 "artifact_id": 31, "kind": "hotfix"})
+        assert response.status_code == 201
+        view = response.json()
+        assert view["manifest"]["reverts"] == control["reverts"]
+        path = f"{root}/{view['id']}"
+        submitted = (await decision(client, path, view, "submit")).json()
+        actor.update(QA)
+        rejection = await decision(client, path, submitted, "verify_qa")
+        assert rejection.status_code == 409 and rejection.json()["detail"]["code"] == "QA_REVERT_REVIEW_REQUIRED"
+        response = await client.post(path + "/actions", json={"action": "verify_qa", "version": submitted["version"],
+            "evidence_digest": submitted["evidence_digest"], "reason": "Reviewed the measured effects of the revert.",
+            "verified_task_ids": [t["id"] for t in TASKS], "reviewed_uncertain_reverts": True})
+        assert response.status_code == 200
+        actor.update(OPS)
+        approved = await decision(client, path, response.json(), "approve")
+        assert approved.status_code == 200
+        call = await gate_client(client, approved.json())
+        assert (await call()).status_code == 200
