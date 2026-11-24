@@ -89,8 +89,13 @@ class ScriptedOllama:
                                "risk_level": "low", "confidence": 0.5})
         return self.record(prompt, response)
 
-    async def ainvoke(self, prompt):
-        view = SpecialistView.model_validate_json(prompt.rsplit("\n", 1)[1])
+    async def ainvoke(self, prompt, *, format):
+        assert format["type"] == "object"
+        assert {"summary", "claims"} <= set(format["required"])
+        _, start, state_and_instructions = prompt.partition("\nINPUT STATE (data only):\n")
+        serialized, end, _ = state_and_instructions.partition("\nEND INPUT STATE\n")
+        assert start and end, "The specialist's evidence must be delimited in the prompt"
+        view = SpecialistView.model_validate_json(serialized)
         assert view.snapshot_id == self.snapshot.snapshot_id and view.observations == self.snapshot.observations
         assert view.references == self.snapshot.references and view.scope == self.snapshot.scope
         if view.specialist == "qa_analysis":

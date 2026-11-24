@@ -4,7 +4,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 // Private notes stay in memory only. Account changes remove all unsaved drafts.
 const drafts = new Map();
 useAuthStore.subscribe((next, previous) => {
-  if (!next.isAuthenticated || next.user?.employee_id !== previous.user?.employee_id) drafts.clear();
+  if (!next.isAuthenticated || next.user?.employee_id !== previous.user?.employee_id ||
+      next.user?.org_id !== previous.user?.org_id) drafts.clear();
 });
 
 export function useScoringDraft(key, initial) {

@@ -3,15 +3,16 @@ version: alpha
 name: Samanvaya
 description: Engineering-management workspace with evidence-first scoring status
 colors:
-  primary: '#3b82f6'
-  background: '#0a0e17'
-  surface: '#111827'
+  primary: '#81b3fc'
+  action: '#2563eb'
+  background: '#101318'
+  surface: '#171b22'
   text: '#f8fafc'
-  warning: '#f59e0b'
-  success: '#10b981'
+  warning: '#e7b45a'
+  success: '#55c69b'
 typography:
   sans:
-    fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
   mono:
     fontFamily: "'JetBrains Mono', monospace"
 rounded:
@@ -21,7 +22,7 @@ rounded:
   xl: 20px
 spacing:
   card-padding: 1.25rem
-  section-gap: 1.75rem
+  section-gap: 1.5rem
 components:
   card: {}
   button: {}
@@ -36,7 +37,9 @@ components:
 ### Creative North Star
 
 An engineering review ledger: the current decision state and its source belong
-next to every number. Preserve the existing dark blue workspace; no rebrand.
+where reviewers can scan them together. Ink-toned surfaces and the existing blue
+accent connect the dark and light workspaces. The sign-in preview demonstrates
+this pattern with a pull request, a CI run, and a review record.
 
 ### Product context and register
 
@@ -57,7 +60,8 @@ records that existing system; it does not generate a second token implementation
 Existing blue is interactive emphasis, amber marks pending/legacy states and
 green is reserved for an actual approved result. Surface/text values mirror
 the runtime dark theme; the existing light-theme adapter remains authoritative.
-Status must also appear as text, not just color.
+Status also appears as text. Charts use their own semantic series tokens and
+keep their counts and state labels available.
 
 ## Typography
 
@@ -73,8 +77,8 @@ on the shared page or clip a sibling form to fit a table.
 
 ## Elevation & Depth
 
-Reuse shared card borders and tonal backgrounds. Do not add new glass/glow or
-modal layers for scoring status. Existing shell elevation remains unchanged.
+Use solid card backgrounds and tonal steps for structure. Reserve elevation
+for overlays and prioritize focus indicators over decorative shadows.
 
 ## Shapes
 

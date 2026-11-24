@@ -98,7 +98,7 @@ export function TopBar() {
         <div className="tb-right">
           <button type="button" className="tb-search" onClick={() => setIsSearchOpen(true)} aria-label="Search">
             <Search size={16} aria-hidden="true" />
-            <span>Search…</span>
+            <span>Search</span>
             <kbd>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
           </button>
 

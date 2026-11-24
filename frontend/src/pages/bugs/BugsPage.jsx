@@ -17,7 +17,7 @@ import { Badge } from '../../components/common/Badge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { MetricCard } from '../../components/common/MetricCard';
-import { Bug, Clock3, RotateCcw } from 'lucide-react';
+
 
 const EMPTY_DEFECT = {
   title: '',
@@ -174,10 +174,10 @@ export function BugsPage() {
         }
       />
       {feedback && <p role="status">{feedback}</p>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-        <MetricCard title="Defects" value={defects.length} icon={<Bug size={20} />} color="primary" />
-        <MetricCard title="Open" value={openCount} icon={<Clock3 size={20} />} color="warning" />
-        <MetricCard title="Awaiting Retest" value={retestCount} icon={<RotateCcw size={20} />} color="cyan" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+        <MetricCard title="Defects" value={defects.length} />
+        <MetricCard title="Open" value={openCount} />
+        <MetricCard title="Awaiting Retest" value={retestCount} />
       </div>
       <Card title="Project Defects">
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -204,7 +204,7 @@ export function BugsPage() {
           <Input label="Story ID (optional)" value={form.story_id || ''} onChange={(event) => setForm({ ...form, story_id: event.target.value })} />
           <Input label="Task ID (optional)" value={form.task_id || ''} onChange={(event) => setForm({ ...form, task_id: event.target.value })} />
           {canLinkTestCases && <Input label="Test Case ID (optional)" value={form.test_case_id || ''} onChange={(event) => setForm({ ...form, test_case_id: event.target.value })} />}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="form-columns">
             <Select label="Severity" value={form.severity} onChange={(event) => setForm({ ...form, severity: event.target.value })} options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />
             <Select label="Priority" value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })} options={['low', 'medium', 'high', 'critical'].map((value) => ({ value, label: value }))} />
           </div>

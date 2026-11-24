@@ -7,6 +7,7 @@ from typing import Optional, List
 import uuid
 from repositories.task_repository import TaskRepository
 from domain.models.task import TaskCreate, Task
+from core.organization import project_child_tenant_filter
 
 
 class TaskService:
@@ -47,9 +48,12 @@ class TaskService:
         task = await self.task_repo.find_by_id(task_id)
         return Task(**task) if task else None
 
-    async def get_project_tasks(self, project_id: str) -> List[Task]:
+    async def get_project_tasks(self, project_id: str, user: dict) -> List[Task]:
         """Get all tasks in a project."""
-        tasks = await self.task_repo.find_by_project(project_id)
+        tasks = await self.task_repo.find_all({
+            "project_id": {"$eq": project_id, "$not": {"$type": "array"}},
+            **project_child_tenant_filter(user),
+        })
         return [Task(**t) for t in tasks]
 
     async def get_assignee_tasks(self, assignee_id: str) -> List[Task]:

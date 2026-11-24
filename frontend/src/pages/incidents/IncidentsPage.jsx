@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { incidentsApi } from '../../api/incidents.api';
 import { projectsApi } from '../../api/projects.api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -17,7 +18,7 @@ import { Badge } from '../../components/common/Badge';
 import { MetricCard } from '../../components/common/MetricCard';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { AlertTriangle, Plus, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { AlertTriangle, Plus, AlertCircle, Clock, XCircle } from 'lucide-react';
 import { formatDate, timeAgo } from '../../utils/dates';
 import { IncidentDetail } from './IncidentDetail';
 
@@ -42,6 +43,7 @@ const EMPTY_INCIDENT = {
   severity: 'medium',
   service: '',
 };
+const PAGE_SIZE = 50;
 
 export function IncidentsPage() {
   const sessionScope = useSessionScope();
@@ -56,14 +58,17 @@ export function IncidentsPage() {
   const [openIncident, setOpenIncident] = useState(null);
   const [submitError, setSubmitError] = useState('');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [query, setQuery] = useSearchParams();
+  const statusFilter = query.get('status') || '';
   const [severityFilter, setSeverityFilter] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [formData, setFormData] = useState(EMPTY_INCIDENT);
 
-  const { data: incidentData, isLoading, error, refetch } = useQuery({
-    queryKey: ['incidents'],
-    queryFn: () => incidentsApi.list(),
+  const { data: incidentData, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = useInfiniteQuery({
+    queryKey: ['incidents', sessionScope, statusFilter],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => incidentsApi.list({ status: statusFilter || undefined, offset: pageParam, limit: PAGE_SIZE }),
+    getNextPageParam: (lastPage, pages) => lastPage.length === PAGE_SIZE ? pages.length * PAGE_SIZE : undefined,
     retry: 1,
   });
 
@@ -99,13 +104,15 @@ export function IncidentsPage() {
     });
   };
 
-  const incidents = Array.isArray(incidentData) ? incidentData : incidentData?.incidents || [];
+  const incidents = incidentData?.pages.flat() || [];
 
   const filteredIncidents = incidents.filter((incident) => {
     const matchesSearch = !search ||
       incident.title?.toLowerCase().includes(search.toLowerCase()) ||
       incident.id?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = !statusFilter || incident.status === statusFilter;
+    const matchesStatus = statusFilter === 'unresolved'
+      ? ['open', 'investigating'].includes(incident.status)
+      : !statusFilter || incident.status === statusFilter;
     const matchesSeverity = !severityFilter || incident.severity === severityFilter;
     return matchesSearch && matchesStatus && matchesSeverity;
   });
@@ -124,7 +131,7 @@ export function IncidentsPage() {
       key: 'id',
       header: 'Incident ID',
       render: (inc) => (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700' }}>{inc.id}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600' }}>{inc.id}</span>
       ),
     },
     {
@@ -180,7 +187,7 @@ export function IncidentsPage() {
   ];
 
   if (isLoading) return <LoadingState message="Loading incidents..." />;
-  if (error) return <ErrorState message={error.message} onRetry={refetch} />;
+  if (error && !isFetchNextPageError) return <ErrorState message={error.message} onRetry={refetch} />;
 
   return (
     <div>
@@ -205,30 +212,23 @@ export function IncidentsPage() {
       />
 
       {/* Summary Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      {(hasNextPage || statusFilter || search || severityFilter) && <p>Counts below cover the matching incidents loaded so far.</p>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <MetricCard
           title="Active Incidents"
-          value={incidents.filter((i) => i.status === 'open' || i.status === 'investigating').length}
-          icon={<AlertTriangle size={20} />}
-          color="danger"
+          value={filteredIncidents.filter((i) => i.status === 'open' || i.status === 'investigating').length}
         />
         <MetricCard
           title="Critical"
-          value={incidents.filter((i) => i.severity === 'critical').length}
-          icon={<XCircle size={20} />}
-          color="danger"
+          value={filteredIncidents.filter((i) => i.severity === 'critical').length}
         />
         <MetricCard
           title="Resolved"
-          value={incidents.filter((i) => i.status === 'resolved' || i.status === 'closed').length}
-          icon={<CheckCircle size={20} />}
-          color="success"
+          value={filteredIncidents.filter((i) => i.status === 'resolved' || i.status === 'closed').length}
         />
         <MetricCard
           title="Total Incidents"
-          value={incidents.length}
-          icon={<AlertCircle size={20} />}
-          color="primary"
+          value={filteredIncidents.length}
         />
       </div>
 
@@ -243,9 +243,9 @@ export function IncidentsPage() {
         <div style={{ width: '160px' }}>
           <Select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setQuery(e.target.value ? { status: e.target.value } : {})}
             placeholder="All Statuses"
-            options={Object.values(INCIDENT_STATUS).map((s) => ({
+            options={['unresolved', ...Object.values(INCIDENT_STATUS)].map((s) => ({
               value: s,
               label: s.charAt(0).toUpperCase() + s.slice(1),
             }))}
@@ -268,8 +268,10 @@ export function IncidentsPage() {
         columns={columns}
         data={filteredIncidents}
         onRowClick={(incident) => setOpenIncident(incident)}
-        emptyMessage={canViewAll ? 'No active incidents. All systems operational.' : 'You have not reported any incidents.'}
+        emptyMessage={statusFilter || search || severityFilter ? 'No matching incidents in the loaded records.' : 'No incidents reported.'}
       />
+      {isFetchNextPageError && <p role="alert">The next page could not be loaded.</p>}
+      {hasNextPage && <Button variant="secondary" isLoading={isFetchingNextPage} onClick={() => fetchNextPage()}>Load more incidents</Button>}
 
       {/* CR-014: incident detail and triage */}
       <Modal
@@ -318,7 +320,7 @@ export function IncidentsPage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Describe the impact and observed symptoms"
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Select
               label="Severity"
               value={formData.severity}

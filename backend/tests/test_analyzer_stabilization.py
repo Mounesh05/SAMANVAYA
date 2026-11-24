@@ -198,7 +198,7 @@ async def test_unsupported_windows_subprocess_reports_docker_unavailable(monkeyp
     assert "without --reload" in result["error"]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_source_only_run_never_scores_or_updates_baseline(mock_db, monkeypatch):
     from api.routes import code_quality
     from intelligence.quality_engine import QualityEngine

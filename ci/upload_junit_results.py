@@ -23,6 +23,33 @@ def _optional_environment(name: str) -> str | None:
     return os.environ.get(name, "").strip() or None
 
 
+def _github_metadata() -> dict:
+    """Preserve Actions identity; a PR uses its head, never GitHub's merge SHA."""
+    result = {"source": "github_actions", "commit_sha": os.environ.get("GITHUB_SHA", ""),
+              "branch": os.environ.get("GITHUB_HEAD_REF") or os.environ.get("GITHUB_REF_NAME", ""),
+              "workflow_name": os.environ.get("GITHUB_WORKFLOW")}
+    run_id, attempt = os.environ.get("GITHUB_RUN_ID", ""), os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    if run_id.isdigit() and int(run_id) > 0:
+        result["workflow_run_id"] = run_id
+    if attempt.isdigit() and int(attempt) > 0:
+        result["run_attempt"] = int(attempt)
+    if os.environ.get("GITHUB_EVENT_NAME") in {"pull_request", "pull_request_target"}:
+        path = os.environ.get("GITHUB_EVENT_PATH")
+        if not path or os.path.getsize(path) > 1000000:
+            raise ValueError("Bounded PR event metadata is required")
+        with open(path, encoding="utf-8") as handle:
+            event = json.load(handle)
+        pr = event.get("pull_request") or {}
+        head, base = pr.get("head") or {}, pr.get("base") or {}
+        sha, number = head.get("sha"), pr.get("number", event.get("number"))
+        if (not isinstance(sha, str) or len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha)
+                or type(number) is not int or number < 1
+                or base.get("repo", {}).get("full_name") != os.environ.get("GITHUB_REPOSITORY")):
+            raise ValueError("Exact PR repository/head identity is required")
+        result.update(commit_sha=sha, pr_number=number, branch=head.get("ref") or result["branch"])
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--junit", required=True)
@@ -81,6 +108,7 @@ def main() -> int:
             else "failed"
         ),
     }
+    payload.update(_github_metadata())
     request = urllib.request.Request(
         api_url + "/api/qa/test-runs",
         data=json.dumps(payload).encode("utf-8"),

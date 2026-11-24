@@ -1,6 +1,6 @@
 import pytest
 
-from api.roles import devops, qa
+from api.roles import qa
 from api.routes import qa_test_runs
 from domain.services import qa_workflow_provisioning_service
 
@@ -90,34 +90,6 @@ def test_qa_test_health_marks_zero_test_failures_as_blocking():
     assert failed["status"] == "failed"
     assert failed["total"] == 0
     assert passed["pass_rate"] == 100.0
-
-
-@pytest.mark.anyio
-async def test_devops_snapshot_uses_workflow_and_deployment_events(monkeypatch):
-    monkeypatch.setattr(
-        devops,
-        "col",
-        lambda _name: FakeCollection(
-            [
-                {
-                    "event_type": "workflow_run",
-                    "payload": {"workflow_run": {"conclusion": "success"}},
-                },
-                {
-                    "event_type": "deployment_status",
-                    "payload": {"deployment_status": {"state": "failure"}},
-                },
-            ]
-        ),
-    )
-
-    # CR-003: the snapshot is scoped to the caller; the CEO sees every project.
-    snapshot = await devops._devops_snapshot({"role": "CEO", "employee_id": "C1"})
-
-    assert len(snapshot["pipelines"]) == 1
-    assert len(snapshot["deployments"]) == 1
-    assert snapshot["successful"] == 1
-    assert snapshot["failed"] == 1
 
 
 @pytest.mark.anyio

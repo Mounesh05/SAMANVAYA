@@ -5,7 +5,7 @@ import { rolesApi } from '../../api/roles.api';
 import { githubApi } from '../../api/github.api';
 import { projectsApi } from '../../api/projects.api';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Card } from '../../components/common/Card';
+import { MetricCard } from '../../components/common/MetricCard';
 import { Table } from '../../components/common/Table';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
@@ -16,7 +16,7 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { GitPullRequest, ExternalLink, RefreshCw, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useSessionScope } from '../../store/useSessionScope';
 import { hasPermission, PERMISSIONS } from '../../auth/permissions';
 import { formatDate, timeAgo } from '../../utils/dates';
@@ -93,21 +93,12 @@ export function PullRequestsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'merged': return <CheckCircle size={14} style={{ color: 'var(--success)' }} />;
-      case 'closed': return <XCircle size={14} style={{ color: 'var(--danger)' }} />;
-      case 'open': return <Clock size={14} style={{ color: 'var(--primary)' }} />;
-      default: return <AlertCircle size={14} style={{ color: 'var(--text-muted)' }} />;
-    }
-  };
-
   const columns = [
     {
       key: 'pr_number',
       header: 'PR #',
       render: (pr) => (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600' }}>
           #{pr.pr_number}
         </span>
       ),
@@ -115,12 +106,7 @@ export function PullRequestsPage() {
     {
       key: 'title',
       header: 'Title',
-      render: (pr) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <GitPullRequest size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-          <span style={{ fontWeight: '600' }}>{pr.title}</span>
-        </div>
-      ),
+      render: (pr) => <span style={{ fontWeight: '600' }}>{pr.title}</span>,
     },
     { key: 'author', header: 'Author', render: (pr) => pr.author_login || pr.author || '—' },
     { key: 'ci_status', header: 'CI', render: (pr) => {
@@ -142,12 +128,7 @@ export function PullRequestsPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (pr) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          {getStatusIcon(pr.status)}
-          <StatusBadge status={pr.status} />
-        </div>
-      ),
+      render: (pr) => <StatusBadge status={pr.status} />,
     },
     {
       key: 'review_status',
@@ -180,6 +161,7 @@ export function PullRequestsPage() {
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`Open pull request #${pr.pr_number} on GitHub`}
               onClick={(e) => {
                 e.stopPropagation();
                 window.open(pr.html_url || pr.github_url, '_blank', 'noopener,noreferrer');
@@ -229,29 +211,14 @@ export function PullRequestsPage() {
         </p>
       )}
       {/* Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Total PRs</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)' }}>{prs.length}</div>
-        </Card>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Open</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--primary)' }}>
-            {prs.filter((pr) => pr.status === 'open').length}
-          </div>
-        </Card>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Pending Review</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--warning)' }}>
-            {prs.filter((pr) => pr.status === 'open' && (pr.review_status || 'pending') === 'pending').length}
-          </div>
-        </Card>
-        <Card variant="flat" padding="md">
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Merged</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
-            {prs.filter((pr) => pr.status === 'merged').length}
-          </div>
-        </Card>
+      <div className="work-grid" style={{ '--column-min': '9rem', gap: 16, marginBottom: 24 }}>
+        <MetricCard title="Total PRs" value={prs.length} />
+        <MetricCard title="Open" value={prs.filter((pr) => pr.status === 'open').length} />
+        <MetricCard
+          title="Pending review"
+          value={prs.filter((pr) => pr.status === 'open' && (pr.review_status || 'pending') === 'pending').length}
+        />
+        <MetricCard title="Merged" value={prs.filter((pr) => pr.status === 'merged').length} />
       </div>
 
       {/* Filters */}

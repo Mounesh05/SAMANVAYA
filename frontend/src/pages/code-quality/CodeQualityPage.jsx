@@ -97,7 +97,7 @@ export function CodeQualityPage() {
       header: 'Quality score',
       render: (r) => (
         r.quality_score != null ? (
-          <span style={{ fontWeight: '800', color: getGradeColor(r.quality_grade || 'A') }}>
+          <span style={{ fontWeight: '600', color: getGradeColor(r.quality_grade || 'A') }}>
             {r.quality_score}/100
           </span>
         ) : (
@@ -116,7 +116,7 @@ export function CodeQualityPage() {
       key: 'status',
       header: 'Status',
       render: (r) => (
-        <span style={{ color: statusColor(r.status), fontWeight: '700', fontSize: '0.8125rem' }}>
+        <span style={{ color: statusColor(r.status), fontWeight: '600', fontSize: '0.8125rem' }}>
           {r.status === 'completed' && (r.analysis_scope === 'purpose_discovery' || r.analysis_level === 'purpose_discovery')
             ? 'Discovery finished · quality not run' : r.quality_analysis_status === 'partial' ? 'Partially analyzed' : statusLabel(r.status)}
         </span>
@@ -221,7 +221,7 @@ export function CodeQualityPage() {
             Use the connected repository or project ID.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Input
               label="PR number (optional)"
               type="number"

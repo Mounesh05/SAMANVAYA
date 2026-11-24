@@ -41,7 +41,7 @@ export function CicdLogsPage() {
         subtitle="Analyze build errors, test failures, and deployment incidents using Layer 5 Rule Engine + Layer 6 AI Agents."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div className="work-grid" style={{ '--column-min': '420px' }}>
         {/* Input Card */}
         <Card title="Raw CI/CD Log Input" subtitle="Paste log excerpt from GitHub Actions, Jenkins, or Docker">
           <form onSubmit={handleAnalyze} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -124,9 +124,9 @@ export function CicdLogsPage() {
               >
                 <div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-                    FAILURE TYPE
+                    Failure type
                   </span>
-                  <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
                     {analysisResult.failure_type || analysisResult.log_type}
                   </div>
                 </div>
@@ -143,8 +143,8 @@ export function CicdLogsPage() {
                     border: '1px solid rgba(239, 68, 68, 0.25)',
                   }}
                 >
-                  <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--danger)', marginBottom: '0.25rem' }}>
-                    Root Cause:
+                  <div style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--danger)', marginBottom: '0.25rem' }}>
+                    Root cause
                   </div>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                     {analysisResult.root_cause}
@@ -155,8 +155,8 @@ export function CicdLogsPage() {
               {/* Fix Recommendations */}
               {analysisResult.fix_recommendations && analysisResult.fix_recommendations.length > 0 && (
                 <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                    Recommended Fixes:
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                    Recommended fixes
                   </h4>
                   <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {analysisResult.fix_recommendations.map((rec, idx) => (

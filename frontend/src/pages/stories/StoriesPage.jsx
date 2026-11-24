@@ -133,7 +133,7 @@ export function StoriesPage() {
       key: 'id',
       header: 'Story ID',
       render: (story) => (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700' }}>{story.id}</span>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '600' }}>{story.id}</span>
       ),
     },
     {
@@ -305,7 +305,7 @@ export function StoriesPage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Enter acceptance criteria and supporting details"
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Select
               label="Project"
               value={formData.project_id}
@@ -319,7 +319,7 @@ export function StoriesPage() {
               options={sprints.map((s) => ({ value: s.id, label: s.name || s.sprint_id }))}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             {proposesDrafts ? (
               <Input label="Assignee" value={user?.name || user?.employee_id || ''} readOnly />
             ) : (

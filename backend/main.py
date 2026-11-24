@@ -42,6 +42,9 @@ async def lifespan(app: FastAPI):
         from core.security import ensure_revocation_indexes
         await ensure_revocation_indexes()
 
+        from domain.services.pm_blocked_work import ensure_blocked_work_indexes
+        await ensure_blocked_work_indexes()
+
         from domain.services.release_management import ensure_indexes as ensure_release_indexes
         await ensure_release_indexes()
         

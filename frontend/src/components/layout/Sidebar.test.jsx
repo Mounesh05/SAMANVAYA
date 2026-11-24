@@ -11,7 +11,7 @@ describe('Sidebar HR Navigation', () => {
     useAuthStore.getState().logout();
   });
 
-  it('renders Performance Outcomes and Workplace Assessment links when logged in as HR', () => {
+  it('renders Performance Outcomes and Workplace feedback links when logged in as HR', () => {
     useAuthStore.getState().setAuth('mock-token', {
       employee_id: 'DEMO-HR',
       name: 'HR Manager',
@@ -30,7 +30,7 @@ describe('Sidebar HR Navigation', () => {
     expect(performanceLink).toBeInTheDocument();
     expect(performanceLink).toHaveAttribute('href', '/performance');
 
-    const feedbackLink = screen.getByRole('link', { name: /Workplace Assessment/i });
+    const feedbackLink = screen.getByRole('link', { name: /Workplace feedback/i });
     expect(feedbackLink).toBeInTheDocument();
     expect(feedbackLink).toHaveAttribute('href', '/feedback');
   });
@@ -58,7 +58,7 @@ describe('Sidebar HR Navigation', () => {
     expect(screen.queryByRole('link', { name: /Feedback/i })).not.toBeInTheDocument();
   });
 
-  it('renders Role Feedback link for LEAD role', () => {
+  it('renders Assigned feedback link for LEAD role', () => {
     useAuthStore.getState().setAuth('mock-token', {
       employee_id: 'DEMO-LEAD',
       name: 'Lead Developer',
@@ -73,7 +73,7 @@ describe('Sidebar HR Navigation', () => {
       </MemoryRouter>
     );
 
-    const feedbackLink = screen.getByRole('link', { name: /Role Feedback/i });
+    const feedbackLink = screen.getByRole('link', { name: /Assigned feedback/i });
     expect(feedbackLink).toBeInTheDocument();
     expect(feedbackLink).toHaveAttribute('href', '/feedback');
   });

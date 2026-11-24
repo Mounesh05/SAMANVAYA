@@ -16,7 +16,6 @@ import { QADashboardPage } from '../pages/qa/QADashboardPage';
 import { DevOpsDashboardPage } from '../pages/devops/DevOpsDashboardPage';
 import { HRDashboardPage } from '../pages/hr/HRDashboardPage';
 import { rolesApi } from '../api/roles.api';
-import { projectsApi } from '../api/projects.api';
 import { performanceApi } from '../api/performance.api';
 import { qaApi } from '../api/qa.api';
 import { transfersApi } from '../api/transfers.api';
@@ -25,11 +24,10 @@ import { roleUser } from './utils/roleUser';
 
 vi.mock('../api/roles.api', () => ({
   rolesApi: {
-    getCEODashboard: vi.fn(), getExecutionHealth: vi.fn(), getPMDashboard: vi.fn(), getLeadDashboard: vi.fn(),
+    getCEODashboard: vi.fn(), getExecutionHealth: vi.fn(), getPMDashboard: vi.fn(), getPMBlockedWork: vi.fn(), getLeadDashboard: vi.fn(),
     getDeveloperDashboard: vi.fn(), getDevOpsDashboard: vi.fn(), getHRDashboard: vi.fn(),
   },
 }));
-vi.mock('../api/projects.api', () => ({ projectsApi: { list: vi.fn() } }));
 vi.mock('../api/performance.api', () => ({ performanceApi: { getDeveloperDashboard: vi.fn() } }));
 vi.mock('../api/transfers.api', () => ({ transfersApi: { getTransfers: vi.fn() } }));
 vi.mock('../api/qa.api', () => ({
@@ -162,11 +160,11 @@ describe('role dashboards', () => {
   });
 
   it('PM: schedule, delivery confidence and status counts', async () => {
-    projectsApi.list.mockResolvedValue([
+    rolesApi.getPMDashboard.mockResolvedValue({ projects: [
       { id: 'P1', name: 'Atlas', status: 'active', start_date: '2026-01-01', end_date: '2027-01-01' },
       { id: 'P2', name: 'Beacon', status: 'completed' },
-    ]);
-    rolesApi.getPMDashboard.mockResolvedValue({ summary: { delivery_confidence: '82%', active_sprints: 2, high_risks: 0 } });
+    ], summary: { delivery_confidence: '82%', active_sprints: 2, high_risks: 0 } });
+    rolesApi.getPMBlockedWork.mockResolvedValue({ counts: {}, tasks: [], matched: 0 });
     renderPage(<PMDashboardPage />);
     expect(await screen.findByRole('meter', { name: 'Delivery confidence' })).toHaveAttribute('aria-valuenow', '82');
     expect(screen.getByLabelText(/^Atlas: /)).toBeInTheDocument();
@@ -218,20 +216,20 @@ describe('role dashboards', () => {
     expect(screen.getByRole('img', { name: /Test case coverage: Run at least once 6 \(60%\), Not run yet 4 \(40%\)/ })).toBeInTheDocument();
   });
 
-  it('DevOps: runs per day and results read each event the way the backend does', async () => {
-    const now = new Date().toISOString();
+  it('DevOps shows distinct workflow attempts and links to deployment evidence', async () => {
     rolesApi.getDevOpsDashboard.mockResolvedValue({
-      summary: { build_success_rate: 50, active_pipelines: 2, deployments_today: 1, active_incidents: 1, system_health: 'DEGRADED' },
-      pipelines: [
-        { event_type: 'workflow_run', created_at: now, payload: { workflow_run: { name: 'CI', conclusion: 'success' }, repository: { full_name: 'org/app' } } },
-        { event_type: 'workflow_run', created_at: now, payload: { workflow_run: { name: 'CI', conclusion: 'failure' } } },
-      ],
-      deployments: [{ event_type: 'deployment', created_at: now, payload: { deployment: { environment: 'staging' } } }],
+      summary: { build_success_rate: 50, workflow_attempts: 2, deployments_today: 1, active_incidents: 3 },
+      outcomes: { success: 1, failed: 1 },
+      daily: [{ date: '2026-11-23', success: 1, failed: 1 }],
+      pipelines: [{ id: 42, attempt: 2, name: 'CI', repository: 'org/app', conclusion: 'success' }],
+      deployments: [{ id: 7, environment: 'production', repository: 'org/app', status: 'success' }],
     });
     renderPage(<DevOpsDashboardPage />);
-    expect(await screen.findByRole('img', { name: /Run results: Succeeded 1 \(33%\), Failed 1 \(33%\), In progress or other 1 \(33%\)/ })).toBeInTheDocument();
-    expect(screen.getByText('Deploy to staging')).toBeInTheDocument();
-    expect(screen.getByText('System health: degraded')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Succeeded: 1' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /CI #42/ })).toHaveAttribute('href', 'https://github.com/org/app/actions/runs/42/attempts/2');
+    expect(screen.getByRole('link', { name: /org\/app #7/ })).toHaveAttribute('href', '/deployments?repository=org%2Fapp&deployment_id=7');
+    expect(screen.getByRole('group', { name: /Workflow attempts by day/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open incidents' })).toBeInTheDocument();
   });
 
   it('HR: workforce by role and department, and who is not in a team', async () => {

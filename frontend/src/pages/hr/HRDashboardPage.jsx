@@ -13,7 +13,7 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { BarList, SegmentedBar } from '../../components/charts/Charts';
 import { ROLE_LABELS } from '../../utils/constants';
 import '../../components/dashboard/Dashboard.css';
-import { Users, Building2, UserPlus, ArrowRight, GitPullRequest, UserX } from 'lucide-react';
+import { UserPlus, ArrowRight } from 'lucide-react';
 
 // CEO and HR work across the organisation and are not placed in a team.
 const ORG_WIDE_ROLES = new Set(['CEO', 'HR']);
@@ -85,31 +85,23 @@ export function HRDashboardPage() {
           title="Active employees"
           value={summary.total_employees ?? employees.length}
           subtitle={`${Object.keys(roleDistribution).length} roles`}
-          icon={<Users size={18} />}
-          color="primary"
           onClick={() => navigate('/employees')}
         />
         <MetricCard
           title="Pending transfers"
           value={pendingTransfers}
           subtitle="Awaiting decision"
-          icon={<GitPullRequest size={18} />}
-          color={pendingTransfers > 0 ? 'warning' : 'success'}
           onClick={() => navigate('/transfers')}
         />
         <MetricCard
           title="Departments"
           value={Object.keys(departments).length}
           subtitle="With active staff"
-          icon={<Building2 size={18} />}
-          color="purple"
         />
         <MetricCard
           title="Not in a team"
           value={withoutTeam}
           subtitle="No team assigned"
-          icon={<UserX size={18} />}
-          color={withoutTeam > 0 ? 'warning' : 'success'}
         />
       </div>
 

@@ -67,7 +67,7 @@ export function RunDetailPage() {
       render: (f) => (
         <span
           style={{
-            fontWeight: '700',
+            fontWeight: '600',
             fontSize: '0.75rem',
             color:
               f.severity === 'critical'
@@ -77,7 +77,7 @@ export function RunDetailPage() {
                 : f.severity === 'medium'
                 ? 'var(--warning)'
                 : 'var(--success)',
-            textTransform: 'uppercase',
+            textTransform: 'capitalize',
           }}
         >
           {f.severity}
@@ -115,13 +115,13 @@ export function RunDetailPage() {
         title={`Analysis Run: ${run?.run_id}`}
         subtitle={`Repository: ${run?.repository_id} ${run?.pr_number ? `• PR #${run.pr_number}` : ''}`}
         badge={
-          <span style={{ color: isCompleted ? 'var(--success)' : 'var(--warning)', fontWeight: '700' }}>
+          <span style={{ color: isCompleted ? 'var(--success)' : 'var(--warning)', fontWeight: '600' }}>
             {completionLabel}
           </span>
         }
       />
 
-      {(discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope">
+      {(discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope" style={{ marginBottom: 24 }}>
         <p>{run?.quality_unavailable_reason || (discoveryOnly ? 'Static function discovery only. Quality and risk were not measured.' : run?.error)}</p>
         <p>Tools executed: {run?.tools_executed?.join(', ') || 'None recorded'}</p>
         <p>Tools skipped or unavailable: {run?.tools_skipped?.join(', ') || 'None recorded'}</p>
@@ -132,7 +132,7 @@ export function RunDetailPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
           gap: '1.25rem',
           marginBottom: '1.75rem',
         }}
@@ -140,11 +140,11 @@ export function RunDetailPage() {
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Quality Score</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-            <span style={{ fontSize: '2.25rem', fontWeight: '900', color: gradeColor }}>
+            <span style={{ fontSize: '2.25rem', fontWeight: '600', color: 'var(--text-primary)' }}>
               {run?.quality_score != null ? run.quality_score : '—'}
             </span>
             <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 100</span>
-            <span style={{ fontSize: '1rem', fontWeight: '700', color: gradeColor, marginLeft: '0.35rem' }}>
+            <span style={{ fontSize: '1rem', fontWeight: '600', color: gradeColor, marginLeft: '0.35rem' }}>
               {isCompleted && `(${qualityGrade})`}
             </span>
           </div>
@@ -166,14 +166,14 @@ export function RunDetailPage() {
 
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Detected Language</span>
-          <div style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '0.35rem', textTransform: 'capitalize' }}>
+          <div style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.35rem', textTransform: 'capitalize' }}>
             {run?.language || 'Pending analysis'}
           </div>
         </Card>
 
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Total Findings</span>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
             {findingsError ? 'Retrieval failed' : qualityRan && isCompleted && findingsData ? `${findingsData.total} recorded findings` : 'Quality checks not established'}
           </div>
         </Card>

@@ -126,7 +126,7 @@ export function AIEvaluationPage() {
         subtitle="Evaluate developer contributions across public or private GitHub repositories using AI synthesis."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div className="work-grid" style={{ '--column-min': '420px' }}>
         {/* Input Form Card */}
         <Card title="Evaluation Parameters" subtitle="GitHub repository & developer details">
           <form onSubmit={handleEvaluate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -146,7 +146,7 @@ export function AIEvaluationPage() {
               required
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-columns">
               <Input
                 label="Repo Owner"
                 value={formData.repo_owner}
@@ -163,7 +163,7 @@ export function AIEvaluationPage() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-columns">
               <Input
                 label="PR Number"
                 type="number"
@@ -242,7 +242,7 @@ export function AIEvaluationPage() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
                     OVERALL SCORE (NORMALIZED TO ASSESSED DIMENSIONS)
                   </span>
-                  <div style={{ fontSize: '2rem', fontWeight: '900', color: 'var(--cyan)' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: '600', color: 'var(--cyan)' }}>
                     {evalResult.overall_score == null ? 'Overall score unavailable' : `${evalResult.overall_score} / 10`}
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export function AIEvaluationPage() {
 
               {evalResult.recommendations && evalResult.recommendations.length > 0 && (
                 <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                     AI Recommendations:
                   </h4>
                   <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -415,7 +415,7 @@ export function AIEvaluationPage() {
 
               {evalResult.ai_analysis?.dimensions && (
                 <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                     AI Evidence Breakdown
                   </h4>
                   <div style={{ display: 'grid', gap: '0.4rem' }}>

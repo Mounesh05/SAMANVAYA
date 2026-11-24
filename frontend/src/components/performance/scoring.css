@@ -8,7 +8,7 @@
 .scoring-status[data-approved="true"] { color: var(--success); }
 .scoring-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .scoring-stack summary, .scoring-stack input[type="checkbox"] { cursor: pointer; }
-.scoring-number { font-size: 3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.scoring-number { font-size: 3rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .scoring-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
 .scoring-table th, .scoring-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border-default); overflow-wrap: anywhere; }
 .scoring-table-wrap { overflow-x: auto; }

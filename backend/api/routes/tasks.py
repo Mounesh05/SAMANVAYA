@@ -106,7 +106,7 @@ async def list_project_tasks(
     # Verify user has access to this project
     await verify_project_access(user, project_id)
     
-    tasks = await task_service.get_project_tasks(project_id)
+    tasks = await task_service.get_project_tasks(project_id, user)
     return tasks
 
 

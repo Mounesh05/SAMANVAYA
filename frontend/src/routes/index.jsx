@@ -209,9 +209,6 @@ const AuditLogsPage = React.lazy(() =>
 const GovernedPerformancePage = React.lazy(() =>
   import('../pages/performance/GovernedPerformancePage').then((m) => ({ default: m.GovernedPerformancePage }))
 );
-const AssignedFeedbackPage = React.lazy(() =>
-  import('../pages/feedback/AssignedFeedbackPage').then((m) => ({ default: m.AssignedFeedbackPage }))
-);
 const PerformancePage = React.lazy(() =>
   import('../pages/performance/PerformancePage').then((m) => ({
     default: m.PerformancePage,
@@ -257,16 +254,17 @@ function RouteSpinner() {
       }}
     >
       <div
+        className="animate-spin"
+        role="status"
+        aria-label="Loading page"
         style={{
-          width: 40,
-          height: 40,
-          border: '3px solid rgba(139, 92, 246, 0.15)',
-          borderTopColor: '#8b5cf6',
+          width: 32,
+          height: 32,
+          border: '3px solid var(--border-default)',
+          borderTopColor: 'var(--primary)',
           borderRadius: '50%',
-          animation: 'routeSpin 0.7s linear infinite',
         }}
       />
-      <style>{`@keyframes routeSpin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
@@ -489,7 +487,7 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="deployments"
+            path="deployments/:owner?/:repo?"
             element={
               <RoleGuard page="deployments">
                 <DeploymentsPage />
@@ -518,7 +516,7 @@ export function AppRoutes() {
           {/* Performance, Feedback & Analytics */}
           <Route path="performance" element={<RoleGuard page="performance"><PerformancePage /></RoleGuard>} />
           <Route path="performance/assessments" element={<RoleGuard page="performance"><GovernedPerformancePage /></RoleGuard>} />
-          <Route path="feedback/assignments" element={<RoleGuard page="feedback"><AssignedFeedbackPage /></RoleGuard>} />
+          <Route path="feedback/assignments" element={<RoleGuard page="feedback"><FeedbackPage /></RoleGuard>} />
           <Route
             path="feedback"
             element={

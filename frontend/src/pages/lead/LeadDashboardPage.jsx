@@ -13,7 +13,7 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { BarList, SegmentedBar } from '../../components/charts/Charts';
 import { ROLE_LABELS } from '../../utils/constants';
 import '../../components/dashboard/Dashboard.css';
-import { Users, GitPullRequest, AlertTriangle, MessageSquareQuote, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, MessageSquareQuote } from 'lucide-react';
 
 const RISK_LEVELS = [
   { key: 'LOW', label: 'Low', tone: 'good' },
@@ -57,23 +57,6 @@ export function LeadDashboardPage() {
     { key: 'name', header: 'Member', render: (m) => <span style={{ fontWeight: '600' }}>{m.name}</span> },
     { key: 'role', header: 'Role', render: (m) => ROLE_LABELS[m.role] || m.role },
     { key: 'email', header: 'Email', render: (m) => <span style={{ color: 'var(--text-muted)' }}>{m.email}</span> },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right',
-      render: (m) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/feedback?target=${m.employee_id}`);
-          }}
-        >
-          Give feedback
-        </Button>
-      ),
-    },
   ];
 
   const prColumns = [
@@ -89,7 +72,7 @@ export function LeadDashboardPage() {
         subtitle="Reviews, risk and blockers."
         actions={
           <Button variant="primary" leftIcon={<MessageSquareQuote size={16} />} onClick={() => navigate('/feedback')}>
-            Give feedback
+            Assigned feedback
           </Button>
         }
       />
@@ -107,30 +90,22 @@ export function LeadDashboardPage() {
           title="Team size"
           value={summary.team_size ?? teamMembers.length}
           subtitle={`${summary.total_active_tasks ?? 0} active tasks`}
-          icon={<Users size={18} />}
-          color="primary"
           onClick={() => navigate('/teams')}
         />
         <MetricCard
           title="Open pull requests"
           value={summary.open_prs ?? 0}
           subtitle="Waiting for review"
-          icon={<GitPullRequest size={18} />}
-          color="purple"
         />
         <MetricCard
           title="High-risk pull requests"
           value={summary.high_risk_prs ?? 0}
           subtitle="AI-rated high or critical"
-          icon={<ShieldAlert size={18} />}
-          color={summary.high_risk_prs > 0 ? 'danger' : 'success'}
         />
         <MetricCard
           title="Blocked tasks"
           value={summary.blocked_tasks ?? 0}
           subtitle="Need attention"
-          icon={<AlertTriangle size={18} />}
-          color={summary.blocked_tasks > 0 ? 'warning' : 'success'}
           onClick={() => navigate('/board')}
         />
       </div>

@@ -8,15 +8,15 @@ export function ProgressBar({
   height = '8px',
   className = '',
 }) {
-  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  const percentage = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
 
   const colorStyles = {
-    primary: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)',
-    success: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
-    warning: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
-    danger: 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)',
-    cyan: 'linear-gradient(90deg, #06b6d4 0%, #38bdf8 100%)',
-    purple: 'linear-gradient(90deg, #a855f7 0%, #c084fc 100%)',
+    primary: 'var(--primary)',
+    success: 'var(--success)',
+    warning: 'var(--warning)',
+    danger: 'var(--danger)',
+    cyan: 'var(--cyan)',
+    purple: 'var(--purple)',
   };
 
   return (
@@ -31,8 +31,8 @@ export function ProgressBar({
         style={{
           width: '100%',
           height,
-          backgroundColor: 'rgba(255, 255, 255, 0.08)',
-          borderRadius: 'var(--radius-full)',
+          backgroundColor: 'var(--bg-tertiary)',
+          borderRadius: '4px',
           overflow: 'hidden',
         }}
       >
@@ -41,8 +41,7 @@ export function ProgressBar({
             width: `${percentage}%`,
             height: '100%',
             background: colorStyles[color] || colorStyles.primary,
-            borderRadius: 'var(--radius-full)',
-            transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            borderRadius: '4px',
           }}
         />
       </div>

@@ -135,7 +135,7 @@ export function ReportsPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
           gap: '1.5rem',
         }}
       >
@@ -156,7 +156,7 @@ export function ReportsPage() {
               >
                 {r.icon}
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                 {r.title}
               </h3>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem', lineHeight: '1.5' }}>

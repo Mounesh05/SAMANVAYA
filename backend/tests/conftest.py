@@ -27,6 +27,13 @@ def anyio_backend():
 
 
 @pytest.fixture
+def python_dependency_project(tmp_path):
+    """Isolated manifest for mocked pip-audit and Safety command tests."""
+    (tmp_path / "requirements.txt").write_text("example-package==1.0\n", encoding="utf-8")
+    return str(tmp_path)
+
+
+@pytest.fixture
 async def mock_db():
     """
     In-memory MongoDB mock for unit tests.

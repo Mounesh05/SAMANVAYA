@@ -14,7 +14,7 @@ import { ProgressBar } from '../../components/common/ProgressBar';
 import { LoadingState } from '../../components/common/LoadingState';
 
 import { EmptyState } from '../../components/common/EmptyState';
-import { Play, Sparkles, Shield, UserCheck, Award, BookOpen } from 'lucide-react';
+import { Play, ClipboardCheck, Shield, UserCheck, Award } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { ROLES, designationLabel } from '../../utils/constants';
 import { hasPermission, hasAnyPermission, PERMISSIONS } from '../../auth/permissions';
@@ -165,7 +165,7 @@ export function PerformancePage() {
       key: 'score',
       header: 'Overall Score',
       render: (t) => (
-        <span style={{ fontWeight: '800', color: getGradeColor(t.grade) }}>
+        <span style={{ fontWeight: '600', color: getGradeColor(t.grade) }}>
           {typeof t.score === 'number' ? t.score.toFixed(1) : t.score}%
         </span>
       ),
@@ -174,7 +174,7 @@ export function PerformancePage() {
       key: 'grade',
       header: 'Grade',
       render: (t) => (
-        <span style={{ fontWeight: '700', color: getGradeColor(t.grade) }}>Grade {t.grade}</span>
+        <span style={{ fontWeight: '600', color: getGradeColor(t.grade) }}>Grade {t.grade}</span>
       ),
     },
   ];
@@ -232,7 +232,7 @@ export function PerformancePage() {
           description={error.message?.includes('503') || error.message?.includes('unavailable')
             ? "The AI evaluation service (Ollama) is not running. Start Ollama and retry the evaluation."
             : `No performance outcome is recorded for ${selectedDevId} yet.`}
-          icon={<Sparkles size={28} />}
+          icon={<ClipboardCheck size={28} />}
           actionLabel={canTriggerEvaluation ? 'Calculate contribution credit' : null}
           onAction={canTriggerEvaluation ? handleRunEvaluation : null}
         />
@@ -251,13 +251,13 @@ export function PerformancePage() {
             period={curr?.period || curr?.period_label || 'Current Period'}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+          <div className="work-grid" style={{ '--column-min': '360px' }}>
             {/* 90/10 Score Summary Card */}
             <Card title="90% AI + 10% Human Evaluation Model" subtitle="Weighted performance governance summary">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-default)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Sparkles size={16} style={{ color: 'var(--primary)' }} />
+                    <ClipboardCheck size={16} style={{ color: 'var(--primary)' }} />
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>AI Evaluation Component (90% weight)</span>
                   </div>
                   <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>
@@ -280,7 +280,7 @@ export function PerformancePage() {
                     <Award size={16} style={{ color: 'var(--cyan)' }} />
                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>Performance Tier</span>
                   </div>
-                  <span style={{ fontWeight: '700', color: getGradeColor(curr?.grade) }}>
+                  <span style={{ fontWeight: '600', color: getGradeColor(curr?.grade) }}>
                     {curr?.rating || (curr?.grade ? `Grade ${curr.grade}` : 'Under Review')}
                   </span>
                 </div>
@@ -305,7 +305,7 @@ export function PerformancePage() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     <span>Assessment Status:</span>
-                    <span style={{ fontWeight: '600', textTransform: 'uppercase', color: hrAssessment.status === 'submitted' ? 'var(--success)' : 'var(--warning)' }}>
+                    <span style={{ fontWeight: '600', color: hrAssessment.status === 'submitted' ? 'var(--success)' : 'var(--warning)' }}>
                       {hrAssessment.status}
                     </span>
                   </div>
@@ -366,7 +366,7 @@ export function PerformancePage() {
           />
 
           {/* AI explanation and deterministic contribution breakdown */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+          <div className="work-grid" style={{ '--column-min': '400px' }}>
             <Card title="Contribution Credit" subtitle="Deterministic score from observed engineering evidence">
               {curr?.contribution_credit ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -443,7 +443,7 @@ export function PerformancePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {aiEval?.strengths && aiEval.strengths.length > 0 && (
                   <div>
-                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.35rem' }}>
+                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--success)', marginBottom: '0.35rem' }}>
                       Key Strengths
                     </h5>
                     <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -456,7 +456,7 @@ export function PerformancePage() {
 
                 {aiEval?.recommendations && aiEval.recommendations.length > 0 && (
                   <div>
-                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--cyan)', marginBottom: '0.35rem' }}>
+                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--cyan)', marginBottom: '0.35rem' }}>
                       Growth Recommendations
                     </h5>
                     <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

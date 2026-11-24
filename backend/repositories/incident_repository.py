@@ -12,6 +12,6 @@ class IncidentRepository(BaseRepository):
     def __init__(self):
         super().__init__(col("incidents"))
 
-    async def list_for(self, query: dict, limit: int = 200) -> list:
-        cursor = self.col.find(query, {"_id": 0}).sort("created_at", -1).limit(limit)
+    async def list_for(self, query: dict, limit: int = 200, offset: int = 0) -> list:
+        cursor = self.col.find(query, {"_id": 0}).sort([("created_at", -1), ("id", 1)]).skip(offset).limit(limit)
         return [doc async for doc in cursor]

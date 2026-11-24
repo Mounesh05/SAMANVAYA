@@ -8,7 +8,7 @@
  */
 import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleAlert } from 'lucide-react';
-import { formatNumber, share, shortDate, toneOf } from './chartData';
+import { formatNumber, share, toneOf } from './chartData';
 import './Charts.css';
 
 
@@ -126,16 +126,16 @@ export function BarList({ label, items, emptyText, format = formatNumber, limit 
         {shown.map((item) => {
           const fill = toneOf(item.other ? 'neutral' : item.tone || tone).fill;
           const clickable = onSelect && !item.other;
+          const Track = clickable ? 'button' : 'span';
           return (
             <li key={item.key || item.label}>
               <span className="viz-bars-label" title={item.label}>{item.label}</span>
-              <span
+              <Track
                 className={`viz-bars-track${clickable ? ' is-clickable' : ''}`}
                 tabIndex={0}
-                role={clickable ? 'button' : undefined}
+                type={clickable ? 'button' : undefined}
                 aria-label={`${item.label}: ${format(item.value)}${item.note ? `, ${item.note}` : ''}`}
                 onClick={clickable ? () => onSelect(item) : undefined}
-                onKeyDown={clickable ? (event) => { if (event.key === 'Enter') onSelect(item); } : undefined}
                 {...tooltip.bind({ title: item.label, rows: [
                   { label: label, value: format(item.value) },
                   ...(item.note ? [{ label: 'Note', value: item.note }] : []),
@@ -143,7 +143,7 @@ export function BarList({ label, items, emptyText, format = formatNumber, limit 
               >
                 <span className="viz-bars-bar" style={{ width: `${Math.max((item.value / max) * 100, 1.5)}%`, background: fill }} />
                 <span className="viz-bars-value">{format(item.value)}</span>
-              </span>
+              </Track>
             </li>
           );
         })}
@@ -201,7 +201,7 @@ function niceMax(value) {
   return step;
 }
 
-export function StackedColumns({ label, data, series, emptyText, height = 180 }) {
+export function StackedColumns({ label, data, series, emptyText, height = 180, onSelect }) {
   const tooltip = useTooltip();
   const totals = data.map((point) => series.reduce((sum, s) => sum + (point.values[s.key] || 0), 0));
   if (!data.length || !totals.some(Boolean)) return <ChartEmpty>{emptyText}</ChartEmpty>;
@@ -213,7 +213,7 @@ export function StackedColumns({ label, data, series, emptyText, height = 180 })
   return (
     <div className="viz">
       {series.length > 1 && <Legend items={series.map((s) => ({ label: s.label, tone: s.tone }))} />}
-      <div className="viz-cols" role="img" aria-label={`${label}, ${data.length} days`}>
+      <div className="viz-cols" role={onSelect ? 'group' : 'img'} aria-label={`${label}, ${data.length} days`}>
         <div className="viz-cols-axis" style={{ height }}>
           {[...ticks].reverse().map((tick) => <span key={tick}>{formatNumber(tick)}</span>)}
         </div>
@@ -229,6 +229,14 @@ export function StackedColumns({ label, data, series, emptyText, height = 180 })
                   key={point.key}
                   className="viz-cols-slot"
                   tabIndex={0}
+                  role={onSelect ? 'button' : undefined}
+                  onClick={onSelect ? () => onSelect(point) : undefined}
+                  onKeyDown={onSelect ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelect(point);
+                    }
+                  } : undefined}
                   aria-label={`${point.label}: ${series.map((s) => `${s.label} ${point.values[s.key] || 0}`).join(', ')}`}
                   {...tooltip.bind({ title: point.label, rows: series.map((s) => ({ label: s.label, tone: s.tone, value: formatNumber(point.values[s.key] || 0) })) })}
                 >
@@ -248,15 +256,17 @@ export function StackedColumns({ label, data, series, emptyText, height = 180 })
           </div>
         </div>
       </div>
-      <table className="viz-sr-only">
-        <caption>{label}</caption>
-        <thead><tr><th>Date</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
-        <tbody>
-          {data.map((point) => (
-            <tr key={point.key}><td>{point.label}</td>{series.map((s) => <td key={s.key}>{point.values[s.key] || 0}</td>)}</tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="viz-sr-only">
+        <table>
+          <caption>{label}</caption>
+          <thead><tr><th>Date</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
+          <tbody>
+            {data.map((point) => (
+              <tr key={point.key}><td>{point.label}</td>{series.map((s) => <td key={s.key}>{point.values[s.key] || 0}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {tooltip.node}
     </div>
   );

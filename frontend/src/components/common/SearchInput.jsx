@@ -4,7 +4,7 @@ import { Search, X } from 'lucide-react';
 export function SearchInput({
   value,
   onChange,
-  placeholder = 'Search...',
+  placeholder = 'Search',
   width = '260px',
   className = '',
 }) {
@@ -15,11 +15,14 @@ export function SearchInput({
         display: 'flex',
         alignItems: 'center',
         width,
+        maxWidth: '100%',
       }}
       className={className}
     >
       <Search
         size={16}
+        strokeWidth={1.5}
+        aria-hidden="true"
         style={{
           position: 'absolute',
           left: '0.75rem',
@@ -29,22 +32,26 @@ export function SearchInput({
       />
       <input
         type="text"
+        aria-label={placeholder}
+        className="input-field"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         style={{
           width: '100%',
-          padding: '0.45rem 2rem 0.45rem 2.25rem',
+          minHeight: 36,
+          padding: '8px 32px 8px 36px',
           fontSize: '0.8125rem',
           backgroundColor: 'var(--bg-input)',
           color: 'var(--text-primary)',
-          border: '1px solid var(--border-default)',
+          border: '1px solid var(--field-border)',
           borderRadius: 'var(--radius-md)',
-          outline: 'none',
         }}
       />
       {value && (
         <button
+          type="button"
+          aria-label="Clear search"
           onClick={() => onChange('')}
           style={{
             position: 'absolute',
@@ -58,7 +65,7 @@ export function SearchInput({
             justifyContent: 'center',
           }}
         >
-          <X size={14} />
+          <X size={16} strokeWidth={1.5} aria-hidden="true" />
         </button>
       )}
     </div>

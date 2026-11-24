@@ -17,7 +17,7 @@ import { AutomatedTestRunsTable } from '../../components/qa/AutomatedTestRunsTab
 import { Meter, SegmentedBar, StackedColumns } from '../../components/charts/Charts';
 import { trendPoints } from '../../components/charts/chartData';
 import '../../components/dashboard/Dashboard.css';
-import { CheckCircle2, Bug, FlaskConical, Clock3, GitBranch, RefreshCw } from 'lucide-react';
+import { CheckCircle2, GitBranch, RefreshCw } from 'lucide-react';
 
 const EMPTY_LIST = [];
 const when = (value) => {
@@ -140,10 +140,10 @@ export function QADashboardPage() {
       ) : (
         <>
           <div className="dash-kpis">
-            <MetricCard title="Test cases" value={totalCases} subtitle={`${notExecuted} not run yet`} icon={<FlaskConical size={18} />} color="primary" />
-            <MetricCard title="Executions" value={data.total_executions ?? 0} subtitle="All runs" icon={<Clock3 size={18} />} color="cyan" />
-            <MetricCard title="Open defects" value={data.open_defects ?? 0} subtitle="Not closed" icon={<Bug size={18} />} color={data.open_defects > 0 ? 'danger' : 'success'} />
-            <MetricCard title="Awaiting retest" value={data.awaiting_retest ?? 0} subtitle="Ready to verify" icon={<CheckCircle2 size={18} />} color="warning" />
+            <MetricCard title="Test cases" value={totalCases} subtitle={`${notExecuted} not run yet`} />
+            <MetricCard title="Executions" value={data.total_executions ?? 0} subtitle="All runs" />
+            <MetricCard title="Open defects" value={data.open_defects ?? 0} subtitle="Not closed" />
+            <MetricCard title="Awaiting retest" value={data.awaiting_retest ?? 0} subtitle="Ready to verify" />
           </div>
 
           <div className="dash-row dash-row--wide">

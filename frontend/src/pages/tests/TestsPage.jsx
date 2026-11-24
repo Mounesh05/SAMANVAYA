@@ -376,7 +376,7 @@ export function TestsPage() {
           <Input label="Test objective" value={form.objective} onChange={(event) => setForm({ ...form, objective: event.target.value })} />
           <Input label="Preconditions" value={form.preconditions} onChange={(event) => setForm({ ...form, preconditions: event.target.value })} />
           <Input label="Expected overall result" value={form.expected_result} onChange={(event) => setForm({ ...form, expected_result: event.target.value })} required />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '0.75rem' }}>
             <Select label="Suite" value={form.suite_id} onChange={(event) => setForm({ ...form, suite_id: event.target.value })} placeholder="No suite" options={suites.map((suite) => ({ value: suite.id, label: suite.name }))} />
             <Select label="Story" value={form.story_id || ''} onChange={(event) => setForm({ ...form, story_id: event.target.value })} options={storyOptions} placeholder="No linked story" />
             <Input label="Task ID" value={form.task_id} onChange={(event) => setForm({ ...form, task_id: event.target.value })} />

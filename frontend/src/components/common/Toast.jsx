@@ -24,7 +24,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <div style={{
+      <div aria-live="polite" style={{
         position: 'fixed',
         top: '1rem',
         right: '1rem',
@@ -39,25 +39,21 @@ export function ToastProvider({ children }) {
             style={{
               padding: '0.75rem 1.25rem',
               borderRadius: 'var(--radius-md)',
-              background: t.type === 'success' ? 'var(--success)' : t.type === 'error' ? 'var(--danger)' : 'var(--primary)',
-              color: '#fff',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderInlineStart: `3px solid ${t.type === 'success' ? 'var(--success)' : t.type === 'error' ? 'var(--danger)' : 'var(--primary)'}`,
+              color: 'var(--text-primary)',
               fontWeight: '500',
               fontSize: '0.875rem',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              animation: 'toastIn 0.2s ease-out',
-              maxWidth: '360px',
+              boxShadow: 'var(--shadow-lg)',
+              animation: 'fadeIn var(--transition-base)',
+              maxWidth: 'min(360px, calc(100vw - 32px))',
             }}
           >
             {t.message}
           </div>
         ))}
       </div>
-      <style>{`
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateX(100%); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
     </ToastContext.Provider>
   );
 }

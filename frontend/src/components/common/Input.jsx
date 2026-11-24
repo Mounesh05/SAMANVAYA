@@ -23,7 +23,7 @@ export const Input = forwardRef(function Input(
   const inputType = isPassword && isPasswordVisible ? 'text' : type;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
       {label && (
         <label
           htmlFor={inputId}
@@ -66,13 +66,14 @@ export const Input = forwardRef(function Input(
           type={inputType}
           style={{
             width: '100%',
-            padding: '0.55rem 0.85rem',
-            paddingLeft: leftIcon ? '2.4rem' : '0.85rem',
-            paddingRight: isPassword || rightIcon ? '2.75rem' : '0.85rem',
+            minHeight: 40,
+            padding: '8px 12px',
+            paddingLeft: leftIcon ? '36px' : '12px',
+            paddingRight: isPassword || rightIcon ? '44px' : '12px',
             fontSize: '0.875rem',
             backgroundColor: 'var(--bg-input)',
             color: 'var(--text-primary)',
-            border: `1px solid ${error ? 'var(--danger)' : 'var(--border-default)'}`,
+            border: `1px solid ${error ? 'var(--danger)' : 'var(--field-border)'}`,
             borderRadius: 'var(--radius-md)',
             transition: 'border-color var(--transition-fast), box-shadow var(--transition-fast)',
           }}

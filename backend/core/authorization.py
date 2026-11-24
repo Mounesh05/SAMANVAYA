@@ -61,10 +61,13 @@ def managed_project_ids(user: dict) -> set:
 
 
 def _other_org(user: dict, project: dict) -> bool:
-    """CR-013: both sides name an organisation and they differ."""
+    """Explicit, conflicting organization labels never grant project access."""
     own = user.get("org_id")
-    theirs = project.get("org_id") or project.get("organization_id")
-    return bool(own and theirs and own != theirs)
+    if user.get("organization_id", own) != own:
+        return True
+    if own is None:
+        return False
+    return any(field in project and project[field] != own for field in ("org_id", "organization_id"))
 
 
 async def project_member_ids(project_ids) -> set:

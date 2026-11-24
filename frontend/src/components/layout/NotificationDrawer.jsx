@@ -40,7 +40,6 @@ export function NotificationDrawer({ isOpen, onClose }) {
         inset: 0,
         zIndex: 999,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(4px)',
         display: 'flex',
         justifyContent: 'flex-end',
       }}
@@ -72,14 +71,14 @@ export function NotificationDrawer({ isOpen, onClose }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Bell size={18} style={{ color: 'var(--primary)' }} />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
               Notifications
             </h3>
             {data?.unread > 0 && (
               <span
                 style={{
                   fontSize: '0.75rem',
-                  fontWeight: '700',
+                  fontWeight: '600',
                   padding: '0.1rem 0.45rem',
                   borderRadius: 'var(--radius-full)',
                   backgroundColor: 'var(--danger-light)',
@@ -149,14 +148,14 @@ export function NotificationDrawer({ isOpen, onClose }) {
                     style={{
                       padding: '0.85rem 1rem',
                       borderRadius: 'var(--radius-md)',
-                      backgroundColor: isUnread ? 'var(--bg-elevated)' : 'var(--bg-glass-card)',
+                      backgroundColor: isUnread ? 'var(--bg-elevated)' : 'var(--bg-card-solid)',
                       border: `1px solid ${isUnread ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
                       cursor: 'pointer',
                       transition: 'background var(--transition-fast)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                      <div style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                         {item.title || 'Notification'}
                       </div>
                       {isUnread && (

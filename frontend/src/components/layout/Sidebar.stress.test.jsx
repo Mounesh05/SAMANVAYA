@@ -62,7 +62,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
 
     const feedbackItem = rendered.find((r) => r.href === '/feedback');
     expect(feedbackItem).toBeDefined();
-    expect(feedbackItem.text).toBe('Workplace Assessment');
+    expect(feedbackItem.text).toBe('Workplace feedback');
 
     // Verify HR is NEVER exposed to engineering or dev work tabs
     const forbiddenForHR = [
@@ -127,7 +127,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/cicd-logs',
         ],
         performanceLabel: 'Performance',
-        feedbackLabel: 'Role Feedback',
+        feedbackLabel: 'Assigned feedback',
       },
       {
         role: ROLES.PM,
@@ -162,7 +162,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/organization',
         ],
         performanceLabel: 'Performance',
-        feedbackLabel: 'Role Feedback',
+        feedbackLabel: 'Assigned feedback',
       },
       {
         role: ROLES.LEAD,
@@ -198,7 +198,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/organization',
         ],
         performanceLabel: 'Performance',
-        feedbackLabel: 'Role Feedback',
+        feedbackLabel: 'Assigned feedback',
       },
       {
         role: ROLES.DEVELOPER,
@@ -275,7 +275,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/organization',
         ],
         performanceLabel: 'Performance',
-        feedbackLabel: 'Role Feedback',
+        feedbackLabel: 'Assigned feedback',
       },
       {
         role: ROLES.DEVOPS,
@@ -310,7 +310,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
           '/organization',
         ],
         performanceLabel: 'Performance',
-        feedbackLabel: 'Role Feedback',
+        feedbackLabel: 'Assigned feedback',
       },
     ];
 
@@ -355,7 +355,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       if (spec.feedbackLabel) {
         expect(fb).toBeDefined();
         expect(fb.text).toBe(spec.feedbackLabel);
-        expect(fb.text).not.toBe('Workplace Assessment');
+        expect(fb.text).not.toBe('Workplace feedback');
       } else {
         expect(fb).toBeUndefined();
       }
@@ -445,7 +445,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
 
     const feedbackItem = rendered.find((r) => r.href === '/feedback');
     expect(feedbackItem).toBeDefined();
-    expect(feedbackItem.title).toBe('Workplace Assessment');
+    expect(feedbackItem.title).toBe('Workplace feedback');
   });
 
   it('verifies admin user bypasses standard role filters while preserving HR labels if role is HR', () => {
@@ -468,6 +468,6 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
     expect(performanceItem.text).toBe('Performance Outcomes');
 
     const feedbackItem = rendered.find((r) => r.href === '/feedback');
-    expect(feedbackItem.text).toBe('Workplace Assessment');
+    expect(feedbackItem.text).toBe('Workplace feedback');
   });
 });

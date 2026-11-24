@@ -579,7 +579,7 @@ async def test_ollama_connection_closed_is_reported_without_persistence(monkeypa
 
 @pytest.mark.asyncio
 async def test_ollama_timeout_is_reported(monkeypatch):
-    async def stalled_call(*_args):
+    async def stalled_call(*_args, **_kwargs):
         await asyncio.sleep(1)
 
     monkeypatch.setattr(evaluation, "MODEL_REQUEST_TIMEOUT_SECONDS", 0.01)

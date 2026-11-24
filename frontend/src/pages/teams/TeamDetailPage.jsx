@@ -92,7 +92,7 @@ export function TeamDetailPage() {
   if (teamError) return <ErrorState message={teamError.message} onRetry={() => window.location.reload()} />;
 
   const memberColumns = [
-    { key: 'name', header: 'Engineer Name', render: (m) => <span style={{ fontWeight: '700' }}>{m.name}</span> },
+    { key: 'name', header: 'Engineer Name', render: (m) => <span style={{ fontWeight: '600' }}>{m.name}</span> },
     { key: 'employee_id', header: 'Employee ID', render: (m) => <span className="font-mono">{m.employee_id}</span> },
     { key: 'role', header: 'Role', render: (m) => ROLE_LABELS[m.role] || m.role },
     { key: 'email', header: 'Email', render: (m) => <span style={{ color: 'var(--text-muted)' }}>{m.email}</span> },
@@ -107,7 +107,7 @@ export function TeamDetailPage() {
               borderRadius: 'var(--radius-full)',
               backgroundColor: 'var(--purple-light)',
               color: 'var(--purple)',
-              fontWeight: '700',
+              fontWeight: '600',
               fontSize: '0.725rem',
             }}
           >
@@ -154,7 +154,7 @@ export function TeamDetailPage() {
               leftIcon={<MessageSquareQuote size={16} />}
               onClick={() => navigate('/feedback')}
             >
-              Submit Feedback
+              Assigned feedback
             </Button>
           )
         }
@@ -164,7 +164,7 @@ export function TeamDetailPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
           gap: '1.25rem',
           marginBottom: '1.75rem',
         }}

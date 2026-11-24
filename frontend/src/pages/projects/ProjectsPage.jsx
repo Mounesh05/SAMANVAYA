@@ -88,7 +88,7 @@ export function ProjectsPage() {
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
   const columns = [
-    { key: 'name', header: 'Project Name', render: (p) => <span style={{ fontWeight: '700' }}>{p.name}</span> },
+    { key: 'name', header: 'Project Name', render: (p) => <span style={{ fontWeight: '600' }}>{p.name}</span> },
     { key: 'id', header: 'Project ID', render: (p) => <span className="font-mono">{p.id}</span> },
     { key: 'team_id', header: 'Team', render: (p) => p.team_id || 'Unassigned' },
     { key: 'status', header: 'Status', render: (p) => <StatusBadge status={p.status} /> },
@@ -164,7 +164,7 @@ export function ProjectsPage() {
             placeholder="Describe the project objectives and scope"
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Select
               label="Assigned Team"
               value={formData.team_id}
@@ -180,7 +180,7 @@ export function ProjectsPage() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Input
               label="Start Date"
               type="date"

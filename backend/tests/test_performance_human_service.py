@@ -204,6 +204,33 @@ async def test_standard_and_hr_assigned_endpoints_share_intake_and_cannot_supply
         assert (await client.post(url, json=forged)).status_code == 422
 
 
+async def test_feedback_landing_discovery_submit_read_and_revoke(stored):
+    from main import app
+    db, run = stored
+    receipt = await service().assign(assignment(run), {"employee_id": "A"})
+    assignment_id = receipt["assignment_id"]
+    actor = {"employee_id": "R"}
+    from unittest.mock import patch
+    with patch.dict(app.dependency_overrides, {get_current_user: lambda: dict(actor)}):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            listing = await client.get("/api/performance/human-assignments")
+            assert listing.status_code == 200
+            mine, = listing.json()
+            assert mine["assignment_id"] == assignment_id
+            url = f"/api/performance/human-reviews/{assignment_id}"
+            assert (await client.get(url)).status_code == 404
+            observation = {"dimension": mine["dimensions"][0], "state": "UNDER_REVIEW", "rating": None,
+                           "reason": "The handover evidence is awaiting review.", "direct_observation": False, "evidence": []}
+            payload = {"no_conflict_attested": True, "observations": [observation]}
+            saved = await client.post(url, json=payload)
+            assert saved.status_code == 201
+            assert saved.json()["combined_score"] is None
+            assert (await client.get(url)).json()["observations"] == [observation]
+            await db.users.update_one({"employee_id": "R"}, {"$set": {"project_ids": []}})
+            assert (await client.get("/api/performance/human-assignments")).json() == []
+            assert (await client.get(url)).status_code == 403
+
+
 async def test_concurrent_role_assignment_and_identical_submission_have_one_effect(stored):
     import asyncio
     db, run = stored

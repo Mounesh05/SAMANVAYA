@@ -460,7 +460,7 @@ class TestPipelineIntegrationZeroUnhandledExceptions:
         json.dumps({"dependencies": [{"name": 123, "version": -1, "vulns": [{"id": -99, "aliases": [-1, False, None]}]}]}),
         json.dumps({"dependencies": [{"vulns": [None, 123, -1, float("inf"), float("nan"), {}, []]}]}),
     ])
-    def test_dependencies_method_never_crashes(self, payload):
+    def test_dependencies_method_never_crashes(self, payload, python_dependency_project):
         """PythonAnalyzer._dependencies() handles hostile outputs without unhandled exceptions."""
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-repo", primary_language="python")
@@ -468,12 +468,14 @@ class TestPipelineIntegrationZeroUnhandledExceptions:
         with patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = payload
             with patch.object(analyzer, "_tool_available", return_value=True):
-                vulns = sync_run(analyzer._dependencies("/fake/repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert isinstance(vulns, list)
+                mock_run.assert_awaited()
 
     def test_analyze_end_to_end_with_adversarial_dependencies(self):
         """Full analyze() method returns clean CodeQualityEvidence despite adversarial output."""
         with tempfile.TemporaryDirectory() as tmp_dir:
+            (Path(tmp_dir) / "requirements.txt").write_text("example-package==1.0\n", encoding="utf-8")
             sample_file = Path(tmp_dir) / "app.py"
             sample_file.write_text("x = 1\n", encoding="utf-8")
 

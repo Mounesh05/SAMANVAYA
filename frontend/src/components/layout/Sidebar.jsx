@@ -90,7 +90,7 @@ export function Sidebar() {
       { page: 'cicdLogs', to: '/cicd-logs', icon: <Terminal size={18} />, label: 'CI/CD Log AI' },
       { page: 'evaluation', to: '/evaluation', icon: <Cpu size={18} />, label: 'AI Evaluation' },
       { page: 'performance', to: '/performance', icon: <Award size={18} />, label: reviewsPerformanceOutcomes ? 'Performance Outcomes' : 'Performance' },
-      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={18} />, label: submitsHrAssessments ? 'Workplace Assessment' : 'Role Feedback' },
+      { page: 'feedback', to: '/feedback', icon: <MessageSquareQuote size={18} />, label: submitsHrAssessments ? 'Workplace feedback' : 'Assigned feedback' },
       { page: 'reports', to: '/reports', icon: <FileBarChart size={18} />, label: 'Reports & Trends' },
       { page: 'audit', to: '/audit', icon: <History size={18} />, label: 'Audit Logs' },
       { page: 'ceoQuality', to: '/quality', icon: <ShieldCheck size={18} />, label: 'Quality' },
@@ -132,8 +132,7 @@ export function Sidebar() {
           <span className="sb-mark" aria-hidden="true">S</span>
           {!sidebarCollapsed && (
             <span className="sb-name">
-              SAMANVAYA
-              <span className="sb-tag">AI-assisted engineering</span>
+              Samanvaya
             </span>
           )}
         </NavLink>

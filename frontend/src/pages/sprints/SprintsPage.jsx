@@ -94,7 +94,7 @@ export function SprintsPage() {
   };
 
   const columns = [
-    { key: 'name', header: 'Sprint Name', render: (s) => <span style={{ fontWeight: '700' }}>{s.name}</span> },
+    { key: 'name', header: 'Sprint Name', render: (s) => <span style={{ fontWeight: '600' }}>{s.name}</span> },
     { key: 'id', header: 'Sprint ID', render: (s) => <span className="font-mono">{s.id}</span> },
     { key: 'status', header: 'Status', render: (s) => <StatusBadge status={s.status} /> },
     { key: 'goal', header: 'Sprint Goal', render: (s) => s.goal || '—' },
@@ -260,7 +260,7 @@ export function SprintsPage() {
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
                   COMPLETION RATE
                 </span>
-                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.2rem' }}>
                   {sprintHealth.completion_pct?.toFixed(1) || 0}%
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
@@ -282,7 +282,7 @@ export function SprintsPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.35rem' }}>
                 <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>Sprint Progress</span>
-                <span style={{ fontWeight: '700', color: 'var(--primary)' }}>
+                <span style={{ fontWeight: '600', color: 'var(--primary)' }}>
                   {sprintHealth.completion_pct?.toFixed(0) || 0}%
                 </span>
               </div>
@@ -292,7 +292,7 @@ export function SprintsPage() {
             {/* Risk Factors */}
             {sprintHealth.risk_factors && sprintHealth.risk_factors.length > 0 && (
               <div>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                   Identified Risk Factors
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
@@ -363,7 +363,7 @@ export function SprintsPage() {
             placeholder="Describe the sprint objective"
             required
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Input
               label="Start Date"
               type="date"

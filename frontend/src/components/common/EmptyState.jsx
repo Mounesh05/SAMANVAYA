@@ -18,7 +18,7 @@ export function EmptyState({
         justifyContent: 'center',
         padding: '3.5rem 1.5rem',
         textAlign: 'center',
-        background: 'var(--bg-glass-card)',
+        background: 'var(--bg-card-solid)',
         borderRadius: 'var(--radius-lg)',
         border: '1px dashed var(--border-default)',
       }}
@@ -39,7 +39,7 @@ export function EmptyState({
         {icon || <FolderOpen size={28} />}
       </div>
 
-      <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+      <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: 4 }}>
         {title}
       </h4>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', maxWidth: '400px', marginBottom: actionLabel ? '1.25rem' : '0' }}>
