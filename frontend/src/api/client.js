@@ -50,6 +50,7 @@ function processQueue(error, token = null) {
 // Validation errors (422) arrive as a list of { loc, msg }; turn them into
 // one readable sentence instead of "[object Object]".
 export function readableDetail(detail) {
+  if (typeof detail?.code === 'string' && typeof detail.message === 'string') return detail.message;
   if (!Array.isArray(detail)) return typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : detail;
   return detail
     .map((item) => {

@@ -1,6 +1,7 @@
 """Explicit internal start/read/pump operations. No routes, startup hooks or automatic triggers."""
 
 import asyncio
+import re
 from uuid import uuid4
 
 import httpx
@@ -8,10 +9,12 @@ from fastapi import HTTPException
 from pymongo.errors import PyMongoError
 
 from agents.pr_multi_agent_durable import DurablePRGraph, RetryableInference
+from core.database import col
 from domain.models.pr_multi_agent import ManualPRRequest, PRScope
 from domain.services.pr_multi_agent_service import ManualPRWorkflowService
 from domain.services.pr_multi_agent_evidence import pr_revisions
-from repositories.pr_workflow_repository import PRWorkflowRepository, LeaseLost, InvalidWorkflowRecord, parse
+from repositories.pr_repository import PRRepository
+from repositories.pr_workflow_repository import JOB_VERSION, PRWorkflowRepository, LeaseLost, InvalidWorkflowRecord, parse
 
 HEARTBEAT_SECONDS = 20
 EXECUTION_SECONDS = 180
@@ -77,6 +80,32 @@ class DurablePRWorkflowService:
         self.repository.validate(row)
         await self.authorize_header(header, current_user)
         return {key: value for key, value in row.items() if key != "_id"}
+
+    async def lookup_report(self, request, repository, user):
+        self.manual.check_enabled()
+        access, owner, name = await self.manual.resolver.authorize(user, request)
+        linked = f"{owner}/{name}"
+        if repository.casefold() != linked.casefold():
+            raise HTTPException(409, "The linked repository changed. Refresh the task evidence.")
+        project = PRRepository._project_scope([request.project_id], access["organization_id"])
+        prs = await col("pull_requests").find({
+            **project, "repo_id": {"$regex": "^" + re.escape(linked) + "$", "$options": "i", "$not": {"$type": "array"}},
+            "pr_number": {"$eq": request.pr_number, "$not": {"$type": "array"}},
+        }, {"head_sha": 1}).limit(2).to_list(2)
+        if len(prs) != 1 or prs[0].get("head_sha") != request.expected_head_sha:
+            raise HTTPException(409, "The synchronized PR head changed or is ambiguous. Refresh the task evidence.")
+        identities = await self.repository.collection.find({
+            "schema_version": JOB_VERSION, "scope.owner_id": access["owner_id"],
+            "scope.organization_id": access["organization_id"], "scope.project_id": request.project_id,
+            "scope.repository": linked, "scope.pr_number": request.pr_number, "scope.head_sha": request.expected_head_sha,
+        }, {"_id": 1}).limit(2).to_list(2)
+        if len(identities) > 1:
+            raise HTTPException(409, "Multiple base revisions match this head. Open the intended analysis by ID.")
+        if not identities:
+            return None
+        # Reuse the private job read, including current permissions and immutable report validation.
+        row = await self.get(identities[0]["_id"], user)
+        return row.get("report")
 
     async def _heartbeat(self, lease):
         while True:

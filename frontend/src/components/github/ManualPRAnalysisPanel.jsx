@@ -31,7 +31,7 @@ const claimLabels = { SUPPORTED: 'Supported structured observation', PROPOSED: '
   CONFLICTING: 'Conflicting claim', UNSUPPORTED: 'Unsupported claim' };
 
 function errorMessage(error) {
-  const status = error?.response?.status;
+  const status = error?.status ?? error?.response?.status;
   if (status === 403 || status === 401) return 'Access is no longer authorized. Analysis content is hidden.';
   if (status === 404) return 'Manual PR analysis is unavailable or not enabled for this account.';
   if (status === 429) return 'Another request is being prepared. Retry shortly.';
@@ -39,12 +39,59 @@ function errorMessage(error) {
   return error?.message || 'Unable to load this advisory analysis.';
 }
 
-export function ManualPRAnalysisPanel() {
+function useManualAnalysisUser() {
   const user = useAuthStore((state) => state.user);
   if (import.meta.env.VITE_PR_MULTI_AGENT_MANUAL_ENABLED !== 'true' || !user?.employee_id
       || !hasPermission(user, PERMISSIONS.TRIGGER_AI_EVALUATION)
       || !hasPermission(user, PERMISSIONS.VIEW_AI_EVALUATION)) return null;
+  return user;
+}
+
+export function ManualPRAnalysisPanel() {
+  const user = useManualAnalysisUser();
+  if (!user) return null;
   return <AnalysisForm key={`${user.employee_id}:${user.org_id || ''}`} user={user} />;
+}
+
+export function TaskPRAdvisory({ projectId, pr }) {
+  const user = useManualAnalysisUser();
+  if (!user?.org_id || !projectId || !pr.repository || !Number.isSafeInteger(pr.number) || pr.number < 1
+      || !/^[a-f0-9]{40}$/.test(pr.head_sha || '')) return null;
+  const params = { project_id: projectId, repository: pr.repository, pr_number: pr.number, head_sha: pr.head_sha };
+  return <AdvisoryLookup key={JSON.stringify([user.employee_id, user.org_id, params])} user={user} params={params} />;
+}
+
+function AdvisoryLookup({ user, params }) {
+  const [open, setOpen] = useState(false);
+  return <div>
+    <Button size="sm" variant="ghost" aria-expanded={open} onClick={() => setOpen(!open)}>
+      {open ? 'Close PR head advisory' : 'View PR head advisory'}
+    </Button>
+    {open && <PublishedAdvisory user={user} params={params} />}
+  </div>;
+}
+
+function PublishedAdvisory({ user, params }) {
+  const report = useQuery({
+    queryKey: ['manual-pr-head-report', user.employee_id, user.org_id, params],
+    queryFn: ({ signal }) => prWorkflowsApi.lookupReport(params, signal), gcTime: 0, retry: false,
+    staleTime: 0, refetchOnMount: 'always',
+  });
+  if (report.isFetching || report.isPending) return <p role="status">Checking for your published advisory…</p>;
+  if (report.isError) return <p role="alert">{errorMessage(report.error)}{' '}
+    <Button size="sm" variant="ghost" onClick={() => report.refetch()}>Retry</Button></p>;
+  if (report.data === null) return <p>No published advisory from your account for this PR head.</p>;
+  const scope = report.data?.scope;
+  if (scope?.owner_id !== user.employee_id || scope.organization_id !== user.org_id
+      || scope.project_id !== params.project_id || scope.repository?.toLowerCase() !== params.repository.toLowerCase()
+      || scope.pr_number !== params.pr_number || scope.head_sha !== params.head_sha) {
+    return <p role="alert">The advisory source differs from this task’s PR head. Refresh the task evidence.</p>;
+  }
+  return <div>
+    <p>Analyzed PR head <code>{scope.head_sha}</code> against base <code>{scope.base_sha}</code>.</p>
+    <p>QA and DevOps review the merge commit separately for release.</p>
+    <AdvisoryReport report={report.data} />
+  </div>;
 }
 
 function AnalysisForm({ user }) {
@@ -53,6 +100,8 @@ function AnalysisForm({ user }) {
   const [jobId, setJobId] = useState('');
   const [existingId, setExistingId] = useState('');
   const [validation, setValidation] = useState('');
+  const [workflowRun, setWorkflowRun] = useState('');
+  const imported = useMutation({ mutationFn: (request) => prWorkflowsApi.importActionsResults(project, request) });
   const identity = [user.employee_id, user.org_id];
   const projects = useQuery({ queryKey: ['manual-pr-projects', ...identity], queryFn: ({ signal }) => prWorkflowsApi.projects(signal),
     retry: false, gcTime: 0 });
@@ -90,11 +139,25 @@ function AnalysisForm({ user }) {
     <form aria-label="Manual PR analysis" onSubmit={submit} noValidate
       style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'end', margin: '1rem 0' }}>
       <Select label="Analysis project" value={project} options={options} disabled={start.isPending || projects.isPending || projects.isError}
-        onChange={(event) => { setProject(event.target.value); setJobId(''); start.reset(); setValidation(''); }} required />
+        onChange={(event) => { setProject(event.target.value); setJobId(''); start.reset(); imported.reset(); setValidation(''); }} required />
       <Input label="Pull request number" type="number" min="1" value={pr} disabled={start.isPending}
         onChange={(event) => setPr(event.target.value)} required />
       <Button type="submit" disabled={start.isPending || projects.isPending || projects.isError}>Start advisory analysis</Button>
     </form>
+    {hasPermission(user, PERMISSIONS.MANAGE_TEST_AUTOMATION) && <section aria-label="Published QA evidence">
+      <p>Import existing GitHub Actions JUnit and coverage artifacts before starting a new analysis. This reads published reports; it does not run tests or change GitHub. Existing immutable reports are not rewritten.</p>
+      <Input label="GitHub Actions run ID" value={workflowRun} inputMode="numeric" onChange={(event) => setWorkflowRun(event.target.value)} />
+      <Button variant="secondary" disabled={imported.isPending || !project || !pr} onClick={() => {
+        const number = Number(pr), run = Number(workflowRun);
+        if (!Number.isSafeInteger(number) || number < 1 || !Number.isSafeInteger(run) || run < 1) {
+          setValidation('Enter a positive PR number and GitHub Actions run ID.'); return;
+        }
+        setValidation(''); imported.mutate({ pr_number: number, workflow_run_id: run });
+      }}>Import published QA results</Button>
+      {imported.isPending && <p role="status">Verifying published QA artifacts…</p>}
+      {imported.isError && <p role="alert">{imported.error?.message || 'Published QA reports unavailable.'}</p>}
+      {imported.data && <p role="status">Imported {imported.data.test_run_ids.length} published test report(s). Coverage: {imported.data.coverage_status}. Counts remain CI-reported evidence, not independent proof.</p>}
+    </section>}
     {projects.isPending && <p role="status">Loading authorized projects…</p>}
     {projects.isError && <p role="alert">{errorMessage(projects.error)}</p>}
     {projects.data?.truncated && <p>Showing the first 100 authorized projects.</p>}

@@ -4,11 +4,11 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from pymongo.errors import PyMongoError
 
 from core.dependencies import get_current_user
-from domain.models.pr_multi_agent import ManualPRRequest
+from domain.models.pr_multi_agent import Label, ManualPRRequest, Revision
 from domain.models.pr_workflow_durable import DurablePRReport
 from domain.schemas.pr_workflow_api import (
     ManualWorkflowAccepted, ManualWorkflowStatus, WorkflowProjects, WorkflowProject, status_projection,
@@ -41,6 +41,19 @@ async def available_storage():
 async def start_analysis(body: ManualPRRequest, request: Request, user: dict = Depends(get_current_user)):
     async with available_storage():
         return await runtime(request).submit(body, user)
+
+
+@router.get("/pr-analysis/report", response_model=DurablePRReport | None)
+async def lookup_report(request: Request, response: Response, project_id: Label, head_sha: Revision,
+                        repository: Annotated[str, Query(min_length=3, max_length=201)],
+                        pr_number: Annotated[int, Query(ge=1, le=2**31 - 1)],
+                        user: dict = Depends(get_current_user)):
+    """Read the caller's published advisory for a synchronized PR head."""
+    response.headers["Cache-Control"] = "no-store"
+    pinned = ManualPRRequest(project_id=project_id, pr_number=pr_number, expected_head_sha=head_sha)
+    async with available_storage():
+        report = await runtime(request).service.lookup_report(pinned, repository, user)
+        return parse(DurablePRReport, report) if report is not None else None
 
 
 @router.get("/projects", response_model=WorkflowProjects)

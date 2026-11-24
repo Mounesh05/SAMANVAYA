@@ -67,6 +67,8 @@ class PRWorkflowRepository:
         # _id is the unique, actor/tenant/revision-bound idempotency key.
         await self.collection.create_index([("status", 1), ("next_attempt_at", 1)])
         await self.collection.create_index([("status", 1), ("lease_expires_at", 1)])
+        await self.collection.create_index([("scope.owner_id", 1), ("scope.organization_id", 1),
+            ("scope.project_id", 1), ("scope.pr_number", 1), ("scope.head_sha", 1)])
 
     @staticmethod
     def identity(scope):

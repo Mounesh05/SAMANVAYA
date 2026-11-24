@@ -79,6 +79,11 @@ const ProjectDetailPage = React.lazy(() =>
     default: m.ProjectDetailPage,
   }))
 );
+const ReleaseManagementPage = React.lazy(() =>
+  import('../pages/releases/ReleaseManagementPage').then((m) => ({
+    default: m.ReleaseManagementPage,
+  }))
+);
 const TeamsPage = React.lazy(() =>
   import('../pages/teams/TeamsPage').then((m) => ({
     default: m.TeamsPage,
@@ -391,6 +396,7 @@ export function AppRoutes() {
           {/* Work Management */}
           <Route path="projects" element={<RoleGuard page="projects"><ProjectsPage /></RoleGuard>} />
           <Route path="projects/:projectId" element={<RoleGuard page="projects"><ProjectDetailPage /></RoleGuard>} />
+          <Route path="releases/:projectId?/:releaseId?" element={<RoleGuard page="releases"><ReleaseManagementPage /></RoleGuard>} />
           <Route path="teams" element={<RoleGuard page="teams"><TeamsPage /></RoleGuard>} />
           <Route path="teams/:teamId" element={<RoleGuard page="teamDetail"><TeamDetailPage /></RoleGuard>} />
           <Route

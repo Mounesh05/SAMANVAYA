@@ -6,7 +6,7 @@ import { prWorkflowsApi } from '../../api/prWorkflows.api';
 import { ManualPRAnalysisPanel } from './ManualPRAnalysisPanel';
 import { withPermissions } from '../../tests/utils/roleUser';
 
-vi.mock('../../api/prWorkflows.api', () => ({ prWorkflowsApi: { projects: vi.fn(), start: vi.fn(), status: vi.fn(), report: vi.fn() } }));
+vi.mock('../../api/prWorkflows.api', () => ({ prWorkflowsApi: { projects: vi.fn(), start: vi.fn(), status: vi.fn(), report: vi.fn(), importActionsResults: vi.fn() } }));
 
 const id = 'a'.repeat(64);
 const pending = { schema_version: 'pr-workflow-status-v1', job_id: id, status: 'PENDING', project_id: 'P1',
@@ -44,6 +44,19 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); useAuthStore.setState({ user: null }); });
 
 describe('manual PR advisory panel', () => {
+  it('imports published QA evidence using only project PR and run identity', async () => {
+    prWorkflowsApi.importActionsResults.mockResolvedValue({ test_run_ids: ['r1'], coverage_status: 'missing' });
+    renderWithProviders(<ManualPRAnalysisPanel />);
+    await screen.findByRole('option', { name: 'Project One' });
+    fireEvent.change(screen.getByLabelText(/Analysis project/), { target: { value: 'P1' } });
+    fireEvent.change(screen.getByLabelText(/Pull request number/), { target: { value: '7' } });
+    fireEvent.change(screen.getByLabelText(/GitHub Actions run ID/), { target: { value: '123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import published QA results' }));
+    expect(await screen.findByText(/Imported 1 published test report/)).toBeVisible();
+    expect(prWorkflowsApi.importActionsResults).toHaveBeenCalledWith('P1', { pr_number: 7, workflow_run_id: 123 });
+    expect(screen.getByText(/Coverage: missing/)).toBeVisible();
+    expect(prWorkflowsApi.start).not.toHaveBeenCalled();
+  });
   it('does not render or request data when the build flag is off', () => {
     vi.stubEnv('VITE_PR_MULTI_AGENT_MANUAL_ENABLED', 'false');
     renderWithProviders(<ManualPRAnalysisPanel />);

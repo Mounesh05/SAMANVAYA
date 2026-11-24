@@ -53,7 +53,12 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       '/approvals', // CR-010: HR requests and approves role changes
       '/reports', // CR-011: HR downloads the aggregated performance report
     ];
-    expect(renderedHrefs.sort()).toEqual(expectedHRRoutes.sort());
+      const releaseWorkspaces = [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS];
+      const expectedRoutes = releaseWorkspaces.includes(spec.role)
+        ? [...spec.expectedRoutes, '/releases'] : spec.expectedRoutes;
+      expect(renderedHrefs.sort(), `Failed route set for role ${spec.role}`).toEqual(expectedRoutes.sort());
+
+      // Verify forbidden routes are absent
 
     // Verify HR dynamic label contract (R2)
     const performanceItem = rendered.find((r) => r.href === '/performance');

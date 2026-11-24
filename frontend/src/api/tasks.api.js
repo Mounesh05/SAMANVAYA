@@ -9,6 +9,12 @@ export const tasksApi = {
     return apiClient.get(`/tasks/${taskId}`);
   },
 
+  getDelivery: (taskId) =>
+    apiClient.get(`/tasks/${encodeURIComponent(taskId)}/delivery`),
+
+  recordReleaseDecision: (taskId, decision) =>
+    apiClient.post(`/tasks/${encodeURIComponent(taskId)}/release-decisions`, decision),
+
   listByProject: async (projectId) => {
     return apiClient.get(`/tasks/project/${projectId}`);
   },

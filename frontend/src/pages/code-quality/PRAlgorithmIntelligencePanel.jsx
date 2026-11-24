@@ -6,6 +6,7 @@ import { Button } from '../../components/common/Button';
 import { DecisionResults } from './DecisionResults';
 import { RequirementsSection } from './RequirementsPanel';
 import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection';
+import { useSessionScope } from '../../store/useSessionScope';
 
 const statusLabel = value => ({ pending: 'Pending', analyzing: 'Analyzing', benchmarking: 'Benchmarking', completed: 'Completed',
   insufficient_evidence: 'Insufficient evidence', unsupported: 'Unsupported', failed: 'Failed', superseded: 'Superseded' }[value] || value);
@@ -30,19 +31,25 @@ export function WorkloadDifferences({ decision }) {
   </section>;
 }
 
-export function PRAlgorithmIntelligencePanel({ prId }) {
+export function PRAlgorithmIntelligencePanel({ prId, source }) {
   const [selected, setSelected] = useState('');
-  const history = useQuery({ queryKey: ['pr-algorithm-intelligence', prId || 'accessible-projects'],
+  const scope = useSessionScope();
+  const history = useQuery({ queryKey: ['pr-algorithm-intelligence', scope, prId || 'accessible-projects'],
     queryFn: () => algorithmsApi.getPRIntelligence(prId ? { pr_id: prId } : {}),
-    refetchInterval: 5000 });
-  const comparison = useQuery({ queryKey: ['algorithms', 'run', selected], queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected) });
+    refetchInterval: source ? false : 5000 });
+  const comparison = useQuery({ queryKey: ['algorithms', 'run', scope, selected], queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected) });
   const explanation = useMutation({ mutationFn: runId => algorithmsApi.getExplanation(runId) });
-  const runs = history.error ? [] : history.data?.analyses || [];
-  return <Card className="cq-panel" title="PR algorithm checks" subtitle="Automatic comparisons for connected projects" style={{ marginBottom: '1.75rem' }}>
+  const runs = (history.error ? [] : history.data?.analyses || []).filter((run) => !source || (
+    run.project_id === source.projectId && run.head_sha === source.head &&
+    run.pr_number === source.number && run.repository?.toLowerCase() === source.repository.toLowerCase()
+  ));
+  return <Card className="cq-panel" title="PR algorithm checks"
+    subtitle={source ? 'Static findings and measured comparisons for this PR revision' : 'Automatic comparisons for connected projects'}
+    style={{ marginBottom: '1.75rem' }}>
     <p className="cq-note">Results cover tested workloads only. Behaviour without an approved contract is reported as unknown.</p>
     {history.isLoading && <p role="status">Loading PR analysis…</p>}
     {history.error && <p role="alert">{history.error.message}</p>}
-    {!history.isLoading && !history.error && !runs.length && <p>No automatic PR analyses recorded yet.</p>}
+    {!history.isLoading && !history.error && !runs.length && <p>{source ? 'No stored analysis matches this PR head.' : 'No automatic PR analyses recorded yet.'}</p>}
     {runs.map(run => <details key={run.run_id} open={!run.historical_only}>
       <summary>{run.repository} PR #{run.pr_number} · {statusLabel(run.status)}{run.historical_only ? ' · Historical only' : ''}</summary>
       <p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p>

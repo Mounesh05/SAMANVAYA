@@ -1,0 +1,27 @@
+.task-delivery {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  border-block: 1px solid var(--border-subtle);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.task-delivery h4, .task-delivery p, .task-delivery dl, .task-delivery dd { margin: 0; }
+.task-delivery h4 { font-size: 1rem; font-weight: 600; }
+.task-delivery p, .task-delivery li { color: var(--text-secondary); }
+.task-delivery a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.task-delivery summary { cursor: pointer; }
+.delivery-header, .delivery-buttons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.delivery-header { justify-content: space-between; }
+.delivery-stages { display: grid; gap: 12px; }
+.delivery-stage { display: grid; grid-template-columns: minmax(96px, 25%) 1fr; gap: 12px; }
+.delivery-stage dt { font-weight: 600; }
+.delivery-stage dd, .delivery-decision { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.delivery-stage ul { padding-inline-start: 16px; margin: 0; }
+.delivery-actions { display: grid; gap: 8px; }
+.delivery-requirement { white-space: pre-wrap; }
+.task-delivery [role="alert"] { color: var(--danger); }
+@media (max-width: 480px) {
+  .delivery-stage { grid-template-columns: 1fr; gap: 4px; }
+}

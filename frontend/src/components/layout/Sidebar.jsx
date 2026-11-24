@@ -39,7 +39,7 @@ import { hasAnyPermission, hasPermission, PERMISSIONS, TEAM_LIST_PERMISSIONS, TR
 // with nothing the person can open is left out.
 const NAV_SECTIONS = [
   { title: 'Overview', pages: ['dashboard'] },
-  { title: 'Delivery', pages: ['projects', 'sprints', 'stories', 'tasks', 'board'] },
+  { title: 'Delivery', pages: ['projects', 'sprints', 'stories', 'tasks', 'board', 'releases'] },
   { title: 'Engineering', pages: ['codeQuality', 'pullRequests', 'githubSync', 'tests', 'bugs', 'pipelines', 'deployments', 'incidents', 'cicdLogs'] },
   { title: 'People', pages: ['employees', 'approvals', 'transfers', 'teams', 'teamDetail', 'evaluation', 'performance', 'feedback'] },
   { title: 'Insights', pages: ['reports', 'audit', 'ceoQuality', 'ceoRisk', 'ceoOrganization'] },
@@ -85,6 +85,7 @@ export function Sidebar() {
       { page: 'bugs', to: '/bugs', icon: <Bug size={18} />, label: 'Bugs' },
       { page: 'pipelines', to: '/pipelines', icon: <Terminal size={18} />, label: 'Pipelines' },
       { page: 'deployments', to: '/deployments', icon: <Rocket size={18} />, label: 'Deployments' },
+      { page: 'releases', to: '/releases', icon: <Rocket size={18} />, label: 'Releases' },
       { page: 'incidents', to: '/incidents', icon: <AlertTriangle size={18} />, label: 'Incidents' },
       { page: 'cicdLogs', to: '/cicd-logs', icon: <Terminal size={18} />, label: 'CI/CD Log AI' },
       { page: 'evaluation', to: '/evaluation', icon: <Cpu size={18} />, label: 'AI Evaluation' },
