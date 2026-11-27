@@ -145,3 +145,22 @@ async def test_repository_analysis_discovers_verified_tree_and_expands_directori
     api.client.get_source_tree.return_value["truncated"] = True
     with pytest.raises(ValueError, match="Exact regular-file tree required"):
         await api.list_repository_tree_summary("owner", "repo", revision)
+
+
+@pytest.mark.anyio
+async def test_expand_selected_paths_handles_prefix_boundaries_backslashes_and_exclusions():
+    api = GitHubAPIService()
+    revision, tree_id = "a" * 40, "b" * 40
+    api.client.get_commit = AsyncMock(return_value={"sha": revision, "commit": {"tree": {"sha": tree_id}}})
+    api.client.get_source_tree = AsyncMock(return_value={
+        "sha": tree_id, "truncated": False,
+        "tree": [
+            {"path": "src/app.py", "mode": "100644", "type": "blob"},
+            {"path": "src_extra/other.py", "mode": "100644", "type": "blob"},
+            {"path": "src/vendor/ignored.py", "mode": "100644", "type": "blob"},
+            {"path": "src/README.md", "mode": "100644", "type": "blob"},
+        ],
+    })
+    assert await api.expand_selected_paths("owner", "repo", revision, ["src"], excluded_paths=["vendor"]) == ["src/app.py"]
+    assert await api.expand_selected_paths("owner", "repo", revision, ["src\\"], excluded_paths=["vendor"]) == ["src/app.py"]
+    assert await api.expand_selected_paths("owner", "repo", revision, ["missing\\"], excluded_paths=["vendor"]) == []

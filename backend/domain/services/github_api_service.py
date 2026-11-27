@@ -206,10 +206,11 @@ class GitHubAPIService:
 
         resolved: List[str] = []
         for raw in selections:
-            item = raw.strip().replace("\\", "/").strip("/")
+            cleaned = raw.strip().replace("\\", "/")
+            item = cleaned.strip("/")
             if not item:
                 continue
-            is_dir_hint = raw.strip().endswith("/") or (item in dir_prefixes and item not in regular)
+            is_dir_hint = cleaned.endswith("/") or (item in dir_prefixes and item not in regular)
             if is_dir_hint:
                 prefix = item + "/"
                 resolved.extend(path for path in all_supported if path.startswith(prefix))

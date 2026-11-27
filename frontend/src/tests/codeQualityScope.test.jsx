@@ -249,3 +249,34 @@ it('shows PR comparison scope for active/failed runs, legacy scopes, measurement
     changed_files: [],
   })));
 });
+
+it('resets purpose_discovery when switching to PR comparison and toggles bare directory chips cleanly', async () => {
+  codeQualityApi.startAnalysis.mockResolvedValue({});
+  showHistoryPage();
+
+  await screen.findByRole('option', { name: 'Service Repo' });
+  fireEvent.click(screen.getByRole('button', { name: 'Start analysis' }));
+  await screen.findByText(/acme\/service/);
+
+  // Typing a bare directory name ("backend") and clicking the "backend/" chip should toggle it off cleanly
+  fireEvent.click(screen.getByRole('tab', { name: /Selected files/i }));
+  expect(await screen.findByText('backend/app.py')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText(/Changed files/), { target: { value: 'backend' } });
+  const backendChip = screen.getByRole('button', { name: 'backend/' });
+  expect(backendChip).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(backendChip);
+  expect(screen.getByLabelText(/Changed files/)).toHaveValue('');
+  expect(backendChip).toHaveAttribute('aria-pressed', 'false');
+
+  // Selecting Function discovery then switching to PR comparison resets analysis_level to standard
+  fireEvent.change(screen.getByLabelText('Analysis level'), { target: { value: 'purpose_discovery' } });
+  fireEvent.click(screen.getByRole('tab', { name: /PR comparison/i }));
+  fireEvent.change(await screen.findByLabelText('Pull request'), { target: { value: '17' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Run analysis' }));
+  await waitFor(() => expect(codeQualityApi.startAnalysis).toHaveBeenCalledWith(expect.objectContaining({
+    repository_id: 'PRJ-1',
+    file_scope: 'pr_comparison',
+    analysis_level: 'standard',
+    pr_number: 17,
+  })));
+});

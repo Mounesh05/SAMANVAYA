@@ -160,8 +160,10 @@ function QualityHistory({ prior, user }) {
   );
 
   function toggleSelectedPath(path) {
-    const next = changedFiles.includes(path)
-      ? changedFiles.filter(item => item !== path)
+    const bare = path.endsWith('/') ? path.slice(0, -1) : null;
+    const isSelected = changedFiles.includes(path) || (bare ? changedFiles.includes(bare) : false);
+    const next = isSelected
+      ? changedFiles.filter(item => item !== path && item !== bare)
       : [...changedFiles, path];
     update('changed_files', next.join('\n'));
   }
@@ -172,6 +174,9 @@ function QualityHistory({ prior, user }) {
       ...data,
       file_scope: mode,
       pr_number: mode === 'pr_comparison' ? data.pr_number : '',
+      analysis_level: mode === 'pr_comparison' && data.analysis_level === 'purpose_discovery'
+        ? 'standard'
+        : data.analysis_level,
     }));
   }
 
@@ -483,7 +488,7 @@ function QualityHistory({ prior, user }) {
                     </div>
                     {filesQuery.isFetching && <p role="status" className="cq-note">Discovering supported files…</p>}
                     {filesQuery.isError && (
-                      <p className="cq-note">Could not load tree ({filesQuery.error.message}). You can still enter paths below.</p>
+                      <p role="alert" className="cq-note">Could not load tree ({filesQuery.error?.message || 'GitHub unavailable'}). You can still enter paths below.</p>
                     )}
                     {filesQuery.isSuccess && (
                       <>
