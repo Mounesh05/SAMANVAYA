@@ -53,10 +53,46 @@ async def run(workflow, files=None):
 async def test_missing_contract_preserves_static_findings_without_execution(workflow):
     result = await run(workflow)
     assert result["status"] == "insufficient_evidence"
-    assert result["functions"][0]["current"]["qualified_name"] == "solve"
-    assert result["functions"][0]["relationship"]["status"] == "PROVISIONAL"
+    row = result["functions"][0]
+    assert row["current"]["qualified_name"] == "solve"
+    assert row["relationship"]["status"] == "PROVISIONAL"
     assert result["function_discovery"]["functions"]
+    # Genuine base-vs-head replacement: the same declaration exists on both sides.
+    assert row["mode"] == "B" and row["previous"]["qualified_name"] == "solve"
+    assert row["comparison_status"] == "blocked" and row["static_status"] == "analyzed"
+    assert row["static"]["status"] == "analyzed" and row["static_previous"]["status"] == "analyzed"
+    assert row["complexity"]["method"] == "static-ast-complexity-v1"
+    assert result["comparison_modes"] == {"B": 1}
     workflow.runner.run.assert_not_awaited()
+
+
+async def test_approved_new_function_uses_one_candidate_without_comparison(workflow):
+    workflow.snapshots["base"] = {"module.py": "VALUE = 1\n"}
+    approved_contract = await contract(workflow)
+    result = await run(workflow)
+    row = result["functions"][0]
+    assert row["mode"] == "A" and row["comparison_status"] == "not_applicable"
+    assert row["benchmark_status"] == "completed"
+    workflow.runner.run.assert_awaited_once()
+    request = workflow.runner.run.call_args.args[0]
+    assert [candidate["entrypoint"] for candidate in request["candidates"]] == ["solve"]
+    stored = await workflow.benchmarks.get(row["benchmark_run_id"])
+    assert stored["pr_automation"]["contract_id"] == approved_contract["contract_id"]
+    assert stored["pr_automation"]["head_sha"] == "head"
+    assert await workflow.db.recommendations.count_documents({}) == 0
+
+
+async def test_approval_unblocks_same_revision_without_replaying_a_duplicate(workflow):
+    workflow.snapshots["base"] = {"module.py": "VALUE = 1\n"}
+    before = await run(workflow)
+    assert before["functions"][0]["benchmark_status"] == "blocked"
+    await contract(workflow)
+    after = await run(workflow)
+    assert before["run_id"] != after["run_id"]
+    assert after["functions"][0]["benchmark_status"] == "completed"
+    duplicate = await run(workflow)
+    assert duplicate["run_id"] == after["run_id"]
+    workflow.runner.run.assert_awaited_once()
 
 
 async def test_approved_contract_datasets_requirements_and_evidence_reach_phase1(workflow):
@@ -134,7 +170,11 @@ async def test_unchanged_function_body_is_not_benchmarked_for_unrelated_file_edi
 async def test_new_or_renamed_function_has_no_assumed_previous_implementation(workflow):
     workflow.snapshots["head"] = {"module.py": HEAD.replace("solve", "different")}
     result = await run(workflow)
-    assert result["functions"][0]["previous"] is None
+    row = result["functions"][0]
+    assert row["previous"] is None
+    assert row["mode"] == "A" and row["comparison_status"] == "not_applicable"
+    assert row["status"] == "analyzed" and row["static_status"] == "analyzed"
+    assert result["status"] == "completed"
     workflow.runner.run.assert_not_awaited()
 
 
@@ -289,3 +329,128 @@ async def test_pr_revision_current_check_handles_identical_github_update_timesta
     await repository.store_revision(first)
     record, accepted = await repository.store_revision({**first, "head_sha": "old"}, validate_current=AsyncMock(return_value=False))
     assert not accepted and record["head_sha"] == "new"
+
+
+LEGACY = "def legacy(xs):\n    return xs\n"
+ALGORITHMS = (
+    "def alpha(xs):\n"
+    "    return sorted(xs)\n"
+    "\n"
+    "def beta(xs):\n"
+    "    return list(sorted(xs))\n"
+)
+SHARED_ASSERTION = (
+    "from module import alpha, beta\n"
+    "\n"
+    "def test_agree():\n"
+    "    assert alpha([3, 1]) == beta([3, 1])\n"
+)
+
+
+async def test_mode_a_function_without_a_predecessor_is_analysed_not_marked_unsupported(workflow):
+    workflow.snapshots["base"] = {"module.py": LEGACY}
+    workflow.snapshots["head"] = {"module.py": ALGORITHMS}
+    result = await run(workflow, [{"filename": "module.py", "status": "modified"}])
+    assert result["status"] == "completed", result.get("error")
+    assert {row["mode"] for row in result["functions"]} == {"A"}
+    for row in result["functions"]:
+        assert row["previous"] is None
+        assert row["static_status"] == "analyzed"
+        assert row["comparison_status"] == "not_applicable"
+        assert row["status"] == "analyzed"
+        assert row["classification"]["category"] == "application"
+        assert row["complexity"]["method"] == "static-ast-complexity-v1"
+        assert row["complexity"]["time_complexity"], row["complexity"]
+    assert result["comparison_modes"] == {"A": 2}
+    workflow.runner.run.assert_not_awaited()
+
+
+async def test_mode_c_pairs_two_declarations_referenced_by_one_static_assertion(workflow):
+    workflow.snapshots["base"] = {"module.py": LEGACY}
+    workflow.snapshots["head"] = {"module.py": ALGORITHMS, "test_module.py": SHARED_ASSERTION}
+    result = await run(workflow, [{"filename": "module.py", "status": "modified"}])
+    rows = result["functions"]
+    holders = [row for row in rows if row["mode"] == "C"]
+    assert len(holders) == 1, [row["mode"] for row in rows]
+    holder = holders[0]
+    assert holder["previous"] is not None
+    assert holder["previous"]["qualified_name"] in {"alpha", "beta"}
+    assert holder["previous"]["qualified_name"] != holder["current"]["qualified_name"]
+    assert any("same head revision" in reason for reason in holder["relationship"]["reasons"])
+    assert any("neither chronology nor superiority" in limit for limit in holder["relationship"]["limitations"])
+    # No approved contract exists, so the comparison must stop before execution.
+    assert holder["status"] == "insufficient_evidence"
+    assert holder["comparison_status"] == "blocked"
+    assert holder["static_status"] == "analyzed"
+    other = next(row for row in rows if row["mode"] == "A")
+    assert any(holder["current"]["qualified_name"] in limit for limit in other["relationship"]["limitations"])
+    assert result["comparison_modes"] == {"C": 1, "A": 1}
+    assert result["status"] == "insufficient_evidence"
+    workflow.runner.run.assert_not_awaited()
+
+
+async def test_shared_assertion_does_not_turn_test_support_into_an_alternative(workflow):
+    workflow.snapshots["base"] = {"module.py": LEGACY}
+    workflow.snapshots["head"] = {
+        "module.py": ALGORITHMS,
+        "test_module.py": (
+            "from module import alpha\n"
+            "def sample(values):\n"
+            "    return sorted(values)\n"
+            "def test_agree():\n"
+            "    assert alpha([3, 1]) == sample([3, 1])\n"
+        ),
+    }
+    result = await run(workflow, [
+        {"filename": "module.py", "status": "modified"},
+        {"filename": "test_module.py", "status": "added"},
+    ])
+    by_name = {row["current"]["name"]: row for row in result["functions"]}
+    assert by_name["alpha"]["mode"] == "A"
+    assert by_name["sample"]["classification"]["category"] == "test_helper"
+    assert by_name["sample"]["comparison_status"] == "not_applicable"
+    assert by_name["test_agree"]["classification"]["category"] == "test"
+    workflow.runner.run.assert_not_awaited()
+
+
+async def test_static_findings_survive_a_comparison_that_could_not_run(workflow):
+    workflow.snapshots["base"] = {"module.py": LEGACY}
+    workflow.snapshots["head"] = {"module.py": ALGORITHMS}
+    result = await run(workflow, [{"filename": "module.py", "status": "modified"}])
+    for row in result["functions"]:
+        assert row["static"]["status"] == "analyzed"
+        assert row["static"]["patterns"], "structural patterns must be recorded"
+        assert row["static"]["limitations"] is not None
+        assert row["evidence_refs"], "discovery evidence must stay attached"
+    assert result["function_discovery"]["functions"]
+
+
+async def test_a_structurally_unsupported_comparison_still_reports_its_static_analysis(workflow):
+    workflow.snapshots["head"] = {
+        "module.py": "async def solve(graph, start):\n"
+                     "    seen = {start}\n"
+                     "    for node in graph[start]:\n"
+                     "        if node not in seen:\n"
+                     "            seen.add(node)\n"
+                     "    return seen\n"}
+    result = await run(workflow)
+    assert result["status"] == "unsupported"
+    row = result["functions"][0]
+    assert row["mode"] == "B"
+    assert row["comparison_status"] == "unsupported"
+    assert row["static_status"] == "analyzed"
+    assert row["static"]["classification"]["category"] == "application"
+    assert "visited_set_tracking" in row["static"]["patterns"]
+    workflow.runner.run.assert_not_awaited()
+
+
+def test_run_status_distinguishes_nothing_analysed_from_analysis_without_a_comparison():
+    from domain.services.pr_algorithm_intelligence_service import run_status
+    assert run_status([]) == "unsupported"
+    assert run_status([{"status": "unsupported"}]) == "unsupported"
+    assert run_status([{"status": "analyzed"}]) == "completed"
+    assert run_status([{"status": "analyzed"}, {"status": "unsupported"}]) == "completed"
+    assert run_status([{"status": "analyzed"}, {"status": "insufficient_evidence"}]) == "insufficient_evidence"
+    assert run_status([{"status": "completed"}]) == "completed"
+    assert run_status([{"status": "failed"}]) == "failed"
+    assert run_status([{"status": "insufficient_evidence", "finding_status": "CORRECTNESS_FAILURE"}]) == "completed"

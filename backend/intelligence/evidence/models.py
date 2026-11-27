@@ -13,7 +13,7 @@ Gap fixes included:
 
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -226,6 +226,7 @@ class CodeQualityEvidence(BaseModel):
     tools_executed: List[str] = Field(default_factory=list)
     tools_skipped: List[str] = Field(default_factory=list)
     analysis_duration_ms: float = 0.0
+    execution_provenance: Dict[str, Any] = Field(default_factory=dict)
 
     # Convenience helpers ──────────────────────────────────────────────────────
 

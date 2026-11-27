@@ -215,7 +215,7 @@ async def test_source_only_run_never_scores_or_updates_baseline(mock_db, monkeyp
     await code_quality._run_analysis("fixture", code_quality.AnalyzeRequest(repository_id="fixture",
         changed_files=["module.py"], use_ai=False), None)
     saved = await mock_db.code_quality_runs.find_one({"run_id": "fixture"})
-    assert saved["status"] == "completed" and saved["quality_analysis_status"] == "not_run"
+    assert saved["status"] == "failed" and saved["quality_analysis_status"] == "failed"
     assert saved["quality_score"] is None and saved["risk_score"] is None
     assert saved["commit_sha"] == "exact-sha"
     quality.assert_not_awaited()

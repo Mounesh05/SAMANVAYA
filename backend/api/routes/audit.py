@@ -4,8 +4,7 @@ Provides access to audit logs with role-based filtering.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional, List
-from datetime import datetime, timedelta
+from typing import Optional
 
 from core.audit import audit_logger, AuditAction
 from core.dependencies import get_current_user
@@ -57,6 +56,16 @@ RESTRICTED_AUDIT_ACTIONS = {
 }
 
 
+def _audit_scope(user):
+    org = user.get("org_id")
+    if (not isinstance(org, str) or not org.strip()
+            or user.get("organization_id", org) != org):
+        raise HTTPException(403, "Current organization is required for audit access")
+    return {"organization_id": org,
+            "allowed_actions": ([action.value for action in HR_AUDIT_ACTIONS]
+                                if user.get("role", "").upper() == "HR" else None)}
+
+
 @router.get("/logs")
 async def get_audit_logs(
     actor_id: Optional[str] = Query(None, description="Filter by actor ID"),
@@ -103,7 +112,8 @@ async def get_audit_logs(
         action=action_enum,
         start_date=start_date,
         end_date=end_date,
-        limit=limit
+        limit=limit,
+        **_audit_scope(current_user),
     )
     
     # Apply domain-based filtering for HR users
@@ -162,7 +172,7 @@ async def get_user_activity_summary(
         )
     
     # Get activity summary
-    activity = await audit_logger.get_user_activity(actor_id=user_id, days=days)
+    activity = await audit_logger.get_user_activity(actor_id=user_id, days=days, **_audit_scope(current_user))
     
     # Apply HR filtering if necessary
     user_role = current_user.get('role', 'DEVELOPER').upper()
@@ -223,7 +233,8 @@ async def get_resource_history(
     history = await audit_logger.get_resource_history(
         resource_type=resource_type,
         resource_id=resource_id,
-        limit=limit
+        limit=limit,
+        **_audit_scope(current_user),
     )
     
     # Apply HR filtering

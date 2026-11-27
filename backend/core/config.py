@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     # ── Environment ──────────────────────────────────────────────
     ENVIRONMENT: str = "development"  # development, staging, production
     DEBUG: bool = True
+    UVICORN_HOST: str = "0.0.0.0"
+    UVICORN_PORT: int = Field(default=8000, ge=1, le=65535)
     PR_MULTI_AGENT_INTERNAL_ENABLED: bool = False
     PR_MULTI_AGENT_MANUAL_ENABLED: bool = False  # Manual API/UI worker, development/test only.
     RELEASE_MANAGEMENT_ENABLED: bool = False
@@ -43,8 +45,8 @@ class Settings(BaseSettings):
     
     # ── Security ──────────────────────────────────────────────────
     RATE_LIMIT_ENABLED: bool = True  # Rate limiting on by default
-    MAX_REQUESTS_PER_MINUTE: int = 100
-    MAX_LOGIN_ATTEMPTS: int = 5
+    MAX_REQUESTS_PER_MINUTE: int = Field(default=100, gt=0)
+    MAX_LOGIN_ATTEMPTS: int = Field(default=5, gt=0)
     # Public POST /api/auth/register (DEVELOPER role only). Off by default;
     # HR/admin create accounts via POST /api/employees instead.
     ALLOW_SELF_REGISTRATION: bool = False

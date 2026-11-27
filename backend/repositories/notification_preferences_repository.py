@@ -12,13 +12,13 @@ class NotificationPreferencesRepository:
     
     async def find_by_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user's notification preferences."""
-        return await self.collection.find_one({"user_id": user_id})
+        return await self.collection.find_one({"user_id": user_id}, {"_id": 0})
     
     async def upsert(self, user_id: str, preferences: Dict[str, Any]) -> bool:
         """Create or update preferences."""
         await self.collection.update_one(
             {"user_id": user_id},
-            {"$set": preferences},
+            {"$set": {**preferences, "user_id": user_id}},
             upsert=True
         )
         return True

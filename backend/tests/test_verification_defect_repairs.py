@@ -99,6 +99,22 @@ async def test_shared_project_enumeration_is_tenant_scoped(quality_api):
         assert await get_accessible_project_ids({**user, "org_id": None}) == []
 
 
+@pytest.mark.parametrize("context", [
+    {"repo_path": "C:/private-foreign-project"},
+    {"source_files": {"module.py": "def forged(): return 1"}, "commit_sha": "a" * 40},
+])
+async def test_public_quality_submission_cannot_select_host_source_or_forge_snapshot(quality_api, monkeypatch, context):
+    client, db = quality_api
+    worker = AsyncMock()
+    monkeypatch.setattr(code_quality, "_run_analysis", worker)
+    before = await db.code_quality_runs.count_documents({})
+    response = await client.post("/quality/analyze", headers=await headers(db, "QA"), json={
+        "repository_id": "OWN", "changed_files": ["module.py"], "use_ai": False, "pr_context": context})
+    assert response.status_code == 422
+    assert await db.code_quality_runs.count_documents({}) == before
+    worker.assert_not_called()
+
+
 @pytest.mark.parametrize("metadata", [{"org_id": "B"}, {"organization_id": "B"}, {"org_id": "A", "organization_id": "B"},
     {"org_id": ["A", "B"]}, {"organization_id": ["A", "B"]}])
 async def test_conflicting_run_tenant_is_denied_and_filtered(quality_api, metadata):
@@ -193,7 +209,7 @@ async def test_deep_github_analysis_without_source_never_scores(mock_db, monkeyp
     risk.assert_not_awaited()
     assert result["code_quality_report"] is None
     assert result["ai_analysis"]["status"] != "completed"
-    assert result.get("quality_analysis_status") == "not_run"
+    assert result.get("quality_analysis_status") == "failed"
     assert not result.get("engine_results_v1")
     assert result["ai_run_data"]["status"] == "failed"
 

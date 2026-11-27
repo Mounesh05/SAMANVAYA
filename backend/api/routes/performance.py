@@ -1,8 +1,4 @@
-"""
-Developer Performance API Routes
-Complete REST API for AI-driven performance evaluation system.
-Protected with RBAC permissions.
-"""
+"""Scoped performance evidence, human reviews, and historical assessment access."""
 
 from fastapi import APIRouter, HTTPException, Depends, Body
 from fastapi.responses import JSONResponse
@@ -252,7 +248,7 @@ async def bulk_evaluate_developers(
             detail="Insufficient permissions. Only ADMIN can trigger bulk evaluations."
         )
     
-    if not developer_ids or len(developer_ids) == 0:
+    if not developer_ids:
         raise HTTPException(
             status_code=400,
             detail="No developer IDs provided"
@@ -339,26 +335,6 @@ async def get_performance_trend(
     return await PerformanceAccessService().trend(developer_id, user, limit)
 
 
-
-async def _resolve_evaluatable_developer(performance_id: str, service: PerformanceService):
-    """Safely resolve developer ID from performance ID or employee ID, barring CEO/HR evaluations."""
-    performance = await service.repository.get_by_id(performance_id)
-    if performance:
-        return performance.get("developer_id"), performance
-    from repositories.user_repository import UserRepository
-    user_repo = UserRepository()
-    target_emp = await user_repo.find_by_employee_id(performance_id)
-    if not target_emp:
-        raise HTTPException(status_code=404, detail="Performance evaluation or employee not found")
-    target_role = target_emp.get("role", "").upper()
-    if target_role in ("CEO", "HR"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot evaluate employee with role {target_role}. Performance evaluations only apply to engineering contributors."
-        )
-    return target_emp.get("employee_id"), None
-
-
 @router.post("/feedback/{performance_id}/pm", response_model=DeveloperPerformance, deprecated=True)
 async def add_pm_feedback(
     performance_id: str,
@@ -370,7 +346,7 @@ async def add_pm_feedback(
     user: dict = Depends(get_current_user)
 ):
     """
-    Add Product Manager feedback (structured 1-5 ratings).
+    Retired PM ratings return 409. Submit feedback through assigned human reviews.
     
     **Required Permission:** SUBMIT_PM_FEEDBACK (PM role only)
     """
@@ -400,7 +376,7 @@ async def add_lead_feedback(
     user: dict = Depends(get_current_user),
 ):
     """
-    Add Team Lead feedback (structured 1-5 ratings).
+    Retired Team Lead ratings return 409. Submit feedback through assigned human reviews.
 
     **Required Permission:** SUBMIT_LEAD_FEEDBACK (LEAD role only)
     """
@@ -423,7 +399,7 @@ async def add_qa_feedback(
     user: dict = Depends(get_current_user),
 ):
     """
-    Add QA Engineer feedback (structured 1-5 ratings).
+    Retired QA ratings return 409. Submit feedback through assigned human reviews.
 
     **Required Permission:** SUBMIT_QA_FEEDBACK (QA role only)
     """
@@ -586,7 +562,7 @@ async def get_human_evaluation_policy(
     user: dict = Depends(get_current_user),
 ):
     """
-    Get active human evaluation policy defining weights across human roles.
+    Return the pending policy status and the most recent historical policy, if available.
     """
     from domain.services.performance_access_service import PerformanceAccessService
     history = await PerformanceAccessService().policy_history(user, 1)

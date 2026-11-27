@@ -5,8 +5,7 @@ Run explicitly with:
 
 The filename deliberately avoids default test discovery. These probes assert
 observed legacy defects. Phase 3 obsolete parser probes are marked retired;
-Phase 4 human-write probes now assert the corrected behavior. Historical audit
-results remain in docs/reports rather than being rewritten as current findings.
+Phase 4 human-write probes now assert the corrected behavior.
 All data is synthetic; MongoDB and model/GitHub boundaries are isolated.
 """
 

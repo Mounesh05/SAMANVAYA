@@ -313,7 +313,11 @@
 
 .tb-left {
   gap: 0.75rem;
+  flex: 1;
+  overflow: hidden;
 }
+
+.tb-left nav { flex: 1; overflow: hidden; }
 
 .tb-right {
   gap: 4px;
@@ -335,6 +339,7 @@
   font-size: 0.875rem;
   color: var(--text-muted);
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .tb-crumbs li {
@@ -342,7 +347,12 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex-shrink: 1;
 }
+
+.tb-crumbs li:first-child { flex-shrink: 0; }
+.tb-crumbs li:last-child { flex: 1; }
+.tb-crumbs :is(button, [aria-current='page']) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .tb-crumbs svg {
   flex-shrink: 0;

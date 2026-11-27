@@ -27,6 +27,7 @@ class PRSyncRequest(BaseModel):
     pr_number: int
     project_id: str | None = None
     use_ai: bool = True  # Enable AI analysis by default
+    retry_quality_run_id: str | None = None
     use_deep_analysis: bool = False  # Enable comprehensive deep analysis (static analysis, security, etc.)
 
 
@@ -60,7 +61,7 @@ async def github_integration_health(
     """
     try:
         github_service = GitHubSyncService()
-        user_info = await github_service.client.get_authenticated_user()
+        user_info = await github_service.api_service.client.get_authenticated_user()
         
         return {
             "status": "operational",
@@ -228,6 +229,8 @@ async def save_project_github_config(
         raise HTTPException(status_code=400, detail="Repository URL does not match owner and name")
 
     payload = config.model_dump()
+    payload.update(org_id=user.get('org_id'), validated_by=user.get('employee_id'),
+                   identity_binding_authority='PROJECT_REPOSITORY_MANAGER')
     await col(GITHUB_PROJECT_CONFIGS).replace_one(
         {"project_id": project_id},
         payload,
@@ -333,6 +336,8 @@ async def sync_pull_request(
         if len(mappings) != 1:
             raise HTTPException(status_code=422, detail="Repository must have one authorized project mapping")
         project_id = mappings[0]["project_id"]
+    if not isinstance(project_id, str) or not project_id.strip():
+        raise HTTPException(status_code=403, detail="An authorized project identity is required")
     project = await col("projects").find_one({"id": project_id})
     if not project or not user.get("org_id") or project.get("org_id") != user["org_id"]:
         raise HTTPException(status_code=403, detail="Repository project is unavailable in this organization")
@@ -360,6 +365,7 @@ async def sync_pull_request(
             use_deep_analysis=request.use_deep_analysis,
             triggered_by=user.get("email", "unknown"),
             actor=user,
+            **({"retry_quality_run_id": request.retry_quality_run_id} if request.retry_quality_run_id else {}),
         )
         
         response = {

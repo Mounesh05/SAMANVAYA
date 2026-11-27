@@ -339,32 +339,32 @@ class TestAnalyzerDependenciesPipelineCrashResilience:
         json.dumps([{"name": "pkg", "vulns": 123}]),
         json.dumps([{"name": "pkg", "vulns": [{"id": 1.5}]}]),
     ])
-    def test_pipeline_zero_unhandled_exceptions_on_edge_schemas(self, bad_json):
+    def test_pipeline_zero_unhandled_exceptions_on_edge_schemas(self, python_dependency_project, bad_json):
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "pip-audit"), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = bad_json
 
             # Must NOT raise any unhandled exception
-            vulns = self._sync_run(analyzer._dependencies(".", evidence))
+            vulns = self._sync_run(analyzer._dependencies(python_dependency_project, evidence))
             assert isinstance(vulns, list)
             # pip-audit succeeded in parsing and was recorded
             assert "pip-audit" in evidence.tools_executed
             assert "pip-audit-failed" not in evidence.tools_skipped
 
-    def test_pipeline_recovers_if_parse_dep_vulns_throws_mock_exception(self):
+    def test_pipeline_recovers_if_parse_dep_vulns_throws_mock_exception(self, python_dependency_project):
         """If an unexpected exception is raised inside _parse_dep_vulns, _dependencies catches it, degrades quality, and does not record tool in tools_executed."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "pip-audit"), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run, \
              patch.object(analyzer, "_parse_dep_vulns", side_effect=RuntimeError("Simulated catastrophic crash")):
             mock_run.return_value = '{"dependencies": []}'
 
-            vulns = self._sync_run(analyzer._dependencies(".", evidence))
+            vulns = self._sync_run(analyzer._dependencies(python_dependency_project, evidence))
             assert vulns == []
             assert "pip-audit" not in evidence.tools_executed
             assert "pip-audit-failed" in evidence.tools_skipped

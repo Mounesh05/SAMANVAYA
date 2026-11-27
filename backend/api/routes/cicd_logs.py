@@ -14,7 +14,6 @@ from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from repositories.ai_run_repository import AIRunRepository
 from domain.services.ai_run_access import invocation_scope, permissions
-from core.permissions import Permission
 from domain.services.ai_evidence_service import prepare_evidence
 from domain.services.internal_agent_adapter import validated_interpretation
 

@@ -52,7 +52,7 @@ async def test_matched_corpus_comparison(setup, monkeypatch):
                 for mode in (("legacy_single", "collaborative") if repetition % 2 == 0 else ("collaborative", "legacy_single")):
                     scripted = ScriptedOllama(case, snapshot)
                     def factory(**kwargs):
-                        assert kwargs == {"temperature": 0.2}
+                        assert kwargs == {"temperature": 0.2 if mode == "legacy_single" else 0.1}
                         return scripted
                     with monkeypatch.context() as inference:
                         inference.setattr(code_agent, "get_ollama_llm", factory)
@@ -152,8 +152,11 @@ async def test_source_prompt_injection_is_data_and_never_executed(setup):
     install_source(api, case)
     report = await workflow_tests.run(service)
     assert report.outcomes[0].status == "SUCCEEDED"
-    serialized = calls[0].model_dump_json()
-    assert "export secrets" not in serialized and "must never execute" not in serialized
+    # The code specialist now receives bounded source excerpts as untrusted data.
+    excerpts = [row for row in calls[0].observations if row.metric == "source_excerpt"]
+    assert any("export secrets" in row.value for row in excerpts)
+    assert all(row.evidence_id in {ref.evidence_id for ref in report.snapshot.references} for row in excerpts)
+    assert not any("export secrets" in claim.draft.statement for claim in report.claims)
     assert report.transitions == ("resolve_evidence", "code_analysis", "qa_analysis", "reconcile", "finalize")
     assert report.read_only and report.authoritative_score is None
 
@@ -172,3 +175,14 @@ async def test_timeout_preserves_observations_with_explicit_failure(setup, monke
 def test_metric_denominators_and_unknowns_are_explicit():
     assert metrics(CASES[0], []) == {"tp": 0, "fn": 2, "fp": 0, "tn": 1, "precision": None,
         "recall": 0.0, "false_positive_rate": 0.0, "unknown_or_unsupported_unique": 0}
+
+
+async def test_source_excerpts_fit_the_observation_contract(setup):
+    from domain.models.pr_multi_agent import MAX_TEXT_LENGTH
+    _, api, service, _ = setup
+    source = "".join("# " + str(i).ljust(77) + "\n" for i in range(18)) + "def read():\n    return 1\n"
+    install_source(api, {"path": "long_test.py", "source": source})
+    snapshot = await service.resolver.resolve(ACTOR, REQUEST)
+    excerpts = [row.value for row in snapshot.observations if row.metric == "source_excerpt"]
+    assert len(excerpts) >= 2
+    assert all(0 < len(value) <= MAX_TEXT_LENGTH and value in source for value in excerpts)

@@ -73,6 +73,35 @@ def recursive_exploration(function):
     return result
 
 
+def sentinel_marking(function):
+    """A state table written with two or more distinct literal sentinels.
+
+    Colour/marker tables (in-progress versus finished, for example) are the
+    structural signature of an iterative marking traversal. Only literal
+    sentinel writes qualify; no identifier is ever matched.
+    """
+    writes = facts(function, "constant_indexed_write")
+    if not writes:
+        return []
+    by_table: dict[str, set] = {}
+    for write in writes:
+        by_table.setdefault(write.subject, set()).add(write.related)
+    reads = facts(function, "indexed_read")
+    loops = facts(function, "while_loop")
+    if not reads or not loops:
+        return []
+    result = []
+    for table, sentinels in by_table.items():
+        if len(sentinels) < 2:
+            continue
+        table_reads = [read for read in reads if read.subject == table]
+        if not table_reads:
+            continue
+        table_writes = [write for write in writes if write.subject == table]
+        result.extend([*table_writes, *table_reads, *loops])
+    return result
+
+
 for rule in [
     PatternRule("fifo_graph_traversal", lambda f: traversal(f, "fifo_remove"),
                 "FIFO removal, re-enqueueing and indexed adjacency iteration share lexical bindings; BFS-like structure."),
@@ -94,6 +123,9 @@ for rule in [
         if facts(f, "iteration") else []), "Reduction or accumulation syntax is present."),
     PatternRule("memoized_recursion", memoized,
                 "Guarded table reads/writes accompany recursion; memoization is plausible, but DP subproblem semantics are unknown."),
+    PatternRule("state_sentinel_marking", sentinel_marking,
+                "A state table is written with two or more distinct literal sentinels and read back under a loop; "
+                "a marking-based traversal structure is indicated."),
 ]:
     register_rule(rule)
 
@@ -141,8 +173,23 @@ def resolve(function: DiscoveredFunction) -> DiscoveredFunction:
                        "Exploration returns the tracked membership collection; reachable-node collection is a plausible purpose.", returned)
         else:
             hypothesis("graph_traversal", graph_patterns, "The function appears to explore indexed adjacency data; its required output is not established.")
+    if "state_sentinel_marking" in patterns and facts(function, "iteration"):
+        hypothesis("cycle_detection_structure", ["state_sentinel_marking"],
+                   "Distinct literal marking states updated under iteration are consistent with a colouring traversal such as "
+                   "cycle detection; the meaning of each state and the graph semantics are not established.",
+                   facts(function, "iteration"))
     if "sorting_operations" in patterns:
         hypothesis("collection_ordering", ["sorting_operations"], "Ordering a collection appears to be one operation; required ordering and task scope remain unknown.")
+    if "priority_queue_operations" in patterns:
+        operations = facts(function, "heap_operation")
+        drains = [loop for loop in facts(function, "while_loop") if any(
+            op.related == "heapq.heappop" and op.subject == loop.subject
+            and loop.line < op.line <= loop.end_line for op in operations
+        )]
+        if drains:
+            hypothesis("priority_based_selection", ["priority_queue_operations"],
+                       "A loop removes items from the heap that guards it. Priority retrieval is plausible, with ordering and ties unverified.",
+                       drains)
     if "collection_filtering" in patterns:
         hypothesis("collection_filtering", ["collection_filtering"], "Selecting a subset by a predicate is a plausible operation.")
     if "collection_search" in patterns and not graph_patterns:

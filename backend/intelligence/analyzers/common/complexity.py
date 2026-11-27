@@ -6,6 +6,7 @@ Produces ComplexityEvidence consumed by the RiskEngine and QualityEngine.
 Never raises on missing tools — degrades gracefully.
 """
 
+import csv
 import asyncio
 import json
 import ast
@@ -130,28 +131,27 @@ async def analyze_complexity(
 # ── Lizard integration ────────────────────────────────────────────────────────
 
 async def _run_lizard(files: List[str]) -> Optional[Dict]:
-    """Run lizard with JSON output and parse results."""
-    cmd = ["lizard", "--csv", "-l", "python", "-l", "javascript",
+    """Parse the NLOC, CCN, token, PARAM, length, location, file and function columns."""
+    cmd = ["lizard", "--csv", "-l", "python", "-l", "javascript", "-l", "typescript",
            "-l", "java", "-l", "cpp", "-l", "c"] + files
     output = await _run(cmd)
     if not output:
         return None
 
-    # lizard --csv format: filename,nloc,ccn,token_count,param,length,location,func
+    count = 0
     functions = []
     total_complexity = 0
     max_complexity = 0
     total_loc = 0
 
-    for line in output.strip().splitlines():
-        parts = line.strip().split(",")
+    for parts in csv.reader(output.splitlines()):
         if len(parts) < 8:
             continue
         try:
-            ccn = int(parts[2])
-            loc = int(parts[1])
-            func_name = parts[6]
-            filename = parts[0]
+            ccn = int(parts[1])
+            loc = int(parts[0])
+            filename, func_name = parts[6:8]
+            count += 1
             total_complexity += ccn
             total_loc += loc
             if ccn > max_complexity:
@@ -166,7 +166,8 @@ async def _run_lizard(files: List[str]) -> Optional[Dict]:
         except (ValueError, IndexError):
             continue
 
-    count = len([l for l in output.strip().splitlines() if l.strip()])
+    if not count:
+        return None
     return {
         "average_complexity": round(total_complexity / count, 2) if count else 0.0,
         "max_complexity": max_complexity,
@@ -216,11 +217,6 @@ async def _run_radon(files: List[str]) -> Optional[Dict]:
         "high_complexity_functions": functions,
         "lines_of_code": 0,  # supplemented by other tools
     }
-
-
-def _run_radon_supplement(radon_result: Dict) -> None:
-    """Used when radon supplements lizard — extract MI and comment ratio."""
-    pass  # Extended in a future iteration with `radon mi` for maintainability index
 
 
 async def _run_radon_supplement_async(files: List[str]) -> Optional[Dict]:

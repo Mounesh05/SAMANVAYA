@@ -4,16 +4,13 @@ import runpy
 
 import pytest
 
-from domain.services.qa_workflow_provisioning_service import _upload_script_content
+from domain.services.qa_workflow_provisioning_service import TEMPLATE_DIR
 
 
 @pytest.mark.parametrize('generated', [False, True])
 def test_uploader_preserves_exact_pr_head_and_workflow_identity(monkeypatch, tmp_path, generated):
-    if generated:
-        namespace = {'__name__': 'generated_uploader'}
-        exec(compile(_upload_script_content(), '<generated-uploader>', 'exec'), namespace)
-    else:
-        namespace = runpy.run_path(str(Path(__file__).parents[2] / 'ci/upload_junit_results.py'))
+    directory = TEMPLATE_DIR if generated else Path(__file__).parents[2] / 'ci'
+    namespace = runpy.run_path(str(directory / 'upload_junit_results.py'))
     event = tmp_path / 'event.json'
     event.write_text(json.dumps({'number': 4, 'pull_request': {'number': 4, 'head': {'sha': 'a' * 40, 'ref': 'feature'}, 'base': {'repo': {'full_name': 'owner/repo'}}}}))
     for key, value in {'GITHUB_REPOSITORY': 'owner/repo', 'GITHUB_SHA': 'b' * 40, 'GITHUB_REF_NAME': '4/merge',

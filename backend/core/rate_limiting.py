@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Create limiter instance
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["100/minute"] if settings.RATE_LIMIT_ENABLED else [],
+    default_limits=[f"{settings.MAX_REQUESTS_PER_MINUTE}/minute"] if settings.RATE_LIMIT_ENABLED else [],
     enabled=settings.RATE_LIMIT_ENABLED,
 )
 

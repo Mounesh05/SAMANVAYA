@@ -11,6 +11,8 @@ Responsibilities:
 import logging
 import asyncio
 import base64
+import hashlib
+import re
 from typing import Optional, List, Dict, Any
 
 from integrations.github.client import GitHubClient
@@ -106,10 +108,11 @@ class GitHubAPIService:
             "comments": comments,
         }
 
-    async def fetch_analysis_sources(self, owner, repo, files, revision, include_context=False):
+    async def fetch_analysis_sources(self, owner, repo, files, revision, include_context=False, verified_snapshot=False,
+                                     *, include_quality_context=True):
         """Fetch bounded supported source at the immutable PR head, never patches."""
         from intelligence.algorithms.discovery.service import (
-            MAX_FILES, MAX_SOURCE_BYTES, MAX_TOTAL_BYTES, safe_relative_path, source_language,
+            MAX_FILES, MAX_SOURCE_BYTES, MAX_TOTAL_BYTES, QUALITY_CONTEXT_MANIFESTS, safe_relative_path, source_language,
         )
         if not revision:
             return {}, [{"kind": "missing_source_revision"}]
@@ -117,9 +120,30 @@ class GitHubAPIService:
                  and isinstance(f.get("filename"), str) and safe_relative_path(f["filename"])
                  and source_language(f["filename"])]
         diagnostics = []
+        regular = {}
+        if verified_snapshot:
+            try:
+                if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
+                    raise ValueError("Exact revision required")
+                commit = await self.client.get_commit(owner, repo, revision)
+                tree_sha = commit.get("commit", {}).get("tree", {}).get("sha")
+                if not isinstance(tree_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", tree_sha):
+                    raise ValueError("Missing commit tree identity")
+                tree = await self.client.get_source_tree(owner, repo, tree_sha)
+                if (commit.get("sha") != revision or tree.get("truncated")
+                        or tree.get("sha") != tree_sha):
+                    raise ValueError("Exact regular-file tree required")
+                regular = {entry["path"]: entry for entry in tree.get("tree", [])
+                           if entry.get("type") == "blob" and entry.get("mode") in {"100644", "100755"}}
+                if include_quality_context:
+                    paths.extend(path for path in regular if safe_relative_path(path)
+                                 and path.rsplit("/", 1)[-1] in QUALITY_CONTEXT_MANIFESTS)
+            except Exception:
+                return {}, [{"kind": "verified_regular_source_tree_unavailable"}]
         if include_context:
             try:
-                tree = await self.client.get_source_tree(owner, repo, revision)
+                if not verified_snapshot:
+                    tree = await self.client.get_source_tree(owner, repo, revision)
                 symlinks = {entry.get("path") for entry in tree.get("tree", []) if entry.get("mode") == "120000"}
                 paths = [path for path in paths if path not in symlinks]
                 context_paths = [entry["path"] for entry in tree.get("tree", [])
@@ -133,6 +157,8 @@ class GitHubAPIService:
             except Exception:
                 diagnostics.append({"kind": "repository_context_unavailable"})
         paths = list(dict.fromkeys(paths))
+        if verified_snapshot:
+            paths = [path for path in paths if path in regular]
         semaphore = asyncio.Semaphore(4)
 
         async def read(path):
@@ -144,6 +170,10 @@ class GitHubAPIService:
                     raw = base64.b64decode("".join(data.get("content", "").split()), validate=True)
                     if len(raw) > MAX_SOURCE_BYTES:
                         return path, None
+                    if verified_snapshot:
+                        git_hash = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+                        if data.get("path") != path or data.get("size") != len(raw) or git_hash != regular[path].get("sha"):
+                            return path, None
                     return path, raw.decode("utf-8-sig")
                 except Exception:
                     return path, None

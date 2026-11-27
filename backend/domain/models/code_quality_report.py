@@ -40,21 +40,21 @@ EnginePenalty = Annotated[float, Field(strict=True, ge=0, le=100, allow_inf_nan=
 class EngineDimensionsV1(BaseModel):
     """Independent quality indices in original 0–100 units."""
     model_config = ConfigDict(extra="forbid", strict=True)
-    static_security: EngineScore
-    testing: EngineScore
-    complexity: EngineScore
-    architecture: EngineScore
-    duplication: EngineScore
+    static_security: Optional[EngineScore]
+    testing: Optional[EngineScore]
+    complexity: Optional[EngineScore]
+    architecture: Optional[EngineScore]
+    duplication: Optional[EngineScore]
 
 
 class EnginePenaltiesV1(BaseModel):
     """Unweighted penalties in original 0–100 units."""
     model_config = ConfigDict(extra="forbid", strict=True)
-    static_security: EnginePenalty
-    testing: EnginePenalty
-    complexity: EnginePenalty
-    architecture: EnginePenalty
-    duplication: EnginePenalty
+    static_security: Optional[EnginePenalty]
+    testing: Optional[EnginePenalty]
+    complexity: Optional[EnginePenalty]
+    architecture: Optional[EnginePenalty]
+    duplication: Optional[EnginePenalty]
 
 
 class EngineQualityV1(BaseModel):

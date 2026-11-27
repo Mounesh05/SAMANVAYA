@@ -611,7 +611,7 @@ class RiskEngine:
         # ── 6. Complexity spike (zeta) ────────────────────────────────────────
         avg_complexity = evidence.complexity.average_complexity
         zeta_score = 0.0
-        if avg_complexity > 15:
+        if avg_complexity is not None and avg_complexity > 15:
             zeta_score = min(100.0, (avg_complexity - 15) * 5.0)
             risk_factors.append(
                 f"Average cyclomatic complexity is high: {avg_complexity:.1f}"
@@ -649,8 +649,6 @@ class RiskEngine:
         )
 
         risk_score = int(min(100, max(0, BASE_RISK + weighted + bonus + cicd_bonus)))
-        risk_level = RiskRules.classify_risk_level(risk_score)
-
         # Confidence adjustment — if evidence is degraded, widen uncertainty
         confidence_note = ""
         if evidence.analysis_quality.confidence < 0.7:
@@ -659,7 +657,7 @@ class RiskEngine:
 
         return {
             "risk_score": risk_score,
-            "risk_level": risk_level,
+            "risk_level": RiskRules.classify_risk_level(risk_score),
             "risk_factors": risk_factors,
             "dimension_scores": dimension_scores,
             "confidence_note": confidence_note,

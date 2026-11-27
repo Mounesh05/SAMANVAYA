@@ -20,6 +20,11 @@ from intelligence.evidence.models import CodeQualityEvidence, SeverityEnum
 from domain.services.risk_config_service import get_risk_config_service
 
 
+def snapshot_context_diagnostic(source_tool, rule_id):
+    """Offline type-checker resolution and project-wide diagnostics are context for review."""
+    return source_tool == "tsc-repo-wide" or rule_id in {"MYPY-import-not-found", "MYPY-import-untyped"}
+
+
 class QualityEngine:
     """
     Calculates an independent Code Quality Index (0–100).
@@ -74,13 +79,29 @@ class QualityEngine:
             "duplication":     self._duplication_penalty(evidence),
         }
 
-        # Weighted sum of penalties
-        total_penalty = sum(w[dim] * pen for dim, pen in penalties.items())
+        # Pinned snapshots only score dimensions the worker could observe.
+        missing = set()
+        if evidence.execution_provenance.get("method") == "quality-snapshot-v1":
+            if evidence.testing.coverage_percentage is None:
+                missing.add("testing")
+            if not evidence.complexity.is_available or evidence.complexity.average_complexity is None:
+                missing.add("complexity")
+            if "python" not in evidence.detected_languages or "architecture" in evidence.analysis_quality.degraded_dimensions:
+                missing.add("architecture")
+            if "duplication-pipeline-failed" in evidence.tools_skipped:
+                missing.add("duplication")
+            if not set(evidence.tools_executed).intersection({"ruff", "mypy", "bandit", "eslint", "tsc", "ast-syntax-fallback", "flake8"}):
+                missing.add("static_security")
+        weight = sum(w[dim] for dim in penalties if dim not in missing)
+        if not weight:
+            return {"quality_score": None, "quality_grade": None, "dimension_scores": {}, "penalties": {}}
+        # Weighted sum of observed penalties
+        total_penalty = sum(w[dim] * pen for dim, pen in penalties.items() if dim not in missing) / weight
         quality_score = max(0, min(100, round(100 - total_penalty)))
 
         # Per-dimension quality scores (100 = perfect, 0 = max penalty)
         dimension_scores = {
-            dim: max(0, min(100, round(100 - pen)))
+            dim: None if dim in missing else max(0, min(100, round(100 - pen)))
             for dim, pen in penalties.items()
         }
 
@@ -88,7 +109,7 @@ class QualityEngine:
             "quality_score": quality_score,
             "quality_grade": self._grade(quality_score),
             "dimension_scores": dimension_scores,
-            "penalties": {k: round(v, 2) for k, v in penalties.items()},
+            "penalties": {k: None if k in missing else round(v, 2) for k, v in penalties.items()},
         }
 
     # ── Penalty Calculators ───────────────────────────────────────────────────
@@ -100,6 +121,8 @@ class QualityEngine:
         Normalized to [0, 100].
         """
         findings = evidence.static_findings
+        if evidence.execution_provenance.get("method") == "quality-snapshot-v1":
+            findings = [f for f in findings if not snapshot_context_diagnostic(f.source_tool, f.rule_id)]
         critical = sum(1 for f in findings if f.severity == SeverityEnum.CRITICAL)
         high     = sum(1 for f in findings if f.severity == SeverityEnum.HIGH)
         medium   = sum(1 for f in findings if f.severity == SeverityEnum.MEDIUM)
@@ -144,7 +167,7 @@ class QualityEngine:
         """
         avg = evidence.complexity.average_complexity
         LOW_BOUND = 5.0
-        if avg <= LOW_BOUND:
+        if avg is None or avg <= LOW_BOUND:
             return 0.0
         ratio = (avg - LOW_BOUND) / (self.MAX_COMPLEXITY - LOW_BOUND)
         return min(100.0, ratio * 100)

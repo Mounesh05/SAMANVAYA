@@ -10,7 +10,7 @@ from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
 from core.security import revoke_token
 from pymongo.errors import PyMongoError
-from core.rate_limiting import limiter
+from core.rate_limiting import auth_rate_limit, limiter
 from core.config import settings
 from datetime import datetime, timezone
 import logging
@@ -89,7 +89,7 @@ async def _sign_in(request: Request, credentials: LoginRequest) -> LoginResponse
 
 
 @router.post("/login", response_model=LoginResponse)
-@limiter.limit("5/minute")
+@auth_rate_limit()
 async def login(request: Request, credentials: LoginRequest):
     """
     Sign in with an employee ID or work email and both passwords (CR-016).
@@ -101,7 +101,7 @@ async def login(request: Request, credentials: LoginRequest):
 
 
 @router.post("/login/full", response_model=LoginResponse)
-@limiter.limit("5/minute")
+@auth_rate_limit()
 async def login_full(request: Request, credentials: LoginRequest):
     """Same rule as /login; kept for existing scripts and clients."""
     return await _sign_in(request, credentials)

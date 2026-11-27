@@ -12,6 +12,9 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { ArrowLeft } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
+import { PermissionGuard } from '../../auth/PermissionGuard';
+import { PERMISSIONS } from '../../auth/permissions';
+import { qualityStatus } from './qualityStatus';
 import { DiscoveredFunctions } from './DiscoveredFunctions';
 
 export function RunDetailPage() {
@@ -28,7 +31,7 @@ export function RunDetailPage() {
   } = useQuery({
     queryKey: ['code-quality-run', runId],
     queryFn: () => codeQualityApi.getRun(runId),
-    refetchInterval: (data) => (data?.state?.data?.status === 'running' || data?.state?.data?.status === 'pending' ? 3000 : false),
+    refetchInterval: (query) => ['pending', 'running', 'analyzing'].includes(query.state.data?.status) ? 3000 : false,
   });
 
   // 2. Fetch Findings
@@ -39,7 +42,8 @@ export function RunDetailPage() {
         severity: severityFilter || undefined,
         category: categoryFilter || undefined,
       }),
-    enabled: !!runId,
+    enabled: Boolean(run) && !run.quality_comparison && !['pending', 'running', 'analyzing'].includes(run.status) &&
+      run.analysis_level !== 'purpose_discovery' && run.analysis_scope !== 'purpose_discovery',
   });
 
   if (isRunLoading) return <LoadingState message="Loading analysis run details..." />;
@@ -51,14 +55,7 @@ export function RunDetailPage() {
   const qualityRan = !discoveryOnly && (['available', 'partial'].includes(run?.quality_analysis_status) || run?.tools_executed?.length > 0);
   const qualityGrade = isCompleted ? (run?.quality_grade || '—') : '—';
   const gradeColor = getGradeColor(qualityGrade);
-  const statusLabel = {
-    pending: 'Queued',
-    running: 'Analyzing',
-    completed: 'Completed',
-    failed: 'Failed',
-  }[run?.status] || 'Unknown';
-  const completionLabel = isCompleted && discoveryOnly ? 'Discovery finished · quality not run'
-    : isCompleted && run?.quality_analysis_status === 'partial' ? 'Partially analyzed' : statusLabel;
+  const completionLabel = qualityStatus(run);
 
   const findingColumns = [
     {
@@ -95,11 +92,11 @@ export function RunDetailPage() {
         </div>
       ),
     },
-    { key: 'description', header: 'Finding Description', render: (f) => f.message || f.description },
+    { key: 'description', header: 'Finding Description', render: (f) => <>{f.message || f.description}{f.scope === 'project_context' && <small> (project context)</small>}</> },
     {
       key: 'recommendation',
       header: 'Fix Recommendation',
-      render: (f) => <span style={{ color: 'var(--cyan)', fontSize: '0.8125rem' }}>{f.recommendation || '—'}</span>,
+      render: (f) => <span style={{ color: 'var(--cyan)', fontSize: '0.8125rem' }}>{f.suggested_fix || f.recommendation || '—'}</span>,
     },
   ];
 
@@ -121,13 +118,40 @@ export function RunDetailPage() {
         }
       />
 
-      {(discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope" style={{ marginBottom: 24 }}>
+      {!run?.quality_comparison && (discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope" style={{ marginBottom: 24 }}>
         <p>{run?.quality_unavailable_reason || (discoveryOnly ? 'Static function discovery only. Quality and risk were not measured.' : run?.error)}</p>
         <p>Tools executed: {run?.tools_executed?.join(', ') || 'None recorded'}</p>
         <p>Tools skipped or unavailable: {run?.tools_skipped?.join(', ') || 'None recorded'}</p>
         <p>Test coverage: {run?.testing?.coverage_percentage != null ? `${run.testing.coverage_percentage}%` : 'Not measured'}</p>
+        {run?.testing?.coverage_percentage == null && run?.execution_provenance?.method === 'quality-snapshot-v1' &&
+          <p>The static worker does not run repository tests. Measuring coverage requires a coverage report for this revision.</p>}
+        {run?.tools_skipped?.includes('dependency-advisories-offline') &&
+          <p>Dependency vulnerabilities were not checked because the isolated worker cannot reach advisory databases.</p>}
       </Card>}
 
+      {run?.quality_comparison && <Card title="Revision comparison">
+        {Object.entries(run.child_run_ids).map(([side, id]) => <p key={id}>
+          <Button variant="ghost" onClick={() => navigate('/code-quality/runs/' + id)}>{side} {run[side + '_sha']?.slice(0, 12)}</Button>
+          {run.quality_comparison[side + '_score'] ?? 'Not measured'} ({run.quality_comparison[side + '_status']})
+        </p>)}
+        <p>Displayed quality and risk scores use the head revision.</p>
+        <p>Quality score change: {run.quality_comparison.delta ?? 'Not comparable'}</p>
+      </Card>}
+      {run?.commit_sha && <p>Revision <code>{run.commit_sha}</code></p>}
+      {run?.commit_sha && !['running', 'pending', 'analyzing'].includes(run.status) &&
+        <PermissionGuard permission={PERMISSIONS.TRIGGER_CODE_ANALYSIS}><Button variant="secondary"
+          onClick={() => navigate('/code-quality', {state: {reanalysis: {
+            run_id: runId, repository_id: run.repository_id, pr_number: run.pr_number, changed_files: run.changed_files
+          }}})}>Reanalyze revision</Button></PermissionGuard>}
+      {run?.complexity && <Card title="Source metrics">
+        <p>Average cyclomatic complexity: {run.complexity.average_complexity ?? 'Not measured'}</p>
+        <p>Maximum cyclomatic complexity: {run.complexity.max_complexity ?? 'Not measured'}</p>
+        <p>Maintainability index: {run.complexity.maintainability_index ?? 'Not measured'}</p>
+        <p>Duplicated lines: {run.duplication?.duplicated_lines_count ?? 'Not measured'}</p>
+      </Card>}
+      {run?.ai_analysis?.recommendations?.length > 0 && <Card title="AI review suggestions">
+        <ul>{run.ai_analysis.recommendations.map((suggestion, index) => <li key={index}>{suggestion}</li>)}</ul>
+      </Card>}
       {/* Overview Score Cards */}
       <div
         style={{
@@ -145,7 +169,7 @@ export function RunDetailPage() {
             </span>
             <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/ 100</span>
             <span style={{ fontSize: '1rem', fontWeight: '600', color: gradeColor, marginLeft: '0.35rem' }}>
-              {isCompleted && `(${qualityGrade})`}
+              {isCompleted && run?.quality_grade && `(${qualityGrade})`}
             </span>
           </div>
           {run?.quality_score == null && <p>Quality score unavailable</p>}
@@ -155,10 +179,10 @@ export function RunDetailPage() {
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Risk Assessment</span>
           <div style={{ marginTop: '0.5rem' }}>
             {isCompleted && run?.risk_score != null ? (
-              <RiskBadge level={run?.risk_level || 'LOW'} score={run?.risk_score} size="md" />
+              <RiskBadge level={run?.risk_level} score={run?.risk_score} size="md" />
             ) : (
               <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                {isCompleted ? 'Not measured in this run' : 'Available after analysis completes'}
+                {['pending', 'running', 'analyzing'].includes(run?.status) ? 'Available after analysis completes' : 'Not measured in this run'}
               </span>
             )}
           </div>
@@ -167,22 +191,22 @@ export function RunDetailPage() {
         <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Detected Language</span>
           <div style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.35rem', textTransform: 'capitalize' }}>
-            {run?.language || 'Pending analysis'}
+            {run?.language && run.language !== 'unknown' ? run.language : 'Undetermined'}
           </div>
         </Card>
 
-        <Card padding="md">
+        {!run?.quality_comparison && <Card padding="md">
           <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-muted)' }}>Total Findings</span>
           <div style={{ fontSize: '1.5rem', fontWeight: '600', color: 'var(--text-primary)', marginTop: '0.35rem' }}>
             {findingsError ? 'Retrieval failed' : qualityRan && isCompleted && findingsData ? `${findingsData.total} recorded findings` : 'Quality checks not established'}
           </div>
-        </Card>
+        </Card>}
       </div>
 
       {/* Findings Table Card */}
-      <DiscoveredFunctions key={runId} runId={runId} pending={['pending', 'running'].includes(run?.status)} />
+      {!run?.quality_comparison && <DiscoveredFunctions key={runId} runId={runId} pending={['pending', 'running', 'analyzing'].includes(run?.status)} />}
 
-      <Card
+      {!run?.quality_comparison && <Card
         title="Quality & Security Findings"
         subtitle="Individual line-by-line evidence and fix recommendations"
       >
@@ -225,7 +249,7 @@ export function RunDetailPage() {
             emptyMessage={qualityRan ? 'No findings recorded by the checks that ran. See tool availability and analysis limitations.' : 'Quality checks were not run or their evidence is unavailable. No clean-code conclusion can be made.'}
           />
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }

@@ -4,7 +4,7 @@ Enterprise rubric, configurable weights, and bias prevention safeguards.
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, List, Any, Union
+from typing import Optional, Dict, List, Any
 from datetime import datetime, timezone
 from enum import Enum
 

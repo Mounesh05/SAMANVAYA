@@ -10,6 +10,7 @@ export const Select = forwardRef(function Select(
     id,
     className = '',
     placeholder = 'Select an option',
+    style,
     ...props
   },
   ref
@@ -45,6 +46,7 @@ export const Select = forwardRef(function Select(
           border: `1px solid ${error ? 'var(--danger)' : 'var(--field-border)'}`,
           borderRadius: 'var(--radius-md)',
           cursor: 'pointer',
+          ...style,
         }}
         className={`select-field ${className}`}
         {...props}

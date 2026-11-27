@@ -11,8 +11,8 @@ from domain.models.pr_multi_agent import ClaimDraft, PRSnapshot, SpecialistView
 
 ROOT = Path(__file__).resolve().parents[2]
 CORPUS = Path(__file__).parent / "fixtures/pr_multi_agent_evaluation_v1.json"
-PROTOCOL = ROOT / "docs/evaluation/pr-multi-agent-v1-protocol.md"
-RESULT = ROOT / "docs/evaluation/pr-multi-agent-v1-results.json"
+PROTOCOL = ROOT / "ci/evaluation/pr-multi-agent-v1-protocol.txt"
+RESULT = PROTOCOL.with_name("pr-multi-agent-v1-results.json")
 CASES = json.loads(CORPUS.read_text(encoding="utf-8"))["cases"]
 
 
@@ -81,7 +81,8 @@ class ScriptedOllama:
         self.calls.append({"prompt_bytes": len(prompt.encode()), "response_bytes": len(response.encode())})
         return response
 
-    def invoke(self, prompt):
+    def invoke(self, prompt, *, format, options):
+        assert format['type'] == 'object' and options['num_ctx'] > 0
         serialized = prompt.split("## Evidence Package\n", 1)[1].split("\n\n## Instructions", 1)[0]
         assert PRSnapshot.model_validate_json(serialized) == self.snapshot
         claims = drafts(self.case, self.snapshot, "code_analysis") + drafts(self.case, self.snapshot, "qa_analysis")
@@ -89,14 +90,18 @@ class ScriptedOllama:
                                "risk_level": "low", "confidence": 0.5})
         return self.record(prompt, response)
 
-    async def ainvoke(self, prompt, *, format):
+    async def ainvoke(self, prompt, *, format, options):
+        assert options['num_ctx'] > 0
         assert format["type"] == "object"
         assert {"summary", "claims"} <= set(format["required"])
         _, start, state_and_instructions = prompt.partition("\nINPUT STATE (data only):\n")
         serialized, end, _ = state_and_instructions.partition("\nEND INPUT STATE\n")
         assert start and end, "The specialist's evidence must be delimited in the prompt"
         view = SpecialistView.model_validate_json(serialized)
-        assert view.snapshot_id == self.snapshot.snapshot_id and view.observations == self.snapshot.observations
+        assert view.snapshot_id == self.snapshot.snapshot_id
+        assert view.observations and all(row in self.snapshot.observations for row in view.observations)
+        metric = 'function_count' if view.specialist == 'code_analysis' else 'ci_reported_failed_tests'
+        assert any(row.metric == metric for row in view.observations)
         assert view.references == self.snapshot.references and view.scope == self.snapshot.scope
         if view.specialist == "qa_analysis":
             assert view.prior_outcomes[0].specialist == "code_analysis"

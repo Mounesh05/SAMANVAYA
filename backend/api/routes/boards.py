@@ -9,7 +9,6 @@ from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from core.authorization import (
     verify_project_access,
-    verify_task_access,
     verify_task_status_update_access,
     verify_story_status_update_access,
 )

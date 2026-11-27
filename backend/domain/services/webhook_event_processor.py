@@ -362,6 +362,8 @@ class WebhookEventProcessor:
             
             triggers_executed.append("pr_sync")
             triggers_executed.append("risk_analysis")
+            if (sync_result.get("quality_comparison") or {}).get("run_id"):
+                triggers_executed.append("quality_comparison")
             if sync_result.get("algorithm_intelligence"):
                 triggers_executed.append("algorithm_intelligence")
             
@@ -850,10 +852,11 @@ class WebhookEventProcessor:
             "critical": "🔴"
         }
         
-        if team_lead_id:
+        category = "pr_opened"
+        if team_lead_id and await self.notification_service.allows_optional_notification(team_lead_id, category):
             notification = await self.notification_service.notify(
                 user_id=team_lead_id,
-                notification_type="pr_opened",
+                notification_type=category,
                 title=f"New PR #{pr_data.get('number')} opened",
                 body=f"{risk_emoji.get(risk_level, '⚪')} Risk: {risk_level} | {pr_data.get('title', 'Untitled')}",
                 link=f"/pr/{pr_data['id']}"

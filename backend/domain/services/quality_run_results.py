@@ -1,0 +1,62 @@
+"""Persistence contract shared by manual and GitHub revision analyses."""
+from datetime import datetime, timedelta, timezone
+
+from intelligence.algorithms.discovery.service import source_language
+from intelligence.quality_engine import QualityEngine, snapshot_context_diagnostic
+from intelligence.risk_engine import RiskEngine
+
+RUN_TIMEOUT_SECONDS = 900
+
+
+def run_deadline():
+    return (datetime.now(timezone.utc) + timedelta(seconds=RUN_TIMEOUT_SECONDS)).isoformat()
+
+
+def expired(run):
+    deadline = run.get("work_deadline")
+    return (run.get("status") in ("pending", "running") and isinstance(deadline, str)
+            and deadline <= datetime.now(timezone.utc).isoformat())
+
+
+async def measure_quality(evidence, paths, baseline=None):
+    tools = set(evidence.tools_executed) - {"ast-test-discovery"}
+    measured = bool(evidence.files_analyzed and tools)
+    quality = await QualityEngine().calculate(evidence) if measured else {}
+    measured = measured and quality.get("quality_score") is not None
+    risk = await RiskEngine().analyze_evidence(evidence, baseline) if measured else {}
+    supported = any(source_language(path) for path in paths)
+    state = ("partial" if evidence.tools_skipped or evidence.analysis_quality.confidence < 1
+             else "available") if measured else ("failed" if supported else "unsupported")
+    reason = evidence.analysis_quality.reason
+    if not supported and not measured:
+        reason = "No selected Python, JavaScript or TypeScript file on this revision."
+    return {
+        "status": "completed" if measured else state, "analysis_scope": "code_quality",
+        "quality_analysis_status": state, "quality_unavailable_reason": reason,
+        "quality_score": quality.get("quality_score"), "quality_grade": quality.get("quality_grade"),
+        "risk_score": risk.get("risk_score"), "risk_level": risk.get("risk_level"),
+        "quality_dimensions": quality.get("dimension_scores", {}), "risk_dimensions": risk.get("dimension_scores", {}),
+        "risk_factors": risk.get("risk_factors", []), "commit_sha": evidence.commit_sha,
+        "files_analyzed": evidence.files_analyzed, "language": evidence.primary_language,
+        "detected_languages": evidence.detected_languages, "tools_executed": evidence.tools_executed,
+        "tools_skipped": evidence.tools_skipped, "execution_provenance": evidence.execution_provenance,
+        "analysis_quality": evidence.analysis_quality.model_dump(mode="json"),
+        "analysis_confidence": evidence.analysis_quality.confidence, "analysis_duration_ms": evidence.analysis_duration_ms,
+        "testing": evidence.testing.model_dump(mode="json"),
+        "complexity": evidence.complexity.model_dump(mode="json") if measured and evidence.complexity.is_available else None,
+        "duplication": evidence.duplication.model_dump(mode="json") if measured else None,
+        "function_discovery": evidence.function_discovery.model_dump(mode="json"),
+    }
+
+
+def quality_findings(evidence):
+    return list({f.id: f for f in [*evidence.static_findings, *evidence.security.findings]}.values())
+
+
+async def store_findings(collection, run_id, project_id, org_id, findings):
+    if findings:
+        await collection.insert_many([
+            {**f.model_dump(mode="json", exclude={"code_snippet"}), "run_id": run_id,
+             "scope": "project_context" if snapshot_context_diagnostic(f.source_tool, f.rule_id) else "source",
+             "repository_id": project_id, **({"org_id": org_id} if org_id else {})} for f in findings[:500]
+        ])

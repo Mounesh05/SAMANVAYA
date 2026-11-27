@@ -5,7 +5,7 @@ Provides dimension scoring logic, rubric enforcement, and score aggregation
 for AI-powered performance evaluations.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from enum import Enum
 
 

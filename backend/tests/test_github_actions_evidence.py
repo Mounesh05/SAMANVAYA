@@ -268,3 +268,26 @@ async def test_sync_requires_project_scope_and_matching_server_repository(mock_d
         factory.assert_not_called()
     else:
         service.sync_pull_request.assert_awaited_once()
+
+
+@pytest.mark.anyio
+async def test_health_uses_existing_client_and_preserves_rate_limit(monkeypatch):
+    from api.routes.github import github_integration_health
+    from integrations.github.client import GitHubClient
+
+    call = AsyncMock(return_value={"login": "private-identity", "rate_limit": {"remaining": 42}})
+    monkeypatch.setattr(GitHubClient, "get_authenticated_user", call)
+    assert await github_integration_health({"employee_id": "reviewer"}) == {
+        "status": "operational", "rate_limit_remaining": 42}
+    call.assert_awaited_once()
+
+
+@pytest.mark.anyio
+async def test_health_failure_never_reports_operational_or_exposes_exception(monkeypatch):
+    from api.routes.github import github_integration_health
+    from integrations.github.client import GitHubClient
+
+    monkeypatch.setattr(GitHubClient, "get_authenticated_user", AsyncMock(side_effect=RuntimeError("private-provider-detail")))
+    report = await github_integration_health({"employee_id": "reviewer"})
+    assert report["status"] == "error"
+    assert "private-provider-detail" not in str(report)

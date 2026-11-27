@@ -6,11 +6,13 @@ It never imports or invokes repository code on the host.
 """
 
 import asyncio
+import ast
 import copy
 import hashlib
 import logging
 import re
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 from pymongo.errors import DuplicateKeyError
 
@@ -20,9 +22,12 @@ from domain.services.algorithm_benchmark_service import AlgorithmBenchmarkServic
 from domain.services.behavioral_compatibility_service import BehavioralCompatibilityService
 from domain.services.requirement_discovery_service import RequirementDiscoveryService
 from intelligence.algorithms.decision import fingerprint
+from intelligence.algorithms.discovery import complexity
+from intelligence.algorithms.discovery.classification import NESTED, TEST, TEST_HELPER, classify
 from intelligence.algorithms.discovery.service import discover_sources, source_language, safe_relative_path
 
 METHOD = "pr-algorithm-intelligence-v1"
+ANALYSIS_REVISION = "static-and-standalone-v2"
 TERMINAL = {"completed", "insufficient_evidence", "unsupported", "failed", "superseded"}
 _SLOTS = asyncio.Semaphore(2)
 _TASKS = set()
@@ -65,8 +70,29 @@ def function_text(source, function):
     return "\n".join(lines)
 
 
+def automatic_candidate_reason(function):
+    category = classify(function["path"], function["qualified_name"], function["name"])["category"]
+    if category in {TEST, TEST_HELPER, NESTED}:
+        return "Test code and nested definitions are retained as static context"
+    if function["is_async"] or function["qualified_name"] != function["name"]:
+        return "Automatic execution currently supports synchronous module-level named functions"
+    if not re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]{0,127}", function["name"]):
+        return "Entrypoint is not supported by the existing worker protocol"
+    return None
+
+
 def changed_functions(base, head, files, before, after):
-    """Exact path/lexical identity; a rename requires GitHub's explicit path mapping."""
+    """Exact path/lexical identity; a rename requires GitHub's explicit path mapping.
+
+    Every changed function is returned with a comparison mode:
+
+    * ``B`` — a previous implementation with an unambiguous lexical identity exists
+      at the base revision, so a base-versus-head replacement can be considered.
+    * ``A`` — no previous implementation exists at these revisions. The function is
+      still analysed statically; only the *comparison* is unavailable.
+
+    ``unsupported_reason`` therefore describes the comparison, never the analysis.
+    """
     paths = {f["filename"]: f.get("previous_filename", f["filename"]) for f in files
              if f.get("status") != "removed" and isinstance(f.get("filename"), str)}
     previous = {}
@@ -84,19 +110,193 @@ def changed_functions(base, head, files, before, after):
         old = matches[0] if len(matches) == 1 else None
         if old and function_text(before[old["path"]], old) == function_text(after[fn["path"]], fn):
             continue
+        mode = "B" if old is not None else "A"
         reason = None
-        if old is None:
-            reason = "Previous implementation with an unambiguous lexical identity is unavailable"
-        elif current_counts[(fn["path"], fn["qualified_name"], fn["language"])] != 1:
-            reason = "Multiple current declarations share this identity"
-        elif fn["is_async"] or old["is_async"] or fn["qualified_name"] != fn["name"] or old["qualified_name"] != old["name"]:
-            reason = "Automatic execution currently supports synchronous module-level named functions"
-        elif not re.fullmatch(r"[A-Za-z_$][A-Za-z0-9_$]{0,127}", fn["name"]):
-            reason = "Entrypoint is not supported by the existing worker protocol"
-        rows.append({"current": fn, "previous": old, "unsupported_reason": reason,
-                     "relationship": {"status": "PROVISIONAL", "reasons": ["Same repository, explicit base/head revisions, path and lexical identity"],
-                                      "limitations": ["Identity does not prove equivalent required behavior"]}})
+        candidate_reason = automatic_candidate_reason(fn)
+        if current_counts[(fn["path"], fn["qualified_name"], fn["language"])] != 1:
+            candidate_reason = "Multiple current declarations share this identity"
+        if candidate_reason:
+            reason = candidate_reason
+        elif old is None:
+            reason = "No previous implementation exists at these revisions, so a base-versus-head comparison cannot be formed"
+        else:
+            reason = automatic_candidate_reason(old)
+        if mode == "B":
+            relationship = {"status": "PROVISIONAL",
+                            "reasons": ["Same repository, explicit base/head revisions, path and lexical identity"],
+                            "limitations": ["Identity does not prove equivalent required behavior"]}
+        else:
+            relationship = {"status": "PROVISIONAL",
+                            "reasons": ["New or renamed declaration at the head revision; no base counterpart is claimed"],
+                            "limitations": ["Absence of a base counterpart does not establish novelty, renaming or required behavior",
+                                            "Static findings for this function are independent of any comparison"]}
+        rows.append({"current": fn, "previous": old, "mode": mode, "unsupported_reason": reason,
+                     "candidate_eligible": candidate_reason is None,
+                     "relationship": relationship})
     return rows
+
+
+def same_revision_alternatives(rows):
+    """Functions co-referenced by a single static assertion are Mode C candidates.
+
+    One assertion that mentions two distinct changed functions is structural
+    evidence that the author treats them as interchangeable answers to the same
+    requirement. Nothing about chronology or superiority is implied.
+    """
+    by_assertion: dict[tuple, set] = {}
+    for row in rows:
+        for evidence in row["current"].get("evidence", []):
+            if evidence.get("kind") != "test_expectation":
+                continue
+            key = (evidence.get("path"), evidence.get("line"))
+            if key[0] is None or key[1] is None:
+                continue
+            by_assertion.setdefault(key, set()).add(row["current"]["function_id"])
+    links: dict[str, dict[str, list]] = {}
+    for key, ids in by_assertion.items():
+        if len(ids) < 2:
+            continue
+        for left in ids:
+            for right in ids:
+                if left != right:
+                    links.setdefault(left, {}).setdefault(right, []).append(key)
+    return links
+
+
+def apply_same_revision_alternatives(pairs):
+    """Upgrade eligible Mode A rows to Mode C using one shared static assertion.
+
+    Each function is claimed at most once so a single pair of declarations is
+    never benchmarked twice.
+    """
+    links = same_revision_alternatives(pairs)
+    by_id = {row["current"]["function_id"]: row for row in pairs}
+    claimed: set[str] = set()
+    for pair in pairs:
+        if pair["mode"] != "A" or not pair["candidate_eligible"]:
+            continue
+        current_id = pair["current"]["function_id"]
+        if current_id in claimed:
+            continue
+        for other_id in sorted(links.get(current_id) or {}):
+            other = by_id.get(other_id)
+            if (other is None or other["mode"] != "A" or not other["candidate_eligible"]
+                    or other["current"]["language"] != pair["current"]["language"] or other_id in claimed):
+                continue
+            shared = sorted(set(links[current_id][other_id]))
+            pair["mode"] = "C"
+            pair["previous"] = other["current"]
+            pair["unsupported_reason"] = None
+            pair["relationship"] = {
+                "status": "PROVISIONAL",
+                "reasons": ["Both candidates are declared in the same head revision",
+                            "One static assertion references both declarations",
+                            "Shared assertion sites: " + ", ".join(f"{path}:{line}" for path, line in shared)],
+                "limitations": ["Both candidates come from the same revision; the previous/current labels "
+                                "establish neither chronology nor superiority",
+                                "A shared assertion shows the author treats the declarations as interchangeable, "
+                                "not that either one is correct",
+                                "Approved contract validation is required before any execution"],
+            }
+            other["relationship"] = {**other["relationship"], "limitations": [
+                *other["relationship"]["limitations"],
+                f"This declaration is the alternative candidate in a same-revision comparison recorded on "
+                f"{pair['current']['qualified_name']}"]}
+            claimed.add(current_id)
+            claimed.add(other_id)
+            break
+    return pairs
+
+
+def _function_node(source, function):
+    """Locate the definition node for a discovered function. Parsing only, never execution."""
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError, MemoryError):
+        return None
+    wanted_line = function.get("definition_line") or function.get("line")
+    wanted_name = function.get("name")
+    candidates = [node for node in ast.walk(tree)
+                  if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
+                  and getattr(node, "lineno", None) == wanted_line]
+    if not candidates:
+        return None
+    if wanted_name == "<lambda>":
+        for node in candidates:
+            if isinstance(node, ast.Lambda):
+                return node
+    elif wanted_name:
+        for node in candidates:
+            if getattr(node, "name", None) == wanted_name:
+                return node
+    return candidates[0]
+
+
+def static_findings(function, source):
+    """Static analysis for one function: structure, classification and complexity.
+
+    This runs for every changed function regardless of whether a comparison is
+    possible, so a function with no predecessor still produces auditable findings.
+    """
+    record = {
+        "status": "not_analyzed", "method": METHOD,
+        "patterns": [p.get("kind") for p in function.get("detected_patterns") or []],
+        "task_status": function.get("task_status"),
+        "task_hypotheses": [h.get("kind") for h in function.get("task_hypotheses") or []],
+        "requirement_evidence_refs": list(function.get("requirement_evidence_refs") or []),
+        "callers": list(function.get("callers") or []),
+        "test_expectations": [{"path": e.get("path"), "line": e.get("line"), "detail": e.get("detail")}
+                              for e in function.get("evidence") or [] if e.get("kind") == "test_expectation"],
+        "classification": None, "complexity": None, "limitations": [],
+    }
+    if not source:
+        record["limitations"].append("Source text for this revision was not available; no static analysis was performed.")
+        return record
+    language = function.get("language") or "python"
+    facts = [SimpleNamespace(**e) for e in (function.get("evidence") or [])]
+    node = _function_node(source, function) if language == "python" else None
+    annotations = {}
+    if node is not None:
+        args = getattr(node, "args", None)
+        if args is not None:
+            for argument in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
+                annotations[argument.arg] = ast.unparse(argument.annotation) if argument.annotation else ""
+    try:
+        record["complexity"] = complexity.estimate(node, function.get("name") or "", facts=facts,
+                                                   parameter_annotations=annotations, language=language)
+    except Exception:  # pragma: no cover - defensive; a bound is never guessed
+        record["complexity"] = complexity.estimate(None, function.get("name") or "", facts=[],
+                                                   parameter_annotations={}, language=language)
+        record["limitations"].append("Static complexity estimation could not complete; no bound is claimed.")
+    if language == "python" and node is None:
+        record["limitations"].append("The definition could not be located in the stored source, so no complexity bound is claimed.")
+    if language != "python":
+        record["limitations"].append("Static complexity estimation is implemented for Python in this milestone; "
+                                     "no bound is claimed for this language.")
+    record["classification"] = classify(function.get("path"), function.get("qualified_name"),
+                                        function.get("name"), language, patterns=record["patterns"],
+                                        complexity=record["complexity"])
+    record["status"] = "analyzed"
+    return record
+
+
+def run_status(rows):
+    """Terminal run status from per-row outcomes.
+
+    A run is only ``unsupported`` when nothing could be analysed or compared.
+    Static findings without a possible comparison are a completed analysis, and a
+    comparison blocked by a missing approved contract is insufficient evidence.
+    """
+    statuses = {row.get("status") for row in rows}
+    if "failed" in statuses:
+        return "failed"
+    if any(row.get("finding_status") == "CORRECTNESS_FAILURE" for row in rows) or "completed" in statuses:
+        return "completed"
+    if "insufficient_evidence" in statuses:
+        return "insufficient_evidence"
+    if statuses <= {"analyzed", "unsupported"}:
+        return "completed" if "analyzed" in statuses else "unsupported"
+    return "unsupported"
 
 
 def recommendation_status(run):
@@ -138,15 +338,25 @@ class PRAlgorithmIntelligenceService:
                 "authority_basis": "server-resolved connected project; approved functional scope; existing worker execution feature flag"}
 
     async def enqueue(self, project_id, repository, pr, files, pr_id, launch=True):
-        await self.authority(project_id, repository)
+        user = await self.authority(project_id, repository)
         base, head = pr.get("base", {}).get("sha"), pr.get("head", {}).get("sha")
         if not base or not head or pr.get("state") != "open":
             return {"status": "unsupported", "reason": "Open PR with immutable base and head revisions is required"}
-        key = hashlib.sha256(str([METHOD, project_id, repository, pr["number"], base, head]).encode()).hexdigest()
+        identity = [METHOD, ANALYSIS_REVISION, project_id, repository, pr["number"], base, head]
+        # A new approval can unblock an unchanged PR. Draft contracts do not invalidate a job.
+        approvals = await self.contracts.collection.find(
+            {"project_id": project_id, "organization_id": user["org_id"], "status": "APPROVED",
+             "$or": [{"automatic_scope.repository": repository}, {"function_bindings.0": {"$exists": True}}]},
+            {"_id": 0, "contract_id": 1, "payload_fingerprint": 1},
+        ).sort("contract_id", 1).limit(101).to_list(101)
+        if approvals:
+            identity.append(fingerprint(approvals))
+        key = hashlib.sha256(str(identity).encode()).hexdigest()
         run_id = "PRI-" + key[:24].upper()
         runs = self.collection("code_quality_runs")
         await runs.create_index("algorithm_job_key", unique=True, sparse=True)
         doc = {"run_id": run_id, "algorithm_job_key": key, "kind": "pr_algorithm_intelligence", "method": METHOD,
+               "approved_contracts": approvals,
                "repository_id": project_id, "project_id": project_id, "repository": repository, "pr_id": pr_id,
                "pr_number": pr["number"], "base_sha": base, "head_sha": head, "commit_sha": head,
                "created_at": now(), "lease_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=8)).isoformat(),
@@ -190,22 +400,30 @@ class PRAlgorithmIntelligenceService:
 
     async def snapshot(self, doc, revision, files):
         owner, repo = doc["repository"].split("/")
-        sources, diagnostics = await self.api.fetch_analysis_sources(owner, repo, files, revision, include_context=True)
+        sources, diagnostics = await self.api.fetch_analysis_sources(
+            owner, repo, files, revision, include_context=True, verified_snapshot=True, include_quality_context=False,
+        )
         discovery = (await discover_sources(sources, doc["project_id"], revision, diagnostics)).model_dump(mode="json")
         run_id = doc["run_id"] + ("-base" if revision == doc["base_sha"] else "-head")
         await self.collection("code_quality_runs").update_one({"run_id": run_id}, {"$setOnInsert": {
-            "run_id": run_id, "repository_id": doc["project_id"], "commit_sha": revision, "status": "completed", "created_at": now(),
+            "run_id": run_id, "repository_id": doc["project_id"], "commit_sha": revision, "status": "completed",
+            "org_id": doc["organization_id"], "created_at": now(),
             "source_provenance": {"method": "github-exact-revision", "repository": doc["repository"], "revision": revision},
             "function_discovery": discovery}}, upsert=True)
         return run_id, discovery, sources
 
     async def resolve_contracts(self, doc, pair, base_run):
         matches = []
+        bound_function = pair["previous"] or pair["current"]
         records = await self.contracts.collection.find({"project_id": doc["project_id"], "status": "APPROVED"}, {"_id": 0}).limit(101).to_list(101)
         if len(records) > 100:
             return [], "Approved-contract search bound exceeded; no arbitrary contract was selected"
         for contract in records:
             if contract.get("organization_id") != doc["organization_id"]:
+                continue
+            accepted = doc.get("approved_contracts")
+            if accepted is not None and {"contract_id": contract["contract_id"],
+                                         "payload_fingerprint": contract["payload_fingerprint"]} not in accepted:
                 continue
             scope = contract.get("automatic_scope")
             found = scope == {"repository": doc["repository"], "path": pair["current"]["path"], "qualified_name": pair["current"]["qualified_name"]}
@@ -216,15 +434,54 @@ class PRAlgorithmIntelligenceService:
                 if provenance.get("method") != "github-exact-revision" or provenance.get("repository") != doc["repository"]:
                     continue
                 for fn in snapshot.get("function_discovery", {}).get("functions", []):
-                    if (fn["function_id"] == binding["function_id"] and pair["previous"] and all(fn.get(k) == pair["previous"].get(k) for k in ("source_hash", "path", "qualified_name", "language"))):
+                    if (fn["function_id"] == binding["function_id"] and all(
+                            fn.get(k) == bound_function.get(k) for k in ("source_hash", "path", "qualified_name", "language"))):
                         found = True
             if found:
                 resolution = await self.contracts.resolve(doc["project_id"], [contract["contract_id"]])
-                if resolution["status"] == "APPROVED":
-                    matches.append(contract)
+                if resolution["status"] == "APPROVED" and resolution.get("validator_available"):
+                    matches.append({**resolution["snapshot"], "contract_id": contract["contract_id"]})
         if len(matches) != 1:
             return matches, "No uniquely applicable approved functional contract; names and inferred purpose cannot supply one"
         return matches, None
+
+    async def benchmark_standalone(self, doc, pair, row, sources, head_run, contract, user):
+        """Validate and measure one verified implementation on approved checks."""
+        function = pair["current"]
+        checks = set(contract["required_dataset_ids"])
+        request = {
+            "project_id": doc["project_id"], "language": function["language"],
+            "candidates": [{"name": "current", "entrypoint": function["name"], "source": sources[function["path"]]}],
+            "contract": contract["contract"], "datasets": [d for d in contract["datasets"] if d["id"] in checks],
+            "repetitions": 5, "resources": {"cpus": 1, "memory_bytes": 536870912, "pids": 64, "timeout_seconds": 45},
+            "decision_policy": {"id": "automatic-pr-standalone", "version": "1", "objective": "TRADEOFF_ONLY",
+                                "required_dataset_ids": contract["required_dataset_ids"]},
+            "requirement_context": {"pr_ids": [doc["pr_id"]]},
+        }
+        from domain.schemas.algorithm_benchmark import BenchmarkRequest
+        validated = BenchmarkRequest.model_validate(request).model_dump()
+        created = await self.benchmarks.create(validated, user, metadata={
+            "kind": "pr_standalone", "pr_automation": {
+                "run_id": doc["run_id"], "repository": doc["repository"], "pr_id": doc["pr_id"],
+                "head_sha": doc["head_sha"], "function_id": function["function_id"], "discovery_run_id": head_run,
+                "contract_id": contract["contract_id"], "contract_fingerprint": fingerprint(contract),
+            },
+        })
+        row.update(benchmark_run_id=created["run_id"], benchmark_status="pending")
+        child = await self.benchmarks.get(created["run_id"])
+        report = child.get("requirements_discovery", {})
+        constraints = child["request"]["decision_policy"]["constraints"]
+        if (not await self.fresh(doc) or report.get("conflicts")
+                or any(c.get("applicability") == "UNRESOLVED" for c in constraints)):
+            await self.benchmarks._finish(child["run_id"], {
+                "status": "failed", "error": "Revision or applicable requirements could not be verified before execution",
+            })
+            row["benchmark_status"] = "blocked"
+            return
+        await self.benchmarks.execute(child["run_id"])
+        child = await self.benchmarks.get(child["run_id"])
+        row["benchmark_status"] = child["status"]
+        row["evidence_refs"].append(child["run_id"])
 
     async def publish_recommendation(self, doc, row, run):
         status = recommendation_status(run)
@@ -280,7 +537,7 @@ class PRAlgorithmIntelligenceService:
         old_files = [{**f, "filename": f.get("previous_filename", f["filename"]), "status": "modified"} for f in files if f.get("status") != "added"]
         base_run, base, before = await self.snapshot(doc, doc["base_sha"], old_files)
         head_run, head, after = await self.snapshot(doc, doc["head_sha"], files)
-        pairs = changed_functions(base, head, files, before, after)
+        pairs = apply_same_revision_alternatives(changed_functions(base, head, files, before, after))
         discovery_incomplete = base["status"] != "available" or head["status"] != "available"
         await self.set_status(doc, "analyzing", base_discovery_run_id=base_run, head_discovery_run_id=head_run,
                               function_discovery=head, evidence_refs=[base_run, head_run], organization_id=user["org_id"],
@@ -293,15 +550,47 @@ class PRAlgorithmIntelligenceService:
             def identity(fn):
                 return {k: copy.deepcopy(fn.get(k)) for k in ("function_id", "path", "qualified_name", "name", "language", "source_hash", "source_revision", "is_async", "detected_patterns", "task_hypotheses")}
             row = {"current": identity(pair["current"]), "previous": identity(pair["previous"]) if pair["previous"] else None,
-                   "relationship": pair["relationship"]}
-            row.update(status="unsupported", evidence_refs=[base_run, head_run])
+                   "mode": pair["mode"], "relationship": pair["relationship"]}
+            row.update(status="unsupported", comparison_status="not_analyzed", evidence_refs=[base_run, head_run])
+            # Static analysis runs for every changed function, including those with
+            # no base counterpart, so absence of a comparison never suppresses findings.
+            static = static_findings(pair["current"], after.get(pair["current"]["path"]))
+            row["static"] = static
+            row["classification"] = static["classification"]
+            row["complexity"] = static["complexity"]
+            row["static_status"] = static["status"]
+            if pair["previous"]:
+                # A predecessor or same-revision alternative is analysed with the same
+                # method so the two sides are comparable rather than asymmetric.
+                previous_source = before if pair["mode"] == "B" else after
+                row["static_previous"] = static_findings(pair["previous"],
+                                                         previous_source.get(pair["previous"]["path"]))
             rows.append(row)
             if pair["unsupported_reason"]:
-                row["reason"] = pair["unsupported_reason"]
+                if pair["mode"] == "A":
+                    row.update(status="analyzed", comparison_status="not_applicable", reason=pair["unsupported_reason"])
+                    row["benchmark_status"] = "not_applicable"
+                    if not pair["candidate_eligible"]:
+                        continue
+                    approved, blocked = await self.resolve_contracts(doc, pair, base_run)
+                    enabled = self.enabled if self.enabled is not None else settings.ALGORITHM_BENCHMARK_ENABLED
+                    if blocked or not enabled or executed >= 4:
+                        row.update(benchmark_status="blocked", benchmark_reason=blocked or (
+                            "Automatic benchmark budget reached" if enabled else "Benchmark execution is disabled"))
+                        continue
+                    try:
+                        await self.benchmark_standalone(doc, pair, row, after, head_run, approved[0], user)
+                    except BenchmarkBusy:
+                        row.update(benchmark_status="blocked", benchmark_reason="An existing benchmark holds the project slot")
+                    else:
+                        executed += 1
+                else:
+                    row.update(status="unsupported", comparison_status="unsupported", reason=pair["unsupported_reason"])
                 continue
             contracts, reason = await self.resolve_contracts(doc, pair, base_run)
             if reason:
-                row.update(status="insufficient_evidence", reason=reason, contract_ids=[c["contract_id"] for c in contracts])
+                row.update(status="insufficient_evidence", comparison_status="blocked", reason=reason,
+                           contract_ids=[c["contract_id"] for c in contracts])
                 continue
             contract = contracts[0]
             row["contract_id"] = contract["contract_id"]
@@ -311,10 +600,12 @@ class PRAlgorithmIntelligenceService:
                 "expected_output_method": contract["contract"].get("comparison", {"mode": "exact"}),
                 "source_reference": "algorithm_function_contracts/" + contract["contract_id"], "validation_status": "APPROVED_FIXTURE"} for d in contract["datasets"]]
             if not (self.enabled if self.enabled is not None else settings.ALGORITHM_BENCHMARK_ENABLED):
-                row.update(status="unsupported", reason="Existing administrator benchmark execution flag is disabled")
+                row.update(status="unsupported", comparison_status="unsupported",
+                           reason="Existing administrator benchmark execution flag is disabled")
                 continue
             if executed >= 4:
-                row.update(status="insufficient_evidence", reason="Automatic comparison budget reached; static findings retained")
+                row.update(status="insufficient_evidence", comparison_status="deferred",
+                           reason="Automatic comparison budget reached; static findings retained")
                 continue
             if not await self.fresh(doc):
                 await self.set_status(doc, "superseded", functions=rows, completed_at=now())
@@ -322,8 +613,11 @@ class PRAlgorithmIntelligenceService:
             def candidate(fn, source, label, discovery_run):
                 return {"name": label, "source": source[fn["path"]], "entrypoint": fn["name"], "language": fn["language"],
                         "function_reference": {"run_id": discovery_run, "function_id": fn["function_id"]}}
+            # Mode B compares the base revision against the head revision; Mode C
+            # compares two declarations that both come from the head revision.
+            previous_source, previous_run = (before, base_run) if pair["mode"] == "B" else (after, head_run)
             body = {"project_id": doc["project_id"], "contract_ids": [contract["contract_id"]],
-                "previous": candidate(pair["previous"], before, "previous", base_run), "current": candidate(pair["current"], after, "current", head_run),
+                "previous": candidate(pair["previous"], previous_source, "previous", previous_run), "current": candidate(pair["current"], after, "current", head_run),
                 "repetitions": 5, "resources": {"cpus": 1, "memory_bytes": 536870912, "pids": 64, "timeout_seconds": 45},
                 "decision_policy": {"id": "automatic-pr-workloads", "version": "1", "objective": "MINIMIZE_TIME", "required_dataset_ids": contract["required_dataset_ids"]},
                 "requirement_context": {"pr_ids": [doc["pr_id"]]}}
@@ -335,7 +629,8 @@ class PRAlgorithmIntelligenceService:
                 created = await self.compatibility.create(body, user, metadata={"pr_automation": {"run_id": doc["run_id"], "repository": doc["repository"],
                     "pr_id": doc["pr_id"], "base_sha": doc["base_sha"], "head_sha": doc["head_sha"], "method": METHOD}})
             except BenchmarkBusy:
-                row.update(status="insufficient_evidence", reason="Existing project benchmark concurrency slot is occupied; no parallel bypass was attempted")
+                row.update(status="insufficient_evidence", comparison_status="blocked",
+                           reason="Existing project benchmark concurrency slot is occupied; no parallel bypass was attempted")
                 continue
             executed += 1
             child = await self.benchmarks.get(created["run_id"])
@@ -343,7 +638,8 @@ class PRAlgorithmIntelligenceService:
             report = child.get("requirements_discovery", {})
             if created["status"] == "pending" and (report.get("conflicts") or any(c.get("applicability") == "UNRESOLVED" for c in child["request"]["decision_policy"]["constraints"])):
                 await self.benchmarks._finish(child["run_id"], {"status": "completed", "error": "Applicable requirement or validator is unresolved; automatic execution skipped"})
-                row.update(status="insufficient_evidence", reason="Requirements need resolution before automatic execution", requirements_discovery=report)
+                row.update(status="insufficient_evidence", comparison_status="blocked",
+                           reason="Requirements need resolution before automatic execution", requirements_discovery=report)
                 continue
             if created["status"] == "pending":
                 await self.set_status(doc, "benchmarking", functions=rows)
@@ -353,9 +649,11 @@ class PRAlgorithmIntelligenceService:
                 await self.set_status(doc, "superseded", functions=rows, completed_at=now())
                 return
             if child["status"] != "completed":
-                row.update(status="failed", reason=child.get("error") or "Isolated worker did not complete")
+                row.update(status="failed", comparison_status="failed",
+                           reason=child.get("error") or "Isolated worker did not complete")
                 continue
             row.update(status="completed" if child.get("behavioral_compatibility", {}).get("phase1_eligible") else "insufficient_evidence",
+                       comparison_status="completed" if child.get("behavioral_compatibility", {}).get("phase1_eligible") else "inconclusive",
                        compatibility=child.get("behavioral_compatibility", {}).get("status"), evidence_refs=[base_run, head_run, child["run_id"]])
             rec_id, finding = await self.publish_recommendation(doc, row, child)
             row["finding_status"] = finding
@@ -363,8 +661,12 @@ class PRAlgorithmIntelligenceService:
         if not await self.fresh(doc):
             await self.set_status(doc, "superseded", functions=rows, completed_at=now())
             return
-        status = "failed" if any(r["status"] == "failed" for r in rows) else "completed" if any(r["status"] == "completed" or r.get("finding_status") == "CORRECTNESS_FAILURE" for r in rows) else "insufficient_evidence" if any(r["status"] == "insufficient_evidence" for r in rows) else "unsupported"
+        status = run_status(rows)
+        modes = {}
+        for row in rows:
+            modes[row.get("mode", "A")] = modes.get(row.get("mode", "A"), 0) + 1
         await self.set_status(doc, status, functions=rows, recommendation_ids=recommendations, completed_at=now(),
+                              comparison_modes=modes,
                               analysis_truncated=bool(doc.get("input_truncated") or discovery_incomplete or len(pairs) > 64))
 
     async def get(self, run_id):

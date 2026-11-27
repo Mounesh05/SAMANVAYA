@@ -48,6 +48,7 @@ class GitHubSyncService:
         use_deep_analysis: bool = False,
         triggered_by: str = "system",
         actor: Optional[dict] = None,
+        retry_quality_run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Fetch PR from GitHub, analyze, and store in database.
@@ -92,6 +93,7 @@ class GitHubSyncService:
         
         # Update PR with file stats and CI status
         normalized_pr.update({
+            "base_sha": github_pr.get("base", {}).get("sha"),
             "files_changed_count": file_stats["files_changed"],
             "ci_status": ci_data["ci_status"],
             "ci_evidence_status": ci_data.get("ci_evidence_status", "available"),
@@ -159,22 +161,44 @@ class GitHubSyncService:
         function_discovery = None
         sources = {}
         diagnostics = []
+        quality_comparison = None
+        head_evidence = None
         try:
-            from domain.services.code_quality_service import CodeQualityService
-            from repositories.code_quality_repository import CodeQualityRepository
-            sources, diagnostics = await self.api_service.fetch_analysis_sources(
-                owner, repo, files, github_pr.get("head", {}).get("sha"), include_context=True,
-            )
-            function_discovery = await CodeQualityService().discover_functions(
-                file_stats["changed_files"], {
-                    "project_id": project_id, "commit_sha": github_pr.get("head", {}).get("sha"),
-                    "source_files": sources, "source_diagnostics": diagnostics,
-                },
-            )
-            discovery_run_id = await CodeQualityRepository().save_discovery(
-                project_id, function_discovery, pr_number, triggered_by,
-            )
+            if github_pr.get("base", {}).get("sha") and github_pr.get("head", {}).get("sha"):
+                from core.database import col
+                from domain.services.pr_quality_comparison import compare_revisions
+                from intelligence.evidence.function_purpose import FunctionDiscovery
+                comparison, head_evidence = await compare_revisions(
+                    self.api_service, project_id, owner, repo, github_pr, files, triggered_by, retry_of=retry_quality_run_id)
+                discovery_run_id = comparison["child_run_ids"]["head"]
+                quality_comparison = {k: comparison.get(k) for k in (
+                    "run_id", "status", "child_run_ids", "quality_analysis_status", "quality_comparison")}
+                await col("pull_requests").update_one(
+                    {"id": normalized_pr["id"], "project_id": project_id, "head_sha": github_pr["head"]["sha"],
+                     "base_sha": github_pr["base"]["sha"]}, {"$set": {"quality_comparison_run_id": comparison["run_id"]}})
+                snapshot = await col("code_quality_runs").find_one(
+                    {"run_id": discovery_run_id, "repository_id": project_id}, {"function_discovery": 1})
+                if snapshot and snapshot.get("function_discovery"):
+                    function_discovery = FunctionDiscovery.model_validate(snapshot["function_discovery"])
+            else:
+                from domain.services.code_quality_service import CodeQualityService
+                from repositories.code_quality_repository import CodeQualityRepository
+                sources, diagnostics = await self.api_service.fetch_analysis_sources(
+                    owner, repo, files, github_pr.get("head", {}).get("sha"), include_context=True,
+                )
+                function_discovery = await CodeQualityService().discover_functions(
+                    file_stats["changed_files"], {
+                        "project_id": project_id, "commit_sha": github_pr.get("head", {}).get("sha"),
+                        "source_files": sources, "source_diagnostics": diagnostics,
+                    },
+                )
+                discovery_run_id = await CodeQualityRepository().save_discovery(
+                    project_id, function_discovery, pr_number, triggered_by,
+                )
         except Exception:
+            if retry_quality_run_id:
+                raise
+            quality_comparison = {"status": "failed", "reason": "PR quality comparison could not complete"}
             logger.exception("Static function snapshot unavailable for PR sync")
 
         ai_analysis = None
@@ -196,6 +220,10 @@ class GitHubSyncService:
                 "source_files": sources,
                 "source_diagnostics": diagnostics,
             }
+            if head_evidence is not None:
+                pr_data["analyzed_head_evidence"] = head_evidence
+            if function_discovery is not None:
+                pr_data["observed_discovery"] = function_discovery
             
             analysis_result = await self.analysis_service.analyze_with_ai(
                 pr_data=pr_data,
@@ -228,6 +256,7 @@ class GitHubSyncService:
             "discovery_run_id": discovery_run_id,
             "function_discovery": function_discovery.model_dump(mode="json") if function_discovery else None,
             "algorithm_intelligence": algorithm_intelligence,
+            "quality_comparison": quality_comparison,
             "revision_superseded": not current_revision,
             "task_progress": task_progress,
         }

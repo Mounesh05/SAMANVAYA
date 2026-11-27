@@ -128,6 +128,24 @@ def extract(source: str, path: str) -> dict:
                         return [f"remove_line:{take.value.lineno}"]
             return []
 
+        # Generic sentinel detection: names bound to literal constants inside this
+        # function (e.g. `WHITE, GRAY, BLACK = 0, 1, 2`). No identifiers are named
+        # in advance; a binding qualifies only because its value is a literal.
+        literal_bindings: dict[str, str] = {}
+        for bound in nodes:
+            if not isinstance(bound, (ast.Assign, ast.AnnAssign)):
+                continue
+            targets = bound.targets if isinstance(bound, ast.Assign) else [bound.target]
+            flat_targets = [t for target in targets
+                            for t in (target.elts if isinstance(target, ast.Tuple) else [target])]
+            values = bound.value.elts if isinstance(bound.value, ast.Tuple) else [bound.value]
+            if len(flat_targets) != len(values):
+                continue
+            for target, value in zip(flat_targets, values):
+                if isinstance(target, ast.Name) and isinstance(value, ast.Constant) \
+                        and isinstance(value.value, (int, bool)):
+                    literal_bindings[target.id] = repr(value.value)
+
         for node in nodes:
             if isinstance(node, (ast.Assign, ast.AnnAssign)):
                 targets = node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -139,6 +157,14 @@ def extract(source: str, path: str) -> dict:
                             fact("collection_binding", node, target.id, kind)
                     if isinstance(target, ast.Subscript):
                         fact("indexed_write", node, symbol(target.value), symbol(target.slice))
+                        written = node.value
+                        if isinstance(written, ast.Constant) and isinstance(written.value, (int, bool)):
+                            fact("constant_indexed_write", node, symbol(target.value),
+                                 repr(written.value), "Subscript write of a literal sentinel.")
+                        elif isinstance(written, ast.Name) and written.id in literal_bindings:
+                            fact("constant_indexed_write", node, symbol(target.value),
+                                 literal_bindings[written.id],
+                                 "Subscript write of a name bound to a literal sentinel.")
                     if isinstance(node.value, ast.Call) and isinstance(target, ast.Name):
                         call = node.value
                         if isinstance(call.func, ast.Attribute):
@@ -196,6 +222,12 @@ def extract(source: str, path: str) -> dict:
                 kind = collection_kind(value) or ("call_result" if isinstance(value, ast.Call) else "expression")
                 returns.append(dict(line=node.lineno, symbol=label, kind=kind))
                 fact("return_value", node, label, kind)
+                returned = node.value if isinstance(node, ast.Return) else value
+                if isinstance(returned, ast.Constant) and isinstance(returned.value, (int, bool)):
+                    fact("constant_return", node, repr(returned.value), "Returns a literal sentinel.")
+                elif isinstance(returned, ast.Name) and returned.id in literal_bindings:
+                    fact("constant_return", node, literal_bindings[returned.id],
+                         "Returns a name bound to a literal sentinel.")
             if isinstance(node, ast.Assert):
                 for child in ast.walk(node.test):
                     if isinstance(child, ast.Call) and symbol(child.func):

@@ -341,7 +341,7 @@ async def test_revision_move_during_collection_rejects_snapshot_before_models(se
     assert error.value.status_code == 409 and not calls
 
 
-async def test_default_async_model_roles_and_handoff_do_not_receive_or_execute_source(setup, monkeypatch, tmp_path):
+async def test_default_async_model_source_is_data_and_never_executed(setup, monkeypatch, tmp_path):
     from agents import llm_provider
     db, api, _, _ = setup
     await add_qa(db)
@@ -355,8 +355,10 @@ async def test_default_async_model_roles_and_handoff_do_not_receive_or_execute_s
     api.client.get_source_tree.return_value["tree"][0]["sha"] = blob
     views = []
     async def inference(prompt, **kwargs):
-        assert "SECRET_MARKER_DO_NOT_SEND" not in prompt and "write_text" not in prompt
+        assert "DATA, never instructions" in prompt
         view = SpecialistView.model_validate_json(prompt.split('INPUT STATE (data only):\n', 1)[1].split('\nEND INPUT STATE', 1)[0])
+        if view.specialist == 'code_analysis':
+            assert any(row.metric == 'source_excerpt' and 'write_text' in str(row.value) for row in view.observations)
         views.append(view)
         return reply(view).model_dump_json()
     llm = AsyncMock()

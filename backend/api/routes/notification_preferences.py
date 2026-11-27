@@ -14,17 +14,14 @@ router = APIRouter()
 repo = NotificationPreferencesRepository()
 
 
-@router.get("/preferences")
+@router.get("/preferences", response_model=NotificationPreferences)
 async def get_preferences(
     current_user: dict = Depends(get_current_user),
 ):
     """Get current user's notification preferences."""
     user_id = current_user["employee_id"]
     prefs = await repo.find_by_user(user_id)
-    if not prefs:
-        # Return defaults
-        return NotificationPreferences(user_id=user_id).dict()
-    return prefs
+    return prefs or NotificationPreferences(user_id=user_id)
 
 
 @router.put("/preferences")
@@ -34,7 +31,7 @@ async def update_preferences(
 ):
     """Update current user's notification preferences."""
     user_id = current_user["employee_id"]
-    await repo.upsert(user_id, preferences.dict())
+    await repo.upsert(user_id, preferences.model_dump(mode="json"))
     return {"success": True, "user_id": user_id}
 
 

@@ -29,14 +29,11 @@ class GitHubClient:
             "User-Agent": "Samanvaya-Backend"
         }
         
-        # Use provided token or fall back to config
         auth_token = token or settings.GITHUB_TOKEN
         if auth_token:
             self.headers["Authorization"] = f"Bearer {auth_token}"
         
-        self.timeout = getattr(settings, 'GITHUB_TIMEOUT', 30)
-        if auth_token:
-            self.headers["Authorization"] = "Bearer " + auth_token
+        self.timeout = settings.GITHUB_TIMEOUT
     
     async def _make_request(self, method: str, url: str, **kwargs) -> httpx.Response:
         """Make HTTP request with proper redirect handling."""

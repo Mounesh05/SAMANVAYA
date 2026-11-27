@@ -83,7 +83,11 @@ async def test_exact_mapping_does_not_match_a_repository_name_substring(mock_db,
 
 
 async def test_mapped_algorithm_history_needs_no_manual_project_id_and_stays_tenant_scoped(workflow, monkeypatch):
-    await run(workflow)
+    result = await run(workflow)
+    function_id = result["functions"][0]["current"]["function_id"]
+    explanation_path = f"/pr-intelligence/{result['run_id']}/functions/{function_id}/explanation"
+    select_facts = AsyncMock(return_value={"status": "generated", "explanation": "Static evidence"})
+    monkeypatch.setattr(algorithms.service, "_select_explanation_facts", select_facts)
     monkeypatch.setattr(algorithms, "col", lambda name: workflow.db[name])
     monkeypatch.setattr(algorithms.ProjectRepository, "find_by_id", AsyncMock(side_effect=lambda key: {"id": key, "org_id": "org"}))
     user = {"employee_id": "dev", "role": "DEVELOPER", "org_id": "org", "project_ids": ["P1"]}
@@ -95,9 +99,17 @@ async def test_mapped_algorithm_history_needs_no_manual_project_id_and_stays_ten
         assert response.status_code == 200 and len(response.json()["analyses"]) == 1
         response = await client.get("/pr-intelligence", params={"pr_id": "PR1"})
         assert response.status_code == 200 and not response.json()["analyses"][0]["historical_only"]
+        response = await client.post(explanation_path)
+        assert response.status_code == 200 and response.json()["status"] == "generated"
+        facts, citation = select_facts.call_args.args
+        assert all(fact["citation"] == citation for fact in facts)
+        assert "def solve" not in json.dumps(facts)
+        assert any(fact["id"] == "task_hypotheses" for fact in facts)
         user["org_id"] = "foreign"
         response = await client.get("/pr-intelligence", params={"pr_id": "PR1"})
         assert response.status_code == 403
+        assert (await client.post(explanation_path)).status_code == 403
+        select_facts.assert_awaited_once()
 
 
 async def test_stale_recommendations_are_not_returned_as_pending(workflow, monkeypatch):

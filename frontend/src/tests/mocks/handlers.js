@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
+import { API_BASE_URL } from '../../utils/constants'
 
-const API_BASE = 'http://localhost:8001/api'
+const API_BASE = new URL(API_BASE_URL, window.location.href).href.replace(/\/$/, '')
 
 export const handlers = [
   // Auth endpoints

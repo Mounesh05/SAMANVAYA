@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from agents.llm_provider import check_ollama_connection, get_ollama_llm
@@ -40,6 +40,8 @@ _REFERENCE_ANCHORS = (
     "file",
     "commit_sha",
     "check_name",
+    "workflow_run_id",
+    "workflow_job_id",
     "review_id",
     "comment_id",
     "impact_metric",
@@ -242,15 +244,6 @@ def _result_from_evaluation(
     )
 
 
-def _calculate_ai_evidence_score(dimensions: Dict[str, Any]) -> float:
-    """Aggregate the existing weighted 0-10 dimensions into a 0-10 score."""
-    weighted_points = sum(
-        float(dimensions[name]["score"]) * weight
-        for name, weight in AI_DIMENSION_WEIGHTS.items()
-    )
-    return round(weighted_points / 90, 2)
-
-
 def _require_evidence(evidence: Dict[str, Any]) -> None:
     pr = evidence.get("pr")
     if not isinstance(pr, dict):
@@ -275,6 +268,28 @@ def _build_evidence_references(evidence: Dict[str, Any]) -> List[Dict[str, Any]]
     return references
 
 
+def _actions_observations(evidence):
+    """Keep Actions identities separate from Checks; reject foreign/stale rows."""
+    actions = evidence.get('actions_ci') or {}
+    pr = evidence.get('pr') or {}
+    repository = (pr.get('base', {}).get('repo') or {}).get('full_name')
+    sha = pr.get('head', {}).get('sha')
+    runs, jobs = [], []
+    if not repository or actions.get('status') not in {'available', 'partial'}:
+        return runs, jobs
+    for run in actions.get('runs', [])[:20]:
+        if (str(run.get('repository', '')).casefold() != repository.casefold() or run.get('commit_sha') != sha
+                or type(run.get('run_id')) is not int or type(run.get('run_attempt')) is not int):
+            continue
+        runs.append({key: value for key, value in run.items() if key != 'jobs'})
+        for job in run.get('jobs', [])[:20]:
+            if (job.get('repository') == run['repository'] and job.get('commit_sha') == sha
+                    and job.get('run_id') == run['run_id'] and job.get('run_attempt') == run['run_attempt']
+                    and type(job.get('job_id')) is int):
+                jobs.append(job)
+    return runs, jobs
+
+
 def _build_evidence_manifest(
     owner: str,
     repo: str,
@@ -292,7 +307,11 @@ def _build_evidence_manifest(
     check_runs = evidence.get("check_runs", {})
     if isinstance(check_runs, dict):
         check_runs = check_runs.get("check_runs", [])
+    actions_runs, actions_jobs = _actions_observations(evidence)
     return {
+        "workflow_runs": actions_runs,
+        "workflow_jobs": actions_jobs,
+        "actions_limitations": ["GitHub-reported workflow outcomes are not independent test or defect-free-code proof"],
         "repository": f"{owner}/{repo}",
         "pull_request": pr_number,
         "head_commit_sha": evidence["pr"]["head"]["sha"],
@@ -450,7 +469,7 @@ def _compact_repository_info(repo_info: Dict[str, Any]) -> Dict[str, Any]:
 
 def _diff_lines(patch: Optional[str]) -> set[int]:
     """Return added-line numbers represented by a unified diff patch."""
-    lines = set()
+    lines: set[int] = set()
     if not patch:
         return lines
     current = None
@@ -479,6 +498,8 @@ def _validate_evidence_references(
     }
     commits = {item.get("sha") for item in manifest.get("commits", [])}
     checks = {item.get("name") for item in manifest.get("check_runs", [])}
+    workflows = {item.get("run_id") for item in manifest.get("workflow_runs", [])}
+    jobs = {item.get("job_id") for item in manifest.get("workflow_jobs", [])}
     reviews = {item.get("id") for item in manifest.get("reviews", [])}
     comments = {item.get("id") for item in manifest.get("comments", [])}
     impact_metrics = {
@@ -510,6 +531,10 @@ def _validate_evidence_references(
                 reason = f"Unknown commit: {reference['commit_sha']}"
             elif reference.get("check_name") and reference["check_name"] not in checks:
                 reason = f"Unknown check: {reference['check_name']}"
+            elif "workflow_run_id" in reference and (type(reference['workflow_run_id']) is not int or reference['workflow_run_id'] not in workflows):
+                reason = "Unknown workflow run"
+            elif "workflow_job_id" in reference and (type(reference['workflow_job_id']) is not int or reference['workflow_job_id'] not in jobs):
+                reason = "Unknown workflow job"
             elif reference.get("review_id") and reference["review_id"] not in reviews:
                 reason = f"Unknown review: {reference['review_id']}"
             elif reference.get("comment_id") and reference["comment_id"] not in comments:
@@ -607,6 +632,11 @@ def _citation_source_text(
     reference: Dict[str, Any],
     manifest: Dict[str, Any],
 ) -> str:
+    item: Dict[str, Any]
+    for anchor, collection, field in [('workflow_run_id', 'workflow_runs', 'run_id'), ('workflow_job_id', 'workflow_jobs', 'job_id')]:
+        if anchor in reference:
+            item = next((row for row in manifest.get(collection, []) if row.get(field) == reference[anchor]), {})
+            return 'GitHub-reported ' + ' '.join(str(item.get(key, '')) for key in ('name', field, 'run_attempt', 'status', 'conclusion'))
     if reference.get("file"):
         item = next(
             (
@@ -810,12 +840,15 @@ def _determine_dimension_eligibility(
             "No pull request reviews or comments were retrieved.",
         )
 
-    if test_patches or check_runs:
+    actions_runs, _ = _actions_observations(evidence)
+    if test_patches or check_runs or actions_runs:
         details = []
         if test_patches:
             details.append(f"{len(test_patches)} changed test file(s)")
         if check_runs:
             details.append(f"{len(check_runs)} CI check run(s)")
+        if actions_runs:
+            details.append(f"{len(actions_runs)} exact-revision GitHub Actions observation(s)")
         assessments["reliability"] = (
             "partially_assessable",
             f"{' and '.join(details)} provide limited test/CI evidence; successful CI does not establish production reliability.",
@@ -991,6 +1024,7 @@ def _citation_catalog(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not added and not _diff_lines(item.get('patch')):
             references.append({'file': path})
     for collection, field, anchor in [('commits', 'sha', 'commit_sha'), ('check_runs', 'name', 'check_name'),
+                                       ('workflow_runs', 'run_id', 'workflow_run_id'), ('workflow_jobs', 'job_id', 'workflow_job_id'),
                                        ('reviews', 'id', 'review_id'), ('comments', 'id', 'comment_id'),
                                        ('impact_metrics', 'metric', 'impact_metric')]:
         references.extend({anchor: row[field]} for row in manifest.get(collection, [])[:8]
@@ -1024,7 +1058,7 @@ def _resolve_citation_ids(ai_data: Dict[str, Any], catalog: List[Dict[str, Any]]
 
 
 def _dimension_citation_choices(name: str, catalog: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    anchors = {'delivery': {'commit_sha'}, 'reliability': {'check_name'},
+    anchors = {'delivery': {'commit_sha'}, 'reliability': {'check_name', 'workflow_run_id', 'workflow_job_id'},
                'collaboration': {'review_id', 'comment_id'}, 'engineering_impact': {'impact_metric'},
                'code_quality': {'file'}, 'engineering_judgment': {'file'}}.get(name, set())
     preferred = [row for row in catalog if set(row['reference']) & anchors]
@@ -1450,6 +1484,10 @@ async def evaluate_developer_ai(
         raise HTTPException(status_code=400, detail="Employee ID is required")
     # CR-004: Leads evaluate only their team members; the CEO anyone.
     await verify_can_view_person_evaluations(user, employee_id)
+    await _verify_repository_in_scope(user, request.repo_owner, request.repo_name)
+    verified_username = await _verified_subject_github(user, employee_id, request.repo_owner, request.repo_name)
+    if request.github_username.casefold() != verified_username.casefold():
+        raise HTTPException(403, "GitHub identity does not match the verified employee mapping")
 
     evaluation_id = f"EVAL-{uuid.uuid4().hex[:8].upper()}"
     try:
@@ -1472,7 +1510,7 @@ async def evaluate_developer_ai(
         )
         pr = evidence["pr"]
         author = pr.get("user", {}).get("login")
-        if author != request.github_username:
+        if not isinstance(author, str) or author.casefold() != verified_username.casefold():
             raise EvidenceUnavailableError(
                 f"Pull request author {author or 'unknown'} does not match {request.github_username}"
             )
@@ -1606,7 +1644,7 @@ async def get_latest_evaluation(user: dict = Depends(get_current_user)):
     # CR-004: the CEO sees the latest in the organisation; a Lead the latest
     # in their team; everyone else their own.
     if has_global_access(user):
-        query = {}
+        query: Dict[str, Any] = {}
     elif role == "LEAD":
         query = {"employee_id": {"$in": sorted(await team_member_ids(user))}}
     else:
@@ -1620,6 +1658,34 @@ async def list_employee_evaluations(employee_id: str, user: dict = Depends(get_c
     await verify_can_view_person_evaluations(user, employee_id)
     evaluations = await EvaluationRepository().list({"employee_id": employee_id})
     return [_result_from_evaluation(item) for item in evaluations]
+
+
+async def _verified_subject_github(user, employee_id, owner, repo):
+    from core.database import col
+    from core.authorization import get_accessible_project_ids
+    org = user.get('org_id')
+    account = await col('users').find_one({'employee_id': employee_id, 'org_id': org})
+    if (not isinstance(org, str) or not org or not account or account.get('is_active') is not True
+            or account.get('org_id') != org or account.get('employee_id') != employee_id
+            or account.get('organization_id', org) != org):
+        raise HTTPException(403, 'Current employee organization is required')
+    configs = await col('github_project_configs').find({'project_id': {'$in': await get_accessible_project_ids(user)},
+        'repository_owner': {'$regex': '^' + re.escape(owner) + '$', '$options': 'i'},
+        'repository_name': {'$regex': '^' + re.escape(repo) + '$', '$options': 'i'}}).limit(2).to_list(2)
+    if (len(configs) != 1 or configs[0].get('org_id') != org
+            or configs[0].get('identity_binding_authority') != 'PROJECT_REPOSITORY_MANAGER'
+            or not isinstance(configs[0].get('validated_by'), str)):
+        raise HTTPException(409, 'Configure an authorized employee/GitHub mapping in GitHub Sync before evaluation')
+    names = {item.get('github_username') for item in configs[0].get('developer_mappings', [])
+             if item.get('employee_id') == employee_id and isinstance(item.get('github_username'), str)}
+    if len(names) != 1 or not next(iter(names), ''):
+        raise HTTPException(409, 'One authorized GitHub identity is required for this employee')
+    name = next(iter(names))
+    bound = {item.get('employee_id') for item in configs[0].get('developer_mappings', [])
+             if str(item.get('github_username', '')).casefold() == name.casefold()}
+    if bound != {employee_id} or account.get('github_username') and account['github_username'].casefold() != name.casefold():
+        raise HTTPException(409, 'GitHub employee binding is conflicting')
+    return name
 
 
 async def _verify_repository_in_scope(user: dict, owner: str, repo: str) -> None:

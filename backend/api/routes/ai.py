@@ -71,8 +71,12 @@ async def invoke_agent_endpoint(
         current_user.get('is_admin', False),
         current_user.get('designation')
     )
-    if Permission.TRIGGER_AI_EVALUATION not in user_permissions:
+    hr_assistance = (request.task_type == 'hr_assistant' and current_user.get('role', '').upper() == 'HR'
+                     and Permission.VIEW_EMPLOYEE_DIRECTORY in user_permissions)
+    if Permission.TRIGGER_AI_EVALUATION not in user_permissions and not hr_assistance:
         raise HTTPException(status_code=403, detail='Insufficient permissions')
+    if hr_assistance and (request.context.get('project_id') is not None or request.evidence_sources_v1):
+        raise HTTPException(403, 'HR assistance is private and cannot access engineering source evidence')
     
     start_time = datetime.now(timezone.utc)
 

@@ -74,11 +74,6 @@ async def test_invalid_or_unavailable_models_persist_failed_not_completed(endpoi
             "forged-state": json.dumps({**response(task), "verification_state": "VERIFIED"})}[failure]
     monkeypatch.setattr(TASKS[task], "get_ollama_llm", lambda **kwargs: llm)
     result = await client.post("/api/ai/invoke", json={"task_type": task, "evidence": {}, "save_run": True})
-    if task == "hr_assistant":
-        assert result.status_code == 403
-        llm.invoke.assert_not_called()
-        assert await db.ai_runs.count_documents({}) == 0
-        return
     assert result.status_code == 200  # Existing errors-in-body public contract.
     body = result.json()
     assert set(body) == RESPONSE_KEYS and body["errors"] and body["analysis"] is None
@@ -86,6 +81,9 @@ async def test_invalid_or_unavailable_models_persist_failed_not_completed(endpoi
     assert expected in body["errors"][0]
     assert body["confidence"] is None and "SYNTHETIC_PRIVATE_LOG" not in result.text
     saved = await db.ai_runs.find_one({"id": body["run_id"]})
+    if task == "hr_assistant":
+        # Private HR assistance accepts no project or technical source; model failures still fail.
+        assert saved["project_id"] is None and saved["owner_id"] == actor["employee_id"]
     assert saved["status"] == "failed" and saved["error_message"]
     assert saved["output_data"]["analysis"] is None and saved["output_data"]["confidence"] is None
     assert "verification_state" not in saved["output_data"]

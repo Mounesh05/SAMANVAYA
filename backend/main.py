@@ -80,12 +80,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration - properly configured from environment
-allowed_origins = getattr(settings, 'ALLOWED_ORIGINS', "http://localhost:3000,http://localhost:5173").split(",")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],

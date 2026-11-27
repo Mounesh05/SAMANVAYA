@@ -4,7 +4,7 @@ Transfer repository for organizational transfer operations.
 
 from .base import BaseRepository
 from core.database import col
-from typing import Optional, List
+from typing import Optional
 
 
 class TransferRepository(BaseRepository):

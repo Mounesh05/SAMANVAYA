@@ -28,11 +28,11 @@ class NotificationPreferences(BaseModel):
     # Digest settings
     digest_frequency: DigestFrequency = Field(
         default=DigestFrequency.IMMEDIATE,
-        description="Notification aggregation frequency"
+        description="Preferred digest frequency. The in-app inbox delivers immediately."
     )
     digest_time_utc: Optional[str] = Field(
         default="09:00",
-        description="Time for daily/weekly digest (HH:MM UTC)"
+        description="Preferred UTC time for a digest. Scheduled digest delivery is unavailable."
     )
     
     # Priority filtering
@@ -55,7 +55,7 @@ class NotificationPreferences(BaseModel):
     # Role-specific overrides
     role_overrides: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Role-specific notification settings"
+        description="Reserved role preferences. Optional inbox alerts use the employee's settings."
     )
     
     class Config:

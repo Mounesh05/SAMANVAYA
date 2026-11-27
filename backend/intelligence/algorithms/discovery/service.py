@@ -16,6 +16,9 @@ MAX_SOURCE_BYTES = 200_000
 MAX_TOTAL_BYTES = 2_000_000
 MAX_FUNCTIONS = 256
 MAX_REPORT_BYTES = 4_000_000
+QUALITY_CONTEXT_MANIFESTS = frozenset({
+    "requirements.txt", "requirements-dev.txt", "package.json", "package-lock.json", "tsconfig.json",
+})
 EXTENSIONS = {".py": "python", ".pyi": "python", ".js": "javascript", ".jsx": "javascript",
               ".mjs": "javascript", ".cjs": "javascript", ".ts": "typescript", ".tsx": "typescript"}
 

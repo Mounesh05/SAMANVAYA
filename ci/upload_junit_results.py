@@ -8,18 +8,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 
-def _required_environment(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if not value:
-        raise ValueError(
-            f"Missing required CI environment variable: {name}. "
-            "Add it as a GitHub Actions repository secret."
-        )
-    return value
-
-
 def _optional_environment(name: str) -> str | None:
-    """Get environment variable or return None if missing/empty."""
     return os.environ.get(name, "").strip() or None
 
 
@@ -55,12 +44,11 @@ def main() -> int:
     parser.add_argument("--junit", required=True)
     args = parser.parse_args()
 
-    # Check for required secrets - gracefully handle absence
     api_url = _optional_environment("SAMANVAYA_API_URL")
     project_id = _optional_environment("SAMANVAYA_PROJECT_ID")
     token = _optional_environment("SAMANVAYA_TEST_RESULTS_TOKEN")
     
-    if not all([api_url, project_id, token]):
+    if not api_url or not project_id or not token:
         print("=" * 70)
         print("Samanvaya secrets not configured. Skipping test result upload.")
         print("To enable automated test result upload, configure these repository secrets:")
@@ -68,9 +56,8 @@ def main() -> int:
         print("  - SAMANVAYA_PROJECT_ID")
         print("  - SAMANVAYA_TEST_RESULTS_TOKEN")
         print("=" * 70)
-        return 0  # Exit gracefully without failing workflow
+        return 0
 
-    # Get test execution exit code
     test_exit_code = int(os.environ.get("CI_TEST_EXIT_CODE", "0"))
 
     root = ET.parse(args.junit).getroot()
@@ -80,7 +67,6 @@ def main() -> int:
 
     tests_run = sum(int(float(s.get("tests", 0))) for s in suites)
     
-    # Validate that we have actual tests
     if tests_run <= 0:
         raise ValueError("JUnit report contains zero tests - refusing to report empty results")
     
@@ -89,8 +75,6 @@ def main() -> int:
     skipped = sum(int(float(s.get("skipped", 0))) for s in suites)
     tests_failed = failures + errors
     api_url = api_url.rstrip("/")
-    project_id = project_id
-    token = token
     payload = {
         "project_id": project_id,
         "repository": os.environ["GITHUB_REPOSITORY"],
@@ -102,11 +86,7 @@ def main() -> int:
         "tests_failed": tests_failed,
         "tests_skipped": skipped,
         "duration_seconds": sum(float(s.get("time", 0) or 0) for s in suites),
-        "status": (
-            "passed"
-            if test_exit_code == 0 and tests_run > 0 and tests_failed == 0
-            else "failed"
-        ),
+        "status": "passed" if test_exit_code == 0 and tests_failed == 0 else "failed",
     }
     payload.update(_github_metadata())
     request = urllib.request.Request(

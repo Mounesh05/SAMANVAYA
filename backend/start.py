@@ -44,9 +44,8 @@ async def check_dependencies():
     try:
         await col("users").count_documents({})
         print("   ✅ MongoDB connection OK")
-    except Exception as e:
-        print(f"❌ MongoDB connection failed: {e}")
-        print(f"   Check MONGO_URI: {settings.MONGO_URI}")
+    except Exception as error:
+        print(f"❌ MongoDB connection failed ({type(error).__name__}). Check MONGO_URI and database availability.")
         return False
     
     # Check Ollama (optional)
@@ -73,6 +72,8 @@ async def check_dependencies():
     else:
         print("   ⚠️  GitHub token not configured (GitHub features disabled)")
     
+    from core.database import close_db
+    await close_db()
     return True
 
 def main():
@@ -95,9 +96,9 @@ def main():
     
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,  # Enable hot reload in development
+        host=settings.UVICORN_HOST,
+        port=settings.UVICORN_PORT,
+        reload=settings.DEBUG and sys.platform != "win32",  # Windows reload disables asyncio subprocesses.
         log_level="info",
     )
 
