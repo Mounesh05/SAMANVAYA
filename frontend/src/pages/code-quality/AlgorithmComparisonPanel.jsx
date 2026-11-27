@@ -10,6 +10,7 @@ import { Select } from '../../components/common/Select';
 import { DecisionResults } from './DecisionResults';
 import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection';
 import { RequirementsSection } from './RequirementsPanel';
+import { AlgorithmAdvisory } from '../algorithm-intelligence/AlgorithmAdvisory';
 
 const activeStatuses = ['pending', 'running'];
 const pythonKeywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
@@ -152,6 +153,7 @@ export function RunDetails({ run, canSubmit, onSelectRun }) {
     <section aria-label="Benchmark run details" style={stack}>
       <h4>Run {run.run_id}</h4>
       <p role="status">Status: {run.status}</p>
+      {(run.algorithm_advisory || run.report_status) && <AlgorithmAdvisory run={run} kind="benchmark" refresh={() => queryClient.invalidateQueries({queryKey:['algorithms','run']})} />}
       <ErrorMessage error={run.error} />
       {run.status === 'unavailable' && <p>Ask an administrator to restore the benchmark worker, recheck availability, and submit a new run. History remains available.</p>}
       {run.request && <>
@@ -282,8 +284,8 @@ export function RunDetails({ run, canSubmit, onSelectRun }) {
               {feedback.data && <p role="status">Feedback saved: {feedback.data.decision} — {feedback.data.reason}</p>}
             </div>
           )}
-          {canReview && <div style={stack}>
-            <p>Explanation is optional and may use the configured model service to summarize existing facts only. It does not change measurements or rewrite source.</p>
+          {canReview && !run.algorithm_advisory && !run.report_status && <div style={stack}>
+            <p>Historical explanation is optional and may use the configured model service to summarize existing facts only. It does not change measurements or rewrite source.</p>
             <Button variant="secondary" isLoading={explanation.isPending} onClick={() => explanation.mutate()}>Request explanation</Button>
             <ErrorMessage error={explanation.error} />
             {explanation.data && (

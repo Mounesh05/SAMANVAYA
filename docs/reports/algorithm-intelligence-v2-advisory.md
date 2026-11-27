@@ -1,0 +1,5 @@
+# Mandatory algorithm advisory stage — implementation increment
+
+PR and benchmark terminal paths persist deterministic results before running a bounded Ollama advisory. The new independent report status cannot be complete on missing/invalid AI. Inputs use selected structural/decision fields only (no source, user comments or dataset contents); response limits and evidence IDs are validated; advice remains hypothetical and not a proof. Retry uses an atomic claim, bounded attempts, lease and decision revision identity. Current PR retries require exact live base/head and current pointer. Historical explanation endpoints remain compatible. Full semantic validation and richer mathematical/measurement context remain limitations. Legacy reports retain old fields.
+
+Tests added but not executed through the connector. Existing integration tests must be run; no full Phase 2 acceptance claim. Manual static-only, unsupported/no-function and pre-execution failed report coverage requires additional integration. Model advice is not a substitute for contract approval or deterministic correctness.

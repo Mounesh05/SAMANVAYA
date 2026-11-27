@@ -155,6 +155,15 @@ async def reevaluate(run_id: str, body: ReevaluationRequest, user: dict = Depend
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.post("/runs/{run_id}/advisory")
+async def retry_benchmark_advisory(run_id: str, user: dict = Depends(engineering_user)):
+    document = await authorized_run(run_id, user)
+    if document["status"] not in {"completed", "failed", "unavailable"}:
+        raise HTTPException(status_code=409, detail="Wait for deterministic execution to finish")
+    from agents.algorithm_agent import generate
+    return await generate(service.collection, document, "benchmark")
+
+
 @router.post("/runs/{run_id}/explanation")
 async def explanation(run_id: str, user: dict = Depends(engineering_user)):
     document = await authorized_run(run_id, user)
@@ -344,6 +353,33 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
                 function["finding_status"] = recommendation_status(benchmark)
                 function["current_decision_reference"] = function["benchmark_run_id"] + "/" + benchmark["decision"]["revision_id"]
     return {"analyses": rows}
+
+
+@router.post("/pr-intelligence/{run_id}/advisory")
+async def retry_pr_advisory(run_id: str, user: dict = Depends(engineering_user)):
+    record = await col("code_quality_runs").find_one({"run_id": run_id, "kind": "pr_algorithm_intelligence",
+        "organization_id": user.get("org_id")}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="PR analysis not found")
+    await project_access(user, record["project_id"])
+    if record["status"] not in {"completed", "insufficient_evidence", "unsupported", "failed"} or not record.get("functions"):
+        raise HTTPException(status_code=409, detail="Deterministic analysis is unavailable")
+    from domain.services.github_api_service import GitHubAPIService
+    from domain.services.pr_algorithm_intelligence_service import PRAlgorithmIntelligenceService
+    from agents.algorithm_agent import generate
+    workflow = PRAlgorithmIntelligenceService(GitHubAPIService())
+    async def current():
+        pr = await col("pull_requests").find_one({"id": record["pr_id"], "project_id": record["project_id"],
+            "head_sha": record["head_sha"], "algorithm_intelligence_run_id": run_id, "status": "open"})
+        return bool(pr) and await workflow.fresh(record)
+    try:
+        if not await current():
+            raise HTTPException(status_code=409, detail="Analysis is historical or superseded")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Current PR revision could not be verified")
+    return await generate(col("code_quality_runs"), record, "pr", freshness=current)
 
 
 @router.post("/pr-intelligence/{run_id}/functions/{function_id}/explanation")

@@ -750,8 +750,20 @@ class PRAlgorithmIntelligenceService:
         for row in rows:
             modes[row.get("mode", "A")] = modes.get(row.get("mode", "A"), 0) + 1
         await self.set_status(doc, status, functions=rows, recommendation_ids=recommendations, completed_at=now(),
-                              comparison_modes=modes,
+                              comparison_modes=modes, report_status="incomplete",
                               analysis_truncated=bool(doc.get("input_truncated") or discovery_incomplete or len(pairs) > 64))
+        # Persist deterministic output before invoking AI. An interrupted AI stage
+        # never replaces the already published measurements.
+        try:
+            from agents.algorithm_agent import generate
+            persisted = await self.get(doc["run_id"])
+            async def current():
+                return bool(await self.collection("pull_requests").find_one({
+                    "id": doc["pr_id"], "project_id": doc["project_id"], "head_sha": doc["head_sha"],
+                    "algorithm_intelligence_run_id": doc["run_id"], "status": "open"})) and await self.fresh(doc)
+            await generate(self.collection("code_quality_runs"), persisted, "pr", freshness=current)
+        except Exception:
+            logger.exception("Algorithm advisory could not complete for %s", doc["run_id"])
 
     async def get(self, run_id):
         await expire_pr_jobs(self.collection("code_quality_runs"), self.collection("pull_requests"), run_id=run_id)

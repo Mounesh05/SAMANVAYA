@@ -291,7 +291,16 @@ class AlgorithmBenchmarkService:
                 except Exception:
                     logger.exception("Algorithm benchmark failed: %s", run_id)
                     update = {"status": "failed", "error": "Benchmark execution failed. Check worker logs and container setup."}
-                await self._finish(run_id, update)
+                await self._finish(run_id, {**update, "report_status": "incomplete"})
+                # Normal benchmark reports require an advisory; the independent
+                # deterministic execution status remains unchanged.
+                try:
+                    from agents.algorithm_agent import generate
+                    persisted = await self.get(run_id)
+                    if persisted and persisted.get("status") in {"completed", "unavailable", "failed"}:
+                        await generate(self.collection, persisted, "benchmark")
+                except Exception:
+                    logger.exception("Benchmark advisory could not complete for %s", run_id)
         except asyncio.CancelledError:
             await self._finish(
                 run_id, {"status": "failed", "error": "Benchmark cancelled; submit a new run."},
@@ -355,7 +364,7 @@ class AlgorithmBenchmarkService:
             outcome = await self.collection.update_one(query, {
                 "$push": {"decision_revisions": revision},
                 "$set": {"decision": revision, "decision_revision_count": count + 1,
-                         "decision_authoritative": True,
+                         "decision_authoritative": True, "report_status": "incomplete",
                          "immutable_evidence_fingerprint": evidence_fp,
                          "immutable_execution_fingerprint": revision["identities"]["execution"]},
             })

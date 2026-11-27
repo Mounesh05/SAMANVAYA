@@ -300,7 +300,8 @@ async def test_ollama_unavailability_does_not_block_deterministic_workflow(workf
     await contract(workflow)
     result = await run(workflow)
     assert result["status"] == "completed"
-    httpx.AsyncClient.post.assert_not_awaited()
+    # Mandatory advisory may fail independently without changing deterministic results.
+    assert result.get("report_status") == "incomplete"
 
 
 async def test_cancellation_releases_existing_benchmark_lease(workflow):

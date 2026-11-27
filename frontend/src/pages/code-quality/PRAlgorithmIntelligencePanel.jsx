@@ -7,6 +7,7 @@ import { DecisionResults } from './DecisionResults';
 import { RequirementsSection } from './RequirementsPanel';
 import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection';
 import { useSessionScope } from '../../store/useSessionScope';
+import { AlgorithmAdvisory } from '../algorithm-intelligence/AlgorithmAdvisory';
 
 const statusLabel = value => ({ pending: 'Pending', analyzing: 'Analyzing', benchmarking: 'Benchmarking', completed: 'Completed',
   insufficient_evidence: 'Insufficient evidence', unsupported: 'Unsupported', failed: 'Failed', superseded: 'Superseded',
@@ -159,6 +160,7 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
         {compact ? <details><summary>Source revisions</summary><p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p></details> : <p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p>}
         {run.repository && <a href={`https://github.com/${run.repository}/pull/${run.pr_number}`} target="_blank" rel="noreferrer">Open pull request</a>}
         <p>Analyzed functions: {rows.length} · Validated comparisons: {rows.filter(f => f.compatibility === 'COMPATIBLE_WITHIN_TESTED_CONTRACT').length}</p>
+        {run.algorithm_advisory || run.report_status ? <AlgorithmAdvisory key={run.run_id} run={run} kind="pr" refresh={() => history.refetch()} /> : null}
         {!compact && (analysed > 0 || Object.keys(modes).length > 0) && <section aria-label="Analysis summary">
           <p>Static analysis: {analysed} of {rows.length} functions analysed</p>
           <ul>
@@ -174,7 +176,7 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
             <span>Time: {fn.complexity?.time_complexity || 'Unknown'} · Space: {fn.complexity?.space_complexity || 'Unknown'}</span>
           </span></summary>}
           <h4>{fn.current?.path} · {fn.current?.qualified_name}</h4>
-          {compact && fn.static_status === 'analyzed' && !(staticExplanation.variables?.runId === run.run_id && staticExplanation.variables?.functionId === fn.current?.function_id) && <p>AI explanation: Not requested</p>}
+          {compact && !run.algorithm_advisory && !run.report_status && fn.static_status === 'analyzed' && !(staticExplanation.variables?.runId === run.run_id && staticExplanation.variables?.functionId === fn.current?.function_id) && <p>Historical AI explanation: Not requested</p>}
           <p>{fn.benchmark_run_id && fn.mode === 'A' ? 'Static analysis complete' : statusLabel(fn.status)} · {fn.finding_status || fn.compatibility || (fn.mode === 'A' ? 'Standalone assessment' : 'No replacement conclusion')}</p>
           <p>Mode: {modeLabel(fn.mode) || 'Not recorded'} · Classification: {categoryLabel(fn.classification?.category)}
             {fn.classification?.attribution ? ` (attributed to ${fn.classification.attribution})` : ''}</p>
