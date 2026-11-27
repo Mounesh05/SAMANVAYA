@@ -29,14 +29,11 @@ class GitHubClient:
             "User-Agent": "Samanvaya-Backend"
         }
         
-        # Use provided token or fall back to config
         auth_token = token or settings.GITHUB_TOKEN
         if auth_token:
             self.headers["Authorization"] = f"Bearer {auth_token}"
         
-        self.timeout = getattr(settings, 'GITHUB_TIMEOUT', 30)
-        if auth_token:
-            self.headers["Authorization"] = "Bearer " + auth_token
+        self.timeout = settings.GITHUB_TIMEOUT
     
     async def _make_request(self, method: str, url: str, **kwargs) -> httpx.Response:
         """Make HTTP request with proper redirect handling."""
@@ -287,6 +284,61 @@ class GitHubClient:
                 return None
             raise
         return response.json()
+
+    async def get_workflow_run(self, owner: str, repo: str, run_id: int) -> dict:
+        response = await self._make_request('GET', f'{self.base_url}/repos/{owner}/{repo}/actions/runs/{run_id}')
+        return response.json()
+
+    async def compare_revision_page(self, owner, repo, base, target, page, per_page):
+        response = await self._make_request(
+            "GET", f"{self.base_url}/repos/{owner}/{repo}/compare/{base}...{target}",
+            params={"page": page, "per_page": per_page},
+        )
+        return response.json(), "next" in response.links
+
+    async def commit_pull_request_page(self, owner, repo, sha, page, per_page):
+        response = await self._make_request(
+            "GET", f"{self.base_url}/repos/{owner}/{repo}/commits/{sha}/pulls",
+            params={"page": page, "per_page": per_page},
+        )
+        return response.json(), "next" in response.links
+
+    async def pull_request_commit_page(self, owner, repo, number, page, per_page):
+        response = await self._make_request(
+            "GET", f"{self.base_url}/repos/{owner}/{repo}/pulls/{number}/commits",
+            params={"page": page, "per_page": per_page},
+        )
+        return response.json(), "next" in response.links
+
+    async def get_workflow_artifacts(self, owner: str, repo: str, run_id: int) -> dict:
+        response = await self._make_request('GET', f'{self.base_url}/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts',
+                                            params={'per_page': 20})
+        return response.json()
+
+    async def download_workflow_artifact(self, owner: str, repo: str, artifact_id: int) -> bytes:
+        """Bounded download; never forward the GitHub token to artifact storage."""
+        from urllib.parse import urlparse
+        from integrations.github.test_artifacts import MAX_ARCHIVE_BYTES
+        url = f'{self.base_url}/repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip'
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=False) as client:
+            response = await client.get(url, headers=self.headers)
+            if response.status_code not in (301, 302, 303, 307, 308):
+                response.raise_for_status()
+                raise ValueError('Expected GitHub artifact storage redirect')
+            destination = response.headers.get('location', '')
+            parsed = urlparse(destination)
+            if (parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port not in (None, 443)
+                    or not parsed.hostname or not any(parsed.hostname.endswith(suffix) for suffix in
+                        ('.blob.core.windows.net', '.githubusercontent.com', '.actions.githubusercontent.com'))):
+                raise ValueError('Unsupported artifact storage host')
+            body = bytearray()
+            async with client.stream('GET', destination) as download:
+                download.raise_for_status()
+                async for chunk in download.aiter_bytes():
+                    body.extend(chunk)
+                    if len(body) > MAX_ARCHIVE_BYTES:
+                        raise ValueError('Artifact download exceeds bounds')
+            return bytes(body)
 
     async def get_source_tree(self, owner: str, repo: str, revision: str) -> Dict[str, Any]:
         """List source paths at a specific revision; discovery applies its own bounds."""

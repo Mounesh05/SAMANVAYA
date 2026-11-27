@@ -1,7 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { projectsApi } from '../../api/projects.api';
 import { rolesApi } from '../../api/roles.api';
 import { useSessionScope } from '../../store/useSessionScope';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -14,7 +13,8 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { BarList, Meter, Timeline } from '../../components/charts/Charts';
 import '../../components/dashboard/Dashboard.css';
-import { FolderGit2, TrendingUp, AlertTriangle, Layers, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { BlockedWorkCard } from './BlockedWorkCard';
 
 // Projects still being delivered (backend statuses: active, paused, completed, archived).
 const OPEN_STATUSES = new Set(['active', 'paused']);
@@ -24,12 +24,8 @@ export function PMDashboardPage() {
   const sessionScope = useSessionScope();
   const navigate = useNavigate();
 
-  const { data: projects = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['projects', 'list', sessionScope],
-    queryFn: () => projectsApi.list(),
-  });
-  const { data: dashboardData } = useQuery({
-    queryKey: ['role-dashboard', 'pm'],
+  const { data: dashboardData, isLoading, error, refetch } = useQuery({
+    queryKey: ['role-dashboard', 'pm', sessionScope],
     queryFn: () => rolesApi.getPMDashboard(),
   });
 
@@ -37,6 +33,7 @@ export function PMDashboardPage() {
   if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
   const summary = dashboardData?.summary || {};
+  const projects = dashboardData?.portfolio || dashboardData?.projects || [];
   const activeProjects = projects.filter((p) => p.status === 'active');
   const confidence = summary.delivery_confidence ? parseFloat(summary.delivery_confidence) : null;
 
@@ -88,33 +85,27 @@ export function PMDashboardPage() {
           title="Active projects"
           value={activeProjects.length}
           subtitle={`${projects.length} total`}
-          icon={<FolderGit2 size={18} />}
-          color="primary"
           onClick={() => navigate('/projects')}
         />
         <MetricCard
           title="Delivery confidence"
           value={summary.delivery_confidence ?? '—'}
           subtitle="Active sprint average"
-          icon={<TrendingUp size={18} />}
-          color="success"
         />
         <MetricCard
           title="Sprints in progress"
           value={summary.active_sprints ?? '—'}
           subtitle="Active now"
-          icon={<Layers size={18} />}
-          color="cyan"
           onClick={() => navigate('/sprints')}
         />
         <MetricCard
           title="High and critical risks"
           value={summary.high_risks ?? '—'}
           subtitle="Open"
-          icon={<AlertTriangle size={18} />}
-          color={summary.high_risks > 0 ? 'warning' : 'success'}
         />
       </div>
+
+      <BlockedWorkCard key={sessionScope} sessionScope={sessionScope} />
 
       <div className="dash-row dash-row--wide">
         <Card title="Schedule" subtitle="Start to target end">

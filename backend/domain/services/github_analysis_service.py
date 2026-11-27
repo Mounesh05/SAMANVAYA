@@ -87,7 +87,7 @@ class GitHubAnalysisService:
         """
         # Discovery must survive a missing model service. Its result is never
         # replaced by generated prose or numerical model confidence.
-        discovery = await self.discover_functions(pr_data)
+        discovery = pr_data.get("observed_discovery") or await self.discover_functions(pr_data)
         try:
             try:
                 authority = await resolve_code_authority(authorization, {
@@ -97,7 +97,7 @@ class GitHubAnalysisService:
                 return {"ai_analysis": failed_interpretation("AUTHORIZATION_FAILED"), "code_quality_report": None,
                         "function_discovery": discovery.model_dump(mode="json"), "ai_run_data": None}
             
-            if use_deep_analysis:
+            if use_deep_analysis or pr_data.get("analyzed_head_evidence") is not None:
                 result = await self._analyze_deep(pr_data, risk_evidence, triggered_by, authority)
             else:
                 result = await self._analyze_simple(pr_data, risk_evidence, triggered_by, authority)
@@ -176,19 +176,20 @@ class GitHubAnalysisService:
         }
         if "source_files" in pr_data:
             pr_context["source_files"] = pr_data["source_files"]
-        evidence_obj = await CodeQualityService()._analyze_quality_pr(
+        evidence_obj = pr_data.get("analyzed_head_evidence") or await CodeQualityService()._analyze_quality_pr(
             pr_data.get("changed_files", []), pr_context, deep_analysis=True)
-        if evidence_obj.files_analyzed == 0:
+        if not evidence_obj.files_analyzed or not evidence_obj.tools_executed:
             failed = failed_interpretation("MISSING_SOURCE_EVIDENCE")
-            unavailable = {"analysis_scope": "purpose_discovery", "quality_analysis_status": "not_run",
+            unavailable = {"analysis_scope": "code_quality", "quality_analysis_status": "failed",
                            "quality_unavailable_reason": evidence_obj.analysis_quality.reason,
                            "quality_score": None, "risk_score": None}
             return {"ai_analysis": {**failed, **unavailable}, "code_quality_report": None,
-                    "quality_analysis_status": "not_run", "quality_unavailable_reason": unavailable["quality_unavailable_reason"],
+                    "quality_analysis_status": "failed", "quality_unavailable_reason": unavailable["quality_unavailable_reason"],
                     "quality_result": None, "risk_result": None,
                     "ai_run_data": internal_run(authority, "code_review_deep", unavailable, pr_context, failed, triggered_by)}
 
         # Convert CodeQualityEvidence to dict format for code_agent compatibility
+        from intelligence.quality_engine import snapshot_context_diagnostic
         evidence: Dict[str, Any] = {
             "static_analysis": {
                 "findings": [
@@ -202,6 +203,7 @@ class GitHubAnalysisService:
                         "source": f.source_tool,
                     }
                     for f in evidence_obj.static_findings
+                    if not snapshot_context_diagnostic(f.source_tool, f.rule_id)
                 ],
                 "tools_used": evidence_obj.tools_executed,
             },

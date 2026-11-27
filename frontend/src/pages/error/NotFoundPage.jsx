@@ -9,36 +9,17 @@ export function NotFoundPage() {
   return (
     <div
       style={{
-        minHeight: '70vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        padding: '2rem',
+        maxWidth: '36rem',
+        marginBlock: 'clamp(32px, 10vh, 96px)',
       }}
     >
-      <h1
-        style={{
-          fontSize: '5rem',
-          fontWeight: '900',
-          letterSpacing: '-0.04em',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #a855f7 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          marginBottom: '0.5rem',
-        }}
-      >
-        404
-      </h1>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-        Page Not Found
-      </h2>
-      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', maxWidth: '420px', marginBottom: '1.5rem' }}>
+      <p className="font-mono" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '8px' }}>404</p>
+      <h1 style={{ fontSize: '2rem', marginBottom: '8px' }}>Page not found</h1>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
         The page you are looking for does not exist or you do not have permission to access it.
       </p>
       <Button variant="primary" leftIcon={<Home size={16} />} onClick={() => navigate('/')}>
-        Go to Dashboard
+        Go to dashboard
       </Button>
     </div>
   );

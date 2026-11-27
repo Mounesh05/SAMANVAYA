@@ -49,6 +49,12 @@ JavaScript/TypeScript source discovery additionally requires the Node parser
 runtime/package documented in the [discovery guide](backend/intelligence/algorithms/discovery/README.md); the base API image does not
 provide that runtime. Container benchmarks use their separate worker images.
 
+## Production release review
+
+Open a task to review the merge commit, test evidence, QA verification, DevOps decision and observed deployment. To enforce these decisions in a deployment job, follow the [production release gate runbook](docs/runbooks/production-release-gate.md).
+
+The [delivery pilot roadmap](docs/plans/delivery-pilot-roadmap.md) maps each role to its working flow and lists the acceptance criteria for wider rollout.
+
 ## Session and webhook lifecycle
 
 Every authenticated request reads the current employee record. Deactivation,

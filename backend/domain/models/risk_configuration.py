@@ -23,8 +23,6 @@ class RiskDimensionWeights(BaseModel):
     
     RiskEngine falls back to simple threshold-based risk calculation.
     Full removal requires database migration.
-    
-    See: backend/intelligence/ARCHITECTURE.md for details.
     """
     alpha_size_zscore: float = Field(
         12.0,

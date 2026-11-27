@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { codeQualityApi } from '../../api/codeQuality.api';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/common/Card';
@@ -21,18 +21,27 @@ import { AlgorithmComparisonPanel } from './AlgorithmComparisonPanel';
 import { BehavioralCompatibilityPanel } from './BehavioralCompatibilityPanel';
 import { RequirementsPanel } from './RequirementsPanel';
 import { PRAlgorithmIntelligencePanel } from './PRAlgorithmIntelligencePanel';
+import { qualityStatus } from './qualityStatus';
 import './CodeQuality.css';
 
-const LANGUAGES = ['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust'];
+const LANGUAGES = ['Python', 'JavaScript', 'TypeScript'];
+
+// CQ-01: with a PR number the server resolves the PR's changed files itself.
+const canSubmit = (data) => Boolean(
+  data.repository_id.trim() && (data.changed_files.trim() || String(data.pr_number || '').trim()),
+);
 
 export function CodeQualityPage() {
-  const [selectedRepo, setSelectedRepo] = useState('');
-  const [isAnalyzeModalOpen, setIsAnalyzeModalOpen] = useState(false);
+  const prior = useLocation().state?.reanalysis;
+  const [selectedRepo, setSelectedRepo] = useState(prior?.repository_id || '');
+  const [isAnalyzeModalOpen, setIsAnalyzeModalOpen] = useState(Boolean(prior));
   const [formData, setFormData] = useState({
-    repository_id: '',
-    pr_number: '',
+    repository_id: prior?.repository_id || '',
+    pr_number: prior?.pr_number || '',
     analysis_level: 'standard',
-    changed_files: '',
+    repository_ref: '',
+    changed_files: prior?.changed_files?.join('\n') || '',
+    reanalysis_of: prior?.run_id,
     use_ai: true,
   });
 
@@ -54,6 +63,7 @@ export function CodeQualityPage() {
     mutationFn: (data) =>
       codeQualityApi.startAnalysis({
         ...data,
+        repository_ref: data.repository_ref || null,
         pr_number: data.pr_number ? parseInt(data.pr_number, 10) : null,
         changed_files: data.changed_files
           .split('\n')
@@ -71,17 +81,11 @@ export function CodeQualityPage() {
 
   const handleStartAnalysis = (e) => {
     e.preventDefault();
-    if (!formData.repository_id.trim() || !formData.changed_files.trim()) return;
+    if (!canSubmit(formData)) return;
     analyzeMutation.mutate(formData);
   };
 
   const runs = historyData?.history || [];
-  const statusLabel = (status) => ({
-    pending: 'Queued',
-    running: 'Analyzing',
-    completed: 'Completed',
-    failed: 'Failed',
-  }[status] || 'Unknown');
   const statusColor = (status) => ({
     pending: 'var(--warning)',
     running: 'var(--cyan)',
@@ -91,18 +95,18 @@ export function CodeQualityPage() {
 
   const columns = [
     { key: 'run_id', header: 'Run ID', render: (r) => <span className="font-mono">{r.run_id}</span> },
-    { key: 'language', header: 'Language', render: (r) => <span style={{ textTransform: 'capitalize', fontWeight: '600' }}>{r.language || 'Multi'}</span> },
+    { key: 'language', header: 'Language', render: (r) => <span style={{ textTransform: 'capitalize', fontWeight: '600' }}>{r.language && r.language !== 'unknown' ? r.language : 'Undetermined'}</span> },
     {
       key: 'quality_score',
       header: 'Quality score',
       render: (r) => (
         r.quality_score != null ? (
-          <span style={{ fontWeight: '800', color: getGradeColor(r.quality_grade || 'A') }}>
+          <span style={{ fontWeight: '600', color: getGradeColor(r.quality_grade || 'A') }}>
             {r.quality_score}/100
           </span>
         ) : (
           <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-            {r.status === 'failed' ? 'Unavailable' : 'Not ready'}
+            {['pending', 'running'].includes(r.status) ? 'Pending' : 'Not measured'}
           </span>
         )
       ),
@@ -110,15 +114,14 @@ export function CodeQualityPage() {
     {
       key: 'risk_level',
       header: 'Risk',
-      render: (r) => r.risk_score != null ? <RiskBadge level={r.risk_level || 'LOW'} score={r.risk_score} /> : <span>Not measured</span>,
+      render: (r) => r.risk_score != null ? <RiskBadge level={r.risk_level} score={r.risk_score} /> : <span>Not measured</span>,
     },
     {
       key: 'status',
       header: 'Status',
       render: (r) => (
-        <span style={{ color: statusColor(r.status), fontWeight: '700', fontSize: '0.8125rem' }}>
-          {r.status === 'completed' && (r.analysis_scope === 'purpose_discovery' || r.analysis_level === 'purpose_discovery')
-            ? 'Discovery finished · quality not run' : r.quality_analysis_status === 'partial' ? 'Partially analyzed' : statusLabel(r.status)}
+        <span style={{ color: statusColor(r.status), fontWeight: '600', fontSize: '0.8125rem' }}>
+          {qualityStatus(r)}
         </span>
       ),
     },
@@ -144,7 +147,7 @@ export function CodeQualityPage() {
             <Button
               variant="primary"
               leftIcon={<Play size={16} />}
-              onClick={() => setIsAnalyzeModalOpen(true)}
+              onClick={() => { setFormData(data => ({ ...data, reanalysis_of: undefined })); setIsAnalyzeModalOpen(true); }}
             >
               Start analysis
             </Button>
@@ -204,11 +207,13 @@ export function CodeQualityPage() {
               onClick={handleStartAnalysis}
               isLoading={analyzeMutation.isPending}
             >
-              {formData.repository_id.trim() && formData.changed_files.trim() ? 'Run Analysis' : 'Enter repository and files'}
+              {canSubmit(formData) ? 'Run Analysis' : 'Enter repository and files or a PR number'}
             </Button>
           </>
         }
       >
+        {analyzeMutation.error && <p role="alert">{analyzeMutation.error.message}</p>}
+        {formData.reanalysis_of && <p>Reanalyzing {formData.reanalysis_of} at its recorded commit.</p>}
         <form onSubmit={handleStartAnalysis} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <Input
             label="Repository or Project ID"
@@ -221,12 +226,15 @@ export function CodeQualityPage() {
             Use the connected repository or project ID.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          {!formData.pr_number && !formData.reanalysis_of && <Input label="Repository branch or commit (optional)"
+            value={formData.repository_ref} placeholder="Default branch"
+            onChange={(e) => setFormData({ ...formData, repository_ref: e.target.value })} />}
+          <div className="form-columns">
             <Input
               label="PR number (optional)"
               type="number"
               value={formData.pr_number}
-              onChange={(e) => setFormData({ ...formData, pr_number: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, pr_number: e.target.value, repository_ref: '' })}
               placeholder="e.g. 42"
             />
             <Select
@@ -234,6 +242,7 @@ export function CodeQualityPage() {
               value={formData.analysis_level}
               onChange={(e) => setFormData({ ...formData, analysis_level: e.target.value })}
               options={[
+                { value: 'purpose_discovery', label: 'Function discovery only' },
                 { value: 'quick', label: 'Quick' },
                 { value: 'standard', label: 'Standard' },
                 { value: 'deep', label: 'Deep (all tools + security)' },
@@ -243,7 +252,7 @@ export function CodeQualityPage() {
 
           <div>
             <label style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
-              Changed files (one per line)
+              Changed files (one per line{formData.pr_number ? "; leave empty to use the PR's changed files" : ''})
             </label>
             <textarea
               rows={4}

@@ -138,7 +138,7 @@ class QAService:
             if story_id and suite["story_id"] != story_id:
                 raise HTTPException(status_code=400, detail="Story does not match the test suite")
             story_id = story_id or suite["story_id"]
-        story = await self._linked_document(self.repo.stories, story_id, project_id, "Story")
+        await self._linked_document(self.repo.stories, story_id, project_id, "Story")
         task = await self._linked_document(self.repo.tasks, task_id, project_id, "Task")
         if task and story_id and task.get("story_id") != story_id:
             raise HTTPException(status_code=400, detail="Task must belong to the selected story")
@@ -355,7 +355,7 @@ class QAService:
         execution = await self._linked_document(
             self.repo.executions, execution_id, project_id, "Execution"
         )
-        story = await self._linked_document(self.repo.stories, story_id, project_id, "Story")
+        await self._linked_document(self.repo.stories, story_id, project_id, "Story")
         task = await self._linked_document(self.repo.tasks, task_id, project_id, "Task")
         if execution and execution.get("status") != "FAILED":
             raise HTTPException(status_code=400, detail="Defects can only link to failed executions")
@@ -377,7 +377,7 @@ class QAService:
     async def list_defects(self, user, project_id=None, *, status=None, skip=0, limit=100):
         await self._require(user, Permission.VIEW_DEFECTS)
         if project_id:
-            project = await self.accessible_project(user, project_id)
+            await self.accessible_project(user, project_id)
             project_ids = [project_id]
         else:
             projects = await self.list_projects(user)
@@ -397,7 +397,7 @@ class QAService:
         # QA still owns assignment, verification and closure via update_defect.
         if Permission.CREATE_BUG not in _permissions(user):
             raise HTTPException(status_code=403, detail="Insufficient permissions to report a defect")
-        project = await self.accessible_project(user, data.project_id)
+        await self.accessible_project(user, data.project_id)
         case, execution, story_id, task_id = await self._validate_defect_links(
             data.project_id,
             data.test_case_id,

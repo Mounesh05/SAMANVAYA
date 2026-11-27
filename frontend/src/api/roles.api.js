@@ -27,6 +27,9 @@ export const rolesApi = {
   getPMDashboard: async () => {
     return apiClient.get('/role/pm/dashboard');
   },
+
+  getPMBlockedWork: (group, offset, limit) =>
+    apiClient.get('/role/pm/blocked-work', { params: { group, offset, limit } }),
   getPMProjects: async (orgId) => {
     return apiClient.get('/role/pm/projects', { params: orgId ? { org_id: orgId } : {} });
   },
@@ -72,12 +75,12 @@ export const rolesApi = {
 
   // DevOps
   getDevOpsDashboard: async () => {
-    return apiClient.get('/role/devops/dashboard');
+    return apiClient.get('/role/devops/reporting/dashboard');
   },
-  getPipelines: async () => {
-    return apiClient.get('/role/devops/pipelines');
+  getPipelines: async (params) => {
+    return apiClient.get('/role/devops/reporting/pipelines', { params });
   },
-  getDeployments: async () => {
-    return apiClient.get('/role/devops/deployments');
+  getDeployments: async (params) => {
+    return apiClient.get('/role/devops/reporting/deployments', { params });
   },
 };

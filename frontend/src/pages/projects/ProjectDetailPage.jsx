@@ -54,7 +54,7 @@ export function ProjectDetailPage() {
   if (projectError) return <ErrorState message={projectError.message} onRetry={() => window.location.reload()} />;
 
   const sprintColumns = [
-    { key: 'name', header: 'Sprint', render: (s) => <span style={{ fontWeight: '700' }}>{s.name}</span> },
+    { key: 'name', header: 'Sprint', render: (s) => <span style={{ fontWeight: '600' }}>{s.name}</span> },
     { key: 'status', header: 'Status', render: (s) => <StatusBadge status={s.status} /> },
     { key: 'goal', header: 'Sprint Goal', render: (s) => s.goal || '—' },
     { key: 'start_date', header: 'Start Date', render: (s) => formatDate(s.start_date) },
@@ -128,7 +128,7 @@ export function ProjectDetailPage() {
       />
 
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+        <div className="work-grid" style={{ '--column-min': '320px', marginTop: '1.5rem' }}>
           <Card title="Project Metadata" subtitle="Core organizational associations">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>

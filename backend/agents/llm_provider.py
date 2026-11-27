@@ -13,7 +13,8 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 # Use the pinned provider; do not silently substitute incompatible timeouts.
-INFERENCE_TIMEOUT_SECONDS = 120.0
+# Configured per deployment (OLLAMA_INFERENCE_TIMEOUT_SECONDS); default 120s.
+INFERENCE_TIMEOUT_SECONDS = settings.OLLAMA_INFERENCE_TIMEOUT_SECONDS
 
 
 def get_ollama_llm(

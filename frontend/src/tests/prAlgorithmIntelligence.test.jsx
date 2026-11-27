@@ -107,3 +107,74 @@ it('does not compare tradeoff-only measurements from different runtimes', () => 
     dataset_comparisons: [{ dataset_id: 'graph', status: 'MULTIPLE_ELIGIBLE' }] }} />);
   expect(screen.getByText(/Time difference unverified/)).toBeInTheDocument();
 });
+
+const analysedRow = overrides => ({
+  current: { function_id: 'f1', path: 'backend/app/algorithms.py', qualified_name: 'bfs_dependencies',
+    task_hypotheses: [{ kind: 'graph_traversal', status: 'INFERRED' }],
+    detected_patterns: [{ kind: 'fifo_graph_traversal' }] },
+  previous: null, mode: 'A', status: 'analyzed', comparison_status: 'not_applicable', static_status: 'analyzed',
+  classification: { category: 'application', attribution: null },
+  static: { status: 'analyzed', patterns: ['fifo_graph_traversal'], test_expectations: [
+    { path: 'backend/tests/test_algorithms.py', line: 21, detail: 'Static assert references this call.' },
+    { path: 'backend/tests/test_algorithms.py', line: 34, detail: 'Static assert references this call.' }] },
+  complexity: { status: 'estimated', confidence: 'medium', time_complexity: 'O(V + E)', space_complexity: 'O(V)',
+    dimension_bindings: { V: 'distinct elements', E: 'adjacency entries' },
+    derivation: ['A membership guard precedes insertion into the tracked set.'],
+    assumptions: [], limitations: ['Static syntax-derived bound: it is not a measurement.'] },
+  evidence_refs: ['head-ref'], ...overrides });
+
+it('reports mode, classification and an explicit static bound for every analysed function', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', functions: [analysedRow()],
+    comparison_modes: { A: 1 } }] }); panel();
+  expect(await screen.findByText(/Comparison modes: Mode A · standalone — 1/)).toBeInTheDocument();
+  expect(screen.getByText(/Classification: Application/)).toBeInTheDocument();
+  expect(screen.getByText(/Comparison: Not applicable — no predecessor/)).toBeInTheDocument();
+  expect(screen.getByText(/time O\(V \+ E\) · space O\(V\)/)).toBeInTheDocument();
+  expect(screen.getByText(/Dimensions: V = distinct elements, E = adjacency entries/)).toBeInTheDocument();
+  expect(screen.getAllByText(/Mode A · standalone/).length).toBeGreaterThan(0);
+});
+
+it('states plainly when no bound could be established instead of showing an empty value', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', functions: [analysedRow({
+    complexity: { status: 'unknown', confidence: 'none', time_complexity: null, space_complexity: null,
+      time_complexity_reason: 'while-loop trip count over frontier depends on runtime mutation',
+      unknown_reasons: ['while-loop trip count over frontier depends on runtime mutation'],
+      assumptions: [], limitations: ['Static syntax-derived bound: it is not a measurement.'] } })] }] }); panel();
+  expect(await screen.findByText(/time unavailable · space unavailable/)).toBeInTheDocument();
+  expect(screen.getByText(/No time bound established: while-loop trip count over frontier depends on runtime mutation/)).toBeInTheDocument();
+});
+
+it('groups static test evidence by asserting file rather than merging it into a count', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', functions: [analysedRow()] }] }); panel();
+  fireEvent.click(await screen.findByText(/Static test evidence \(2 assertion references\)/));
+  expect(await screen.findByText(/backend\/tests\/test_algorithms\.py: line 21, line 34/)).toBeInTheDocument();
+  expect(screen.getAllByText('Static assert references this call.')).toHaveLength(2);
+});
+
+it('shows previous and current findings side by side when a predecessor exists', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', functions: [analysedRow({
+    mode: 'B', status: 'insufficient_evidence', comparison_status: 'blocked',
+    previous: { function_id: 'f0', qualified_name: 'bfs_dependencies' },
+    static_previous: { status: 'analyzed', classification: { category: 'application' },
+      patterns: ['visited_set_tracking'],
+      complexity: { status: 'estimated', time_complexity: 'O(n m)', space_complexity: 'O(n)' } } })] }] }); panel();
+  expect(await screen.findByRole('table')).toBeInTheDocument();
+  expect(screen.getByText('O(n m)')).toBeInTheDocument();
+  expect(screen.getByText('O(V + E)')).toBeInTheDocument();
+  expect(screen.getByText('visited_set_tracking')).toBeInTheDocument();
+  expect(screen.getByText(/Previous-revision complexity/)).toBeInTheDocument();
+});
+
+it('says so when a predecessor exists but its own static analysis is missing', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', functions: [analysedRow({
+    previous: { function_id: 'f0', qualified_name: 'bfs_dependencies' }, static_previous: undefined })] }] }); panel();
+  expect(await screen.findByText(/Previous-revision static analysis is unavailable; only the current revision was analysed\./)).toBeInTheDocument();
+});
+
+it('distinguishes an analysis with no comparable predecessor from an unsupported run', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', status: 'completed', functions: [analysedRow()] }] }); panel();
+  expect(await screen.findByText(/Completed/)).toBeInTheDocument();
+  expect(screen.getByText(/Analysed \(static only\)/)).toBeInTheDocument();
+  expect(screen.getByText(/Static analysis: 1 of 1 functions analysed/)).toBeInTheDocument();
+  expect(screen.queryByText(/Unsupported/)).not.toBeInTheDocument();
+});

@@ -1,115 +1,75 @@
-import { withPermissions } from '../../tests/utils/roleUser';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { FeedbackPage } from './FeedbackPage';
-import { employeesApi } from '../../api/employees.api';
+import { RoleGuard } from '../../auth/RoleGuard';
+import { performanceApi } from '../../api/performance.api';
 import { feedbackApi } from '../../api/feedback.api';
 import { useAuthStore } from '../../store/useAuthStore';
-import { ToastProvider } from '../../components/common/Toast';
-import { ROLES } from '../../utils/constants';
+import { assignment, mockScoringApi, renderScoring } from '../../test/scoringFixtures';
 
-vi.mock('../../api/employees.api', () => ({
-  employeesApi: {
-    list: vi.fn(),
-  },
-}));
+beforeEach(mockScoringApi);
 
-vi.mock('../../api/feedback.api', () => ({
-  feedbackApi: {
-    getPending: vi.fn(),
-    saveDraft: vi.fn(),
-    submitFeedback: vi.fn(),
-    saveHRAssessmentDraft: vi.fn(),
-    submitHRAssessment: vi.fn(),
-    getHRAssessments: vi.fn(),
-  },
-}));
+it.each(['LEAD', 'PM', 'QA', 'DEVOPS', 'HR'])('opens an assigned reviewer inbox for %s', async (role) => {
+  renderScoring(<RoleGuard page="feedback"><FeedbackPage /></RoleGuard>, { role, path: '/feedback?target=OTHER' });
+  expect(await screen.findByText(/No active assigned reviews/)).toBeVisible();
+  expect(screen.queryByLabelText('Target Engineer')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Record observations' })).toBeNull();
+  expect(performanceApi.getHumanReview).not.toHaveBeenCalled();
+});
 
-const mockEmployees = [
-  { employee_id: 'DEMO-HR', name: 'HR Manager', role: 'HR', designation: 'HR Lead' },
-  { employee_id: 'DEMO-CEO', name: 'Executive CEO', role: 'CEO', designation: 'Chief Executive' },
-  { employee_id: 'DEMO-PM', name: 'Product Manager', role: 'PM', designation: 'Senior PM' },
-  { employee_id: 'DEMO-DEV1', name: 'Alice Developer', role: 'DEVELOPER', designation: 'Fullstack Dev' },
-  { employee_id: 'DEMO-LEAD1', name: 'Bob Lead', role: 'LEAD', designation: 'Tech Lead' },
-  { employee_id: 'DEMO-QA1', name: 'Charlie QA', role: 'QA', designation: 'Quality Analyst' },
-  { employee_id: 'DEMO-OPS1', name: 'Dave DevOps', role: 'DEVOPS', designation: 'Site Reliability' },
-];
-
-function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+it('records the selected assignment and ignores an employee ID in an old bookmark', async () => {
+  performanceApi.getAssignments.mockResolvedValue([assignment]);
+  renderScoring(<RoleGuard page="feedback"><FeedbackPage /></RoleGuard>, { role: 'LEAD', path: '/feedback?target=OTHER' });
+  fireEvent.change(await screen.findByLabelText('Assigned review'), { target: { value: assignment.assignment_id } });
+  const note = await screen.findByLabelText('Reason for collaboration');
+  fireEvent.click(screen.getByRole('button', { name: 'Record observations' }));
+  expect(note).toHaveFocus();
+  expect(performanceApi.submitHumanReview).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('collaboration'), { target: { value: 'UNDER_REVIEW' } });
+  fireEvent.change(note, { target: { value: 'The evidence from the handover is awaiting review.' } });
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Record observations' }));
+  expect(await screen.findByText(/Recorded without a score/)).toBeVisible();
+  expect(performanceApi.submitHumanReview).toHaveBeenCalledWith(assignment.assignment_id, {
+    no_conflict_attested: true, observations: [{ dimension: 'collaboration', state: 'UNDER_REVIEW', rating: null,
+      reason: 'The evidence from the handover is awaiting review.', direct_observation: false, evidence: [] }],
   });
+});
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <ToastProvider>
-          <FeedbackPage />
-        </ToastProvider>
-      </MemoryRouter>
-    </QueryClientProvider>
-  );
-}
-
-describe('FeedbackPage Employee Evaluation Dropdown Filtering', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    useAuthStore.getState().logout();
-    employeesApi.list.mockResolvedValue(mockEmployees);
+it('keeps confidential historical cases read-only for the HR author', async () => {
+  const lookup = vi.spyOn(feedbackApi, 'getHRAssessment').mockResolvedValue({
+    status: 'draft', general_comments: 'Original private note.', dimensions: {
+      professional_conduct: { rating: 2, evidence_description: 'Historical log entry.' },
+    },
   });
+  renderScoring(<FeedbackPage />, { role: 'HR', id: 'H', path: '/feedback' });
+  fireEvent.click(screen.getByRole('button', { name: 'Open case history' }));
+  const subject = await screen.findByLabelText('Historical case employee');
+  expect(lookup).not.toHaveBeenCalled();
+  expect([...subject.options].map((option) => option.value)).toEqual(['', 'D', 'Q', 'V', 'L']);
+  fireEvent.change(subject, { target: { value: 'D' } });
+  expect(await screen.findByText('Historical log entry.')).toBeVisible();
+  expect(lookup).toHaveBeenCalledWith('D');
+  expect(screen.getByText('Historical rating · 2/4')).toBeVisible();
+  expect(screen.getByText('Original private note.')).toBeVisible();
+  expect(screen.queryByRole('textbox')).toBeNull();
+});
 
-  it('as HR user, restricts target dropdown to engineering contributors and excludes HR, CEO, PM, and self', async () => {
-    useAuthStore.getState().setAuth('mock-token', withPermissions({
-      employee_id: 'DEMO-HR',
-      name: 'HR Manager',
-      role: ROLES.HR,
-      is_admin: false,
-    }));
+it('provides executive history without offering a numerical review or private HR cases', () => {
+  renderScoring(<FeedbackPage />, { role: 'CEO', path: '/feedback' });
+  expect(screen.getByRole('link', { name: 'View assessment history' })).toHaveAttribute('href', '/performance/assessments');
+  expect(screen.queryByRole('button', { name: 'Open case history' })).toBeNull();
+  expect(performanceApi.getAssignments).not.toHaveBeenCalled();
+});
 
-    renderPage();
-
-    expect(await screen.findByText('HR Workplace Performance Assessment')).toBeInTheDocument();
-
-    const select = await screen.findByLabelText(/Target Employee/i);
-    const options = Array.from(select.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter(Boolean);
-
-    // Engineering contributors must be present
-    expect(options).toEqual(['DEMO-DEV1', 'DEMO-LEAD1', 'DEMO-QA1', 'DEMO-OPS1']);
-
-    // Non-engineering roles, HR, CEO, and self must NOT be present
-    expect(options).not.toContain('DEMO-HR');
-    expect(options).not.toContain('DEMO-CEO');
-    expect(options).not.toContain('DEMO-PM');
-    expect(options).toHaveLength(4);
-  });
-
-  it('as engineering Lead, excludes self, non-engineering PM, HR, and CEO', async () => {
-    useAuthStore.getState().setAuth('mock-token', withPermissions({
-      employee_id: 'DEMO-LEAD1',
-      name: 'Bob Lead',
-      role: ROLES.LEAD,
-      is_admin: false,
-    }));
-
-    renderPage();
-
-    expect(await screen.findByText('Role-Specific Human Feedback')).toBeInTheDocument();
-
-    const select = await screen.findByLabelText(/Target Engineer/i);
-    const options = Array.from(select.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter(Boolean);
-
-    // Engineering contributors excluding self (DEMO-LEAD1)
-    expect(options).toEqual(['DEMO-DEV1', 'DEMO-QA1', 'DEMO-OPS1']);
-    expect(options).not.toContain('DEMO-LEAD1');
-    expect(options).not.toContain('DEMO-HR');
-    expect(options).not.toContain('DEMO-CEO');
-    expect(options).not.toContain('DEMO-PM');
-    expect(options).toHaveLength(3);
-  });
+it('clears private notes when the same employee changes organizations', async () => {
+  performanceApi.getAssignments.mockResolvedValue([assignment]);
+  renderScoring(<FeedbackPage />, { id: 'R', path: '/feedback' });
+  fireEvent.change(await screen.findByLabelText('Assigned review'), { target: { value: assignment.assignment_id } });
+  fireEvent.change(await screen.findByLabelText('Reason for collaboration'), { target: { value: 'Private first-tenant notes.' } });
+  act(() => useAuthStore.setState({ user: { ...useAuthStore.getState().user, org_id: 'another' } }));
+  await waitFor(() => expect(performanceApi.getAssignments).toHaveBeenCalledTimes(2));
+  fireEvent.change(await screen.findByLabelText('Assigned review'), { target: { value: assignment.assignment_id } });
+  expect(await screen.findByLabelText('Reason for collaboration')).toHaveValue('');
+  expect(performanceApi.getHumanReview).toHaveBeenCalledTimes(2);
 });

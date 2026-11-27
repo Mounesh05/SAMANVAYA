@@ -1,0 +1,65 @@
+# OPS-03: versioned isolated workers and the internal worker broker.
+#
+# Build the fixed worker images (run once per release, from the repo root):
+#   docker compose -f docker-compose.workers.yml --profile images build
+#
+# Run the broker (production mode):
+#   WORKER_BROKER_TOKEN=<32+ random chars> docker compose -f docker-compose.workers.yml up -d worker-broker
+# then start the API on the same "samanvaya-workers" network with
+#   WORKER_BROKER_URL=http://worker-broker:8090  WORKER_BROKER_TOKEN=<same value>
+#
+# Development mode: leave WORKER_BROKER_URL empty and run the API on a host
+# with the Docker CLI; it then runs the same images directly.
+# See backend/worker_broker/README.md.
+
+name: samanvaya-workers
+
+services:
+  quality-image:
+    profiles: ["images"]
+    image: samanvaya-quality:1
+    build:
+      context: ./backend
+      dockerfile: quality_worker/Dockerfile
+
+  benchmark-python-image:
+    profiles: ["images"]
+    image: samanvaya-benchmark-python:1
+    build:
+      context: ./backend/benchmark_worker
+      dockerfile: Dockerfile.python
+
+  benchmark-node-image:
+    profiles: ["images"]
+    image: samanvaya-benchmark-node:1
+    build:
+      context: ./backend/benchmark_worker
+      dockerfile: Dockerfile.node
+
+  worker-broker:
+    image: samanvaya-worker-broker:1
+    build:
+      context: ./backend
+      dockerfile: worker_broker/Dockerfile
+    environment:
+      # Required at run time (32+ characters); the broker refuses to start without it.
+      WORKER_BROKER_TOKEN: ${WORKER_BROKER_TOKEN:-}
+      WORKER_BROKER_MAX_CONCURRENT: ${WORKER_BROKER_MAX_CONCURRENT:-2}
+    # The broker is the only service given the Docker socket. Its port is never
+    # published; only containers on the private network can reach it.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - ${DOCKER_SOCKET_GID:-0}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    networks: [workers]
+    restart: unless-stopped
+
+networks:
+  workers:
+    name: samanvaya-workers
+    internal: true

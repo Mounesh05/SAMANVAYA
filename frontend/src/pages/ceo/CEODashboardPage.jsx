@@ -11,16 +11,7 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { BarList, SegmentedBar } from '../../components/charts/Charts';
 import { useSessionScope } from '../../store/useSessionScope';
 import '../../components/dashboard/Dashboard.css';
-import {
-  TrendingUp,
-  FolderGit2,
-  ShieldAlert,
-  Siren,
-  Award,
-  FileBarChart,
-  Activity,
-  Sparkles,
-} from 'lucide-react';
+import { FolderGit2, Award, FileBarChart, Activity } from 'lucide-react';
 
 /* A plain summary written from the figures on this page. */
 function portfolioSummary({ total, healthy, atRisk, critical, incidents }) {
@@ -77,30 +68,22 @@ export function CEODashboardPage() {
           title="Delivery confidence"
           value={data?.delivery_confidence ?? '—'}
           subtitle="Active sprint average"
-          icon={<TrendingUp size={18} />}
-          color="success"
         />
         <MetricCard
           title="Active projects"
           value={total}
           subtitle={`${healthy} risk-free`}
-          icon={<FolderGit2 size={18} />}
-          color="primary"
           onClick={() => navigate('/projects')}
         />
         <MetricCard
           title="Critical risks"
           value={data?.critical_risks ?? 0}
           subtitle="All projects"
-          icon={<ShieldAlert size={18} />}
-          color={data?.critical_risks > 0 ? 'danger' : 'success'}
         />
         <MetricCard
           title="Open incidents"
           value={incidents}
           subtitle="Currently open"
-          icon={<Siren size={18} />}
-          color={incidents > 0 ? 'warning' : 'success'}
         />
       </div>
 
@@ -133,7 +116,6 @@ export function CEODashboardPage() {
         <div className="dash-stack">
           <Card title="Summary">
             <div className="dash-note">
-              <Sparkles size={18} aria-hidden="true" />
               <div>
                 {portfolioSummary({ total, healthy, atRisk, critical, incidents })}
               </div>

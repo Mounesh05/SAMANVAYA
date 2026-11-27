@@ -18,6 +18,7 @@ import asyncio
 import getpass
 import sys
 
+from core.config import settings
 from domain.services.first_accounts import FirstAccount, build_accounts, validate_pair
 
 
@@ -58,12 +59,14 @@ def summary(records: list) -> str:
     return "\n".join(lines)
 
 
-async def create_first_accounts(db, ceo: FirstAccount, admin: FirstAccount, org_id: str = "ORG001") -> list:
+async def create_first_accounts(db, ceo: FirstAccount, admin: FirstAccount, org_id: str | None = None) -> list:
     """Insert the pair into `db`. Raises RuntimeError when accounts exist or insertion fails."""
     users = db["users"]
     if await users.count_documents({}) > 0:
         raise RuntimeError("Accounts already exist. This script only sets up a new, empty install.")
     validate_pair(ceo, admin)
+    if org_id is None:
+        org_id = settings.DEFAULT_ORG_ID
     records = build_accounts(ceo, admin, created_by="create_first_user", org_id=org_id)
     await users.create_index("employee_id", unique=True)
     await users.create_index("email", unique=True)
@@ -78,8 +81,6 @@ async def create_first_accounts(db, ceo: FirstAccount, admin: FirstAccount, org_
 
 async def main() -> int:
     from motor.motor_asyncio import AsyncIOMotorClient
-
-    from core.config import settings
 
     print("\nSAMANVAYA - create the first accounts")
     print(f"Database: {settings.DB_NAME}\n")

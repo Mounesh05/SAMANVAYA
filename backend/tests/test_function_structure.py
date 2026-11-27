@@ -234,7 +234,8 @@ def test_parser_resource_failures_are_useful_unavailable(monkeypatch, error):
 
 
 @pytest.mark.parametrize("source", ["#" + "a" * 200_000, "#" + "é" * 100_000,
-                                    "#\ud800", b"pass", None])
+                                    "#\ud800", b"pass", None],
+                         ids=["oversized-ascii", "oversized-utf8", "invalid-surrogate", "bytes", "none"])
 def test_source_validation_and_utf8_byte_limit(source):
     report = analyze_python(source, "novel_transform")
     assert report["status"] == "unavailable"

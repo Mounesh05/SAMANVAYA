@@ -3,16 +3,18 @@ Authentication API endpoints.
 Handles user registration and login.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Request, Response
 from fastapi.security import HTTPBearer
 from domain.models.user import UserCreate, UserOut, LoginRequest, LoginResponse
 from domain.services.auth_service import AuthService
 from core.dependencies import get_current_user
 from core.security import revoke_token
+from core.session_cookies import clear_session_cookies, set_session_cookies
 from pymongo.errors import PyMongoError
-from core.rate_limiting import limiter
+from core.rate_limiting import auth_rate_limit, limiter
 from core.config import settings
 from datetime import datetime, timezone
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -89,28 +91,41 @@ async def _sign_in(request: Request, credentials: LoginRequest) -> LoginResponse
 
 
 @router.post("/login", response_model=LoginResponse)
-@limiter.limit("5/minute")
-async def login(request: Request, credentials: LoginRequest):
+@auth_rate_limit()
+async def login(request: Request, response: Response, credentials: LoginRequest):
     """
     Sign in with an employee ID or work email and both passwords (CR-016).
 
     The earlier email-and-one-password form is gone: every sign-in checks
     the organisation password and the employee password.
+
+    SEC-05: browsers receive the session as an HttpOnly cookie plus a CSRF
+    cookie. The token is still returned for non-browser API clients; the web
+    app does not store it.
     """
-    return await _sign_in(request, credentials)
+    result = await _sign_in(request, credentials)
+    set_session_cookies(response, result.token)
+    return result
 
 
 @router.post("/login/full", response_model=LoginResponse)
-@limiter.limit("5/minute")
-async def login_full(request: Request, credentials: LoginRequest):
+@auth_rate_limit()
+async def login_full(request: Request, response: Response, credentials: LoginRequest):
     """Same rule as /login; kept for existing scripts and clients."""
-    return await _sign_in(request, credentials)
+    result = await _sign_in(request, credentials)
+    set_session_cookies(response, result.token)
+    return result
+
+
+def _current_response(response: Response) -> Response:
+    return response
 
 
 @router.post("/logout")
 async def logout(
-    authorization: str = Header(...),
-    user: dict = Depends(get_current_user)
+    authorization: Optional[str] = Header(None),  # kept for existing callers; the session comes from `user`
+    user: dict = Depends(get_current_user),
+    response: Response = Depends(_current_response),
 ):
     """
     Logout by revoking the current access token.
@@ -124,6 +139,8 @@ async def logout(
     try:
         # Authentication already validated and decoded this exact session.
         await revoke_token(user["jti"], datetime.fromtimestamp(user["exp"], tz=timezone.utc))
+        if isinstance(response, Response):  # absent when called directly rather than through FastAPI
+            clear_session_cookies(response)  # SEC-05
         return {"message": "Successfully logged out"}
     except PyMongoError:
         logger.exception("Logout persistence unavailable")
@@ -138,7 +155,7 @@ async def logout(
 
 @router.post("/refresh")
 @limiter.limit("30/minute")
-async def refresh_token(request: Request, user: dict = Depends(get_current_user)):
+async def refresh_token(request: Request, response: Response, user: dict = Depends(get_current_user)):
     """
     Refresh access token.
 
@@ -149,6 +166,13 @@ async def refresh_token(request: Request, user: dict = Depends(get_current_user)
     new_token = await auth_service.refresh_session(user.get("employee_id", ""))
     if not new_token:
         raise HTTPException(status_code=401, detail="Account is inactive or no longer exists")
+    # SEC-04: rotation — the presented token stops working once a new one is issued.
+    try:
+        await revoke_token(user["jti"], datetime.fromtimestamp(user["exp"], tz=timezone.utc))
+    except PyMongoError:
+        logger.exception("Refresh revocation persistence unavailable")
+        raise HTTPException(status_code=503, detail="Token refresh temporarily unavailable")
+    set_session_cookies(response, new_token)  # SEC-05: rotate the cookie session too
     return {"token": new_token}
 
 

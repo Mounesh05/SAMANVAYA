@@ -24,6 +24,7 @@ class TestAuditHRFiltering:
         # Mock current user as HR
         hr_user = {
             'employee_id': 'HR001',
+            'org_id': 'AUDIT-TEST-ORG',
             'role': 'HR',
             'is_admin': False,
             'designation': 'HR_MANAGER'
@@ -73,6 +74,7 @@ class TestAuditHRFiltering:
         
         hr_user = {
             'employee_id': 'HR002',
+            'org_id': 'AUDIT-TEST-ORG',
             'role': 'HR',
             'is_admin': False,
             'designation': 'HR_MANAGER'
@@ -111,6 +113,7 @@ class TestAuditHRFiltering:
         
         ceo_user = {
             'employee_id': 'CEO01',
+            'org_id': 'AUDIT-TEST-ORG',
             'role': 'CEO',
             'is_admin': True,
             'designation': None
@@ -149,6 +152,7 @@ class TestAuditHRFiltering:
         
         hr_user = {
             'employee_id': 'HR003',
+            'org_id': 'AUDIT-TEST-ORG',
             'role': 'HR',
             'is_admin': False,
             'designation': 'HR_OPERATIONS'
@@ -243,6 +247,7 @@ class TestAuditHRFiltering:
         
         hr_user = {
             'employee_id': 'HR005',
+            'org_id': 'AUDIT-TEST-ORG',
             'role': 'HR',
             'is_admin': False,
             'designation': 'HR_MANAGER'

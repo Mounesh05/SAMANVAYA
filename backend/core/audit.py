@@ -79,7 +79,8 @@ class AuditLogger:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
         success: bool = True,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        organization_id: Optional[str] = None,
     ):
         """
         Log an audit event.
@@ -97,7 +98,17 @@ class AuditLogger:
             error_message: Error message if action failed
         """
         try:
+            # Tenant identity is captured at event creation, never reconstructed
+            # from a possibly transferred actor when historical events are read.
+            if not isinstance(organization_id, str) or not organization_id.strip():
+                account = await col("users").find_one({"employee_id": actor_id})
+                organization_id = account.get("org_id") if account else None
+                if account and account.get("organization_id", organization_id) != organization_id:
+                    organization_id = None
+            if not isinstance(organization_id, str) or not organization_id.strip():
+                organization_id = None
             audit_log = {
+                "org_id": organization_id,
                 "action": action.value,
                 "actor_id": actor_id,
                 "actor_name": actor_name,
@@ -127,7 +138,9 @@ class AuditLogger:
         action: Optional[AuditAction] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[str] = None,
+        allowed_actions: Optional[list[str]] = None,
     ) -> list:
         """
         Query audit logs with filters.
@@ -144,7 +157,11 @@ class AuditLogger:
         Returns:
             List of audit log entries
         """
-        query = {}
+        if not isinstance(organization_id, str) or not organization_id.strip():
+            return []
+        query = {"org_id": {"$eq": organization_id, "$not": {"$type": "array"}},
+                 "$or": [{"organization_id": {"$exists": False}},
+                         {"organization_id": {"$eq": organization_id, "$not": {"$type": "array"}}}]}
         
         if actor_id:
             query["actor_id"] = actor_id
@@ -153,7 +170,11 @@ class AuditLogger:
         if resource_id:
             query["resource_id"] = resource_id
         if action:
+            if allowed_actions is not None and action.value not in allowed_actions:
+                return []
             query["action"] = action.value
+        elif allowed_actions is not None:
+            query["action"] = {"$in": allowed_actions}
         
         # Date range query
         if start_date or end_date:
@@ -175,7 +196,9 @@ class AuditLogger:
         
         return logs
     
-    async def get_user_activity(self, actor_id: str, days: int = 30) -> Dict[str, Any]:
+    async def get_user_activity(self, actor_id: str, days: int = 30,
+                              organization_id: Optional[str] = None,
+                              allowed_actions: Optional[list[str]] = None) -> Dict[str, Any]:
         """
         Get activity summary for a specific user.
         
@@ -190,10 +213,11 @@ class AuditLogger:
         
         start_date = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
         
-        logs = await self.get_logs(actor_id=actor_id, start_date=start_date, limit=1000)
+        logs = await self.get_logs(actor_id=actor_id, start_date=start_date, limit=1000,
+                                   organization_id=organization_id, allowed_actions=allowed_actions)
         
         # Count actions by type
-        action_counts = {}
+        action_counts: Dict[str, int] = {}
         for log in logs:
             action = log.get("action")
             action_counts[action] = action_counts.get(action, 0) + 1
@@ -210,7 +234,9 @@ class AuditLogger:
         self,
         resource_type: str,
         resource_id: str,
-        limit: int = 50
+        limit: int = 50,
+        organization_id: Optional[str] = None,
+        allowed_actions: Optional[list[str]] = None,
     ) -> list:
         """
         Get complete history of changes to a specific resource.
@@ -226,7 +252,9 @@ class AuditLogger:
         return await self.get_logs(
             resource_type=resource_type,
             resource_id=resource_id,
-            limit=limit
+            limit=limit,
+            organization_id=organization_id,
+            allowed_actions=allowed_actions,
         )
 
 
@@ -263,5 +291,6 @@ async def log_audit(
         resource_id=resource_id,
         details=details,
         success=success,
-        error_message=error_message
+        error_message=error_message,
+        organization_id=(actor.get("org_id") if actor.get("organization_id", actor.get("org_id")) == actor.get("org_id") else None),
     )

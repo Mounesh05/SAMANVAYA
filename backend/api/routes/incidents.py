@@ -13,12 +13,12 @@ Incident API (CR-001).
 
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.audit import AuditAction, log_audit
-from core.authorization import (get_accessible_project_ids, has_global_access, project_member_ids,
+from core.authorization import (get_accessible_project_ids, project_member_ids,
                                 verify_project_access)
 from core.database import col
 from core.dependencies import get_current_user, require_permission
@@ -26,6 +26,7 @@ from core.permissions import Permission, get_user_permissions
 from domain.models.incident import (NEEDS_POSTMORTEM, OWNER_ROLES, TRANSITIONS, Incident, IncidentCreate,
                                     IncidentUpdate)
 from repositories.incident_repository import IncidentRepository
+from repositories.pr_repository import PRRepository
 
 router = APIRouter()
 
@@ -62,28 +63,31 @@ async def report_incident(
 
 @router.get("/", response_model=List[Incident])
 async def list_incidents(
-    project_id: Optional[str] = Query(None, max_length=100),
-    status: Optional[str] = Query(None, pattern="^(open|investigating|resolved|closed)$"),
+    project_id: Annotated[Optional[str], Query(max_length=100)] = None,
+    status: Annotated[Optional[str], Query(pattern="^(unresolved|open|investigating|resolved|closed)$")] = None,
     user: dict = Depends(get_current_user),
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 200,
 ):
     """List incidents the caller may see, newest first."""
     permissions = _permissions(user)
     query: dict = {}
     if Permission.VIEW_INCIDENTS in permissions:
+        projects = await get_accessible_project_ids(user)
         if project_id:
-            await verify_project_access(user, project_id)
-            query["project_id"] = project_id
-        elif not has_global_access(user):
-            query["project_id"] = {"$in": await get_accessible_project_ids(user)}
+            if project_id not in projects:
+                raise HTTPException(403, "Access denied")
+            projects = [project_id]
+        query = PRRepository._project_scope(projects, user.get("org_id"))
     elif Permission.CREATE_INCIDENT in permissions:
         query["reporter_id"] = user["employee_id"]
         if project_id:
             query["project_id"] = project_id
     else:
         raise HTTPException(status_code=403, detail="Insufficient permissions to view incidents")
-    if isinstance(status, str) and status:  # also safe when called directly
-        query["status"] = status
-    rows = await IncidentRepository().list_for(query)
+    if status:
+        query["status"] = {"$in": ["open", "investigating"]} if status == "unresolved" else status
+    rows = await IncidentRepository().list_for(query, limit=limit, offset=offset)
     return [Incident(**row) for row in rows]
 
 

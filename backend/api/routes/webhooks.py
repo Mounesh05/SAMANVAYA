@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Request, Header, BackgroundTasks, 
 from domain.services.webhook_service import WebhookService
 from domain.services.webhook_event_processor import WebhookEventProcessor
 from core.dependencies import get_current_user
-from core.authorization import has_org_access
+from core.authorization import has_org_access, get_accessible_project_ids, code_quality_tenant_filter
 import logging
 
 router = APIRouter()
@@ -144,14 +144,14 @@ async def list_webhook_events(
     
     repo = WebhookEventRepository()
     
+    scope = {"project_id": {"$in": await get_accessible_project_ids(current_user), "$not": {"$type": "array"}},
+             **code_quality_tenant_filter(current_user)}
     if repository:
-        events = await repo.find_by_repository(repository, limit)
-    elif status:
-        events = await repo.find_by_status(status, limit)
-    else:
-        # Get all recent events
-        events = await repo.find_by_status("completed", limit)
-    
+        scope["repository"] = repository
+    if status or not repository:
+        scope["status"] = status or "completed"
+    limit = min(100, max(1, limit))
+    events = await repo.collection.find(scope, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return {
         "events": events,
         "count": len(events)
@@ -178,7 +178,9 @@ async def get_webhook_event(
     from repositories.webhook_event_repository import WebhookEventRepository
     
     repo = WebhookEventRepository()
-    event = await repo.find_by_id(event_id)
+    event = await repo.collection.find_one({"id": event_id,
+        "project_id": {"$in": await get_accessible_project_ids(current_user), "$not": {"$type": "array"}},
+        **code_quality_tenant_filter(current_user)}, {"_id": 0})
     
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")

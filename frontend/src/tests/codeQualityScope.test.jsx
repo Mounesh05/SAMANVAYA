@@ -31,12 +31,19 @@ it('does not present discovery-only snapshots as clean quality analysis', async 
 });
 
 it('shows partial tools and unavailable coverage with recorded findings', async () => {
-  codeQualityApi.getRun.mockResolvedValue({ run_id: 'fixture', status: 'completed', quality_analysis_status: 'partial', tools_executed: ['ruff'], tools_skipped: ['bandit'], quality_unavailable_reason: 'Bandit unavailable' });
+  codeQualityApi.getRun.mockResolvedValue({
+    run_id: 'fixture', status: 'completed', quality_analysis_status: 'partial',
+    tools_executed: ['ruff'], tools_skipped: ['bandit', 'dependency-advisories-offline'],
+    quality_unavailable_reason: 'Bandit unavailable',
+    execution_provenance: { method: 'quality-snapshot-v1' },
+  });
   codeQualityApi.getRunFindings.mockResolvedValue({ total: 1, findings: [{ file_path: 'module.py', line_number: 4, message: 'Unused binding', severity: 'low' }] });
   show();
   expect(await screen.findByText('Partially analyzed')).toBeInTheDocument();
   expect(screen.getByText('Bandit unavailable')).toBeInTheDocument();
   expect(screen.getByText('Test coverage: Not measured')).toBeInTheDocument();
+  expect(screen.getByText(/coverage report for this revision/)).toBeInTheDocument();
+  expect(screen.getByText(/cannot reach advisory databases/)).toBeInTheDocument();
   expect(await screen.findByText('Unused binding')).toBeInTheDocument();
   expect(screen.getByText('module.py')).toBeInTheDocument();
 });

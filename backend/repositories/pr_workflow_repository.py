@@ -20,6 +20,8 @@ LEASE_SECONDS = 90
 JOB_VERSION = "pr-workflow-job-v1"
 MAX_JOB_BYTES = 2_000_000
 HEADER = {"_id": 1, "job_id": 1, "scope": 1, "request": 1, "status": 1, "generation": 1, "attempts": 1}
+ACTIVE = ["PENDING", "RUNNING", "RETRY_WAIT"]
+STATUSES = {"PENDING", "RUNNING", "RETRY_WAIT", "FAILED", "FINALIZED", "CANCELLED"}
 
 
 class LeaseLost(RuntimeError):
@@ -67,6 +69,8 @@ class PRWorkflowRepository:
         # _id is the unique, actor/tenant/revision-bound idempotency key.
         await self.collection.create_index([("status", 1), ("next_attempt_at", 1)])
         await self.collection.create_index([("status", 1), ("lease_expires_at", 1)])
+        await self.collection.create_index([("scope.owner_id", 1), ("scope.organization_id", 1),
+            ("scope.project_id", 1), ("scope.pr_number", 1), ("scope.head_sha", 1)])
 
     @staticmethod
     def identity(scope):
@@ -99,6 +103,29 @@ class PRWorkflowRepository:
             {"status": "RETRY_WAIT", "$expr": {"$lte": ["$next_attempt_at", self.now()]}},
             {"status": "RUNNING", "$expr": {"$lte": ["$lease_expires_at", self.now()]}},
         ]}
+
+    async def active_counts(self, owner_id, organization_id):
+        """AI-02: active jobs per requester, per organisation and in total (quota checks)."""
+        active = {"schema_version": JOB_VERSION, "status": {"$in": ACTIVE}}
+        return {"actor": await self.collection.count_documents({**active, "scope.owner_id": owner_id}),
+                "organization": await self.collection.count_documents({**active, "scope.organization_id": organization_id}),
+                "total": await self.collection.count_documents(active)}
+
+    async def cancel(self, key, actor_id):
+        """AI-02: stop a queued or running job.
+
+        Raising the generation fences the current worker: its lease guard
+        (status RUNNING + same generation) stops matching, so its next
+        heartbeat, step commit or publish fails with LeaseLost and nothing it
+        produces afterwards is stored.
+        """
+        row = await self.collection.find_one_and_update(
+            {"_id": key, "schema_version": JOB_VERSION, "status": {"$in": ACTIVE}},
+            [{"$set": {"status": "CANCELLED", "generation": {"$add": ["$generation", 1]},
+                       "cancelled_by": {"$literal": actor_id}, "cancelled_at": self.now(),
+                       "last_error": {"category": "CANCELLED", "code": "CANCELLED_BY_REQUESTER"}}}],
+            projection=HEADER, return_document=ReturnDocument.AFTER)
+        return row is not None
 
     async def reap_exhausted(self):
         await self.collection.update_many({"schema_version": JOB_VERSION, "status": "RUNNING",
@@ -146,7 +173,7 @@ class PRWorkflowRepository:
             if row["schema_version"] != JOB_VERSION or len(BSON.encode(row)) > MAX_JOB_BYTES:
                 raise ValueError("Unsupported job version or size")
             if (row.get("workflow_type") != "pr_multi_agent_v1"
-                    or row["status"] not in {"PENDING", "RUNNING", "RETRY_WAIT", "FAILED", "FINALIZED"}
+                    or row["status"] not in STATUSES
                     or type(row["attempts"]) is not int or not 0 <= row["attempts"] <= MAX_ATTEMPTS
                     or type(row["generation"]) is not int or row["generation"] < row["attempts"]
                     or row["status"] == "FINALIZED" and "report" not in row):

@@ -55,10 +55,10 @@ class TestDependenciesOutputParsingResilience:
     UnicodeDecodeError, MemoryError, custom exceptions, and malformed non-JSON data.
     """
 
-    def test_output_parsing_memory_error_recovers_and_falls_back(self):
+    def test_output_parsing_memory_error_recovers_and_falls_back(self, python_dependency_project):
         """MemoryError during parsing must degrade quality, fall back to safety, and not crash."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {"package": "fallback-pkg", "id": "CVE-2023-1111", "description": "Safe fallback"}
         ])
@@ -67,17 +67,17 @@ class TestDependenciesOutputParsingResilience:
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["{}", safety_output]
             with patch.object(analyzer, "_parse_dep_vulns", side_effect=[MemoryError("Simulated OOM during parsing"), [{"package": "fallback-pkg", "cve": "CVE-2023-1111"}]]):
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
                 assert res == [{"package": "fallback-pkg", "cve": "CVE-2023-1111"}]
                 assert evidence.tools_executed == ["safety"]
                 assert "pip-audit-failed" in evidence.tools_skipped
                 assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_output_parsing_unicode_decode_error_recovers_and_falls_back(self):
+    def test_output_parsing_unicode_decode_error_recovers_and_falls_back(self, python_dependency_project):
         """UnicodeDecodeError during parsing must degrade quality, fall back to safety, and not crash."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {"package": "fallback-pkg", "id": "CVE-2023-2222", "description": "Safe fallback"}
         ])
@@ -86,17 +86,17 @@ class TestDependenciesOutputParsingResilience:
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["{}", safety_output]
             with patch.object(analyzer, "_parse_dep_vulns", side_effect=[UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"), [{"package": "fallback-pkg", "cve": "CVE-2023-2222"}]]):
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
                 assert res == [{"package": "fallback-pkg", "cve": "CVE-2023-2222"}]
                 assert evidence.tools_executed == ["safety"]
                 assert "pip-audit-failed" in evidence.tools_skipped
                 assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_output_parsing_custom_exception_recovers_and_falls_back(self):
+    def test_output_parsing_custom_exception_recovers_and_falls_back(self, python_dependency_project):
         """Custom exception during parsing must degrade quality, fall back to safety, and not crash."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {"package": "fallback-pkg", "id": "CVE-2023-3333", "description": "Safe fallback"}
         ])
@@ -105,7 +105,7 @@ class TestDependenciesOutputParsingResilience:
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["{}", safety_output]
             with patch.object(analyzer, "_parse_dep_vulns", side_effect=[CustomParserError("Unexpected schema structure"), [{"package": "fallback-pkg", "cve": "CVE-2023-3333"}]]):
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
                 assert res == [{"package": "fallback-pkg", "cve": "CVE-2023-3333"}]
                 assert evidence.tools_executed == ["safety"]
@@ -120,16 +120,16 @@ class TestDependenciesOutputParsingResilience:
 class TestCorruptedStreamsAndStackTraces:
     """Stress-test non-JSON output streams, stack traces, and empty CLI outputs."""
 
-    def test_pip_audit_empty_string_output_falls_back_to_safety(self):
+    def test_pip_audit_empty_string_output_falls_back_to_safety(self, python_dependency_project):
         """When pip-audit outputs empty string, it must degrade quality and fall back to safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([{"package": "sec-pkg", "id": "CVE-2023-4444"}])
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["", safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-4444"
@@ -137,26 +137,26 @@ class TestCorruptedStreamsAndStackTraces:
             assert "pip-audit-failed" in evidence.tools_skipped
             assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_pip_audit_whitespace_only_output_falls_back_to_safety(self):
+    def test_pip_audit_whitespace_only_output_falls_back_to_safety(self, python_dependency_project):
         """When pip-audit outputs whitespace only, it must degrade quality and fall back to safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([{"package": "sec-pkg", "id": "CVE-2023-4445"}])
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["   \n\t  \r\n", safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-4445"
             assert evidence.tools_executed == ["safety"]
             assert "pip-audit-failed" in evidence.tools_skipped
 
-    def test_pip_audit_cli_python_traceback_stream(self):
+    def test_pip_audit_cli_python_traceback_stream(self, python_dependency_project):
         """When pip-audit outputs a standard Python exception traceback."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         traceback_output = (
             "Traceback (most recent call last):\n"
             '  File "/usr/local/bin/pip-audit", line 8, in <module>\n'
@@ -170,24 +170,24 @@ class TestCorruptedStreamsAndStackTraces:
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [traceback_output, safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-5555"
             assert evidence.tools_executed == ["safety"]
             assert "pip-audit-failed" in evidence.tools_skipped
 
-    def test_pip_audit_corrupted_partial_json_stream(self):
+    def test_pip_audit_corrupted_partial_json_stream(self, python_dependency_project):
         """When pip-audit outputs truncated/malformed JSON stream."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         truncated_json = '{"dependencies": [{"name": "urllib3", "vulns": [{"id": "CVE-2023-0001"'
         safety_output = json.dumps([{"package": "foo", "id": "CVE-2023-6666"}])
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [truncated_json, safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-6666"
@@ -205,17 +205,17 @@ class TestToolExecutionCatastrophicExceptions:
     catastrophic exceptions (UnicodeDecodeError, MemoryError, Custom Exceptions).
     """
 
-    def test_run_memory_error_during_pip_audit(self):
+    def test_run_memory_error_during_pip_audit(self, python_dependency_project):
         """When _run raises MemoryError on pip-audit, does it degrade and fall back to safety or crash?"""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([{"package": "bar", "id": "CVE-2023-7777"}])
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [MemoryError("Out of memory during pip-audit execution"), safety_output]
             try:
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert len(res) == 1
                 assert res[0]["cve"] == "CVE-2023-7777"
                 assert evidence.tools_executed == ["safety"]
@@ -223,17 +223,17 @@ class TestToolExecutionCatastrophicExceptions:
             except MemoryError as e:
                 pytest.fail(f"_dependencies crashed with unhandled MemoryError during _run: {e}")
 
-    def test_run_unicode_decode_error_during_pip_audit(self):
+    def test_run_unicode_decode_error_during_pip_audit(self, python_dependency_project):
         """When _run raises UnicodeDecodeError on pip-audit, does it degrade and fall back to safety or crash?"""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([{"package": "bar", "id": "CVE-2023-8888"}])
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"), safety_output]
             try:
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert len(res) == 1
                 assert res[0]["cve"] == "CVE-2023-8888"
                 assert evidence.tools_executed == ["safety"]
@@ -241,17 +241,17 @@ class TestToolExecutionCatastrophicExceptions:
             except UnicodeDecodeError as e:
                 pytest.fail(f"_dependencies crashed with unhandled UnicodeDecodeError during _run: {e}")
 
-    def test_run_custom_exception_during_pip_audit(self):
+    def test_run_custom_exception_during_pip_audit(self, python_dependency_project):
         """When _run raises CustomToolExecutionError on pip-audit, does it degrade and fall back or crash?"""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([{"package": "bar", "id": "CVE-2023-9999"}])
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [CustomToolExecutionError("Subprocess failed abnormally"), safety_output]
             try:
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert len(res) == 1
                 assert res[0]["cve"] == "CVE-2023-9999"
                 assert evidence.tools_executed == ["safety"]
@@ -264,6 +264,7 @@ class TestToolExecutionCatastrophicExceptions:
         analyzer = PythonAnalyzer()
 
         with TemporaryDirectory() as tmp_dir:
+            (Path(tmp_dir) / "requirements.txt").write_text("example-package==1.0\n", encoding="utf-8")
             f = Path(tmp_dir) / "app.py"
             f.write_text("import os\n", encoding="utf-8")
 

@@ -11,7 +11,8 @@ export function AuthProvider({ children }) {
     // Refresh the profile from the backend on every session start: it carries
     // the current role and permission list, so a saved copy can never grant
     // stale access in the UI.
-    if (!token) return;
+    // SEC-05: the session is an HttpOnly cookie; a saved profile means "try it".
+    if (!isAuthenticated) return;
     let cancelled = false;
     authApi
       .getMe()
@@ -24,7 +25,7 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [token, setUser, logout]);
+  }, [isAuthenticated, setUser, logout]);
 
   return (
     <AuthContext.Provider

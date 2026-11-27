@@ -26,6 +26,33 @@ PY_DFS = """def solve(g, s):
         stack.extend(g.get(node, []))
     return result
 """
+
+
+@pytest.mark.parametrize("alternative", [False, True])
+async def test_new_implementation_modes_execute_on_approved_fixture(workflow, alternative):
+    source = "def solve(xs):\n    return list(xs)\n"
+    paths = [{"filename": "module.py", "status": "added"}]
+    workflow.snapshots.update(base={}, head={"module.py": source})
+    if alternative:
+        workflow.snapshots["head"]["module.py"] += "\ndef other(xs):\n    return xs.copy()\n"
+        workflow.snapshots["head"]["test_module.py"] = (
+            "from module import solve, other\n"
+            "def test_equal():\n    assert solve([1]) == other([1])\n"
+        )
+        paths.append({"filename": "test_module.py", "status": "added"})
+    await contract(workflow)
+    workflow.benchmarks.runner = DockerBenchmarkRunner(timeout_seconds=60)
+    result = await run(workflow, paths)
+    row = next(row for row in result["functions"] if row["current"]["name"] == "solve")
+    assert row["mode"] == ("C" if alternative else "A"), row
+    assert row["comparison_status"] == ("completed" if alternative else "not_applicable"), row
+    if not alternative:
+        assert row["benchmark_status"] == "completed", row
+    child = await workflow.benchmarks.get(row["benchmark_run_id"])
+    assert child["environment"]["network"] == "none"
+    assert len(child["results"]) == (2 if alternative else 1)
+    assert all(case["correct"] and case["timings_seconds"]
+               for item in child["results"] for case in item["cases"])
 JS_DFS = """function solve(g, s) {
  const stack=[s], seen=new Set(), result=[];
  while(stack.length){const u=stack.pop();if(seen.has(u))continue;seen.add(u);result.push(u);stack.push(...(g[u]||[]));}

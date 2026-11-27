@@ -4,7 +4,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
-Text = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1, max_length=800)]
+MAX_TEXT_LENGTH = 800
+Text = Annotated[str, StringConstraints(strict=True, strip_whitespace=True, min_length=1, max_length=MAX_TEXT_LENGTH)]
 Label = Annotated[str, StringConstraints(strict=True, min_length=1, max_length=128)]
 Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 Revision = Annotated[str, Field(pattern=r"^[a-f0-9]{40}$")]

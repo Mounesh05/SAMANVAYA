@@ -486,9 +486,7 @@ def test_multi_language_detection_property(
 # EXPECTED ON FIXED CODE: PASSES (confirms preservation)
 
 def simulate_python_test_execution(project_path: Path, test_dir_location: str) -> Dict[str, any]:
-    """Simulate Python test execution following current workflow logic.
-    
-    This replicates lines 36-45 of qa_workflow_provisioning_service.py.
+    """Model the original Python-only runner for the preservation checks.
     
     Args:
         project_path: Path to project root
@@ -525,9 +523,7 @@ def simulate_python_test_execution(project_path: Path, test_dir_location: str) -
 
 
 def simulate_dependency_installation(project_path: Path) -> Dict[str, any]:
-    """Simulate Python dependency installation following current workflow logic.
-    
-    This replicates lines 29-32 of qa_workflow_provisioning_service.py.
+    """Model installation from the root and backend requirements files.
     
     Returns: dict with keys: requirements_installed, backend_requirements_installed
     """
@@ -545,14 +541,12 @@ def simulate_dependency_installation(project_path: Path) -> Dict[str, any]:
 
 
 def simulate_result_upload(test_results: Dict[str, int], has_secrets: bool) -> Dict[str, any]:
-    """Simulate test result upload following current workflow logic.
-    
-    This replicates lines 58-92 of qa_workflow_provisioning_service.py.
+    """Model the original Python-only upload payload for the preservation checks.
     
     Returns: dict with keys: upload_attempted, payload, exit_code, error
     """
     if not has_secrets:
-        # Current behavior: crashes with KeyError on os.environ access
+        # The original uploader required every secret.
         return {
             "upload_attempted": False,
             "payload": None,

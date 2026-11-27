@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from core.database import col, close_db
 from core.config import settings
+import asyncio
 import time
 import logging
 from fastapi import Request, status
@@ -25,33 +26,66 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Index initialisers that protect security or idempotency. If one of them fails
+# the service still starts (so it can recover), but readiness reports 503.
+REQUIRED_INDEXES = ("hitl", "qa", "token_revocation", "blocked_work", "release")
+index_failures: set[str] = set()
+
+
+async def _index_initializers():
+    """(name, coroutine function) pairs, resolved at call time so tests can patch them."""
+    from intelligence.baselines.repository_baseline import RepositoryBaseline
+    from domain.services.hitl_workflow_service import hitl_service
+    from repositories.qa_repository import QARepository
+    from core.security import ensure_revocation_indexes
+    from domain.services.pm_blocked_work import ensure_blocked_work_indexes
+    from domain.services.release_management import ensure_indexes as ensure_release_indexes
+    return [
+        ("repository_baseline", RepositoryBaseline().ensure_index),
+        ("hitl", hitl_service._ensure_indexes),
+        ("qa", QARepository().ensure_indexes),
+        ("token_revocation", ensure_revocation_indexes),
+        ("blocked_work", ensure_blocked_work_indexes),
+        ("release", ensure_release_indexes),
+    ]
+
+
+async def ensure_all_indexes() -> set[str]:
+    """Run every initialiser independently; one failure no longer skips the rest."""
+    failures: set[str] = set()
+    try:
+        initializers = await _index_initializers()
+    except Exception:
+        logger.exception("Index initialisers could not be loaded")
+        index_failures.clear()
+        index_failures.update(REQUIRED_INDEXES)
+        return set(REQUIRED_INDEXES)
+    for name, initialise in initializers:
+        try:
+            await initialise()
+        except Exception as exc:
+            failures.add(name)
+            logger.error("Database index initialisation failed: %s (%s)", name, type(exc).__name__)
+    index_failures.clear()
+    index_failures.update(failures)
+    if not failures:
+        logger.info("✓ Database indexes created/verified")
+    return failures
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown events."""
-    # Startup: Create database indexes
-    try:
-        from intelligence.baselines.repository_baseline import RepositoryBaseline
-        await RepositoryBaseline().ensure_index()
-        
-        from domain.services.hitl_workflow_service import hitl_service
-        await hitl_service._ensure_indexes()
+    # Startup: create database indexes (each independently; see ensure_all_indexes).
+    await ensure_all_indexes()
 
-        from repositories.qa_repository import QARepository
-        await QARepository().ensure_indexes()
-
-        from core.security import ensure_revocation_indexes
-        await ensure_revocation_indexes()
-        
-        logger.info("✓ Database indexes created/verified")
-    except Exception as e:
-        logger.warning(f"Failed to create database indexes: {e}")
-    
     # Use the route's processor and stop its owned tasks before closing MongoDB.
     # Start independently of optional indexes so an unrelated index failure
     # cannot silently disable event recovery.
     from api.routes.webhooks import event_processor
     from domain.services.pr_workflow_runtime import PRWorkflowRuntime
     from domain.services.github_pr_poller import pr_poller
+    from api.routes.code_quality import recovery as code_quality_recovery
     workflow_runtime = PRWorkflowRuntime()
     app.state.pr_workflow_runtime = workflow_runtime
     try:
@@ -59,8 +93,11 @@ async def lifespan(app: FastAPI):
         await workflow_runtime.start()
         # Pull requests of linked repositories without webhooks (e.g. localhost).
         await pr_poller.start()
+        # CQ-05: restart never-claimed analysis runs; fail interrupted ones.
+        code_quality_recovery.start()
         yield
     finally:
+        await code_quality_recovery.stop()
         await pr_poller.stop()
         await workflow_runtime.stop()
         await event_processor.stop()
@@ -74,12 +111,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration - properly configured from environment
-allowed_origins = getattr(settings, 'ALLOWED_ORIGINS', "http://localhost:3000,http://localhost:5173").split(",")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
@@ -115,20 +149,40 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     )
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"detail": exc.detail},
+        headers=exc.headers,
     )
+
+
+def sanitize_validation_errors(errors) -> list[dict]:
+    """Keep only where and why validation failed.
+
+    Pydantic includes the submitted value (``input``) and sometimes ``ctx``/``url``;
+    for sign-in, employee or CI payloads that value can be a password or token, so it
+    is never returned or logged.
+    """
+    safe = []
+    for error in errors:
+        safe.append({
+            "type": str(error.get("type", "value_error")),
+            "loc": [part if isinstance(part, (str, int)) else str(part) for part in error.get("loc", ())],
+            "msg": str(error.get("msg", "Invalid value")),
+        })
+    return safe
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors with detailed feedback."""
+    """Return validation feedback without echoing or logging submitted values."""
+    errors = sanitize_validation_errors(exc.errors())
     logger.warning(
-        f"Validation error: {exc.errors()}",
-        extra={"path": request.url.path, "method": request.method}
+        "Validation error at %s",
+        [{"loc": error["loc"], "type": error["type"]} for error in errors],
+        extra={"path": request.url.path, "method": request.method},
     )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": jsonable_encoder(exc.errors())}
+        content={"detail": jsonable_encoder(errors)},
     )
 
 
@@ -224,20 +278,39 @@ async def root():
     }
 
 
-# ━━ Health check ━━
+# ━━ Health checks ━━
+DATABASE_CHECK_TIMEOUT_SECONDS = 3.0
+
+
+async def _database_status() -> str:
+    """Bounded MongoDB round trip; a slow or failed database is not 'connected'."""
+    try:
+        await asyncio.wait_for(col("users").find_one({}, {"_id": 1}), DATABASE_CHECK_TIMEOUT_SECONDS)
+        return "connected"
+    except Exception:
+        return "connection_failed"
+
+
+@app.get("/health/live")
+async def liveness_check():
+    """Liveness: the process is running and serving requests. No dependency checks."""
+    return {"status": "alive", "version": "1.0.0"}
+
+
 @app.get("/health")
+@app.get("/health/ready")
 async def health_check():
     """
-    Health check endpoint for monitoring.
-    Returns system status and dependencies.
+    Readiness: 200 only when MongoDB answers and required indexes exist (503 otherwise).
+    Ollama and GitHub are optional; when they are unavailable the service is 'degraded'.
     """
     from agents.llm_provider import check_ollama_connection
     from integrations.github.client import GitHubClient
-    
-    # Check dependencies
-    ollama_status = check_ollama_connection()
-    
-    # Check GitHub token (if configured)
+
+    db_status = await _database_status()
+    # The provider check uses a blocking HTTP client, so keep it off the event loop.
+    ollama_status = await asyncio.to_thread(check_ollama_connection)
+
     github_status = "not_configured"
     if settings.GITHUB_TOKEN:
         try:
@@ -245,25 +318,28 @@ async def health_check():
             github_status = "configured" if await client.check_token_validity() else "invalid_token"
         except Exception:
             github_status = "error"
-    
-    # Check database connection
-    db_status = "unknown"
-    try:
-        # Try a simple database operation
-        await col("users").count_documents({})
-        db_status = "connected"
-    except Exception:
-        db_status = "connection_failed"
-    
-    return {
-        "status": "healthy",
+
+    missing_indexes = sorted(index_failures & set(REQUIRED_INDEXES))
+    ready = db_status == "connected" and not missing_indexes
+    if not ready:
+        overall = "unhealthy"
+    elif not ollama_status or github_status in {"invalid_token", "error"}:
+        overall = "degraded"
+    else:
+        overall = "healthy"
+    body = {
+        "status": overall,
         "dependencies": {
             "database": db_status,
+            "indexes": "missing" if missing_indexes else "ready",
             "ollama": "connected" if ollama_status else "not_available",
             "github": github_status,
         },
         "version": "1.0.0",
     }
+    if missing_indexes:
+        body["missing_indexes"] = missing_indexes
+    return JSONResponse(status_code=200 if ready else status.HTTP_503_SERVICE_UNAVAILABLE, content=body)
 
 
 # ━━ Register API Routers ━━
@@ -272,7 +348,7 @@ from api.routes import (
     cicd_logs, qa_test_runs, qa_management, performance, employees, teams, evaluation,
     boards, comments, activity, notifications, webhooks, code_quality,
     recommendations, traceability, risk_configurations, audit, transfers,
-    reports, pr_workflows,
+    reports, pr_workflows, release_decisions, release_gates,
 )
 from api.roles import developer, lead, pm, ceo, hr, qa, devops
 
@@ -283,9 +359,14 @@ app.include_router(employees.router, prefix="/api/employees", tags=["Employee Ma
 app.include_router(teams.router, prefix="/api/teams", tags=["Team Management"])
 app.include_router(transfers.router, prefix="/api/transfers", tags=["Transfers"])
 app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
+from api.routes import release_gate_settings, releases
+app.include_router(release_gate_settings.router, prefix="/api/projects", tags=["Release gate settings"])
+app.include_router(releases.router, prefix="/api/projects", tags=["Release management"])
 app.include_router(sprints.router, prefix="/api/sprints", tags=["Sprints"])
 app.include_router(stories.router, prefix="/api/stories", tags=["Stories"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
+app.include_router(release_decisions.router, prefix="/api/tasks", tags=["Task release decisions"])
+app.include_router(release_gates.router, prefix="/api/release-gates", tags=["Release gates"])
 app.include_router(intelligence.router, prefix="/api/intelligence", tags=["Intelligence Engine"])
 app.include_router(github.router, prefix="/api/github", tags=["GitHub Integration"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI Agents"])

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { performanceApi } from '../../api/performance.api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useSessionScope } from '../../store/useSessionScope';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { Select } from '../common/Select';
@@ -12,16 +13,17 @@ import './scoring.css';
 
 export function AssignedObservations() {
   const user = useAuthStore((s) => s.user);
+  const sessionScope = useSessionScope();
   const [selected, setSelected] = useState('');
   const [saved, setSaved] = useState(null);
-  const assignments = useQuery({ queryKey: ['my-human-assignments', user?.employee_id, user?.role],
+  const assignments = useQuery({ queryKey: ['my-human-assignments', sessionScope, user?.role],
     queryFn: () => performanceApi.getAssignments(), enabled: Boolean(user), retry: false });
   const assigned = assignments.data?.find((a) => a.assignment_id === selected);
-  const queryKey = ['own-human-review', user?.employee_id, selected];
+  const queryKey = ['own-human-review', sessionScope, user?.role, selected];
   const review = useQuery({ queryKey, queryFn: () => performanceApi.getHumanReview(selected), enabled: Boolean(assigned),
     retry: false, refetchOnWindowFocus: false, staleTime: Infinity });
   return <Card title="Assigned observations" className="scoring-stack">
-    <p className="scoring-help">Record only what your assignment covers. Observations remain unscored until rating anchors and source validation are approved. CEO feedback has no routine numerical contribution.</p>
+    <p className="scoring-help">Observations are recorded without a numerical score. Each entry belongs to the selected reviewer assignment and assessment period.</p>
     {assignments.isPending ? <p role="status">Loading your assignments…</p> : assignments.isError ?
       <div role="alert"><p>{requestError(assignments.error)}</p><Button onClick={() => assignments.refetch()}>Retry assignments</Button></div> : !assignments.data?.length ?
         <p>No active assigned reviews. A scoped administrator must establish your period interaction and reviewer eligibility first.</p> : <>
@@ -30,7 +32,7 @@ export function AssignedObservations() {
           {assigned && (review.isPending || review.isFetching ? <p role="status">Loading your observation record…</p> : review.isError ?
             <div role="alert"><p>{requestError(review.error)}</p><Button onClick={() => review.refetch()}>Retry observation record</Button></div> :
             <ObservationEditor key={`${user.employee_id}:${selected}:${review.data?.revision_digest || 'new'}`}
-              assignment={assigned} current={review.data} owner={user.employee_id} queryKey={queryKey} reload={() => review.refetch()}
+              assignment={assigned} current={review.data} owner={sessionScope} queryKey={queryKey} reload={() => review.refetch()}
               onSaved={(id) => setSaved(id)} onEdit={() => setSaved(null)} />)}
           {saved === selected && <p role="status">Recorded without a score. Newer draft notes, if any, are preserved. Evidence validation and approved rating policy are still required.</p>}
         </>}

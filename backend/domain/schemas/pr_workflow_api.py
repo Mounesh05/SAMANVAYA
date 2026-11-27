@@ -4,7 +4,7 @@ from typing import Literal
 
 from domain.models.pr_multi_agent import Contract, Digest, Label, Revision, ReportStatus, Specialist, Text
 
-JobState = Literal["PENDING", "RUNNING", "RETRY_WAIT", "FAILED", "FINALIZED"]
+JobState = Literal["PENDING", "RUNNING", "RETRY_WAIT", "FAILED", "FINALIZED", "CANCELLED"]
 
 
 class WorkflowProject(Contract):
@@ -62,6 +62,8 @@ def status_projection(row):
                 state = row["status"]
             elif row["status"] == "FAILED":
                 state = "FAILED"
+            elif row["status"] == "CANCELLED":
+                state = "SKIPPED"
         progress.append(SpecialistProgress(specialist=name, status=state, error_code=(saved or last or {}).get("error_code")))
     scope = row["scope"]
     return ManualWorkflowStatus(job_id=row["job_id"], project_id=scope["project_id"], repository=scope["repository"],

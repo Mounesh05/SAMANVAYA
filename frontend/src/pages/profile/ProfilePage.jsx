@@ -46,14 +46,14 @@ export function ProfilePage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: '900',
+                fontWeight: '600',
                 fontSize: '1.75rem',
               }}
             >
               {user?.name?.charAt(0) || 'U'}
             </div>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                 {user?.name || 'User'}
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
@@ -63,7 +63,7 @@ export function ProfilePage() {
                     borderRadius: 'var(--radius-full)',
                     backgroundColor: `${roleColor}20`,
                     color: roleColor,
-                    fontWeight: '700',
+                    fontWeight: '600',
                     fontSize: '0.75rem',
                   }}
                 >

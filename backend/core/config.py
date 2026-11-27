@@ -12,8 +12,16 @@ class Settings(BaseSettings):
     # ── Environment ──────────────────────────────────────────────
     ENVIRONMENT: str = "development"  # development, staging, production
     DEBUG: bool = True
+    UVICORN_HOST: str = "0.0.0.0"
+    UVICORN_PORT: int = Field(default=8000, ge=1, le=65535)
     PR_MULTI_AGENT_INTERNAL_ENABLED: bool = False
     PR_MULTI_AGENT_MANUAL_ENABLED: bool = False  # Manual API/UI worker, development/test only.
+    RELEASE_MANAGEMENT_ENABLED: bool = False
+    RELEASE_TRUSTED_WORKFLOW_PATH: str = ""
+    RELEASE_TRUSTED_WORKFLOW_SHA256: str = ""
+    RELEASE_TRUSTED_BUILD_REF: str = "main"
+    RELEASE_REQUIRED_TEST_SUITES: str = ""  # Comma-separated artifact-name/JUnit-path identities.
+    RELEASE_MIN_COVERAGE_PERCENT: float = Field(default=0, ge=0, le=100)
     
     # ── Database ──────────────────────────────────────────────────
     MONGO_URI: str = "mongodb://localhost:27017"
@@ -37,8 +45,8 @@ class Settings(BaseSettings):
     
     # ── Security ──────────────────────────────────────────────────
     RATE_LIMIT_ENABLED: bool = True  # Rate limiting on by default
-    MAX_REQUESTS_PER_MINUTE: int = 100
-    MAX_LOGIN_ATTEMPTS: int = 5
+    MAX_REQUESTS_PER_MINUTE: int = Field(default=100, gt=0)
+    MAX_LOGIN_ATTEMPTS: int = Field(default=5, gt=0)
     # Public POST /api/auth/register (DEVELOPER role only). Off by default;
     # HR/admin create accounts via POST /api/employees instead.
     ALLOW_SELF_REGISTRATION: bool = False
@@ -47,6 +55,30 @@ class Settings(BaseSettings):
     # ── AI / Ollama ───────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"  # or llama3.1, mistral, etc.
+    # Read timeout for one model call. CPU-only hosts need more (often 300+).
+    OLLAMA_INFERENCE_TIMEOUT_SECONDS: float = Field(default=120.0, gt=0, le=1800)
+    # AI-01: per-specialist limit for the PR multi-agent workflow.
+    PR_AGENT_SPECIALIST_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0, le=900)
+
+    # ── Isolated workers (OPS-03) ─────────────────────────────────
+    # Empty: the API runs the fixed worker images through the local Docker CLI
+    # (development). Set: the API calls the internal worker broker instead and
+    # never needs Docker access itself (production).
+    WORKER_BROKER_URL: str = ""
+    WORKER_BROKER_TOKEN: str = ""
+    WORKER_BROKER_TIMEOUT_SECONDS: float = Field(default=180.0, gt=0, le=900)
+
+    # ── Background work limits (CQ-05, AI-02) ─────────────────────
+    CODE_QUALITY_MAX_CONCURRENT_RUNS: int = Field(default=2, ge=1, le=16)
+    CODE_QUALITY_MAX_PENDING_PER_ORG: int = Field(default=20, ge=1, le=1000)
+    PR_WORKFLOW_MAX_ACTIVE_PER_ACTOR: int = Field(default=3, ge=1, le=100)
+    PR_WORKFLOW_MAX_ACTIVE_PER_ORG: int = Field(default=20, ge=1, le=1000)
+    PR_WORKFLOW_MAX_ACTIVE_TOTAL: int = Field(default=100, ge=1, le=10000)
+
+    # ── Evaluation policy (EV-05) ─────────────────────────────────
+    # Manual 1-10 baseline scores blend into the PR-only advisory score. Off
+    # until the organisation approves a calibrated human-score policy.
+    EVALUATION_HUMAN_BASELINE_ENABLED: bool = False
 
     # ── GitHub ────────────────────────────────────────────────────
     GITHUB_TOKEN: str = ""
@@ -129,7 +161,10 @@ class Settings(BaseSettings):
         
         if self.DEBUG:
             errors.append("DEBUG must be False in production")
-        
+
+        if self.WORKER_BROKER_URL and len(self.WORKER_BROKER_TOKEN) < 32:
+            errors.append("WORKER_BROKER_TOKEN must be at least 32 characters when WORKER_BROKER_URL is set")
+
         return errors
 
 

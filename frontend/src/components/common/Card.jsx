@@ -14,16 +14,14 @@ export function Card({
 }) {
   const paddingMap = {
     none: '0',
-    sm: '0.85rem',
-    md: '1.25rem',
-    lg: '1.75rem',
+    sm: '16px',
+    md: '20px',
+    lg: '28px',
   };
 
   const variantStyles = {
     glass: {
-      background: 'var(--bg-glass-card)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
+      background: 'var(--bg-card-solid)',
       border: '1px solid var(--border-subtle)',
     },
     solid: {
@@ -39,10 +37,9 @@ export function Card({
   return (
     <div
       style={{
+        minWidth: 0,
         borderRadius: 'var(--radius-lg)',
         padding: paddingMap[padding],
-        boxShadow: 'var(--shadow-md)',
-        transition: 'transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base)',
         cursor: onClick ? 'pointer' : 'default',
         ...variantStyles[variant],
         ...style,
@@ -58,19 +55,20 @@ export function Card({
             alignItems: 'flex-start',
             justifyContent: 'space-between',
             gap: '1rem',
-            marginBottom: '1.1rem',
+            flexWrap: 'wrap',
+            marginBottom: '16px',
             paddingBottom: '0.75rem',
             borderBottom: '1px solid var(--border-subtle)',
           }}
         >
           <div>
             {title && (
-              <h3 style={{ fontSize: '0.975rem', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                 {subtitle}
               </p>
             )}

@@ -3,6 +3,7 @@ CI/CD Log Analysis API Routes
 Endpoints for analyzing build, test, and deployment logs with AI
 """
 
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -14,7 +15,6 @@ from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from repositories.ai_run_repository import AIRunRepository
 from domain.services.ai_run_access import invocation_scope, permissions
-from core.permissions import Permission
 from domain.services.ai_evidence_service import prepare_evidence
 from domain.services.internal_agent_adapter import validated_interpretation
 
@@ -147,7 +147,7 @@ async def analyze_cicd_log(
         user_permissions = permissions(current_user)
         if current_user.get("role", "").upper() == "HR" or Permission.VIEW_AI_EVALUATION not in user_permissions:
             raise HTTPException(403, "Insufficient permissions for technical AI analysis")
-        if not check_ollama_connection():
+        if not await asyncio.to_thread(check_ollama_connection):
             raise HTTPException(
                 status_code=503,
                 detail="Ollama service not available. AI analysis requires Ollama running."
@@ -169,7 +169,6 @@ async def analyze_cicd_log(
                 "errors": [],
             }
             
-            import asyncio
             ai_result = await asyncio.to_thread(invoke_agent, "cicd_analysis", ai_state)
             interpretation = validated_interpretation(ai_result, kind="cicd")
             ai_result = interpretation
@@ -287,7 +286,7 @@ async def get_failure_patterns(
 @router.get("/health")
 async def cicd_analysis_health():
     """Health check for CI/CD log analysis system."""
-    ollama_ok = check_ollama_connection()
+    ollama_ok = await asyncio.to_thread(check_ollama_connection)
     
     return {
         "status": "healthy" if ollama_ok else "degraded",

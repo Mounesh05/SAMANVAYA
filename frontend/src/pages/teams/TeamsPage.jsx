@@ -79,7 +79,7 @@ export function TeamsPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
           gap: '1.5rem',
         }}
       >
@@ -109,7 +109,7 @@ export function TeamsPage() {
                 <span
                   style={{
                     fontSize: '0.75rem',
-                    fontWeight: '700',
+                    fontWeight: '600',
                     color: 'var(--text-muted)',
                     fontFamily: 'var(--font-mono)',
                   }}
@@ -118,7 +118,7 @@ export function TeamsPage() {
                 </span>
               </div>
 
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                 {team.name}
               </h3>
               <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.35rem', lineHeight: '1.4' }}>
@@ -142,7 +142,7 @@ export function TeamsPage() {
             </div>
 
             <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 View Team Details <ArrowRight size={14} />
               </span>
             </div>

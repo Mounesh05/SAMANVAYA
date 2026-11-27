@@ -114,9 +114,11 @@ class TestSetup:
 
 class TestBootstrapScript:
     @pytest.mark.anyio
-    async def test_script_creates_the_pair_and_never_prints_passwords(self, mock_db):
+    async def test_script_creates_the_pair_and_never_prints_passwords(self, mock_db, monkeypatch):
         import create_first_user as script
+        monkeypatch.setattr(script.settings, "DEFAULT_ORG_ID", "bootstrap-org")
         records = await script.create_first_accounts(mock_db, account("ceo"), account("admin"))
+        assert {record["org_id"] for record in records} == {"bootstrap-org"}
         text = script.summary(records)
         assert "admin=yes" in text and "admin=no" in text
         assert not any(p in text for pair in GOOD.values() for p in pair)

@@ -6,7 +6,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import {
-  Shield, AlertCircle, KeyRound, UserCheck, Info, Lock, Moon, Sun, LineChart, Bug, Award, Sparkles,
+  Shield, AlertCircle, KeyRound, UserCheck, Info, Lock, Moon, Sun, GitPullRequest, FlaskConical, ClipboardCheck,
 } from 'lucide-react';
 import './LoginPage.css';
 
@@ -102,7 +102,7 @@ export function LoginPage() {
       <header className="signin-shell signin-header">
         <div className="signin-logo">
           <span className="signin-mark" aria-hidden="true">S</span>
-          SAMANVAYA
+          Samanvaya
         </div>
         <button
           type="button"
@@ -117,43 +117,38 @@ export function LoginPage() {
 
       <div className="signin-shell signin-body">
         <aside className="signin-intro" aria-label="About Samanvaya">
-          <span className="eyebrow">
-            <Sparkles size={14} aria-hidden="true" />
-            AI-assisted engineering platform
-          </span>
-          <h2>Plan, deliver and review engineering work in one place.</h2>
+          <h2>Plan delivery and review the evidence</h2>
           <p className="lead">
-            AI reads pull requests, sprint data and code quality to flag risk and gather evidence. People review
-            it and make every final decision.
+            Track sprint risks, review code and test results, and record the decisions people make from that evidence.
           </p>
-          <ul className="signin-points">
-            <li>
-              <span className="icon" aria-hidden="true"><LineChart size={19} /></span>
-              <div>
-                <strong>AI delivery risk</strong>
-                <span>Sprint and project risk scored from live delivery data, with reports for leadership.</span>
-              </div>
-            </li>
-            <li>
-              <span className="icon" aria-hidden="true"><Bug size={19} /></span>
-              <div>
-                <strong>Code quality and incidents</strong>
-                <span>AI-assisted code checks, CI results, defects and incident triage in one place.</span>
-              </div>
-            </li>
-            <li>
-              <span className="icon" aria-hidden="true"><Award size={19} /></span>
-              <div>
-                <strong>Fair, AI-assisted reviews</strong>
-                <span>AI gathers evidence from real work; people review it, and every decision is recorded.</span>
-              </div>
-            </li>
-          </ul>
+          <figure className="signin-ledger">
+            <figcaption>
+              <strong>Release review</strong>
+              <span>Example</span>
+            </figcaption>
+            <ul>
+              <li>
+                <GitPullRequest aria-hidden="true" />
+                <span><strong>Update retry handling</strong><small>Pull request #184</small></span>
+                <span className="signin-ledger-status">In review</span>
+              </li>
+              <li>
+                <FlaskConical aria-hidden="true" />
+                <span><strong>Integration tests</strong><small>CI run #312</small></span>
+                <span className="signin-ledger-status is-passed">Passed</span>
+              </li>
+              <li>
+                <ClipboardCheck aria-hidden="true" />
+                <span><strong>Release approval</strong><small>Review record</small></span>
+                <span className="signin-ledger-status is-pending">Pending</span>
+              </li>
+            </ul>
+          </figure>
         </aside>
 
         <main className="signin-card">
           <h1>Sign in</h1>
-          <p className="subtitle">Use the account your organisation gave you.</p>
+          <p className="subtitle">Use the account provided by your organisation</p>
 
           {sessionExpired && !error && (
             <div role="status" className="signin-notice info">
@@ -176,7 +171,6 @@ export function LoginPage() {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="e.g. EMP-1042 or employee@example.com"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               leftIcon={<UserCheck size={16} />}
@@ -189,7 +183,6 @@ export function LoginPage() {
               type="password"
               name="organisation-password"
               autoComplete="current-password"
-              placeholder="Shared by your organisation"
               value={orgPassword}
               onChange={(e) => setOrgPassword(e.target.value)}
               onKeyUp={trackCapsLock}
@@ -203,7 +196,6 @@ export function LoginPage() {
               type="password"
               name="password"
               autoComplete="current-password"
-              placeholder="Your own password"
               value={empPassword}
               onChange={(e) => setEmpPassword(e.target.value)}
               onKeyUp={trackCapsLock}
@@ -215,7 +207,7 @@ export function LoginPage() {
 
             {capsLock && (
               <p role="status" className="signin-caps">
-                <AlertCircle size={13} aria-hidden="true" /> Caps Lock is on.
+                <AlertCircle size={16} aria-hidden="true" /> Caps Lock is on
               </p>
             )}
 
@@ -225,7 +217,6 @@ export function LoginPage() {
               size="lg"
               isLoading={isLoading}
               disabled={isLoading}
-              style={{ marginTop: '0.35rem', width: '100%' }}
             >
               Sign in
             </Button>
@@ -236,20 +227,20 @@ export function LoginPage() {
               <strong>Forgot a password or locked out?</strong> Contact your IT administrator.
             </div>
             <div>
-              <strong>New here?</strong> Accounts are created by HR; there is no self sign-up.
+              <strong>Need an account?</strong> Contact HR. There is no self sign-up.
             </div>
           </div>
 
           <p className="signin-assurance">
-            <Lock size={12} aria-hidden="true" />
+            <Lock size={16} aria-hidden="true" />
             Two-password sign-in. Every sign-in is recorded.
           </p>
         </main>
       </div>
 
       <footer className="signin-shell signin-footer">
-        <span>&copy; {new Date().getFullYear()} SAMANVAYA. All rights reserved.</span>
-        <span>Authorised use only.</span>
+        <span>&copy; {new Date().getFullYear()} Samanvaya</span>
+        <span>Authorised use only</span>
       </footer>
     </div>
   );

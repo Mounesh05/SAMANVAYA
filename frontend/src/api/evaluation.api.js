@@ -1,8 +1,15 @@
 import apiClient from './client';
 
+// Must exceed the backend model timeout plus evidence collection (default 180s).
+const EVALUATION_TIMEOUT_MS = Number(import.meta.env.VITE_AI_EVALUATION_TIMEOUT_MS) || 180000;
+
 export const evaluationApi = {
   evaluateDeveloperAI: async (data) => {
-    return apiClient.post('/evaluation/evaluate', data, { timeout: 180000 });
+    return apiClient.post('/evaluation/evaluate', data, { timeout: EVALUATION_TIMEOUT_MS });
+  },
+  // EV-05: dependency status and evaluation policy flags.
+  getHealth: async () => {
+    return apiClient.get('/evaluation/health');
   },
   getLatest: async () => {
     return apiClient.get('/evaluation/latest');

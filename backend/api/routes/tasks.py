@@ -106,7 +106,7 @@ async def list_project_tasks(
     # Verify user has access to this project
     await verify_project_access(user, project_id)
     
-    tasks = await task_service.get_project_tasks(project_id)
+    tasks = await task_service.get_project_tasks(project_id, user)
     return tasks
 
 
@@ -222,3 +222,14 @@ async def get_task_history(
     
     history = await workflow_service.get_transition_history(task_id, "task")
     return {"task_id": task_id, "history": history}
+
+
+@router.get("/{task_id}/delivery")
+async def task_delivery(task_id: str, user: dict = Depends(get_current_user)):
+    """Return scoped implementation, revision checks, human decisions and production evidence."""
+    from domain.services.task_delivery_service import build_delivery_status
+    from domain.services.release_decision_service import decision_context
+
+    status = await build_delivery_status(task_id, user)
+    status.update(await decision_context(status, user))
+    return status

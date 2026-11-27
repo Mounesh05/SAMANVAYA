@@ -55,6 +55,18 @@ describe('GitHubSyncPage report compatibility', () => {
     githubApi.getProjectConfig.mockResolvedValue(null);
   });
 
+  it('shows a failed connection and retries the health check without clearing the form', async () => {
+    githubApi.checkHealth.mockResolvedValueOnce({ status: 'error', message: 'GitHub connection failed' })
+      .mockResolvedValueOnce({ status: 'operational' });
+    renderWithProviders(<GitHubSyncPage />);
+    expect(await screen.findByText('GitHub connection failed')).toBeVisible();
+    const projectInput = screen.getByLabelText(/Target Project ID/);
+    fireEvent.change(projectInput, { target: { value: 'P1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh Status' }));
+    expect(await screen.findByText(/GitHub connection is operational/)).toBeVisible();
+    expect(projectInput).toHaveValue('P1');
+  });
+
   it('renders versioned engine values with a null legacy breakdown', async () => {
     const analysis = { status: 'completed', analysis: 'Advisory review', recommendations: [], engine_results_v1: engineResults };
     const report = {

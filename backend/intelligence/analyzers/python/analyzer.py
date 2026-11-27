@@ -126,7 +126,11 @@ class PythonAnalyzer(BaseAnalyzer):
 
             # ── Pass 3: Dependency Auditing (Pip-Audit → Safety) ───────────
             try:
-                dep_vulns = await self._dependencies(repo_path, evidence)
+                if pr_context.get("isolated_quality_worker"):
+                    self._degrade_quality(evidence, "security", "dependency-advisories-offline", penalty=0.05)
+                    dep_vulns = []
+                else:
+                    dep_vulns = await self._dependencies(repo_path, evidence)
             except Exception:
                 self._degrade_quality(evidence, "security", "dependencies-pipeline-failed", penalty=0.10)
                 dep_vulns = []

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
 export function Modal({
@@ -10,21 +10,41 @@ export function Modal({
   maxWidth = '550px',
   footer = null,
 }) {
+  const titleId = useId();
+  const subtitleId = useId();
+  const dialog = useRef(null);
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
+    if (!isOpen) return;
+    const opener = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    if (!dialog.current.contains(document.activeElement)) {
+      dialog.current.querySelector('button')?.focus();
     }
     return () => {
-      document.body.style.overflow = 'unset';
-      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (opener?.isConnected) opener.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
+
+  function handleKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      onClose();
+    }
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(dialog.current.querySelectorAll(
+      'button, a[href], input:not([type="hidden"]), select, textarea, summary, [tabindex]'
+    )).filter((control) => control.tabIndex >= 0 && !control.matches(':disabled')
+      && !control.closest('[hidden], [inert], [aria-hidden="true"]')
+      && (control.closest('details:not([open])') == null || control.tagName === 'SUMMARY'));
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey ? document.activeElement === first : document.activeElement === last) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -39,13 +59,16 @@ export function Modal({
         justifyContent: 'center',
         padding: '1rem',
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        animation: 'fadeIn 0.2s ease-out',
       }}
       onClick={onClose}
     >
       <div
+        ref={dialog}
+        onKeyDown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={subtitle ? subtitleId : undefined}
         style={{
           width: '100%',
           maxWidth,
@@ -57,7 +80,7 @@ export function Modal({
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          animation: 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          animation: 'fadeIn var(--transition-base)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -72,23 +95,25 @@ export function Modal({
           }}
         >
           <div>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+            <h3 id={titleId} style={{ fontSize: '1.125rem', fontWeight: '600', color: 'var(--text-primary)' }}>
               {title}
             </h3>
             {subtitle && (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+              <p id={subtitleId} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                 {subtitle}
               </p>
             )}
           </div>
           <button
+            type="button"
+            aria-label="Close"
             onClick={onClose}
             style={{
               background: 'transparent',
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '0.35rem',
+              padding: '8px',
               borderRadius: 'var(--radius-md)',
               display: 'flex',
               alignItems: 'center',
@@ -121,6 +146,7 @@ export function Modal({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
+              flexWrap: 'wrap',
               gap: '0.75rem',
             }}
           >

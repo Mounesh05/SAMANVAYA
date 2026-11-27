@@ -9,52 +9,17 @@ export function PageHeader({
   className = '',
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginBottom: '1.75rem',
-      }}
-      className={`page-header ${className}`}
-    >
+    <header className={`page-header ${className}`}>
       <div>
-        {breadcrumbs && <div style={{ marginBottom: '0.4rem' }}>{breadcrumbs}</div>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <h1
-            style={{
-              fontSize: '1.625rem',
-              fontWeight: '700',
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.025em',
-              lineHeight: 1.2,
-            }}
-          >
-            {title}
-          </h1>
+        {breadcrumbs && <div className="page-header-breadcrumbs">{breadcrumbs}</div>}
+        <div className="page-header-title">
+          <h1>{title}</h1>
           {badge}
         </div>
-        {subtitle && (
-          <p
-            style={{
-              fontSize: '0.875rem',
-              color: 'var(--text-secondary)',
-              marginTop: '0.35rem',
-              maxWidth: '680px',
-            }}
-          >
-            {subtitle}
-          </p>
-        )}
+        {subtitle && <p className="page-header-description">{subtitle}</p>}
       </div>
 
-      {actions && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-          {actions}
-        </div>
-      )}
-    </div>
+      {actions && <div className="page-header-actions">{actions}</div>}
+    </header>
   );
 }

@@ -1,3 +1,5 @@
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 export const ROLES = {
   DEVELOPER: 'DEVELOPER',
   LEAD: 'LEAD',
@@ -18,7 +20,7 @@ export const ROLE_LABELS = {
   [ROLES.CEO]: 'Executive (CEO)',
 };
 
-/** CR-009: HR specialisms (backend HR_DESIGNATIONS). Empty = HR generalist. */
+// An empty designation represents an HR generalist.
 export const HR_DESIGNATION_LABELS = {
   HR_MANAGER: 'HR Manager',
   RECRUITER: 'Recruiter',
@@ -28,7 +30,6 @@ export const HR_DESIGNATION_LABELS = {
   COMPENSATION_BENEFITS: 'Compensation & Benefits',
 };
 
-/** Readable name for a designation code; other text is shown as it is. */
 export function designationLabel(designation) {
   return HR_DESIGNATION_LABELS[designation] || designation || '';
 }
@@ -59,19 +60,3 @@ export const STATUS_LABELS = {
   [TASK_STATUS.DONE]: 'Done',
   [TASK_STATUS.BLOCKED]: 'Blocked',
 };
-
-export const RISK_LEVELS = {
-  LOW: 'LOW',
-  MEDIUM: 'MEDIUM',
-  HIGH: 'HIGH',
-  CRITICAL: 'CRITICAL',
-};
-
-export const SEVERITY_LEVELS = {
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-  CRITICAL: 'critical',
-};
-
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';

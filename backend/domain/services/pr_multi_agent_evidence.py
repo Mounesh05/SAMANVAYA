@@ -14,6 +14,7 @@ from core.database import col
 from core.permissions import Permission
 from domain.models.ai_evidence import GitHubFileEvidenceV1
 from domain.models.performance_evidence import canonical_digest
+from domain.models.pr_multi_agent import MAX_TEXT_LENGTH
 from domain.models.pr_multi_agent import EvidenceReference, Observation, PRScope, PRSnapshot
 from domain.services.ai_evidence_service import _repository, _file, MAX_SOURCE_BYTES
 from domain.services.ai_run_access import invocation_scope, permissions
@@ -105,6 +106,30 @@ class PREvidenceResolver:
                 evidence = self.reference(scope, "STATIC_SOURCE", f"github://{repository}/{path}@{head}",
                                           verified["content_sha256"])
                 references.append(evidence)
+                # Bounded, line-addressable source DATA lets specialists review
+                # behavior instead of guessing quality from aggregate counts.
+                lines = verified["content"].splitlines()
+                offset = 0
+                excerpts = []
+                for _ in range(4):
+                    selected, size = [], 0
+                    while offset + len(selected) < len(lines):
+                        line = lines[offset + len(selected)]
+                        if size + len(line) + bool(selected) > MAX_TEXT_LENGTH:
+                            break
+                        size += len(line) + bool(selected)
+                        selected.append(line)
+                    if not selected:
+                        break
+                    excerpt = "\n".join(selected)
+                    if excerpt.strip():
+                        excerpts.append(self.observation(evidence, f"{path}:{offset + 1}-{offset + len(selected)}",
+                                                        "source_excerpt", excerpt))
+                    offset += len(selected)
+                    if offset == len(lines):
+                        break
+                if offset < len(lines):
+                    limitations.append("SOURCE_EXCERPTS_BOUNDED")
                 discovery = await discover_sources({path: verified["content"].removeprefix("\ufeff")}, request.project_id, head)
                 if discovery.status != "available":
                     limitations.append("STATIC_DISCOVERY_PARTIAL_OR_UNAVAILABLE")
@@ -113,19 +138,25 @@ class PREvidenceResolver:
                     observations.append(self.observation(evidence, path, metric, len(discovery.functions)))
                 observations.append(self.observation(evidence, path, "source_bytes", len(raw)))
                 kinds = Counter(fact.kind for function in discovery.functions for fact in function.evidence)
-                for kind, count in sorted(kinds.items())[:6]:
+                for kind, count in sorted(kinds.items())[:3]:
                     observations.append(self.observation(evidence, path, "static_structure_" + kind, count))
-                if len(kinds) > 6:
+                if len(kinds) > 3:
                     limitations.append("STRUCTURAL_OBSERVATIONS_BOUNDED")
-                for function in discovery.functions[:4]:
+                for function in discovery.functions[:2]:
                     if len(function.qualified_name) > 800:
                         limitations.append("FUNCTION_IDENTITIES_BOUNDED")
                         continue
                     observations.append(self.observation(evidence, f"{path}:{function.line}",
                                                          "declared_function", function.qualified_name))
-                if len(discovery.functions) > 4:
+                if len(discovery.functions) > 2:
                     limitations.append("FUNCTION_IDENTITIES_BOUNDED")
+                observations.extend(excerpts)
+            await self.quality_observations(scope, references, observations)
             await self.ci_observations(scope, references, observations, limitations)
+            if len(observations) > 64:
+                observations = sorted(observations, key=lambda row: row.metric not in {'source_excerpt', 'static_finding'}
+                                      and not row.metric.startswith('ci_'))[:64]
+                limitations.append('OBSERVATION_SCOPE_BOUNDED')
             latest = await self.api.client.get_pull_request(owner, repo, request.pr_number)
             if pr_revisions(latest, repository, request.pr_number) != (head, base):
                 raise HTTPException(409, "PR revision moved during evidence collection")
@@ -134,6 +165,32 @@ class PREvidenceResolver:
                     "observations": [row.model_dump() for row in observations], "limitations": unique_limits}
             return PRSnapshot(snapshot_id=canonical_digest(body), scope=scope, references=tuple(references),
                               observations=tuple(observations), limitations=unique_limits)
+
+    async def quality_observations(self, scope, references, observations):
+        run = await col('code_quality_runs').find_one({'repository_id': scope.project_id, 'commit_sha': scope.head_sha,
+            'status': 'completed', 'execution_provenance.method': 'quality-snapshot-v1',
+            'execution_provenance.organization_id': scope.organization_id,
+            'execution_provenance.repository': scope.repository}, sort=[('created_at', -1)])
+        if not run:
+            return
+        provenance = run.get('execution_provenance') or {}
+        findings = await col('code_quality_findings').find({'run_id': run['run_id']}).limit(8).to_list(8)
+        from intelligence.quality_engine import snapshot_context_diagnostic
+        for finding in findings:
+            if snapshot_context_diagnostic(finding.get("source_tool"), finding.get("rule_id")):
+                continue
+            if finding.get('repository_id') != scope.project_id or any(
+                    key in finding and finding[key] != scope.organization_id for key in ('org_id', 'organization_id')):
+                continue
+            path = finding.get('file_path')
+            source = next((r for r in references if r.kind == 'STATIC_SOURCE'
+                           and r.source_reference == f'github://{scope.repository}/{path}@{scope.head_sha}'), None)
+            if (source is None or provenance.get('source_hashes', {}).get(path) != source.content_sha256
+                    or finding.get('source_tool') not in run.get('tools_executed', [])
+                    or type(finding.get('line_number')) is not int):
+                continue
+            statement = f"{finding.get('rule_id')}: {str(finding.get('message', ''))[:500]}"
+            observations.append(self.observation(source, f"{path}:{finding['line_number']}", 'static_finding', statement))
 
     @staticmethod
     def reference(scope, kind, source, digest):

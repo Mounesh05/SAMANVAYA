@@ -141,4 +141,28 @@ describe('PerformancePage Evaluation Eligibility & Auto-Defaulting', () => {
       expect(performanceApi.getDeveloperDashboard).toHaveBeenCalledWith('DEMO-QA1');
     });
   });
+
+  it('does not render missing advisory dimensions as measured zeroes', async () => {
+    useAuthStore.getState().setAuth('mock-token', {
+      employee_id: 'DEMO-DEV1', role: ROLES.DEVELOPER,
+      permissions: permissionsFor(ROLES.DEVELOPER, false),
+    });
+    performanceApi.getDeveloperDashboard.mockResolvedValue({ current_performance: null });
+    renderPage();
+    expect(await screen.findByText('No advisory dimension measurements are available.')).toBeInTheDocument();
+    expect(screen.queryByText('0.0 / 25')).not.toBeInTheDocument();
+  });
+
+  it('keeps a reported zero distinct from an absent dimension', async () => {
+    useAuthStore.getState().setAuth('mock-token', {
+      employee_id: 'DEMO-DEV1', role: ROLES.DEVELOPER,
+      permissions: permissionsFor(ROLES.DEVELOPER, false),
+    });
+    performanceApi.getDeveloperDashboard.mockResolvedValue({ current_performance: {
+      ai_evaluation: { dimension_scores: { code_quality: 0 } },
+    } });
+    renderPage();
+    expect(await screen.findByText('0.0 / 25')).toBeInTheDocument();
+    expect(screen.getAllByText('Unavailable')).toHaveLength(5);
+  });
 });

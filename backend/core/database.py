@@ -14,7 +14,13 @@ def get_client() -> AsyncIOMotorClient:
     """Get or create MongoDB client singleton."""
     global _client
     if _client is None:
-        _client = AsyncIOMotorClient(settings.MONGO_URI)
+        # OPS-04: honour the configured pool bounds and fail fast when MongoDB is unreachable.
+        _client = AsyncIOMotorClient(
+            settings.MONGO_URI,
+            maxPoolSize=settings.DB_MAX_POOL_SIZE,
+            minPoolSize=settings.DB_MIN_POOL_SIZE,
+            serverSelectionTimeoutMS=5000,
+        )
     return _client
 
 

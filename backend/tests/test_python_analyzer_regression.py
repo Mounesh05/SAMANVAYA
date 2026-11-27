@@ -286,7 +286,21 @@ class TestFeature14PipAuditFormatHandling:
 class TestFeature15ExplicitDependencyToolFailureHandling:
     """Verifies tool fallback, clean scan early exit, and explicit quality degradation."""
 
-    def test_clean_pip_audit_scan_does_not_fall_through_to_safety(self):
+    def test_missing_project_manifest_skips_scanners_even_if_host_has_requirements(self, tmp_path, monkeypatch):
+        (tmp_path / "requirements.txt").write_text("host-only-package==1.0\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        project = tmp_path / "source-only"
+        project.mkdir()
+        analyzer = PythonAnalyzer()
+        evidence = CodeQualityEvidence(repository_id="source-only", primary_language="python")
+        with patch.object(analyzer, "_tool_available", return_value=True), \
+             patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as runner:
+            assert sync_run(analyzer._dependencies(str(project), evidence)) == []
+        runner.assert_not_awaited()
+        assert evidence.tools_skipped == ["dependency-manifest-unavailable"]
+        assert not evidence.tools_executed
+
+    def test_clean_pip_audit_scan_does_not_fall_through_to_safety(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-clean", primary_language="python")
@@ -296,17 +310,19 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
         async def fake_run(cmd, cwd=None):
             nonlocal call_count
             call_count += 1
+            assert cwd == python_dependency_project
+            assert cmd[cmd.index("-r") + 1] == "requirements.txt"
             return clean_pip_audit
 
         with patch.object(analyzer, "_tool_available", return_value=True):
             with patch.object(py_mod, "_run", fake_run):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert vulns == []
                 assert "pip-audit" in evidence.tools_executed
                 assert "safety" not in evidence.tools_executed
                 assert call_count == 1
 
-    def test_pip_audit_failure_records_explicit_quality_degradation(self):
+    def test_pip_audit_failure_records_explicit_quality_degradation(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-fail", primary_language="python")
@@ -316,12 +332,12 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "pip-audit"):
             with patch.object(py_mod, "_run", fake_run_fail):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert vulns == []
                 assert "pip-audit-failed" in evidence.tools_skipped or "pip-audit" in evidence.tools_skipped
                 assert evidence.analysis_quality.confidence < 1.0
 
-    def test_pip_audit_timeout_handled_cleanly_and_degrades_quality(self):
+    def test_pip_audit_timeout_handled_cleanly_and_degrades_quality(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-timeout", primary_language="python")
@@ -331,11 +347,11 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
 
         with patch.object(analyzer, "_tool_available", return_value=True):
             with patch.object(py_mod, "_run", fake_run_none):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert vulns == []
                 assert "pip-audit-failed" in evidence.tools_skipped
 
-    def test_fallback_to_safety_when_pip_audit_not_installed(self):
+    def test_fallback_to_safety_when_pip_audit_not_installed(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-fallback", primary_language="python")
@@ -346,12 +362,12 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "safety"):
             with patch.object(py_mod, "_run", fake_run_safety):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert len(vulns) == 1
                 assert "safety" in evidence.tools_executed
                 assert "pip-audit" in evidence.tools_skipped
 
-    def test_clean_safety_scan_returns_empty_and_records_safety_executed(self):
+    def test_clean_safety_scan_returns_empty_and_records_safety_executed(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-safety-clean", primary_language="python")
@@ -361,22 +377,22 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: t == "safety"):
             with patch.object(py_mod, "_run", fake_run_safety):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert vulns == []
                 assert "safety" in evidence.tools_executed
 
-    def test_both_dependency_tools_unavailable_records_penalty_and_returns_empty(self):
+    def test_both_dependency_tools_unavailable_records_penalty_and_returns_empty(self, python_dependency_project):
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-none", primary_language="python")
 
         with patch.object(analyzer, "_tool_available", return_value=False):
-            vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+            vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
             assert vulns == []
             assert "pip-audit" in evidence.tools_skipped
             assert "safety" in evidence.tools_skipped
             assert evidence.analysis_quality.confidence < 1.0
 
-    def test_failed_pip_audit_falls_back_to_safety_and_extracts_vulns(self):
+    def test_failed_pip_audit_falls_back_to_safety_and_extracts_vulns(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-failover", primary_language="python")
@@ -389,13 +405,13 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
 
         with patch.object(analyzer, "_tool_available", return_value=True):
             with patch.object(py_mod, "_run", fake_run):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert len(vulns) == 1
                 assert vulns[0]["package"] == "flask"
                 assert "pip-audit-failed" in evidence.tools_skipped
                 assert "safety" in evidence.tools_executed
 
-    def test_invalid_json_cli_error_degrades_quality_and_falls_back(self):
+    def test_invalid_json_cli_error_degrades_quality_and_falls_back(self, python_dependency_project):
         py_mod = sys.modules[PythonAnalyzer.__module__]
         analyzer = PythonAnalyzer()
         evidence = CodeQualityEvidence(repository_id="test-err-output", primary_language="python")
@@ -407,7 +423,7 @@ class TestFeature15ExplicitDependencyToolFailureHandling:
 
         with patch.object(analyzer, "_tool_available", return_value=True):
             with patch.object(py_mod, "_run", fake_run):
-                vulns = sync_run(analyzer._dependencies("/tmp/fake_repo", evidence))
+                vulns = sync_run(analyzer._dependencies(python_dependency_project, evidence))
                 assert len(vulns) == 1
                 assert "pip-audit-failed" in evidence.tools_skipped
                 assert "safety" in evidence.tools_executed
@@ -1009,10 +1025,10 @@ class TestDefensiveSchemaReliabilityAndCrashResilience:
         assert vulns[0]["package"] == "dirty-id-pkg"
         assert vulns[0]["cve"] == "7777"
 
-    def test_dependencies_pipeline_successful_numeric_id_accounting(self):
+    def test_dependencies_pipeline_successful_numeric_id_accounting(self, python_dependency_project):
         """Feature 15: Pipeline does not crash or trigger spurious fallback when pip-audit produces numeric ID."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         output = json.dumps({
             "dependencies": [
                 {
@@ -1026,7 +1042,7 @@ class TestDefensiveSchemaReliabilityAndCrashResilience:
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = output
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "4321"
@@ -1036,10 +1052,10 @@ class TestDefensiveSchemaReliabilityAndCrashResilience:
             assert "safety" not in evidence.tools_executed
             assert evidence.analysis_quality.confidence == 1.0
 
-    def test_dependencies_pipeline_recovers_from_unhandled_parser_exception(self):
+    def test_dependencies_pipeline_recovers_from_unhandled_parser_exception(self, python_dependency_project):
         """Feature 15: Unhandled exceptions during parsing are caught, quality is degraded, and fallback tool executes."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {
                 "name": "safety-pkg",
@@ -1053,7 +1069,7 @@ class TestDefensiveSchemaReliabilityAndCrashResilience:
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["{}", safety_output]
             with patch.object(analyzer, "_parse_dep_vulns", side_effect=[RuntimeError("Simulated unhandled parser error"), [{"package": "safety-pkg", "cve": "CVE-2023-5555"}]]):
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
                 assert res == [{"package": "safety-pkg", "cve": "CVE-2023-5555"}]
                 # pip-audit must NOT be in tools_executed because parsing failed
@@ -1061,16 +1077,16 @@ class TestDefensiveSchemaReliabilityAndCrashResilience:
                 assert "pip-audit-failed" in evidence.tools_skipped
                 assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_dependencies_pipeline_both_tools_raising_unhandled_exceptions(self):
+    def test_dependencies_pipeline_both_tools_raising_unhandled_exceptions(self, python_dependency_project):
         """Feature 15: When all tools encounter unhandled exceptions, pipeline degrades quality without crashing."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         with patch.object(analyzer, "_tool_available", side_effect=lambda t: True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = ["{}", "{}"]
             with patch.object(analyzer, "_parse_dep_vulns", side_effect=KeyError("Simulated missing key error")):
-                res = sync_run(analyzer._dependencies(".", evidence))
+                res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
                 assert res == []
                 assert evidence.tools_executed == []
@@ -1094,10 +1110,10 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
     fallback to safety, correct evidence auditing, and analyze() crash resilience.
     """
 
-    def test_run_memory_error_during_pip_audit_degrades_and_falls_back_to_safety(self):
+    def test_run_memory_error_during_pip_audit_degrades_and_falls_back_to_safety(self, python_dependency_project):
         """When _run raises MemoryError during pip-audit, _dependencies must degrade and fall back to safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {"package": "safety-pkg", "id": "CVE-2023-7777", "description": "Fallback advisory"}
         ])
@@ -1105,7 +1121,7 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [MemoryError("Out of memory during pip-audit execution"), safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-7777"
@@ -1114,10 +1130,10 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
             assert "pip-audit-failed" in evidence.tools_skipped
             assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_run_unicode_decode_error_during_pip_audit_degrades_and_falls_back_to_safety(self):
+    def test_run_unicode_decode_error_during_pip_audit_degrades_and_falls_back_to_safety(self, python_dependency_project):
         """When _run raises UnicodeDecodeError during pip-audit, _dependencies must degrade and fall back to safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {"package": "safety-pkg", "id": "CVE-2023-8888", "description": "Fallback advisory"}
         ])
@@ -1125,7 +1141,7 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"), safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-8888"
@@ -1133,10 +1149,10 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
             assert "pip-audit-failed" in evidence.tools_skipped
             assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_run_custom_subprocess_exception_during_pip_audit_degrades_and_falls_back(self):
+    def test_run_custom_subprocess_exception_during_pip_audit_degrades_and_falls_back(self, python_dependency_project):
         """When _run raises CustomToolExecutionError during pip-audit, _dependencies must degrade and fall back to safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
         safety_output = json.dumps([
             {"package": "safety-pkg", "id": "CVE-2023-9999", "description": "Fallback advisory"}
         ])
@@ -1144,7 +1160,7 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [CustomToolExecutionError("Subprocess failed abnormally"), safety_output]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-9999"
@@ -1152,10 +1168,10 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
             assert "pip-audit-failed" in evidence.tools_skipped
             assert round(evidence.analysis_quality.confidence, 2) == 0.95
 
-    def test_run_both_dependency_tools_catastrophic_exceptions_handled(self):
+    def test_run_both_dependency_tools_catastrophic_exceptions_handled(self, python_dependency_project):
         """When both pip-audit and safety raise catastrophic execution exceptions, quality degrades and [] is returned."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         with patch.object(analyzer, "_tool_available", return_value=True), \
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
@@ -1163,7 +1179,7 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
                 MemoryError("pip-audit OOM"),
                 RuntimeError("safety process died"),
             ]
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert res == []
             assert evidence.tools_executed == []
@@ -1176,6 +1192,7 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
         analyzer = PythonAnalyzer()
 
         with TemporaryDirectory() as tmp_dir:
+            (Path(tmp_dir) / "requirements.txt").write_text("example-package==1.0\n", encoding="utf-8")
             f = Path(tmp_dir) / "app.py"
             f.write_text("import os\n", encoding="utf-8")
 
@@ -1202,6 +1219,7 @@ class TestSubprocessExceptionRecoveryAndAnalyzeResilience:
         analyzer = PythonAnalyzer()
 
         with TemporaryDirectory() as tmp_dir:
+            (Path(tmp_dir) / "requirements.txt").write_text("example-package==1.0\n", encoding="utf-8")
             f = Path(tmp_dir) / "app.py"
             f.write_text("x = 42\n", encoding="utf-8")
 

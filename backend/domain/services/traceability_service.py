@@ -381,18 +381,7 @@ class TraceabilityService:
         repository: str,
         limit: int = 50
     ) -> Dict[str, Any]:
-        """
-        Get complete history of a file.
-        
-        Returns:
-            {
-                "file_id": "FILE-...",
-                "prs": [...],  # PRs that modified this file
-                "bugs": [...],  # Bugs related to this file
-                "incident_count": 5,
-                "is_hotspot": true
-            }
-        """
+        """Return the PRs linked to a file and their modification count."""
         file_id = f"FILE-{repository.replace('/', '-')}-{file_path.replace('/', '-')}"
         
         # Find all PRs that modified this file
@@ -411,8 +400,6 @@ class TraceabilityService:
             for rel in rels
         ]
         
-        # Count incidents (TODO: implement when bug tracking is connected)
-        incident_count = 0
         is_hotspot = len(prs) > 10  # Simple heuristic
         
         return {
@@ -421,7 +408,9 @@ class TraceabilityService:
             "repository": repository,
             "prs": prs,
             "modification_count": len(prs),
-            "incident_count": incident_count,
+            # Incident records have no verified file link. Older clients expect an integer.
+            "incident_count": 0,
+            "incident_count_available": False,
             "is_hotspot": is_hotspot
         }
     

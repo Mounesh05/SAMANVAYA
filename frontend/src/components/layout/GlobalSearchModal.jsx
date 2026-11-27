@@ -13,7 +13,8 @@ export function GlobalSearchModal({ isOpen, onClose, onOpen }) {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        isOpen ? onClose() : onOpen?.();
+        if (isOpen) onClose();
+        else onOpen?.();
       }
       if (e.key === 'Escape' && isOpen) {
         onClose();
@@ -61,11 +62,11 @@ export function GlobalSearchModal({ isOpen, onClose, onOpen }) {
         inset: 0,
         zIndex: 999,
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
         paddingTop: '10vh',
+        paddingInline: 16,
       }}
       onClick={onClose}
     >
@@ -91,24 +92,27 @@ export function GlobalSearchModal({ isOpen, onClose, onOpen }) {
             borderBottom: '1px solid var(--border-subtle)',
           }}
         >
-          <Search size={18} style={{ color: 'var(--text-muted)' }} />
+          <Search size={16} strokeWidth={1.5} aria-hidden="true" style={{ color: 'var(--text-muted)' }} />
           <input
             autoFocus
             type="text"
+            aria-label="Search pages"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search projects, tasks, employees, code quality..."
+            placeholder="Search pages"
             style={{
               flex: 1,
+              minWidth: 0,
               background: 'transparent',
               border: 'none',
               color: 'var(--text-primary)',
               fontSize: '1rem',
-              outline: 'none',
             }}
           />
           {query && (
             <button
+              type="button"
+              aria-label="Clear search"
               onClick={() => setQuery('')}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
             >
@@ -121,39 +125,28 @@ export function GlobalSearchModal({ isOpen, onClose, onOpen }) {
         <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '0.75rem' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              No matching pages or entities found for "{query}"
+              No pages match “{query}”
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {filtered.map((item) => (
-                <div
+                <button
+                  type="button"
+                  className="search-result"
                   key={item.title}
                   onClick={() => handleSelect(item.to)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    transition: 'background var(--transition-fast)',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-elevated)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ color: 'var(--primary)' }}>{item.icon}</div>
-                    <div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                  <span className="search-result-main">
+                    <span className="search-result-icon" aria-hidden="true">{item.icon}</span>
+                    <span>
+                      <strong>
                         {item.title}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {item.category}
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
-                </div>
+                      </strong>
+                      <small>{item.category}</small>
+                    </span>
+                  </span>
+                  <ArrowRight size={16} strokeWidth={1.5} aria-hidden="true" />
+                </button>
               ))}
             </div>
           )}

@@ -5,16 +5,17 @@ Role-restricted routes use Depends(require_roles(...)).
 Permission-restricted routes use Depends(require_permission(...)).
 """
 
-from fastapi import Depends, HTTPException, Header
+from fastapi import Depends, HTTPException, Header, Request
 from typing import Optional
 from .security import decode_token, is_token_revoked, JWT_SESSION_VERSION
 from .permissions import Permission, get_user_permissions
 from pymongo.errors import PyMongoError
 from repositories.user_repository import UserRepository
 from domain.services.auth_service import AuthService
+from .session_cookies import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE, csrf_valid
 
 
-async def get_current_user(authorization: str = Header(...)) -> dict:
+async def get_current_user(authorization: Optional[str] = Header(None), request: Request = None) -> dict:  # type: ignore[assignment]  # None only for direct calls
     """
     Validates Bearer JWT on every protected request.
     
@@ -40,6 +41,17 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         async def get_profile(user: dict = Depends(get_current_user)):
             return {"employee_id": user["employee_id"]}
     """
+    # SEC-05: browsers authenticate with the HttpOnly session cookie; API
+    # clients keep sending Authorization: Bearer. Cookie-authenticated requests
+    # that change state must echo the CSRF cookie in X-CSRF-Token.
+    if not authorization and request is not None:
+        cookie_token = request.cookies.get(SESSION_COOKIE)
+        if cookie_token:
+            if not csrf_valid(request.method, request.cookies.get(CSRF_COOKIE), request.headers.get(CSRF_HEADER)):
+                raise HTTPException(status_code=403, detail="Missing or invalid CSRF token")
+            authorization = f"Bearer {cookie_token}"
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated", headers={"WWW-Authenticate": "Bearer"})
     try:
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != "bearer" or not token.strip():
@@ -79,7 +91,8 @@ async def get_current_user(authorization: str = Header(...)) -> dict:
         raise HTTPException(status_code=503, detail="Authentication temporarily unavailable")
 
 
-async def get_current_user_optional(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+async def get_current_user_optional(authorization: Optional[str] = Header(None),
+                                    request: Request = None) -> Optional[dict]:  # type: ignore[assignment]
     """
     Optional authentication - returns user if authenticated, None otherwise.
     Useful for endpoints that work with or without authentication.
@@ -90,11 +103,11 @@ async def get_current_user_optional(authorization: Optional[str] = Header(None))
     Returns:
         Decoded user payload dict or None
     """
-    if not authorization:
+    if not authorization and (request is None or not request.cookies.get(SESSION_COOKIE)):
         return None
-    
+
     try:
-        return await get_current_user(authorization)
+        return await get_current_user(authorization, request)
     except HTTPException as exc:
         if exc.status_code == 401:
             return None

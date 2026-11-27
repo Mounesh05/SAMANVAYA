@@ -20,9 +20,9 @@ export function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: '0.5rem',
-    fontWeight: '600',
+    fontWeight: '500',
     borderRadius: 'var(--radius-md)',
-    transition: 'all var(--transition-fast)',
+    transition: 'background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast)',
     cursor: disabled || isLoading ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
     borderWidth: '1px',
@@ -31,44 +31,41 @@ export function Button({
   };
 
   const sizeStyles = {
-    sm: { padding: '0.35rem 0.75rem', fontSize: '0.8125rem' },
-    md: { padding: '0.55rem 1.15rem', fontSize: '0.875rem' },
-    lg: { padding: '0.75rem 1.6rem', fontSize: '1rem' },
+    sm: { minHeight: 32, padding: '4px 12px', fontSize: '0.8125rem' },
+    md: { minHeight: 36, padding: '8px 16px', fontSize: '0.875rem' },
+    lg: { minHeight: 44, padding: '8px 20px', fontSize: '0.9375rem' },
   };
 
   const variantStyles = {
     primary: {
-      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      backgroundColor: 'var(--button-fill, var(--action))',
       color: '#ffffff',
-      boxShadow: '0 2px 10px rgba(37, 99, 235, 0.3)',
       borderColor: 'transparent',
     },
     secondary: {
-      background: 'var(--bg-elevated)',
+      backgroundColor: 'var(--button-fill, var(--bg-elevated))',
       color: 'var(--text-primary)',
       borderColor: 'var(--border-default)',
     },
     outline: {
-      background: 'transparent',
+      backgroundColor: 'var(--button-fill, transparent)',
       color: 'var(--text-primary)',
       borderColor: 'var(--border-default)',
     },
     danger: {
-      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+      backgroundColor: 'var(--button-fill, var(--action-danger))',
       color: '#ffffff',
-      boxShadow: '0 2px 10px rgba(220, 38, 38, 0.3)',
       borderColor: 'transparent',
     },
     ghost: {
-      background: 'transparent',
+      backgroundColor: 'var(--button-fill, transparent)',
       color: 'var(--text-secondary)',
       borderColor: 'transparent',
     },
     glass: {
-      background: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: 'var(--button-fill, var(--bg-secondary))',
       color: 'var(--text-primary)',
       borderColor: 'var(--border-subtle)',
-      backdropFilter: 'blur(8px)',
     },
   };
 
@@ -83,10 +80,11 @@ export function Button({
         ...variantStyles[variant],
         ...style,
       }}
-      className={`btn-${variant} ${className}`}
+      aria-busy={isLoading || undefined}
+      className={`button btn-${variant} ${className}`}
       {...props}
     >
-      {isLoading ? <Loader2 size={16} className="animate-spin" /> : leftIcon}
+      {isLoading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : leftIcon}
       {children}
       {!isLoading && rightIcon}
     </button>

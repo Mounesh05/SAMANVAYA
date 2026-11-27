@@ -63,6 +63,7 @@ export const PAGE_ACCESS = Object.freeze({
   // Delivery infrastructure (CR-003): data is limited to the user's projects.
   pipelines: { anyOf: [P.VIEW_PIPELINES] },
   deployments: { anyOf: [P.VIEW_DEPLOYMENTS] },
+  releases: { roles: DELIVERY, convertIn: 'Dedicated release read permission' },
   // Repository links and CI setup. CR-001: not a Developer task; "Sync PR"
   // stays on Pull Requests.
   githubSync: { anyOf: [P.MANAGE_REPOSITORY_LINK], menuRoles: [LEAD, DEVOPS] },

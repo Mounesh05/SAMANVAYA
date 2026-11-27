@@ -14,7 +14,7 @@ import { ProgressBar } from '../../components/common/ProgressBar';
 import { LoadingState } from '../../components/common/LoadingState';
 
 import { EmptyState } from '../../components/common/EmptyState';
-import { Play, Sparkles, Shield, UserCheck, Award, BookOpen } from 'lucide-react';
+import { Play, ClipboardCheck, Shield, UserCheck, Award } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { ROLES, designationLabel } from '../../utils/constants';
 import { hasPermission, hasAnyPermission, PERMISSIONS } from '../../auth/permissions';
@@ -165,7 +165,7 @@ export function PerformancePage() {
       key: 'score',
       header: 'Overall Score',
       render: (t) => (
-        <span style={{ fontWeight: '800', color: getGradeColor(t.grade) }}>
+        <span style={{ fontWeight: '600', color: getGradeColor(t.grade) }}>
           {typeof t.score === 'number' ? t.score.toFixed(1) : t.score}%
         </span>
       ),
@@ -174,7 +174,7 @@ export function PerformancePage() {
       key: 'grade',
       header: 'Grade',
       render: (t) => (
-        <span style={{ fontWeight: '700', color: getGradeColor(t.grade) }}>Grade {t.grade}</span>
+        <span style={{ fontWeight: '600', color: getGradeColor(t.grade) }}>Grade {t.grade}</span>
       ),
     },
   ];
@@ -232,7 +232,7 @@ export function PerformancePage() {
           description={error.message?.includes('503') || error.message?.includes('unavailable')
             ? "The AI evaluation service (Ollama) is not running. Start Ollama and retry the evaluation."
             : `No performance outcome is recorded for ${selectedDevId} yet.`}
-          icon={<Sparkles size={28} />}
+          icon={<ClipboardCheck size={28} />}
           actionLabel={canTriggerEvaluation ? 'Calculate contribution credit' : null}
           onAction={canTriggerEvaluation ? handleRunEvaluation : null}
         />
@@ -251,14 +251,14 @@ export function PerformancePage() {
             period={curr?.period || curr?.period_label || 'Current Period'}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+          <div className="work-grid" style={{ '--column-min': '360px' }}>
             {/* 90/10 Score Summary Card */}
-            <Card title="90% AI + 10% Human Evaluation Model" subtitle="Weighted performance governance summary">
+            <Card title="Legacy advisory components" subtitle="Historical advisory values. Governed assessment records establish approved outcomes.">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-default)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Sparkles size={16} style={{ color: 'var(--primary)' }} />
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>AI Evaluation Component (90% weight)</span>
+                    <ClipboardCheck size={16} style={{ color: 'var(--primary)' }} />
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>AI advisory component (legacy scale)</span>
                   </div>
                   <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>
                     {curr?.ai_evaluation?.overall_score != null ? `${curr.ai_evaluation.overall_score.toFixed(1)} / 90` : 'Pending'}
@@ -268,7 +268,7 @@ export function PerformancePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-default)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <UserCheck size={16} style={{ color: 'var(--success)' }} />
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Human Evaluation Component (10% weight)</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Human observations (legacy scale)</span>
                   </div>
                   <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>
                     {curr?.human_evaluation_summary?.average_score != null ? `${curr.human_evaluation_summary.average_score.toFixed(1)} / 100` : 'Pending'}
@@ -280,7 +280,7 @@ export function PerformancePage() {
                     <Award size={16} style={{ color: 'var(--cyan)' }} />
                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>Performance Tier</span>
                   </div>
-                  <span style={{ fontWeight: '700', color: getGradeColor(curr?.grade) }}>
+                  <span style={{ fontWeight: '600', color: getGradeColor(curr?.grade) }}>
                     {curr?.rating || (curr?.grade ? `Grade ${curr.grade}` : 'Under Review')}
                   </span>
                 </div>
@@ -305,7 +305,7 @@ export function PerformancePage() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     <span>Assessment Status:</span>
-                    <span style={{ fontWeight: '600', textTransform: 'uppercase', color: hrAssessment.status === 'submitted' ? 'var(--success)' : 'var(--warning)' }}>
+                    <span style={{ fontWeight: '600', color: hrAssessment.status === 'submitted' ? 'var(--success)' : 'var(--warning)' }}>
                       {hrAssessment.status}
                     </span>
                   </div>
@@ -366,7 +366,7 @@ export function PerformancePage() {
           />
 
           {/* AI explanation and deterministic contribution breakdown */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+          <div className="work-grid" style={{ '--column-min': '400px' }}>
             <Card title="Contribution Credit" subtitle="Deterministic score from observed engineering evidence">
               {curr?.contribution_credit ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -387,55 +387,59 @@ export function PerformancePage() {
             </Card>
             {/* Dimensions Card */}
             <Card title="AI Explanation" subtitle="Advisory analysis of the observed evidence">
+              {!Object.values(dimensions).some(Number.isFinite) ? (
+                <span>No advisory dimension measurements are available.</span>
+              ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Code Quality (25 pts max)</span>
-                    <strong>{dimensions.code_quality?.toFixed(1) || '0.0'} / 25</strong>
+                    <strong>{Number.isFinite(dimensions.code_quality) ? `${dimensions.code_quality.toFixed(1)} / 25` : 'Unavailable'}</strong>
                   </div>
-                  <ProgressBar value={dimensions.code_quality || 0} max={25} color="primary" />
+                  {Number.isFinite(dimensions.code_quality) && <ProgressBar value={dimensions.code_quality} max={25} color="primary" />}
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Delivery Speed (20 pts max)</span>
-                    <strong>{dimensions.delivery_speed?.toFixed(1) || '0.0'} / 20</strong>
+                    <strong>{Number.isFinite(dimensions.delivery_speed) ? `${dimensions.delivery_speed.toFixed(1)} / 20` : 'Unavailable'}</strong>
                   </div>
-                  <ProgressBar value={dimensions.delivery_speed || 0} max={20} color="cyan" />
+                  {Number.isFinite(dimensions.delivery_speed) && <ProgressBar value={dimensions.delivery_speed} max={20} color="cyan" />}
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Collaboration (15 pts max)</span>
-                    <strong>{dimensions.collaboration?.toFixed(1) || '0.0'} / 15</strong>
+                    <strong>{Number.isFinite(dimensions.collaboration) ? `${dimensions.collaboration.toFixed(1)} / 15` : 'Unavailable'}</strong>
                   </div>
-                  <ProgressBar value={dimensions.collaboration || 0} max={15} color="purple" />
+                  {Number.isFinite(dimensions.collaboration) && <ProgressBar value={dimensions.collaboration} max={15} color="purple" />}
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Reliability (15 pts max)</span>
-                    <strong>{dimensions.reliability?.toFixed(1) || '0.0'} / 15</strong>
+                    <strong>{Number.isFinite(dimensions.reliability) ? `${dimensions.reliability.toFixed(1)} / 15` : 'Unavailable'}</strong>
                   </div>
-                  <ProgressBar value={dimensions.reliability || 0} max={15} color="success" />
+                  {Number.isFinite(dimensions.reliability) && <ProgressBar value={dimensions.reliability} max={15} color="success" />}
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Engineering Impact (10 pts max)</span>
-                    <strong>{dimensions.business_impact?.toFixed(1) || '0.0'} / 10</strong>
+                    <strong>{Number.isFinite(dimensions.business_impact) ? `${dimensions.business_impact.toFixed(1)} / 10` : 'Unavailable'}</strong>
                   </div>
-                  <ProgressBar value={dimensions.business_impact || 0} max={10} color="warning" />
+                  {Number.isFinite(dimensions.business_impact) && <ProgressBar value={dimensions.business_impact} max={10} color="warning" />}
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                     <span>Technical Judgment (5 pts max)</span>
-                    <strong>{dimensions.technical_judgment?.toFixed(1) || '0.0'} / 5</strong>
+                    <strong>{Number.isFinite(dimensions.technical_judgment) ? `${dimensions.technical_judgment.toFixed(1)} / 5` : 'Unavailable'}</strong>
                   </div>
-                  <ProgressBar value={dimensions.technical_judgment || 0} max={5} color="primary" />
+                  {Number.isFinite(dimensions.technical_judgment) && <ProgressBar value={dimensions.technical_judgment} max={5} color="primary" />}
                 </div>
               </div>
+              )}
             </Card>
 
             {/* AI Insights, Strengths & Growth Areas */}
@@ -443,7 +447,7 @@ export function PerformancePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {aiEval?.strengths && aiEval.strengths.length > 0 && (
                   <div>
-                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.35rem' }}>
+                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--success)', marginBottom: '0.35rem' }}>
                       Key Strengths
                     </h5>
                     <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -456,7 +460,7 @@ export function PerformancePage() {
 
                 {aiEval?.recommendations && aiEval.recommendations.length > 0 && (
                   <div>
-                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--cyan)', marginBottom: '0.35rem' }}>
+                    <h5 style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--cyan)', marginBottom: '0.35rem' }}>
                       Growth Recommendations
                     </h5>
                     <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

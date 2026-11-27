@@ -49,7 +49,7 @@ async def environment(mock_db, monkeypatch, tmp_path):
     monkeypatch.setattr(llm_provider, "check_ollama_connection", lambda: True)
     node = Mock(return_value=deepcopy(VALID))
     monkeypatch.setattr(code_agent, "code_analysis_node", node)
-    evidence = CodeQualityEvidence(repository_id="P1", primary_language="python", files_analyzed=1)
+    evidence = CodeQualityEvidence(repository_id="P1", primary_language="python", files_analyzed=1, tools_executed=["ruff"])
     monkeypatch.setattr(QualityEngine, "calculate", AsyncMock(return_value=deepcopy(QUALITY)))
     monkeypatch.setattr(RiskEngine, "analyze_evidence", AsyncMock(return_value=deepcopy(RISK)))
     import domain.services.code_quality_service as quality_service

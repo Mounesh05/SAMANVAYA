@@ -1,7 +1,7 @@
 import { useSessionScope } from '../../store/useSessionScope';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { tasksApi } from '../../api/tasks.api';
 import { projectsApi } from '../../api/projects.api';
@@ -22,6 +22,7 @@ import { TASK_STATUS, STATUS_LABELS } from '../../utils/constants';
 import { canUpdateTask, isSignOffOnly, SIGN_OFF_TARGETS } from '../../utils/taskPermissions';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS, hasPermission } from '../../auth/permissions';
+import { TaskDeliveryPanel } from './TaskDeliveryPanel';
 
 export function TasksPage() {
   const sessionScope = useSessionScope();
@@ -32,9 +33,10 @@ export function TasksPage() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [params, setParams] = useSearchParams();
+  const selectedProjectId = params.get('project');
+  const selectedTaskId = params.get('task');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [taskDetail, setTaskDetail] = useState(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -49,12 +51,15 @@ export function TasksPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: projects = [] } = useQuery({
+  const projectsQuery = useQuery({
     queryKey: ['projects', 'list', sessionScope],
     queryFn: () => projectsApi.list(),
   });
 
-  const activeProjectId = selectedProjectId || projects[0]?.id || '';
+  const projects = projectsQuery.data || [];
+  const activeProjectId = selectedProjectId
+    ? projects.find((p) => p.id === selectedProjectId)?.id || ''
+    : projects[0]?.id || '';
 
   const {
     data: tasks = [],
@@ -62,19 +67,32 @@ export function TasksPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['tasks', 'project', activeProjectId],
+    queryKey: ['tasks', 'project', activeProjectId, sessionScope],
     queryFn: () => tasksApi.listByProject(activeProjectId),
     enabled: !!activeProjectId,
   });
+  const taskDetail = selectedTaskId
+    ? tasks.find((t) => t.id === selectedTaskId && (!t.project_id || t.project_id === activeProjectId))
+    : null;
+  const setTaskDetail = (task) => {
+    const next = new URLSearchParams(params);
+    if (task) {
+      next.set('project', activeProjectId);
+      next.set('task', task.id);
+    } else {
+      next.delete('task');
+    }
+    setParams(next, { replace: true });
+  };
 
   const { data: employees = [] } = useQuery({
-    queryKey: ['employees', 'list'],
+    queryKey: ['employees', 'list', sessionScope],
     queryFn: () => employeesApi.list(),
     enabled: assignsOthers,
   });
 
   const { data: sprints = [] } = useQuery({
-    queryKey: ['sprints', 'project', activeProjectId],
+    queryKey: ['sprints', 'project', activeProjectId, sessionScope],
     queryFn: () => sprintsApi.listByProject(activeProjectId),
     enabled: !!activeProjectId,
   });
@@ -101,6 +119,7 @@ export function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['board'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-blocked-work'] });
       setTaskDetail(null);
     },
   });
@@ -110,7 +129,7 @@ export function TasksPage() {
     isLoading: isTransitionsLoading,
     error: transitionsError,
   } = useQuery({
-    queryKey: ['task-transitions', taskDetail?.id],
+    queryKey: ['task-transitions', taskDetail?.id, sessionScope],
     queryFn: () => tasksApi.getAvailableTransitions(taskDetail.id),
     enabled: !!taskDetail?.id,
     select: (result) => result.allowed_statuses,
@@ -118,9 +137,8 @@ export function TasksPage() {
 
   const sprintMutation = useMutation({
     mutationFn: ({ taskId, sprintId }) => tasksApi.updateSprint(taskId, sprintId),
-    onSuccess: (updatedTask) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      setTaskDetail(updatedTask);
     },
   });
 
@@ -219,7 +237,7 @@ export function TasksPage() {
           <div style={{ width: '220px' }}>
             <Select
               value={activeProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
+              onChange={(e) => setParams({ project: e.target.value }, { replace: true })}
               options={projects.map((p) => ({ value: p.id, label: p.name }))}
             />
           </div>
@@ -238,17 +256,22 @@ export function TasksPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {projectsQuery.error ? (
+        <ErrorState message={projectsQuery.error.message} onRetry={projectsQuery.refetch} />
+      ) : projectsQuery.isLoading || isLoading ? (
         <LoadingState message="Loading tasks..." />
       ) : error ? (
         <ErrorState message={error.message} onRetry={refetch} />
       ) : (
+        <>
+        {selectedTaskId && !taskDetail && <p role="status">This task is unavailable in the selected project.</p>}
         <Table
           columns={columns}
           data={filteredTasks}
           emptyMessage="No tasks found matching your filters."
           onRowClick={(t) => setTaskDetail(t)}
         />
+        </>
       )}
 
       {/* Task Detail / Status Update Modal */}
@@ -256,6 +279,7 @@ export function TasksPage() {
         isOpen={!!taskDetail}
         onClose={() => setTaskDetail(null)}
         title={taskDetail?.title || 'Task Details'}
+        maxWidth="680px"
         subtitle={`Task ID: ${taskDetail?.id}`}
         footer={
           <Button variant="secondary" onClick={() => setTaskDetail(null)}>
@@ -292,6 +316,8 @@ export function TasksPage() {
               )}
             </dl>
 
+            <TaskDeliveryPanel key={JSON.stringify([sessionScope, taskDetail.id])} taskId={taskDetail.id} />
+
             {assignsOthers ? (
               <Select
                 label="Sprint"
@@ -312,7 +338,7 @@ export function TasksPage() {
             ) : null}
 
             <div>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                 Transition Status:
               </h4>
               {canUpdateTask(user, taskDetail) ? (
@@ -384,7 +410,7 @@ export function TasksPage() {
             required
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Select
               label="Project"
               value={formData.project_id || activeProjectId}
@@ -418,7 +444,7 @@ export function TasksPage() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Select
               label="Priority"
               value={formData.priority}

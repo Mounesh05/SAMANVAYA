@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 #
-# Multi-Language Test Detection and Execution Script
-# Detects and runs tests for Python (pytest), JavaScript/TypeScript (vitest, jest), and Java (Maven, Gradle)
-# Exports environment variables for GitHub Actions consumption
+# Run detected test suites and record their JUnit reports for GitHub Actions.
 
-set -u  # Exit on undefined variables
-# Do NOT set -e: we want to capture test exit codes without stopping
+set -u
 
-# Initialize tracking variables
 OVERALL_EXIT_CODE=0
 TESTS_RUN=0
 DETECTED_SUITES=""
@@ -33,11 +29,17 @@ log_error() {
     echo "[ERROR] $1" >&2
 }
 
-update_exit_code() {
-    local new_code=$1
-    if [ "$new_code" -ne 0 ]; then
-        OVERALL_EXIT_CODE=$new_code
+record_suite_result() {
+    local suite=$1 report=$2 exit_code=$3
+    echo "SAMANVAYA_TEST_SUITE=$suite" >> "$GITHUB_ENV"
+    echo "TEST_RESULTS_FILE=$report" >> "$GITHUB_ENV"
+    TESTS_RUN=$((TESTS_RUN + 1))
+    DETECTED_SUITES="${DETECTED_SUITES}$suite "
+    # Keep the last failure even when a later suite passes.
+    if [ "$exit_code" -ne 0 ]; then
+        OVERALL_EXIT_CODE=$exit_code
     fi
+    return "$exit_code"
 }
 
 # ============================================================================
@@ -110,18 +112,8 @@ run_python_tests() {
     
     log_info "Python tests completed with exit code: $exit_code"
     
-    # Add to manifest
     echo -e "python\ttest-results-python.xml\t$exit_code" >> "$MANIFEST_FILE"
-    
-    # Export to GitHub Actions environment
-    echo "SAMANVAYA_TEST_SUITE=python" >> "$GITHUB_ENV"
-    echo "TEST_RESULTS_FILE=test-results-python.xml" >> "$GITHUB_ENV"
-    
-    TESTS_RUN=$((TESTS_RUN + 1))
-    DETECTED_SUITES="${DETECTED_SUITES}python "
-    update_exit_code $exit_code
-    
-    return $exit_code
+    record_suite_result python test-results-python.xml "$exit_code"
 }
 
 # ============================================================================
@@ -176,18 +168,8 @@ run_vitest_tests() {
     
     log_info "Vitest tests completed with exit code: $exit_code"
     
-    # Add to manifest
     echo -e "javascript\ttest-results-frontend.xml\t$exit_code" >> "$MANIFEST_FILE"
-    
-    # Export to GitHub Actions environment
-    echo "SAMANVAYA_TEST_SUITE=javascript" >> "$GITHUB_ENV"
-    echo "TEST_RESULTS_FILE=test-results-frontend.xml" >> "$GITHUB_ENV"
-    
-    TESTS_RUN=$((TESTS_RUN + 1))
-    DETECTED_SUITES="${DETECTED_SUITES}javascript "
-    update_exit_code $exit_code
-    
-    return $exit_code
+    record_suite_result javascript test-results-frontend.xml "$exit_code"
 }
 
 run_jest_tests() {
@@ -213,18 +195,8 @@ run_jest_tests() {
     
     log_info "Jest tests completed with exit code: $exit_code"
     
-    # Add to manifest
     echo -e "javascript\ttest-results-frontend.xml\t$exit_code" >> "$MANIFEST_FILE"
-    
-    # Export to GitHub Actions environment
-    echo "SAMANVAYA_TEST_SUITE=javascript" >> "$GITHUB_ENV"
-    echo "TEST_RESULTS_FILE=test-results-frontend.xml" >> "$GITHUB_ENV"
-    
-    TESTS_RUN=$((TESTS_RUN + 1))
-    DETECTED_SUITES="${DETECTED_SUITES}javascript "
-    update_exit_code $exit_code
-    
-    return $exit_code
+    record_suite_result javascript test-results-frontend.xml "$exit_code"
 }
 
 # ============================================================================
@@ -268,15 +240,7 @@ run_maven_tests() {
     
     log_info "Maven tests completed with exit code: $exit_code"
     
-    # Export to GitHub Actions environment
-    echo "SAMANVAYA_TEST_SUITE=java" >> "$GITHUB_ENV"
-    echo "TEST_RESULTS_FILE=test-results-java.xml" >> "$GITHUB_ENV"
-    
-    TESTS_RUN=$((TESTS_RUN + 1))
-    DETECTED_SUITES="${DETECTED_SUITES}java "
-    update_exit_code $exit_code
-    
-    return $exit_code
+    record_suite_result java test-results-java.xml "$exit_code"
 }
 
 run_gradle_tests() {
@@ -316,15 +280,7 @@ run_gradle_tests() {
     
     log_info "Gradle tests completed with exit code: $exit_code"
     
-    # Export to GitHub Actions environment
-    echo "SAMANVAYA_TEST_SUITE=java" >> "$GITHUB_ENV"
-    echo "TEST_RESULTS_FILE=test-results-java.xml" >> "$GITHUB_ENV"
-    
-    TESTS_RUN=$((TESTS_RUN + 1))
-    DETECTED_SUITES="${DETECTED_SUITES}java "
-    update_exit_code $exit_code
-    
-    return $exit_code
+    record_suite_result java test-results-java.xml "$exit_code"
 }
 
 # ============================================================================

@@ -3,11 +3,11 @@
 /* Status tones (fixed) plus the one series hue and a neutral. Text set on a
    fill uses the matching ink. */
 export const TONES = {
-  blue: { fill: 'var(--viz-blue)', ink: '#ffffff' },
-  good: { fill: 'var(--viz-good)', ink: '#ffffff' },
-  warning: { fill: 'var(--viz-warning)', ink: '#0b0b0b' },
-  serious: { fill: 'var(--viz-serious)', ink: '#0b0b0b' },
-  critical: { fill: 'var(--viz-critical)', ink: '#ffffff' },
+  blue: { fill: 'var(--viz-blue)', ink: 'var(--viz-series-ink)' },
+  good: { fill: 'var(--viz-good)', ink: 'var(--viz-series-ink)' },
+  warning: { fill: 'var(--viz-warning)', ink: 'var(--viz-series-ink)' },
+  serious: { fill: 'var(--viz-serious)', ink: 'var(--viz-series-ink)' },
+  critical: { fill: 'var(--viz-critical)', ink: 'var(--viz-series-ink)' },
   neutral: { fill: 'var(--viz-neutral)', ink: 'var(--viz-neutral-ink)' },
 };
 

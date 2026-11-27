@@ -5,20 +5,22 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from agents import cicd_agent, llm_provider, pr_multi_agent
-from domain.models.pr_multi_agent import SpecialistReply
+from domain.models.pr_multi_agent import SpecialistReply, SpecialistView, PRScope
 
 
 @pytest.mark.anyio
 async def test_pr_provider_requests_existing_reply_schema(monkeypatch):
     model = Mock(ainvoke=AsyncMock(return_value='{}'))
     monkeypatch.setattr(llm_provider, 'get_ollama_llm', lambda **kwargs: model)
-    view = Mock(specialist='code_analysis')
-    view.model_dump_json.return_value = '{}'
+    view = SpecialistView(specialist='code_analysis', snapshot_id='a' * 64,
+        scope=PRScope(owner_id='A', organization_id='O', project_id='P', repository='example/service',
+                      pr_number=1, head_sha='a' * 40, base_sha='b' * 40), references=(), observations=())
     await pr_multi_agent._model_reply(view)
     prompt = model.ainvoke.call_args.args[0]
     assert '"schema_version":"pr-specialist-v1"' in prompt and '"claims":[' in prompt
     assert 'never the input state or a JSON Schema' in prompt
-    assert prompt.endswith('Return the pr-specialist-v1 response object with summary, claims and limitations. Do not return an observation, input state or schema.')
+    assert 'Return the pr-specialist-v1 response object with summary, claims and limitations. Do not return an observation, input state or schema.' in prompt
+    assert model.ainvoke.call_args.kwargs['options']['num_ctx'] == 8192
     shape = model.ainvoke.call_args.kwargs['format']
     assert shape['$defs']['ClaimDraft']['properties']['kind']['enum'] == ['OBSERVATION', 'INTERPRETATION']
     assert shape['additionalProperties'] is False

@@ -50,6 +50,18 @@ class WebhookEventRepository:
         await self.collection.create_index("delivery_key", unique=True, sparse=True)
         await self.collection.create_index([("status", 1), ("next_attempt_at", 1)])
         await self.collection.create_index([("status", 1), ("lease_expires_at", 1)])
+        # Reporting scans one project and provider-time window. Deployment
+        # notification links can also resolve an exact ID outside the window.
+        for field in ("payload.workflow_run.updated_at", "payload.deployment.created_at", "payload.deployment.id"):
+            await self.collection.create_index(
+                [("project_id", 1), ("event_type", 1), (field, 1)],
+                partialFilterExpression={field: {"$exists": True}},
+            )
+        await self.collection.create_index(
+            [("project_id", 1), ("production.org_id", 1), ("production.repository", 1),
+             ("production.revision", 1), ("production.observed_at", -1), ("production.status_id", -1)],
+            partialFilterExpression={"production": {"$exists": True}},
+        )
 
     @staticmethod
     def _recoverable(now: datetime, lease_seconds: int, max_retries: int = 3) -> dict:

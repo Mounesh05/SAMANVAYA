@@ -315,7 +315,7 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
         pr = await col("pull_requests").find_one({"id": row["pr_id"], "project_id": row["project_id"]})
         row["historical_only"] = row["status"] == "superseded" or not pr or pr.get("status") != "open" or pr.get("head_sha") != row["head_sha"] or pr.get("algorithm_intelligence_run_id") != row["run_id"]
         for function in row.get("functions", []):
-            if not function.get("benchmark_run_id"):
+            if not function.get("benchmark_run_id") or function.get("mode") == "A":
                 continue
             benchmark = await col("algorithm_benchmark_runs").find_one({"run_id": function["benchmark_run_id"], "project_id": row["project_id"]},
                 {"behavioral_compatibility.status": 1, "decision.task_suitability": 1, "decision.unknown_requirements": 1, "decision.revision_id": 1})
@@ -323,3 +323,21 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
                 function["finding_status"] = recommendation_status(benchmark)
                 function["current_decision_reference"] = function["benchmark_run_id"] + "/" + benchmark["decision"]["revision_id"]
     return {"analyses": rows}
+
+
+@router.post("/pr-intelligence/{run_id}/functions/{function_id}/explanation")
+async def explain_pr_function(run_id: str, function_id: str, user: dict = Depends(engineering_user)):
+    record = await col("code_quality_runs").find_one(
+        {"run_id": run_id, "kind": "pr_algorithm_intelligence"},
+        {"project_id": 1, "organization_id": 1, "functions": 1},
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail="PR analysis not found")
+    await project_access(user, record["project_id"])
+    if record.get("organization_id") != user.get("org_id"):
+        raise HTTPException(status_code=403, detail="The analysis belongs to another organization")
+    row = next((item for item in record.get("functions", [])
+                if item.get("current", {}).get("function_id") == function_id), None)
+    if row is None or (row.get("static") or {}).get("status") != "analyzed":
+        raise HTTPException(status_code=404, detail="Function static evidence not found")
+    return await service.explain_static_function(run_id, row)

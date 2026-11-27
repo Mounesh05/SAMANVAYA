@@ -34,6 +34,7 @@ export const authApi = {
     } catch {
       // Ignore backend logout errors
     } finally {
+      // The server clears the HttpOnly session cookie.
       localStorage.removeItem('samanvaya_token');
       localStorage.removeItem('samanvaya_user');
     }

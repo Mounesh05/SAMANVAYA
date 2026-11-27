@@ -157,6 +157,21 @@ class TestOwner:
 
 class TestReading:
     @pytest.mark.anyio
+    async def test_file_history_marks_incident_attribution_unavailable(self, mock_db, monkeypatch):
+        from core import database
+        from domain.services.traceability_service import TraceabilityService
+
+        monkeypatch.setattr(database, "get_db", lambda: mock_db)
+        service = TraceabilityService()
+        await service.link_pr_to_files("PR-1", ["checkout.py"], "example/shop")
+        await mock_db.incidents.insert_one({"id": "INC-1", "project_id": "P1", "service": "checkout.py"})
+
+        history = await service.get_file_history("checkout.py", "example/shop")
+        assert history["modification_count"] == 1
+        assert type(history["incident_count"]) is int and history["incident_count"] == 0
+        assert history["incident_count_available"] is False
+
+    @pytest.mark.anyio
     async def test_viewers_and_own_reporters_see_details(self, desk):
         from api.routes.incidents import get_incident
         assert (await get_incident("INC-1", user=CEO)).id == "INC-1"

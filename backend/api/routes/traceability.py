@@ -153,7 +153,9 @@ async def get_file_history(
     limit: int = 50,
     current_user: dict = Depends(get_current_user),
 ):
-    """Get complete history of a file."""
+    """Get linked pull requests for a file. When incident_count_available is false,
+    incident_count is a compatibility default and the number of incidents is unknown.
+    """
     # Authorization: verify user has access to the repository's project
     # Map repository to project and verify project access
     from repositories.project_repository import ProjectRepository

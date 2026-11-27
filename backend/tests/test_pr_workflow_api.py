@@ -79,6 +79,54 @@ async def test_report_preserves_single_specialist_partial_and_advisory_authority
     assert report.json()["authoritative_score"] is None
 
 
+async def test_exact_advisory_lookup_is_owner_scoped_and_never_starts_a_job(endpoint):
+    client, durable, actor, _, _ = endpoint
+    db, api = durable[:2]
+    head = "a" * 40
+    await db.pull_requests.insert_one({"id": "pr7", "project_id": "P1", "repo_id": "owner/repo",
+                                       "pr_number": 7, "head_sha": head, "merge_commit_sha": "b" * 40})
+    params = {"project_id": "P1", "repository": "owner/repo", "pr_number": 7, "head_sha": head}
+    path = ROOT + "/pr-analysis/report"
+    missing = await client.get(path, params=params)
+    assert missing.status_code == 200 and missing.json() is None
+    assert await db.pr_multi_agent_jobs.count_documents({}) == 0
+    assert not api.client.get_pull_request.called and not durable[3]
+    key = (await start(client)).json()["job_id"]
+    assert (await client.get(path, params=params)).json() is None
+    await durable[-1].execute(key)
+    calls = api.client.get_pull_request.call_count
+    report = await client.get(path, params=params)
+    assert report.status_code == 200 and report.headers["cache-control"] == "no-store"
+    assert report.json()["job_id"] == key and report.json()["scope"]["head_sha"] == head
+    assert report.json()["authoritative_score"] is None
+    assert (await client.get(path, params={**params, "head_sha": "b" * 40})).status_code == 409
+    assert (await client.get(path, params={**params, "repository": "other/repo"})).status_code == 409
+    assert (await client.get(path, params={**params, "project_id": "P2"})).status_code == 404
+    await db.users.insert_one({"employee_id": "B", "role": "LEAD", "org_id": "O1", "project_ids": ["P1"]})
+    actor["employee_id"] = "B"
+    assert (await client.get(path, params=params)).json() is None
+    await db.users.update_one({"employee_id": "B"}, {"$set": {"role": "DEVELOPER"}})
+    assert (await client.get(path, params=params)).status_code == 403
+    actor["employee_id"] = "A"
+    await db.pull_requests.update_one({"id": "pr7"}, {"$set": {"head_sha": "f" * 40}})
+    assert (await client.get(path, params=params)).status_code == 409
+    assert api.client.get_pull_request.call_count == calls
+    assert await db.pr_multi_agent_jobs.count_documents({}) == 1
+
+
+async def test_advisory_lookup_refuses_ambiguous_comparison_bases(endpoint):
+    client, durable, _, _, _ = endpoint
+    db, api = durable[:2]
+    await db.pull_requests.insert_one({"project_id": "P1", "repo_id": "owner/repo", "pr_number": 7, "head_sha": "a" * 40})
+    await start(client)
+    api.client.get_pull_request.return_value["base"]["sha"] = "f" * 40
+    await start(client)
+    response = await client.get(ROOT + "/pr-analysis/report", params={
+        "project_id": "P1", "repository": "owner/repo", "pr_number": 7, "head_sha": "a" * 40})
+    assert response.status_code == 409 and "base revisions" in response.json()["detail"]
+    assert not durable[3]
+
+
 @pytest.mark.parametrize("extra", [{"evidence": {"status": "SERVER_VERIFIED"}}, {"repository": "foreign/repo"},
                                    {"owner_id": "B"}, {"organization_id": "O2"}, {"score": 100}])
 async def test_client_authority_and_evidence_fields_are_rejected(endpoint, extra):
@@ -120,6 +168,8 @@ async def test_disabled_and_production_gates_reject_all_endpoints_without_new_wo
     assert (await start(client)).status_code == 404
     assert (await client.get(ROOT + f"/jobs/{key}")).status_code == 404
     assert (await client.get(ROOT + f"/jobs/{key}/report")).status_code == 404
+    assert (await client.get(ROOT + "/pr-analysis/report", params={"project_id": "P1", "repository": "owner/repo",
+                  "pr_number": 7, "head_sha": "a" * 40})).status_code == 404
     assert not durable[3]
 
 

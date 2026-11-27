@@ -74,7 +74,7 @@ function resourcePayload(text) {
   return { resources };
 }
 const stack = { display: 'flex', flexDirection: 'column', gap: '1rem' };
-const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' };
+const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem' };
 const textAreaStyle = {
   width: '100%', padding: '0.75rem', background: 'var(--bg-input)',
   color: 'var(--text-primary)', border: '1px solid var(--border-default)',

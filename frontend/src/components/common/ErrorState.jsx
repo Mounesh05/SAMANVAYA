@@ -40,7 +40,7 @@ export function ErrorState({
         <AlertCircle size={24} />
       </div>
 
-      <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+      <h4 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: 4 }}>
         {title}
       </h4>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', maxWidth: '420px', marginBottom: onRetry ? '1.25rem' : '0' }}>

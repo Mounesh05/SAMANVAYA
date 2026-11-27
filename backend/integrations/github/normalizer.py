@@ -54,7 +54,7 @@ class GitHubNormalizer:
         commit_count = github_pr.get("commits", 0)
         
         # Status determination
-        if github_pr.get("merged"):
+        if github_pr.get("merged") is True or merged_at:
             status = "merged"
         elif state == "closed":
             status = "closed"
@@ -74,6 +74,8 @@ class GitHubNormalizer:
             "title": title,
             "description": (github_pr.get("body") or "")[:20000] or None,
             "head_sha": github_pr.get("head", {}).get("sha"),
+            # Before merge GitHub can return a temporary test-merge commit here.
+            "merge_commit_sha": github_pr.get("merge_commit_sha") if status == "merged" else None,
             "updated_at": github_pr.get("updated_at"),
             "author_id": author_id,
             "author_login": author_login,

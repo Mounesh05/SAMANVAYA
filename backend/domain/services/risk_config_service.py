@@ -170,7 +170,7 @@ class RiskConfigService:
         NOTE: alpha_size_zscore and zeta_complexity are legacy Z-score fields
         that remain in the schema but are NEVER USED (baseline=None always).
         RiskEngine falls back to simple threshold-based calculations.
-        Full removal requires database migration. See ARCHITECTURE.md.
+        Full removal requires database migration.
         """
         return RiskConfiguration(
             project_id=project_id,

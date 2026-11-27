@@ -58,7 +58,7 @@ it('does not count merged PRs as pending review work', async () => {
   ] });
   show();
   await screen.findByText('Open work');
-  const card = screen.getByText('Pending Review').parentElement;
+  const card = screen.getByText('Pending review').parentElement;
   expect(within(card).getByText('1')).toBeInTheDocument();
 });
 

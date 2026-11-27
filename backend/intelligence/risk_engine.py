@@ -39,6 +39,26 @@ if TYPE_CHECKING:
     from intelligence.baselines.repository_baseline import RepositoryBaseline
 
 
+
+def _risk_weights(config) -> dict:
+    return {
+        "alpha_size_zscore": config.risk_weights.alpha_size_zscore,
+        "beta_hotspot": config.risk_weights.beta_hotspot,
+        "gamma_dependency": config.risk_weights.gamma_dependency,
+        "delta_missing_tests": config.risk_weights.delta_missing_tests,
+        "epsilon_security": config.risk_weights.epsilon_security,
+        "zeta_complexity": config.risk_weights.zeta_complexity,
+    }
+
+
+def _plain(value):
+    """JSON-safe copy of a config sub-model (pydantic model, dict or None)."""
+    if value is None:
+        return None
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    return dict(value) if isinstance(value, dict) else str(value)
+
 class RiskEngine:
     """
     Central risk calculation engine for SIMPLE analysis.
@@ -498,6 +518,14 @@ class RiskEngine:
         """
         return await self._classify_risk_level(risk_score)
 
+    async def effective_policy(self, evidence: "CodeQualityEvidence", baseline=None) -> dict:
+        """CQ-04: weights, base risk and thresholds analyze_evidence() applies (v1 result unchanged)."""
+        from domain.services.risk_config_service import get_risk_config_service
+        config = await get_risk_config_service().get_configuration(project_id=evidence.repository_id)
+        return {"weights": _risk_weights(config), "base_risk": config.base_risk,
+                "thresholds": _plain(getattr(config, "risk_thresholds", None)),
+                "baseline": "repository" if baseline else "fallback"}
+
     async def analyze_evidence(
         self,
         evidence: "CodeQualityEvidence",
@@ -532,14 +560,7 @@ class RiskEngine:
         )
         
         # Extract weights from configuration
-        weights = {
-            "alpha_size_zscore": config.risk_weights.alpha_size_zscore,
-            "beta_hotspot": config.risk_weights.beta_hotspot,
-            "gamma_dependency": config.risk_weights.gamma_dependency,
-            "delta_missing_tests": config.risk_weights.delta_missing_tests,
-            "epsilon_security": config.risk_weights.epsilon_security,
-            "zeta_complexity": config.risk_weights.zeta_complexity,
-        }
+        weights = _risk_weights(config)
         BASE_RISK = config.base_risk
         risk_factors: list[str] = []
         dimension_scores: dict = {}
@@ -611,7 +632,7 @@ class RiskEngine:
         # ── 6. Complexity spike (zeta) ────────────────────────────────────────
         avg_complexity = evidence.complexity.average_complexity
         zeta_score = 0.0
-        if avg_complexity > 15:
+        if avg_complexity is not None and avg_complexity > 15:
             zeta_score = min(100.0, (avg_complexity - 15) * 5.0)
             risk_factors.append(
                 f"Average cyclomatic complexity is high: {avg_complexity:.1f}"
@@ -649,8 +670,6 @@ class RiskEngine:
         )
 
         risk_score = int(min(100, max(0, BASE_RISK + weighted + bonus + cicd_bonus)))
-        risk_level = RiskRules.classify_risk_level(risk_score)
-
         # Confidence adjustment — if evidence is degraded, widen uncertainty
         confidence_note = ""
         if evidence.analysis_quality.confidence < 0.7:
@@ -659,7 +678,7 @@ class RiskEngine:
 
         return {
             "risk_score": risk_score,
-            "risk_level": risk_level,
+            "risk_level": RiskRules.classify_risk_level(risk_score),
             "risk_factors": risk_factors,
             "dimension_scores": dimension_scores,
             "confidence_note": confidence_note,

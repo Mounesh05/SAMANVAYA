@@ -1,0 +1,53 @@
+.release-page {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.release-page .page-header { margin-bottom: 0; }
+.release-project { max-width: 25rem; }
+
+.release-grid,
+.release-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+}
+
+.release-grid > *,
+.release-facts > * { min-width: 0; }
+
+.release-facts dt,
+.release-muted { color: var(--text-secondary); }
+.release-facts dd { margin: .25rem 0 0; }
+.release-revision { overflow-wrap: anywhere; }
+.release-list { padding-inline-start: 1.25rem; }
+
+.release-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.release-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+}
+
+.release-checkbox input { margin-top: .3rem; }
+
+.release-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+  margin-block: .75rem;
+}
+
+.release-page .table-container { max-width: 100%; }
+.release-page details { margin-top: .75rem; }
+
+@media (max-width: 38rem) {
+  .release-page { gap: 1rem; }
+}

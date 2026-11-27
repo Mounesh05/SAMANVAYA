@@ -116,14 +116,21 @@ async def interpret_code(evidence, context, authority, evidence_available=True, 
     if not evidence or not evidence_available:
         return failed_interpretation("MISSING_EVIDENCE")
     try:
-        if not check_ollama_connection():
+        if not await asyncio.to_thread(check_ollama_connection):
             return failed_interpretation("MODEL_UNAVAILABLE", unavailable=True)
         state: AgentState = {
             "task_type": "code_review", "evidence": evidence, "context": context,
             "user_context": authority.user_context, "agent_history": [], "errors": [],
             "quality_result": quality_result, "risk_result": risk_result}
         result = await asyncio.to_thread(code_analysis_node, deepcopy(state))
-        return validated_interpretation(result)
+        interpretation = validated_interpretation(result)
+        findings = evidence.get("static_analysis", {}).get("findings")
+        if isinstance(findings, list) and interpretation["status"] == "completed":
+            citations = {f"[{f.get('file')}:{f.get('line')} {f.get('rule_id')}]" for f in findings[:20]
+                         if isinstance(f, dict) and f.get("file") and f.get("line") and f.get("rule_id")}
+            for field in ("recommendations", "critical_issues"):
+                interpretation[field] = [text for text in interpretation[field] if any(c in text for c in citations)]
+        return interpretation
     except Exception:
         return failed_interpretation("MODEL_UNAVAILABLE", unavailable=True)
 

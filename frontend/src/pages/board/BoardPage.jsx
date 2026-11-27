@@ -25,7 +25,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { Select } from '../../components/common/Select';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { GripVertical, AlertCircle } from 'lucide-react';
+import { GripVertical, AlertCircle, User } from 'lucide-react';
 import { useSessionScope } from '../../store/useSessionScope';
 import { canUpdateTask, isSignOffOnly, SIGN_OFF_TARGETS } from '../../utils/taskPermissions';
 
@@ -46,14 +46,13 @@ function SortableCard({ item, onClick, canDrag }) {
     opacity: isDragging ? 0.3 : 1,
     backgroundColor: 'var(--bg-secondary)',
     borderRadius: 'var(--radius-md)',
-    padding: '0.85rem',
+    padding: '12px',
     border: '1px solid var(--border-default)',
-    boxShadow: 'var(--shadow-sm)',
     cursor: canDrag ? 'grab' : 'default',
-    marginBottom: '0.65rem',
+    marginBottom: '8px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.4rem',
+    gap: '8px',
   };
 
   return (
@@ -66,7 +65,7 @@ function SortableCard({ item, onClick, canDrag }) {
       aria-label={canDrag ? `${item.title}. Drag to change status` : item.title}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', lineHeight: '1.3' }}>
+        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', lineHeight: '1.3' }}>
           {item.title}
         </span>
         {canDrag && (
@@ -74,7 +73,7 @@ function SortableCard({ item, onClick, canDrag }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         <span className="font-mono">{item.id}</span>
         <span style={{ textTransform: 'capitalize', color: item.priority === 'critical' || item.priority === 'high' ? 'var(--danger)' : 'var(--text-secondary)' }}>
           {item.priority}
@@ -82,8 +81,9 @@ function SortableCard({ item, onClick, canDrag }) {
       </div>
 
       {item.assignee_id && (
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          👤 {item.assignee_id}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          <User size={16} strokeWidth={1.5} aria-hidden="true" />
+          <span className="font-mono">{item.assignee_id}</span>
         </div>
       )}
     </div>
@@ -102,7 +102,7 @@ function KanbanColumn({ id, title, count, items = [], onItemClick, user }) {
       style={{
         flex: 1,
         minWidth: '260px',
-        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        backgroundColor: 'var(--bg-tertiary)',
         borderRadius: 'var(--radius-lg)',
         border: '1px solid var(--border-subtle)',
         display: 'flex',
@@ -113,7 +113,7 @@ function KanbanColumn({ id, title, count, items = [], onItemClick, user }) {
       {/* Column Header */}
       <div
         style={{
-          padding: '0.85rem 1rem',
+          padding: '12px 16px',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
@@ -121,14 +121,14 @@ function KanbanColumn({ id, title, count, items = [], onItemClick, user }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+          <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
             {title}
           </span>
           <span
             style={{
               fontSize: '0.75rem',
-              fontWeight: '700',
-              padding: '0.1rem 0.45rem',
+              fontWeight: '600',
+              padding: '2px 8px',
               borderRadius: 'var(--radius-full)',
               backgroundColor: 'var(--bg-elevated)',
               color: 'var(--text-muted)',
@@ -149,7 +149,7 @@ function KanbanColumn({ id, title, count, items = [], onItemClick, user }) {
           minHeight: '120px',
           borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
           background: isOver ? 'var(--shell-active, rgba(59, 130, 246, 0.08))' : 'transparent',
-          transition: 'background 120ms ease',
+          transition: 'background-color var(--transition-fast)',
         }}
       >
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
@@ -349,13 +349,13 @@ export function BoardPage() {
               style={{
                 backgroundColor: 'var(--bg-secondary)',
                 borderRadius: 'var(--radius-md)',
-                padding: '0.85rem',
+                padding: '12px',
                 border: '2px solid var(--primary)',
                 boxShadow: 'var(--shadow-xl)',
                 width: '240px',
               }}
             >
-              <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+              <div style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                 {activeItem.title}
               </div>
             </div>

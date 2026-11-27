@@ -2,7 +2,7 @@
   "profile": "product-admin",
   "sourceRoots": ["frontend/src/components/performance", "frontend/src/pages/performance", "frontend/src/pages/feedback"],
   "locale": "en",
-  "canonicalMap": "UX-CONTRACT.md",
+  "canonicalMap": "UX-CONTRACT.txt",
   "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast", "CRUD"],
   "ownership": {"Select/Listbox": "native"},
   "commands": {},

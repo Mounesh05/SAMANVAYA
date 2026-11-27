@@ -51,6 +51,7 @@ class TestDevOpsPermissions:
             Permission.MANAGE_REPOSITORY_LINK, Permission.VIEW_PIPELINES, Permission.VIEW_DEPLOYMENTS,
             Permission.ANALYZE_DEPLOYMENT_RISK, Permission.MANAGE_RISK_CONFIG, Permission.CLEAR_RISK_CACHE,
             Permission.MANAGE_TEST_AUTOMATION, Permission.CREATE_BUG,
+            Permission.RECORD_RELEASE_DECISION,
             Permission.TRIAGE_INCIDENT,  # CR-014
             Permission.USE_ENGINEERING_INTELLIGENCE,  # was the engineering role list
         }
@@ -59,6 +60,7 @@ class TestDevOpsPermissions:
         assert Permission.VIEW_PROJECT_PERFORMANCE not in get_user_permissions("DEVOPS")
 
     @pytest.mark.parametrize("permission, roles", [
+        (Permission.RECORD_RELEASE_DECISION, {"DEVOPS"}),
         # Conversions keep today's roles (DevOps added where CR-003 says so).
         # CR-007 later removed the CEO from the hands-on delivery permissions.
         (Permission.MANAGE_REPOSITORY_LINK, {"LEAD", "DEVOPS"}),  # CR-015: not PM
@@ -125,39 +127,6 @@ class TestRouteGuards:
 
 
 # ── Project scope for pipelines and deployments ─────────────────────────────
-
-@pytest.mark.anyio
-async def test_pipelines_show_only_the_callers_projects(mock_db):
-    from api.roles import devops
-    await mock_db["github_project_configs"].insert_many([
-        {"project_id": "PRJ-A", "repository_owner": "acme", "repository_name": "shop"},
-        {"project_id": "PRJ-B", "repository_owner": "acme", "repository_name": "bank"},
-    ])
-    await mock_db["webhook_events"].insert_many([
-        {"event_type": "workflow_run", "created_at": "2026-11-12T10:00:00",
-         "payload": {"repository": {"full_name": "acme/shop"}, "workflow_run": {"conclusion": "success"}}},
-        {"event_type": "workflow_run", "created_at": "2026-11-12T11:00:00",
-         "payload": {"repository": {"full_name": "acme/bank"}, "workflow_run": {"conclusion": "failure"}}},
-    ])
-    with patch.object(devops, "col", side_effect=lambda name: mock_db[name]), \
-            patch("api.roles.devops.get_accessible_project_ids", new=AsyncMock(return_value=["PRJ-A"])):
-        mine = await devops.pipelines(user=OPS)
-    assert [e["payload"]["repository"]["full_name"] for e in mine["pipelines"]] == ["acme/shop"]
-
-    with patch.object(devops, "col", side_effect=lambda name: mock_db[name]):
-        everything = await devops.pipelines(user=CEO)
-    assert everything["total"] == 2
-
-
-@pytest.mark.anyio
-async def test_projects_without_a_linked_repository_show_no_pipelines(mock_db):
-    from api.roles import devops
-    await mock_db["webhook_events"].insert_one(
-        {"event_type": "workflow_run", "payload": {"repository": {"full_name": "acme/shop"}}})
-    with patch.object(devops, "col", side_effect=lambda name: mock_db[name]), \
-            patch("api.roles.devops.get_accessible_project_ids", new=AsyncMock(return_value=["PRJ-A"])):
-        assert (await devops.pipelines(user=OPS))["total"] == 0
-
 
 # ── Repository link and legacy CI endpoint ──────────────────────────────────
 

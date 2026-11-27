@@ -4,7 +4,7 @@ import { getGradeColor } from '../../utils/formatters';
 import { scoringPresentation } from '../../utils/performanceScoring';
 
 export function ScoreCard({
-  title = 'Performance Score',
+  title = 'Performance score',
   score = null,
   grade = 'N/A',
   aiScore = null,
@@ -27,22 +27,22 @@ export function ScoreCard({
         overflow: 'hidden',
       }}
     >
-      <p data-approved={presentation.approved}>{presentation.label}</p>
+      <p className="scorecard-status" data-approved={presentation.approved}>{presentation.label}</p>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
               {title}
             </span>
             {period && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-elevated)', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-full)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                 {period}
               </span>
             )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <span style={{ fontSize: '3rem', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
+            <span style={{ fontSize: '3rem', fontWeight: '600', color: 'var(--text-primary)', letterSpacing: '-0.04em' }}>
               {shownScore == null ? '—' : shownScore.toFixed(1)}
             </span>
             {shownScore != null && (
@@ -59,7 +59,7 @@ export function ScoreCard({
                 backgroundColor: `${gradeColor}20`,
                 color: gradeColor,
                 border: `1px solid ${gradeColor}50`,
-                fontWeight: '800',
+                fontWeight: '500',
                 fontSize: '1.25rem',
                 marginLeft: '0.5rem',
               }}
@@ -76,27 +76,27 @@ export function ScoreCard({
               display: 'flex',
               flexDirection: 'column',
               gap: '0.5rem',
-              padding: '0.85rem 1.15rem',
+              padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
-              background: 'rgba(255, 255, 255, 0.03)',
+              background: 'var(--bg-secondary)',
               border: '1px solid var(--border-subtle)',
-              minWidth: '200px',
+              width: 'min(100%, 240px)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>AI Evaluation</span>
-              <span style={{ fontWeight: '700', color: 'var(--cyan)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>AI evaluation</span>
+              <span style={{ fontWeight: '600', color: 'var(--cyan)' }}>
                 {aiScore !== null ? `${Number(aiScore).toFixed(1)}%` : '—'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Human Feedback</span>
-              <span style={{ fontWeight: '700', color: 'var(--purple)' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Human feedback</span>
+              <span style={{ fontWeight: '600', color: 'var(--purple)' }}>
                 {humanScore !== null ? `${Number(humanScore).toFixed(1)}%` : '—'}
               </span>
             </div>
             {confidence && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Confidence</span>
                 <span style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>{confidence}%</span>
               </div>
@@ -104,8 +104,8 @@ export function ScoreCard({
           </div>
         )}
       </div>
-      {presentation.legacy && <p>Preserved historical value; methodology and comparability remain unverified.</p>}
-      {!presentation.legacy && !presentation.approved && <p>Missing evidence, policy or approval is not a zero score.</p>}
+      {presentation.legacy && <p className="scorecard-note">Preserved historical value; methodology and comparability remain unverified.</p>}
+      {!presentation.legacy && !presentation.approved && <p className="scorecard-note">Missing evidence, policy or approval is not a zero score.</p>}
     </Card>
   );
 }

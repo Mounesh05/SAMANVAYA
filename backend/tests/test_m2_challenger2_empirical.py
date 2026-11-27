@@ -250,10 +250,10 @@ class TestFeature14AdversarialDirtySchemas:
 class TestFeature15AdversarialDependencies:
     """Stress test _dependencies method against fallthrough, corrupted outputs, and timeouts."""
 
-    def test_clean_pip_audit_scan_empty_deps_never_falls_through(self):
+    def test_clean_pip_audit_scan_empty_deps_never_falls_through(self, python_dependency_project):
         """Clean pip audit with empty dependencies list must return [] and NOT call safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         clean_output = json.dumps({"dependencies": []})
 
@@ -261,7 +261,7 @@ class TestFeature15AdversarialDependencies:
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = clean_output
 
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert res == []
             assert evidence.tools_executed == ["pip-audit"]
@@ -271,10 +271,10 @@ class TestFeature15AdversarialDependencies:
             assert evidence.analysis_quality.confidence == 1.0
             assert evidence.analysis_quality.penalties == []
 
-    def test_clean_pip_audit_scan_with_zero_vulns_across_deps_never_falls_through(self):
+    def test_clean_pip_audit_scan_with_zero_vulns_across_deps_never_falls_through(self, python_dependency_project):
         """Clean pip audit scanning 50 clean dependencies must return [] and NOT call safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         clean_deps = [{"name": f"pkg_{i}", "version": "1.0.0", "vulns": []} for i in range(50)]
         clean_output = json.dumps({"dependencies": clean_deps})
@@ -283,7 +283,7 @@ class TestFeature15AdversarialDependencies:
              patch("intelligence.analyzers.python.analyzer._run", new_callable=AsyncMock) as mock_run:
             mock_run.return_value = clean_output
 
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert res == []
             assert evidence.tools_executed == ["pip-audit"]
@@ -291,10 +291,10 @@ class TestFeature15AdversarialDependencies:
             assert mock_run.call_count == 1
             assert evidence.analysis_quality.confidence == 1.0
 
-    def test_corrupted_json_output_degrades_quality_and_falls_back(self):
+    def test_corrupted_json_output_degrades_quality_and_falls_back(self, python_dependency_project):
         """Corrupted JSON string (e.g. CLI crash trace) must degrade quality and try safety."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         safety_output = json.dumps([
             {"package": "insecure-pkg", "id": "CVE-2023-9999", "description": "Found by safety"}
@@ -306,7 +306,7 @@ class TestFeature15AdversarialDependencies:
             # Second call (safety): valid output
             mock_run.side_effect = ["Fatal error: traceback (most recent call last)...", safety_output]
 
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert len(res) == 1
             assert res[0]["cve"] == "CVE-2023-9999"
@@ -318,10 +318,10 @@ class TestFeature15AdversarialDependencies:
             assert round(evidence.analysis_quality.confidence, 2) == 0.95
             assert mock_run.call_count == 2
 
-    def test_subprocess_timeout_degrades_quality_and_falls_back(self):
+    def test_subprocess_timeout_degrades_quality_and_falls_back(self, python_dependency_project):
         """When _run returns None (timeout or failure), quality is degraded and safety called."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         safety_output = json.dumps({"vulnerabilities": []})
 
@@ -330,7 +330,7 @@ class TestFeature15AdversarialDependencies:
             # Pip-audit times out (returns None)
             mock_run.side_effect = [None, safety_output]
 
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert res == []
             assert "safety" in evidence.tools_executed
@@ -340,13 +340,13 @@ class TestFeature15AdversarialDependencies:
             assert round(evidence.analysis_quality.confidence, 2) == 0.95
             assert mock_run.call_count == 2
 
-    def test_missing_binaries_penalty_accounting(self):
+    def test_missing_binaries_penalty_accounting(self, python_dependency_project):
         """When both pip-audit and safety are unavailable, penalties accumulate and confidence drops."""
         analyzer = PythonAnalyzer()
-        evidence = analyzer._empty_evidence(".", {})
+        evidence = analyzer._empty_evidence(python_dependency_project, {})
 
         with patch.object(analyzer, "_tool_available", return_value=False):
-            res = sync_run(analyzer._dependencies(".", evidence))
+            res = sync_run(analyzer._dependencies(python_dependency_project, evidence))
 
             assert res == []
             assert evidence.tools_executed == []

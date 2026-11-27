@@ -579,7 +579,7 @@ async def test_ollama_connection_closed_is_reported_without_persistence(monkeypa
 
 @pytest.mark.asyncio
 async def test_ollama_timeout_is_reported(monkeypatch):
-    async def stalled_call(*_args):
+    async def stalled_call(*_args, **_kwargs):
         await asyncio.sleep(1)
 
     monkeypatch.setattr(evaluation, "MODEL_REQUEST_TIMEOUT_SECONDS", 0.01)
@@ -624,6 +624,11 @@ async def test_backend_path_remains_usable_after_model_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluation_persists_employee_and_pr_association(monkeypatch):
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())  # person scope tested in test_lead_access
+    # This test isolates persistence/model behavior. Repository authorization
+    # has separate negative and positive adapter regressions.
+    monkeypatch.setattr(evaluation, "_verify_repository_in_scope", AsyncMock())
+    monkeypatch.setattr(evaluation, "_verified_subject_github", AsyncMock(return_value="developer"))
     service = Mock()
     service.get_repository_info = AsyncMock(return_value={
         "name": "repo",
@@ -672,6 +677,9 @@ async def test_evaluation_persists_employee_and_pr_association(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluation_rejects_scores_for_dimensions_without_evidence(monkeypatch):
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())  # person scope tested in test_lead_access
+    monkeypatch.setattr(evaluation, "_verified_subject_github", AsyncMock(return_value="developer"))
+    monkeypatch.setattr(evaluation, "_verify_repository_in_scope", AsyncMock())
     service = Mock()
     service.get_repository_info = AsyncMock(return_value={"name": "repo", "owner": "owner"})
     service.fetch_pull_request_evidence = AsyncMock(return_value=_evidence())
@@ -712,6 +720,9 @@ async def test_evaluation_rejects_scores_for_dimensions_without_evidence(monkeyp
 
 @pytest.mark.asyncio
 async def test_author_mismatch_is_not_a_successful_evaluation(monkeypatch):
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())  # person scope tested in test_lead_access
+    monkeypatch.setattr(evaluation, "_verified_subject_github", AsyncMock(return_value="developer"))
+    monkeypatch.setattr(evaluation, "_verify_repository_in_scope", AsyncMock())
     service = Mock()
     service.get_repository_info = AsyncMock(return_value={"name": "repo"})
     evidence = _evidence()
@@ -1020,6 +1031,33 @@ def test_reference_evaluation_scores_and_coverage_remain_compatible():
     assert result.score_coverage["calculation"].endswith("= 6.92")
     assert "score" not in result.ai_analysis["dimensions"]["collaboration"]
     assert "score" not in result.ai_analysis["dimensions"]["engineering_impact"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("linked", [False, True])
+async def test_evaluation_resolves_repository_access_before_provider_reads(mock_db, monkeypatch, linked):
+    from core import authorization, database
+
+    monkeypatch.setattr(database, "get_db", lambda: mock_db)
+    monkeypatch.setattr(authorization, "get_accessible_project_ids", AsyncMock(return_value=["OWN"]))
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())
+    await mock_db.users.insert_one({'employee_id': 'member', 'org_id': 'A', 'is_active': True})
+    await mock_db.github_project_configs.insert_one({"project_id": "OWN" if linked else "FOREIGN",
+        "repository_owner": "example", "repository_name": "service", "org_id": "A", "validated_by": "manager",
+        "identity_binding_authority": "PROJECT_REPOSITORY_MANAGER",
+        "developer_mappings": [{"employee_id": "member", "github_username": "author"}]})
+    service = Mock(get_repository_info=AsyncMock(side_effect=evaluation.EvidenceUnavailableError("controlled-provider-stop")))
+    factory = Mock(return_value=service)
+    monkeypatch.setattr(evaluation, "GitHubAPIService", factory)
+    request = evaluation.SimpleEvalRequest(employee_id="member", github_username="author",
+                                          repo_owner="example", repo_name="service", pr_number=1)
+    with pytest.raises(HTTPException) as error:
+        await evaluation.evaluate_developer_ai(request, {"employee_id": "lead", "role": "LEAD", "org_id": "A"})
+    assert error.value.status_code == (422 if linked else 403)
+    if linked:
+        service.get_repository_info.assert_awaited_once()
+    else:
+        factory.assert_not_called()
 
 
 def test_full_dimension_evidence_reports_all_defined_weight_as_assessed():

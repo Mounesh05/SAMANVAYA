@@ -85,7 +85,7 @@ export function TopBar() {
                 <li key={crumb.to}>
                   <ChevronRight size={14} aria-hidden="true" />
                   {crumb.isLast ? (
-                    <span className="tb-crumb-current" aria-current="page">{crumb.label}</span>
+                    <span className="tb-crumb-current" aria-current="page" title={crumb.label}>{crumb.label}</span>
                   ) : (
                     <button type="button" className="tb-crumb-link" onClick={() => navigate(crumb.to)}>{crumb.label}</button>
                   )}
@@ -98,7 +98,7 @@ export function TopBar() {
         <div className="tb-right">
           <button type="button" className="tb-search" onClick={() => setIsSearchOpen(true)} aria-label="Search">
             <Search size={16} aria-hidden="true" />
-            <span>Search…</span>
+            <span>Search</span>
             <kbd>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
           </button>
 

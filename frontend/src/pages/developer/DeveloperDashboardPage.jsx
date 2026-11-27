@@ -16,7 +16,7 @@ import { LoadingState } from '../../components/common/LoadingState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { SegmentedBar } from '../../components/charts/Charts';
 import '../../components/dashboard/Dashboard.css';
-import { ListTodo, CheckCircle2, GitPullRequest, Sparkles, ArrowRight, AlertTriangle, KanbanSquare } from 'lucide-react';
+import { ArrowRight, KanbanSquare } from 'lucide-react';
 
 const RISK_LEVELS = [
   { key: 'LOW', label: 'Low', tone: 'good' },
@@ -81,8 +81,8 @@ export function DeveloperDashboardPage() {
   return (
     <div className="dash">
       <PageHeader
-        title={`Welcome back, ${user?.name || 'there'}`}
-        subtitle="Your tasks, pull requests and evaluation."
+        title="Developer dashboard"
+        subtitle="Your tasks, pull requests and engineering review evidence"
         actions={
           <Button variant="primary" leftIcon={<KanbanSquare size={16} />} onClick={() => navigate('/board')}>
             Open board
@@ -95,35 +95,27 @@ export function DeveloperDashboardPage() {
           title="In progress"
           value={inProgress}
           subtitle={`${total} assigned`}
-          icon={<ListTodo size={18} />}
-          color="primary"
           onClick={() => navigate('/tasks')}
         />
         <MetricCard
           title="Completed"
           value={done}
           subtitle={total ? `${Math.round((done / total) * 100)}% complete` : 'No tasks yet'}
-          icon={<CheckCircle2 size={18} />}
-          color="success"
         />
         <MetricCard
           title="Blocked"
           value={blocked}
           subtitle={blocked ? 'Needs attention' : 'None blocked'}
-          icon={<AlertTriangle size={18} />}
-          color={blocked > 0 ? 'danger' : 'success'}
         />
         <MetricCard
           title="Open pull requests"
           value={summary.open_prs ?? 0}
           subtitle="In review"
-          icon={<GitPullRequest size={18} />}
-          color="purple"
           onClick={() => navigate('/pull-requests')}
         />
       </div>
 
-      <div className="dash-row">
+      <div className="dash-row dash-row--wide">
         <Card title="My tasks by status">
           <SegmentedBar
             label="My tasks by status"
@@ -164,7 +156,6 @@ export function DeveloperDashboardPage() {
         }
       >
         <div className="dash-note">
-          <Sparkles size={18} aria-hidden="true" />
           <div>
             {currPerf?.ai_evaluation?.evaluation_summary || currPerf?.ai_evaluation?.reasoning || 'No AI evaluation is available yet.'}
             {recommendations.length > 0 && (

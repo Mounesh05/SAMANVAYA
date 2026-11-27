@@ -6,6 +6,7 @@ Protects API from abuse and DoS attacks.
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from fastapi import FastAPI
 from core.config import settings
 import logging
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Create limiter instance
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["100/minute"] if settings.RATE_LIMIT_ENABLED else [],
+    default_limits=[f"{settings.MAX_REQUESTS_PER_MINUTE}/minute"] if settings.RATE_LIMIT_ENABLED else [],
     enabled=settings.RATE_LIMIT_ENABLED,
 )
 
@@ -36,6 +37,10 @@ def setup_rate_limiting(app: FastAPI):
     
     # Add exception handler for rate limit exceeded
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    # SEC-03: without the middleware, default_limits are never applied to routes
+    # that lack an explicit @limiter.limit decorator.
+    app.add_middleware(SlowAPIMiddleware)
     
     logger.info(f"Rate limiting ENABLED: {settings.MAX_REQUESTS_PER_MINUTE} requests/minute")
 

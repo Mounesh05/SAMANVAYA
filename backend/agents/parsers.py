@@ -58,6 +58,18 @@ class CodeAnalysisResult(AgentAnalysisResult):
     quality_breakdown: CodeBreakdown | None = None
 
 
+def generation_schema(model):
+    """Grammar-compatible provider schema; safe_parse retains every strict bound."""
+    unsupported = {"title", "default", "minLength", "maxLength", "pattern", "minimum", "maximum"}
+    def clean(value):
+        if isinstance(value, dict):
+            return {key: clean(item) for key, item in value.items() if key not in unsupported}
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+    return clean(model.model_json_schema())
+
+
 class CICDFailureResult(SpecialistContractV1):
     root_cause: Text
     affected_component: ShortText

@@ -1,6 +1,7 @@
 import pytest
+import yaml
 
-from api.roles import devops, qa
+from api.roles import qa
 from api.routes import qa_test_runs
 from domain.services import qa_workflow_provisioning_service
 
@@ -93,34 +94,6 @@ def test_qa_test_health_marks_zero_test_failures_as_blocking():
 
 
 @pytest.mark.anyio
-async def test_devops_snapshot_uses_workflow_and_deployment_events(monkeypatch):
-    monkeypatch.setattr(
-        devops,
-        "col",
-        lambda _name: FakeCollection(
-            [
-                {
-                    "event_type": "workflow_run",
-                    "payload": {"workflow_run": {"conclusion": "success"}},
-                },
-                {
-                    "event_type": "deployment_status",
-                    "payload": {"deployment_status": {"state": "failure"}},
-                },
-            ]
-        ),
-    )
-
-    # CR-003: the snapshot is scoped to the caller; the CEO sees every project.
-    snapshot = await devops._devops_snapshot({"role": "CEO", "employee_id": "C1"})
-
-    assert len(snapshot["pipelines"]) == 1
-    assert len(snapshot["deployments"]) == 1
-    assert snapshot["successful"] == 1
-    assert snapshot["failed"] == 1
-
-
-@pytest.mark.anyio
 async def test_test_run_submission_is_idempotent_and_persists(monkeypatch):
     stored = {}
 
@@ -177,6 +150,7 @@ def test_test_run_submission_rejects_inconsistent_counts():
 @pytest.mark.anyio
 async def test_qa_workflow_provisioning_updates_secrets_and_workflow(monkeypatch):
     calls = []
+    files = {}
 
     class FakeGitHubClient:
         async def get_repository(self, owner, repo):
@@ -189,10 +163,12 @@ async def test_qa_workflow_provisioning_updates_secrets_and_workflow(monkeypatch
             calls.append(("secret", name, value))
 
         async def get_file(self, owner, repo, path, ref=None):
-            return None
+            assert ref == "main"
+            return {"sha": "previous-workflow"} if path.endswith(".yml") else None
 
         async def upsert_file(self, owner, repo, path, content, message, branch, sha):
-            calls.append(("workflow", path, branch, "Samanvaya QA" in content))
+            calls.append(("file", path, branch, sha))
+            files[path] = content
             return {"content": {"html_url": "https://github.com/example/repo/blob/main/.github/workflows/samanvaya-qa.yml"}}
 
     monkeypatch.setattr(
@@ -216,7 +192,19 @@ async def test_qa_workflow_provisioning_updates_secrets_and_workflow(monkeypatch
         "SAMANVAYA_PROJECT_ID",
         "SAMANVAYA_TEST_RESULTS_TOKEN",
     ]
-    assert calls[-1] == ("workflow", ".github/workflows/samanvaya-qa.yml", "main", True)
+    workflow_path = ".github/workflows/samanvaya-qa.yml"
+    assert calls[3:] == [
+        ("file", "ci/run_tests.sh", "main", None),
+        ("file", "ci/upload_junit_results.py", "main", None),
+        ("file", workflow_path, "main", "previous-workflow"),
+    ]
+    assert result["workflow_url"] == f"https://github.com/example/repo/blob/main/{workflow_path}"
+    workflow = yaml.safe_load(files[workflow_path])
+    steps = workflow["jobs"]["tests"]["steps"]
+    assert any(step.get("run") == "bash ci/run_tests.sh" for step in steps)
+    upload = next(step for step in steps if step.get("name") == "Upload results to Samanvaya")
+    assert "python ci/upload_junit_results.py" in upload["run"]
+    assert "\nEOF\n" in upload["run"]
 
 
 @pytest.mark.anyio

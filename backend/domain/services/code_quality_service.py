@@ -41,14 +41,20 @@ class CodeQualityService:
         return evidence
 
     async def discover_functions(self, changed_files, pr_context):
-        from intelligence.algorithms.discovery.service import discover_repository, discover_sources
+        from intelligence.algorithms.discovery.service import (
+            QUALITY_CONTEXT_MANIFESTS, discover_repository, discover_sources,
+        )
         from intelligence.evidence.function_purpose import FunctionDiscovery
 
         repository_id = pr_context.get("project_id") or pr_context.get("repository_id") or "unknown"
         revision = pr_context.get("commit_sha")
         try:
             if isinstance(pr_context.get("source_files"), dict):
-                return await discover_sources(pr_context["source_files"], repository_id, revision,
+                sources = pr_context["source_files"]
+                if pr_context.get("source_provenance"):
+                    sources = {path: source for path, source in sources.items()
+                               if path.rsplit("/", 1)[-1] not in QUALITY_CONTEXT_MANIFESTS}
+                return await discover_sources(sources, repository_id, revision,
                                               pr_context.get("source_diagnostics", []))
             return await discover_repository(pr_context.get("repo_path"), repository_id, revision, changed_files)
         except Exception:
@@ -85,6 +91,34 @@ class CodeQualityService:
             profile = self._detector.detect_from_files(changed_files)
             from pathlib import Path
             if not repo_path or not Path(repo_path).is_dir():
+                if pr_context.get("source_provenance"):
+                    from integrations.worker_broker import quality_runner
+                    try:
+                        selected = [path for path in changed_files if path in pr_context["source_files"]
+                                    and Path(path).suffix.lower() in {".py", ".pyi", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}]
+                        if not selected:
+                            return CodeQualityEvidence(repository_id=repo_id, commit_sha=pr_context.get("commit_sha"),
+                                primary_language=profile.primary_language, detected_languages=profile.detected_languages,
+                                tools_skipped=["quality-tools:selected-source-unavailable"],
+                                analysis_quality=AnalysisQuality(level=AnalysisLevelEnum.INFERRED_ONLY, confidence=0,
+                                    reason="No selected supported file was available in the verified revision."))
+                        isolated = await quality_runner().analyze(selected, pr_context)
+                        selected_profile = self._detector.detect_from_files(selected)
+                        isolated.detected_languages = selected_profile.detected_languages
+                        isolated.primary_language = selected_profile.primary_language
+                        if len(selected) != len(changed_files):
+                            isolated.tools_skipped.append("quality-tools:some-selected-source-unavailable-or-unsupported")
+                        if pr_context.get("source_diagnostics"):
+                            isolated.tools_skipped.append("snapshot-context-incomplete")
+                            isolated.analysis_quality.degrade("source", "snapshot-context-incomplete")
+                        return isolated
+                    except Exception as error:
+                        logger.warning("Isolated quality tools unavailable (%s)", type(error).__name__)
+                        return CodeQualityEvidence(repository_id=repo_id, pr_number=pr_context.get("pr_number"),
+                            commit_sha=pr_context.get("commit_sha"), primary_language=profile.primary_language,
+                            tools_skipped=["quality-worker:unavailable"],
+                            analysis_quality=AnalysisQuality(level=AnalysisLevelEnum.INFERRED_ONLY, confidence=0.1,
+                                reason="Isolated quality analysis could not complete. Build samanvaya-quality:1 from backend/quality_worker/Dockerfile; check Docker and pinned source availability."))
                 return CodeQualityEvidence(
                     repository_id=repo_id, pr_number=pr_context.get("pr_number"),
                     commit_sha=pr_context.get("commit_sha"), primary_language=profile.primary_language,

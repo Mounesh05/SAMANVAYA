@@ -225,3 +225,4 @@ DEPLOYMENT_*.md
 temp_repo/
 samanvaya-repo-*/
 .agents
+docs/

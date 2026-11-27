@@ -53,6 +53,14 @@ export function AIEvaluationPage() {
     queryKey: ['latest-evaluation'],
     queryFn: evaluationApi.getLatest,
   });
+  // EV-05: the manual score field appears only when policy enables it.
+  const evaluationPolicy = useQuery({
+    queryKey: ['evaluation-policy'],
+    queryFn: evaluationApi.getHealth,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const humanBaselineEnabled = evaluationPolicy.data?.human_baseline_enabled === true;
 
   useEffect(() => {
     if (latestEvaluation.data) {
@@ -65,7 +73,7 @@ export function AIEvaluationPage() {
       evaluationApi.evaluateDeveloperAI({
         ...data,
         pr_number: data.pr_number ? parseInt(data.pr_number, 10) : null,
-        human_score: data.human_score ? parseFloat(data.human_score) : null,
+        human_score: humanBaselineEnabled && data.human_score ? parseFloat(data.human_score) : null,
       }),
     onSuccess: (res) => {
       setEvalResult(res);
@@ -126,7 +134,7 @@ export function AIEvaluationPage() {
         subtitle="Evaluate developer contributions across public or private GitHub repositories using AI synthesis."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div className="work-grid" style={{ '--column-min': '420px' }}>
         {/* Input Form Card */}
         <Card title="Evaluation Parameters" subtitle="GitHub repository & developer details">
           <form onSubmit={handleEvaluate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -146,7 +154,7 @@ export function AIEvaluationPage() {
               required
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-columns">
               <Input
                 label="Repo Owner"
                 value={formData.repo_owner}
@@ -163,7 +171,7 @@ export function AIEvaluationPage() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-columns">
               <Input
                 label="PR Number"
                 type="number"
@@ -174,15 +182,17 @@ export function AIEvaluationPage() {
                 placeholder="e.g. 42"
                 required
               />
-              <Input
-                label="Human Baseline Score (1-10, optional)"
-                type="number"
-                step="0.1"
-                min="1"
-                max="10"
-                value={formData.human_score}
-                onChange={(e) => setFormData({ ...formData, human_score: e.target.value })}
-              />
+              {humanBaselineEnabled && (
+                <Input
+                  label="Human Baseline Score (1-10, optional)"
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="10"
+                  value={formData.human_score}
+                  onChange={(e) => setFormData({ ...formData, human_score: e.target.value })}
+                />
+              )}
             </div>
 
             <Button
@@ -225,7 +235,8 @@ export function AIEvaluationPage() {
                 </strong>
                 <div>
                   This result evaluates the available evidence from PR #{evalResult.pr_number}; it is not a
-                  complete assessment of the developer&apos;s engineering performance.
+                  complete assessment of the developer&apos;s engineering performance. The score is advisory
+                  for review of this PR only and must not be used as an employee rating.
                 </div>
               </div>
               <div
@@ -240,9 +251,9 @@ export function AIEvaluationPage() {
               >
                 <div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-                    OVERALL SCORE (NORMALIZED TO ASSESSED DIMENSIONS)
+                    PR-ONLY ADVISORY SCORE (NOT AN EMPLOYEE PERFORMANCE RATING)
                   </span>
-                  <div style={{ fontSize: '2rem', fontWeight: '900', color: 'var(--cyan)' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: '600', color: 'var(--cyan)' }}>
                     {evalResult.overall_score == null ? 'Overall score unavailable' : `${evalResult.overall_score} / 10`}
                   </div>
                 </div>
@@ -345,7 +356,7 @@ export function AIEvaluationPage() {
 
               {evalResult.recommendations && evalResult.recommendations.length > 0 && (
                 <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                     AI Recommendations:
                   </h4>
                   <ul style={{ paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -415,7 +426,7 @@ export function AIEvaluationPage() {
 
               {evalResult.ai_analysis?.dimensions && (
                 <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                     AI Evidence Breakdown
                   </h4>
                   <div style={{ display: 'grid', gap: '0.4rem' }}>

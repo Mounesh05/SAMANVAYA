@@ -10,8 +10,9 @@ import { Input } from '../../components/common/Input';
 import { RiskBadge } from '../../components/common/RiskBadge';
 import { LoadingState } from '../../components/common/LoadingState';
 import { ManualPRAnalysisPanel } from '../../components/github/ManualPRAnalysisPanel';
+import { ReleaseGateSettings } from './ReleaseGateSettings';
 
-import { GitPullRequest, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { GitPullRequest, RefreshCw, ShieldCheck } from 'lucide-react';
 
 export function GitHubSyncPage() {
   const { user } = useAuthStore();
@@ -86,10 +87,14 @@ export function GitHubSyncPage() {
   });
 
   // Health check query
-  const { data: health } = useQuery({
+  const health = useQuery({
     queryKey: ['github', 'health'],
     queryFn: () => githubApi.checkHealth(),
+    retry: false,
   });
+  const connected = !health.isError && health.data?.status === 'operational';
+  const connectionStatus = health.isFetching ? 'Checking GitHub connection…'
+    : connected ? 'GitHub connection is operational' : 'GitHub connection unavailable';
 
   const syncMutation = useMutation({
     mutationFn: (data) =>
@@ -133,8 +138,8 @@ export function GitHubSyncPage() {
                   width: '40px',
                   height: '40px',
                   borderRadius: 'var(--radius-md)',
-                  backgroundColor: health?.status === 'operational' ? 'var(--success-light)' : 'var(--warning-light)',
-                  color: health?.status === 'operational' ? 'var(--success)' : 'var(--warning)',
+                  backgroundColor: connected ? 'var(--success-light)' : 'var(--bg-secondary)',
+                  color: connected ? 'var(--success)' : 'var(--text-muted)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -143,48 +148,47 @@ export function GitHubSyncPage() {
                 <GitPullRequest size={20} />
               </div>
 
-              {canManageCi && (
-              <Card
-                title="Automatic QA Setup"
-                subtitle="Install Samanvaya's GitHub Actions test workflow and configure encrypted repository secrets."
-                style={{ marginBottom: '1.75rem' }}
-              >
-                <form onSubmit={handleProvision} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
-                  <Input label="Repository Owner" value={qaForm.owner} onChange={(e) => setQaForm({ ...qaForm, owner: e.target.value })} placeholder="Organization or user" required />
-                  <Input label="Repository Name" value={qaForm.repo} onChange={(e) => setQaForm({ ...qaForm, repo: e.target.value })} placeholder="Repository name" required />
-                  <Input label="Project ID" value={qaForm.project_id} onChange={(e) => setQaForm({ ...qaForm, project_id: e.target.value })} placeholder="e.g. PRJ-001" required />
-                  <Button type="submit" variant="primary" isLoading={provisionMutation.isPending} leftIcon={<ShieldCheck size={16} />}>
-                    Configure QA Automatically
-                  </Button>
-                </form>
-                {provisionMutation.isSuccess && (
-                  <div style={{ marginTop: '1rem', color: 'var(--success)', fontSize: '0.875rem' }}>
-                    GitHub Actions QA workflow installed successfully.
-                  </div>
-                )}
-                {provisionMutation.isError && (
-                  <div style={{ marginTop: '1rem', color: 'var(--danger)', fontSize: '0.875rem' }}>
-                    QA setup failed: {provisionMutation.error?.response?.data?.detail || provisionMutation.error?.message}
-                  </div>
-                )}
-              </Card>
-              )}
-              <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                  GitHub API Gateway: {health?.status === 'operational' ? 'Operational' : 'Ready'}
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {health?.authenticated_as ? `Authenticated as: @${health.authenticated_as}` : 'Configured via backend'}
-                </div>
+              <div role="status">
+                <strong>{connectionStatus}</strong>
+                {!health.isFetching && !connected && <p>{health.isError
+                  ? 'The connection check could not be completed. Try again.'
+                  : health.data?.message}</p>}
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" leftIcon={<RefreshCw size={14} />} onClick={() => window.location.reload()}>
+            <Button variant="ghost" size="sm" leftIcon={<RefreshCw size={14} />} disabled={health.isFetching} onClick={() => health.refetch()}>
               Refresh Status
             </Button>
           </div>
         </Card>
       </div>
+
+      {canManageCi && (
+      <Card
+        title="Automatic QA Setup"
+        subtitle="Install Samanvaya's GitHub Actions test workflow and configure encrypted repository secrets."
+        style={{ marginBottom: '1.75rem' }}
+      >
+        <form onSubmit={handleProvision} className="form-columns" style={{ alignItems: 'end' }}>
+          <Input label="Repository Owner" value={qaForm.owner} onChange={(e) => setQaForm({ ...qaForm, owner: e.target.value })} placeholder="Organization or user" required />
+          <Input label="Repository Name" value={qaForm.repo} onChange={(e) => setQaForm({ ...qaForm, repo: e.target.value })} placeholder="Repository name" required />
+          <Input label="Project ID" value={qaForm.project_id} onChange={(e) => setQaForm({ ...qaForm, project_id: e.target.value })} placeholder="e.g. PRJ-001" required />
+          <Button type="submit" variant="primary" isLoading={provisionMutation.isPending} leftIcon={<ShieldCheck size={16} />}>
+            Configure QA Automatically
+          </Button>
+        </form>
+        {provisionMutation.isSuccess && (
+          <div style={{ marginTop: '1rem', color: 'var(--success)', fontSize: '0.875rem' }}>
+            GitHub Actions QA workflow installed successfully.
+          </div>
+        )}
+        {provisionMutation.isError && (
+          <div style={{ marginTop: '1rem', color: 'var(--danger)', fontSize: '0.875rem' }}>
+            QA setup failed: {provisionMutation.error?.response?.data?.detail || provisionMutation.error?.message}
+          </div>
+        )}
+      </Card>
+      )}
 
       {/* Sync PR Form & Result */}
       <Card
@@ -197,7 +201,7 @@ export function GitHubSyncPage() {
             e.preventDefault();
             projectConfigMutation.mutate(projectConfigForm);
           }}
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem' }}
         >
           {[
             ['project_id', 'Project ID'],
@@ -233,11 +237,15 @@ export function GitHubSyncPage() {
         )}
       </Card>
 
+      {hasPermission(user, PERMISSIONS.RECORD_RELEASE_DECISION) && (
+        <ReleaseGateSettings key={JSON.stringify([user.org_id, user.employee_id, projectConfigForm.project_id])}
+          projectId={projectConfigForm.project_id} />
+      )}
       {canSyncPr && (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div className="work-grid" style={{ '--column-min': '420px' }}>
         <Card title="Synchronize Single PR" subtitle="Fetch PR metadata and analyze risk">
           <form onSubmit={handleSync} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-columns">
               <Input
                 label="Repository Owner"
                 value={prForm.owner}
@@ -254,7 +262,7 @@ export function GitHubSyncPage() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-columns">
               <Input
                 label="PR Number"
                 type="number"
@@ -291,7 +299,7 @@ export function GitHubSyncPage() {
           ) : syncResult ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                   {syncResult.message}
                 </span>
                 <RiskBadge level={syncResult.risk_level || 'LOW'} score={syncResult.risk_score} size="md" />
@@ -306,8 +314,8 @@ export function GitHubSyncPage() {
                     border: '1px solid rgba(59, 130, 246, 0.2)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700', fontSize: '0.8125rem', color: 'var(--cyan)', marginBottom: '0.35rem' }}>
-                    <Sparkles size={16} /> AI Code Review
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600', fontSize: '0.8125rem', color: 'var(--cyan)', marginBottom: '0.35rem' }}>
+                    AI code review
                   </div>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                     {typeof syncResult.ai_analysis === 'string'

@@ -5,7 +5,6 @@ Represents employee transfer requests and workflow state.
 
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
 from enum import Enum
 
 

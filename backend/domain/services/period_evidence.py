@@ -5,8 +5,8 @@ Analyzes developer activity data and determines eligible evaluation dimensions
 based on evidence quality, completeness, and volume.
 """
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime, date
+from typing import Dict, Any, List
+from datetime import datetime
 
 
 def validated_period_manifest(scope, candidates, *, captured_at, connectors=()):

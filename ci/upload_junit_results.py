@@ -4,23 +4,40 @@ import argparse
 import json
 import os
 import sys
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
 
-def _required_environment(name: str) -> str:
-    value = os.environ.get(name, "").strip()
-    if not value:
-        raise ValueError(
-            f"Missing required CI environment variable: {name}. "
-            "Add it as a GitHub Actions repository secret."
-        )
-    return value
-
-
 def _optional_environment(name: str) -> str | None:
-    """Get environment variable or return None if missing/empty."""
     return os.environ.get(name, "").strip() or None
+
+
+def _github_metadata() -> dict:
+    """Preserve Actions identity; a PR uses its head, never GitHub's merge SHA."""
+    result = {"source": "github_actions", "commit_sha": os.environ.get("GITHUB_SHA", ""),
+              "branch": os.environ.get("GITHUB_HEAD_REF") or os.environ.get("GITHUB_REF_NAME", ""),
+              "workflow_name": os.environ.get("GITHUB_WORKFLOW")}
+    run_id, attempt = os.environ.get("GITHUB_RUN_ID", ""), os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    if run_id.isdigit() and int(run_id) > 0:
+        result["workflow_run_id"] = run_id
+    if attempt.isdigit() and int(attempt) > 0:
+        result["run_attempt"] = int(attempt)
+    if os.environ.get("GITHUB_EVENT_NAME") in {"pull_request", "pull_request_target"}:
+        path = os.environ.get("GITHUB_EVENT_PATH")
+        if not path or os.path.getsize(path) > 1000000:
+            raise ValueError("Bounded PR event metadata is required")
+        with open(path, encoding="utf-8") as handle:
+            event = json.load(handle)
+        pr = event.get("pull_request") or {}
+        head, base = pr.get("head") or {}, pr.get("base") or {}
+        sha, number = head.get("sha"), pr.get("number", event.get("number"))
+        if (not isinstance(sha, str) or len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha)
+                or type(number) is not int or number < 1
+                or base.get("repo", {}).get("full_name") != os.environ.get("GITHUB_REPOSITORY")):
+            raise ValueError("Exact PR repository/head identity is required")
+        result.update(commit_sha=sha, pr_number=number, branch=head.get("ref") or result["branch"])
+    return result
 
 
 def main() -> int:
@@ -28,12 +45,11 @@ def main() -> int:
     parser.add_argument("--junit", required=True)
     args = parser.parse_args()
 
-    # Check for required secrets - gracefully handle absence
     api_url = _optional_environment("SAMANVAYA_API_URL")
     project_id = _optional_environment("SAMANVAYA_PROJECT_ID")
     token = _optional_environment("SAMANVAYA_TEST_RESULTS_TOKEN")
     
-    if not all([api_url, project_id, token]):
+    if not api_url or not project_id or not token:
         print("=" * 70)
         print("Samanvaya secrets not configured. Skipping test result upload.")
         print("To enable automated test result upload, configure these repository secrets:")
@@ -41,19 +57,23 @@ def main() -> int:
         print("  - SAMANVAYA_PROJECT_ID")
         print("  - SAMANVAYA_TEST_RESULTS_TOKEN")
         print("=" * 70)
-        return 0  # Exit gracefully without failing workflow
+        return 0
 
-    # Get test execution exit code
     test_exit_code = int(os.environ.get("CI_TEST_EXIT_CODE", "0"))
 
-    root = ET.parse(args.junit).getroot()
+    with open(args.junit, "rb") as handle:
+        document = handle.read()
+    # Reports are untrusted: no DTDs or entity declarations (XML bomb / XXE).
+    if b"<!DOCTYPE" in document.upper() or b"<!ENTITY" in document.upper():
+        raise ValueError("JUnit XML must not declare a DOCTYPE or entities")
+    # Bandit B314: DTD/entity declarations rejected above.
+    root = ET.fromstring(document)  # nosec B314
     suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
     if not suites:
         raise ValueError("JUnit file contains no testsuite elements")
 
     tests_run = sum(int(float(s.get("tests", 0))) for s in suites)
     
-    # Validate that we have actual tests
     if tests_run <= 0:
         raise ValueError("JUnit report contains zero tests - refusing to report empty results")
     
@@ -62,8 +82,8 @@ def main() -> int:
     skipped = sum(int(float(s.get("skipped", 0))) for s in suites)
     tests_failed = failures + errors
     api_url = api_url.rstrip("/")
-    project_id = project_id
-    token = token
+    if urllib.parse.urlsplit(api_url).scheme not in {"https", "http"}:
+        raise ValueError("SAMANVAYA_API_URL must be an http(s) URL")
     payload = {
         "project_id": project_id,
         "repository": os.environ["GITHUB_REPOSITORY"],
@@ -75,12 +95,9 @@ def main() -> int:
         "tests_failed": tests_failed,
         "tests_skipped": skipped,
         "duration_seconds": sum(float(s.get("time", 0) or 0) for s in suites),
-        "status": (
-            "passed"
-            if test_exit_code == 0 and tests_run > 0 and tests_failed == 0
-            else "failed"
-        ),
+        "status": "passed" if test_exit_code == 0 and tests_failed == 0 else "failed",
     }
+    payload.update(_github_metadata())
     request = urllib.request.Request(
         api_url + "/api/qa/test-runs",
         data=json.dumps(payload).encode("utf-8"),
@@ -90,7 +107,8 @@ def main() -> int:
         },
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    # Bandit B310: scheme validated above.
+    with urllib.request.urlopen(request, timeout=30) as response:  # nosec B310
         if response.status not in (200, 201):
             raise RuntimeError(f"Samanvaya rejected test result: HTTP {response.status}")
     return 0

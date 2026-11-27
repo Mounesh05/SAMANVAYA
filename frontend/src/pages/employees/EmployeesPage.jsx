@@ -209,7 +209,7 @@ export function EmployeesPage() {
   );
 
   const columns = [
-    { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '700' }}>{e.name}</span> },
+    { key: 'name', header: 'Name', render: (e) => <span style={{ fontWeight: '600' }}>{e.name}</span> },
     { key: 'employee_id', header: 'Employee ID', render: (e) => <span className="font-mono">{e.employee_id}</span> },
     {
       key: 'role',
@@ -411,7 +411,7 @@ export function EmployeesPage() {
           </div>
         )}
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Input
               label="Employee ID"
               value={formData.employee_id}
@@ -429,7 +429,7 @@ export function EmployeesPage() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Input
               label="Email"
               type="email"
@@ -460,7 +460,7 @@ export function EmployeesPage() {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             <Select
               label="Role"
               value={formData.role}
@@ -498,7 +498,7 @@ export function EmployeesPage() {
             />
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-columns">
             {editEmployee ? (
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>

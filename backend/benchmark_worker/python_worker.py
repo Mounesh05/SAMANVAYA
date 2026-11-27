@@ -265,7 +265,8 @@ def benchmark(payload):
         if is_generic(payload):
             validate_function_payload(payload)
         namespace = {"__name__": "benchmark_candidate"}
-        exec(compile(candidate["source"], "<candidate>", "exec"), namespace)
+        # The worker exists to run candidate code; it runs isolated in its own container.
+        exec(compile(candidate["source"], "<candidate>", "exec"), namespace)  # nosec B102
         function = namespace.get(candidate["entrypoint"])
         if (not callable(function) or inspect.iscoroutinefunction(function)
                 or inspect.isgeneratorfunction(function) or inspect.isasyncgenfunction(function)):

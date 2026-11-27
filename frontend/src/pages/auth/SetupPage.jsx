@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth.api';
+import { Button } from '../../components/common/Button';
+import './LoginPage.css';
 
 const EMPTY_ACCOUNT = { name: '', employee_id: '', email: '', organisation_password: '', employee_password: '' };
 
@@ -12,9 +14,9 @@ const EMPTY_ACCOUNT = { name: '', employee_id: '', email: '', organisation_passw
  */
 function AccountFields({ legend, note, name, account, onChange }) {
   return (
-    <fieldset style={{ display: 'grid', gap: '0.6rem', border: '1px solid var(--border-subtle, #ccc)', padding: '1rem' }}>
+    <fieldset className="setup-account">
       <legend>{legend}</legend>
-      {note && <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8 }}>{note}</p>}
+      {note && <p>{note}</p>}
       <label>
         Full name
         <input name={`${name}.name`} autoComplete="off" value={account.name} onChange={onChange} required minLength={2} maxLength={100} />
@@ -70,27 +72,39 @@ export function SetupPage() {
   };
 
   return (
-    <main style={{ maxWidth: '480px', margin: '4rem auto', padding: '1.5rem' }}>
+    <main className="setup-page">
+      <div className="signin-logo">
+        <span className="signin-mark" aria-hidden="true">S</span>
+        Samanvaya
+      </div>
       <h1>First-run setup</h1>
-      <p>
+      <p className="setup-intro">
         Create the first two accounts for your organisation, using each person&apos;s real name and employee
         ID. The Chief Executive and the platform administrator are separate, so account changes can be
         approved by a second person. Everyone else is added later by HR and the administrator.
       </p>
-      <form onSubmit={submit} style={{ display: 'grid', gap: '1rem' }}>
+      <form onSubmit={submit} className="setup-form">
         <label>
           Setup secret
           <input name="setup_secret" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} required />
         </label>
-        <AccountFields legend="Chief Executive (no admin rights)" name="ceo" account={accounts.ceo} onChange={update} />
-        <AccountFields
-          legend="Platform administrator (admin rights)"
-          note="Admin is a permission, not a role, so this account is created as a DevOps employee with admin rights. It sets up teams, accounts and platform settings."
-          name="admin"
-          account={accounts.admin}
-          onChange={update}
-        />
-        <button type="submit">Create both accounts</button>
+        <div className="work-grid setup-accounts">
+          <AccountFields
+            legend="Chief Executive (no admin rights)"
+            note="This account can act as the second reviewer on account changes that require approval."
+            name="ceo"
+            account={accounts.ceo}
+            onChange={update}
+          />
+          <AccountFields
+            legend="Platform administrator (admin rights)"
+            note="This account has the DevOps role and admin rights to set up teams, accounts and platform settings."
+            name="admin"
+            account={accounts.admin}
+            onChange={update}
+          />
+        </div>
+        <Button type="submit">Create both accounts</Button>
       </form>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}

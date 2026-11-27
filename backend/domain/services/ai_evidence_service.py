@@ -65,7 +65,7 @@ async def _file(client, owner, name, reference):
         content = raw.decode("utf-8")
     except (ValueError, UnicodeError):
         raise HTTPException(409, "Source encoding could not be verified") from None
-    blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+    blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw, usedforsecurity=False).hexdigest()  # Git blob id, not a security hash
     digest = hashlib.sha256(raw).hexdigest()
     if (len(raw) != data["size"] or blob != data.get("sha") or blob != entries[0].get("sha")
             or not hmac.compare_digest(digest, reference.content_sha256)):

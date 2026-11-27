@@ -36,6 +36,21 @@ async def test_registered_analysis_collects_discovery_without_model(monkeypatch,
     assert evidence.function_discovery.source_revision == "sha-1"
 
 
+async def test_verified_quality_context_manifests_do_not_make_discovery_partial():
+    report = await CodeQualityService().discover_functions(["backend/app.py"], {
+        "project_id": "P1",
+        "source_provenance": {"method": "github-contents-v1"},
+        "source_files": {
+            "backend/app.py": SOURCE,
+            "backend/requirements.txt": "pydantic==2.9.2",
+            "frontend/tsconfig.json": "{}",
+        },
+    })
+    assert report.status == "available"
+    assert not report.diagnostics
+    assert [item.path for item in report.functions] == ["backend/app.py"]
+
+
 async def test_discovery_snapshot_uses_existing_runs_and_authorization(mock_db, monkeypatch):
     import repositories.code_quality_repository as repository
     monkeypatch.setattr(repository, "col", lambda name: mock_db[name])
@@ -98,7 +113,7 @@ async def test_code_quality_background_run_persists_discovery(mock_db, monkeypat
     body = code_quality.AnalyzeRequest(repository_id="P1", changed_files=["module.py"], use_ai=False)
     await code_quality._run_analysis("run", body, None)
     saved = await mock_db.code_quality_runs.find_one({"run_id": "run"})
-    assert saved["status"] == "completed", saved.get("error")
+    assert saved["status"] == "failed" and saved["quality_score"] is None
     assert saved["function_discovery"]["functions"][0]["name"] == "transform"
 
 

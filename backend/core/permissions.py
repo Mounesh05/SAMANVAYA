@@ -85,6 +85,7 @@ class Permission(str, Enum):
     ACCEPT_STORY = "ACCEPT_STORY"
     # QA (CR-002)
     SIGN_OFF_WORK = "SIGN_OFF_WORK"                 # pass/fail work waiting in Review
+    RECORD_RELEASE_DECISION = "RECORD_RELEASE_DECISION"
     MANAGE_TEST_CASES = "MANAGE_TEST_CASES"         # test suites, cases, executions
     VERIFY_DEFECTS = "VERIFY_DEFECTS"               # verify, reopen, close defects
     VIEW_DEFECTS = "VIEW_DEFECTS"                   # defect lists and the Bugs page
@@ -275,6 +276,7 @@ ROLE_PERMISSIONS: dict[OrganizationalRole, Set[Permission]] = {
     # CR-003: DevOps own pipelines, deployments, repository links and CI in
     # their projects; own performance only.
     OrganizationalRole.DEVOPS: {
+        Permission.RECORD_RELEASE_DECISION,
         Permission.USE_ENGINEERING_INTELLIGENCE,  # was a role-name rule
         Permission.TRIAGE_INCIDENT,  # CR-014 D1-A
         Permission.VIEW_OWN_DATA,

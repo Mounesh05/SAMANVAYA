@@ -37,4 +37,7 @@ export const algorithmsApi = {
   getExplanation: (runId) => apiClient.post(
     `/algorithms/runs/${encodeURIComponent(runId)}/explanation`,
   ),
+  explainPRFunction: (runId, functionId) => apiClient.post(
+    `/algorithms/pr-intelligence/${encodeURIComponent(runId)}/functions/${encodeURIComponent(functionId)}/explanation`,
+  ),
 };

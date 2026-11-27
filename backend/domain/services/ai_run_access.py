@@ -26,13 +26,11 @@ async def accessible_projects(user):
     actor_id(user)
     role = user.get("role", "").upper()
     organization = user.get("org_id")
-    query: dict[str, Any] = {"org_id": {"$type": "string", "$ne": ""}}
-    if isinstance(organization, str) and organization:
-        query["org_id"] = organization
+    # SEC-06: every role, the CEO included, is limited to its own organisation.
+    if not isinstance(organization, str) or not organization:
+        return []
+    query: dict[str, Any] = {"org_id": organization}
     if role != "CEO":
-        if not isinstance(organization, str) or not organization:
-            return []
-        query["org_id"] = organization
         assigned = user.get("project_ids") or []
         assigned = [key for key in assigned if isinstance(key, str)] if isinstance(assigned, list) else []
         if role == "PM":
@@ -44,7 +42,8 @@ async def accessible_projects(user):
                 membership.append({"team_id": team})
             query["$or"] = membership
     projects = await ProjectRepository().find_all(query)
-    return [row for row in projects if isinstance(row.get("org_id"), str) and row["org_id"]
+    return [row for row in projects if row.get("org_id") == organization
+            and row.get("organization_id", organization) == organization
             and isinstance(row.get("id"), str) and row["id"]]
 
 

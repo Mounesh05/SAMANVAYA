@@ -4,6 +4,7 @@ import { AlertTriangle, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export function RiskBadge({ level, score = null, size = 'sm' }) {
   const normalized = String(level || '').toUpperCase();
+  const label = normalized.charAt(0) + normalized.slice(1).toLowerCase();
 
   let variant = 'default';
   let Icon = ShieldCheck;
@@ -24,8 +25,8 @@ export function RiskBadge({ level, score = null, size = 'sm' }) {
 
   return (
     <Badge variant={variant} size={size}>
-      <Icon size={12} />
-      {normalized} {score !== null && `(${score})`}
+      <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
+      {label} {score !== null && `(${score})`}
     </Badge>
   );
 }
