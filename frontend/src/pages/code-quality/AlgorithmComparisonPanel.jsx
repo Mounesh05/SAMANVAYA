@@ -104,7 +104,7 @@ function memoryLabel(metric, language) {
   return metric || 'Memory metric not reported';
 }
 
-function RunDetails({ run, canSubmit, onSelectRun }) {
+export function RunDetails({ run, canSubmit, onSelectRun }) {
   const queryClient = useQueryClient();
   const [revisionPolicy, setRevisionPolicy] = useState(() => JSON.stringify(run.decision?.policy_snapshot || { id: 'project-policy', version: '1', constraints: [] }, null, 2));
   const [revisionError, setRevisionError] = useState('');
@@ -305,23 +305,21 @@ function RunDetails({ run, canSubmit, onSelectRun }) {
   );
 }
 
-export function AlgorithmComparisonPanel() {
+export function AlgorithmComparisonPanel({ workspaceProject } = {}) {
   const id = useId();
   const user = useAuthStore((state) => state.user);
   const canSubmit = hasPermission(user, PERMISSIONS.USE_ENGINEERING_INTELLIGENCE);  // same check as the backend
   const queryClient = useQueryClient();
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(workspaceProject || '');
   const [historyProject, setHistoryProject] = useState('');
   const [runId, setRunId] = useState('');
   const [language, setLanguage] = useState('python');
-  const [mode, setMode] = useState('sorting');
+  const [mode, setMode] = useState(workspaceProject ? 'generic' : 'sorting');
   const generic = mode === 'generic';
-  const [functionJson, setFunctionJson] = useState(() => JSON.stringify(sumExample, null, 2));
+  const [functionJson, setFunctionJson] = useState(() => workspaceProject ? '' : JSON.stringify(sumExample, null, 2));
   const [resourcesJson, setResourcesJson] = useState('');
   const [policyJson, setPolicyJson] = useState('');
-  const [candidates, setCandidates] = useState([
-    { name: '', source: '', entrypoint: '' }, { name: '', source: '', entrypoint: '' },
-  ]);
+  const [candidates, setCandidates] = useState(() => Array.from({ length: workspaceProject ? 1 : 2 }, () => ({ name: '', source: '', entrypoint: '' })));
   const [sizes, setSizes] = useState('0, 1, 100, 1000');
   const [objective, setObjective] = useState('time');
   const [memoryLimit, setMemoryLimit] = useState('');
@@ -429,14 +427,15 @@ export function AlgorithmComparisonPanel() {
   };
 
   return (
-    <Card title={generic ? 'Generic function benchmark' : 'Numeric sorting benchmark'} subtitle="Measure and compare functions" style={{ marginBottom: '1.75rem' }}>
+    <Card title={generic ? 'Function experiment' : 'Numeric sorting preset'} subtitle="Measure one function or compare selected candidates" style={{ marginBottom: '1.75rem' }}>
       <div style={stack}>
-        <Select label="Benchmark mode" value={mode} placeholder={null} options={[{ value: 'sorting', label: 'Numeric sorting preset' }, { value: 'generic', label: 'Generic function' }]} onChange={(event) => {
+        <Select label="Benchmark mode" value={mode} placeholder={null} options={[{ value: 'generic', label: 'Generic function' }, { value: 'sorting', label: 'Numeric sorting (legacy preset)' }]} onChange={(event) => {
           setMode(event.target.value);
           setValidationError('');
           if (event.target.value === 'sorting' && candidates.length < 2) setCandidates((current) => [...current, { name: '', source: '', entrypoint: '' }]);
         }} />
-        {generic ? <>
+        {workspaceProject ? <p>Choose a supported function and provide validation inputs. Measurements are limited to tested workloads.</p> : null}
+        {!workspaceProject && (generic ? <>
           <p>Inspect one function or compare up to five using custom data inputs. Only synchronous functions with JSON positional arguments and JSON results are supported; async functions, promises, generators, and non-JSON values are unsupported. Algorithm names are not recognized or used to infer behavior; the contract name and version are your stable semantic identity.</p>
           <p>Edit the sum example below and provide your own source (Python example: def total(values): return sum(values)). Provide 1..32 datasets with id, args (JSON positional arguments), and optional dimensions. input_schema describes the entire args array. Choose output source return, or argument with index 0 (or another positional index) for in-place functions. Python functions must be module-level; JS/TS named functions or CommonJS exports are supported. Dependencies must already exist in the worker image.</p>
           <p>RAG deferred: generic contracts do not automatically retrieve historical evidence. Saved runs offer explicit compatible-history access, without reranking.</p>
@@ -445,10 +444,12 @@ export function AlgorithmComparisonPanel() {
         <p>Provide a named synchronous Python, JavaScript, or TypeScript function taking one numeric list/array. Return a numerically ascending list/array with the same values, or sort in-place and return Python None / JavaScript undefined. Sources are sent to the benchmark service; do not include secrets.</p>
         <p>Unsupported contracts: async functions, promises, generators, JavaScript null, sparse or nonnumeric output, custom comparators, and object sorting. Stability is not tested. Python functions must be defined at module level; JS/TS named functions or CommonJS exports are supported. TypeScript export function is transpiled, not semantically type-checked. Dependencies must already exist in the worker image.</p>
         <p>Five repetitions per case; seed 42; random, sorted, reversed, and duplicates distributions. Default sizes cover empty, singleton, small, and larger inputs; choose up to 16 unique sizes in 0..10000. Python memory objective and limit apply to Memray peak tracked allocations, not RSS or total RAM. Node reports signed heap delta, not peak memory; memory objectives and limits are unsupported.</p>
+        </>)}
+        {!workspaceProject && generic && <p>Five repetitions per dataset; seed 42. Python memory objective and limit use peak tracked allocations, not RSS or total RAM. Node heap delta is not peak memory and does not support memory objectives or tracked allocation limits.</p>}
+        {!workspaceProject && <>
+          <p>Measurements and structural observations do not infer Big-O complexity, asymptotic proof, or optimality.</p>
+          <p>Benchmarks are submitted asynchronously and polled for completion. Recommendations and feedback never automatically rewrite or apply source changes; quality and security analysis remain separate.</p>
         </>}
-        {generic && <p>Five repetitions per dataset; seed 42. Python memory objective and limit use peak tracked allocations, not RSS or total RAM. Node heap delta is not peak memory and does not support memory objectives or tracked allocation limits.</p>}
-        <p>Measurements and structural observations do not infer Big-O complexity, asymptotic proof, or optimality.</p>
-        <p>Benchmarks are submitted asynchronously and polled for completion. Recommendations and feedback never automatically rewrite or apply source changes; quality and security analysis remain separate.</p>
         {availability.isPending ? <p role="status">Checking benchmark worker...</p> : !availability.isError && availability.data?.available ? <p role="status">Benchmark worker available.</p> : (
           <div role="alert">
             <p>Benchmark worker unavailable: {availability.error?.message || availability.data?.error || 'Worker probe did not confirm availability.'}</p>
@@ -458,7 +459,7 @@ export function AlgorithmComparisonPanel() {
         <Button variant="secondary" isLoading={availability.isFetching} onClick={() => availability.refetch()}>Recheck availability</Button>
         {!canSubmit && <p>An engineering role is required to submit runs and feedback. History remains available.</p>}
         <form onSubmit={handleSubmit} noValidate style={stack} aria-label={generic ? 'Generic function benchmark form' : 'Numeric sorting benchmark form'}>
-          <Input label="Benchmark project ID" value={projectId} onChange={(event) => setProjectId(event.target.value)} />
+          {!workspaceProject && <Input label="Benchmark project ID" value={projectId} onChange={(event) => setProjectId(event.target.value)} />}
           <div style={grid}>
             <Select label="Benchmark language" value={language} placeholder={null} options={['python', 'javascript', 'typescript']} onChange={(event) => {
               setLanguage(event.target.value);
@@ -473,8 +474,10 @@ export function AlgorithmComparisonPanel() {
           </div>
           {generic && <>
             <label htmlFor={`${id}-function-json`}>Contract and datasets JSON</label>
-            <textarea id={`${id}-function-json`} rows={20} spellCheck={false} style={textAreaStyle} value={functionJson} onChange={(event) => setFunctionJson(event.target.value)} />
+            <textarea id={`${id}-function-json`} rows={workspaceProject ? 7 : 20} spellCheck={false} style={textAreaStyle} value={functionJson} onChange={(event) => setFunctionJson(event.target.value)} />
           </>}
+          <details open={!workspaceProject} className={workspaceProject ? 'ai-disclosure' : undefined}><summary>Optional resource limits and decision policy</summary>
+          <div style={stack}>
           <label htmlFor={`${id}-resources-json`}>Resources JSON (optional)</label>
           <textarea id={`${id}-resources-json`} rows={3} spellCheck={false} style={textAreaStyle} placeholder={'{"timeout_seconds":30,"memory_bytes":268435456,"cpus":0.5,"pids":32}'} value={resourcesJson} onChange={(event) => setResourcesJson(event.target.value)} />
           <p>Leave empty for service defaults. Container limits: timeout_seconds 1..120; memory_bytes 67108864..536870912 (64..512 MiB); cpus 0.1..1; pids 16..64. These are separate from Python’s tracked allocation limit.</p>
@@ -482,6 +485,7 @@ export function AlgorithmComparisonPanel() {
           <textarea id={`${id}-policy-json`} rows={6} spellCheck={false} style={textAreaStyle} value={policyJson} onChange={(event) => setPolicyJson(event.target.value)}
             placeholder={'{"id":"project-policy","version":"1","objective":"MINIMIZE_TIME","constraints":[],"unknown_requirements":[{"id":"memory-budget","description":"Memory budget not established"}]}'} />
           <p>Leave empty for legacy ranking. An explicit policy gives authoritative dataset decisions; an omitted policy objective means tradeoffs only. Its acceptance thresholds are separate from sandbox resources and the legacy objective above. Project authorization is checked by the server.</p>
+          </div></details>
           <div style={grid}>{candidates.map((candidate, index) => (
             <fieldset key={index} style={{ ...stack, minWidth: 0, border: '1px solid var(--border-default)', padding: '1rem' }}>
               <legend>Candidate {index + 1}</legend>
@@ -493,7 +497,7 @@ export function AlgorithmComparisonPanel() {
             </fieldset>
           ))}</div>
           <Button variant="secondary" disabled={candidates.length >= 5} onClick={() => setCandidates((current) => [...current, { name: '', source: '', entrypoint: '' }])}>Add candidate</Button>
-          <p>Structure inspection requires no contract or datasets and never executes submitted source. Python parses AST on the host, even when benchmark opt-in or Docker is unavailable. JS/TS parsing requires enabled Docker workers. Sources are sent to the service; do not include secrets.</p>
+          <p>{workspaceProject ? 'Structure inspection does not execute source. Do not submit secrets.' : 'Structure inspection requires no contract or datasets and never executes submitted source. Python parses AST on the host, even when benchmark opt-in or Docker is unavailable. JS/TS parsing requires enabled Docker workers. Sources are sent to the service; do not include secrets.'}</p>
           <ErrorMessage error={inspectionError || inspection.error} />
           <Button variant="secondary" isLoading={inspection.isPending} disabled={!canSubmit || (language !== 'python' && (availability.isError || !availability.data?.available || availability.isFetching))} onClick={handleInspect}>Inspect structure (no execution)</Button>
           <ErrorMessage error={validationError || submit.error} />
@@ -513,7 +517,7 @@ export function AlgorithmComparisonPanel() {
             <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(inspection.data.environment || {}, null, 2)}</pre>
           </details>
         </section>}
-        <section aria-label="Benchmark project history" style={stack}>
+        {!workspaceProject && <section aria-label="Benchmark project history" style={stack}>
           <h4>Project benchmark history</h4>
           <Button variant="secondary" disabled={!projectId.trim()} isLoading={history.isFetching} onClick={() => {
             if (projectId.trim() === historyProject) history.refetch();
@@ -529,7 +533,7 @@ export function AlgorithmComparisonPanel() {
               {' '}· {!item.decision && (item.recommendation?.reason || item.summary?.reason || '')}
             </li>
           ))}</ul>
-        </section>
+        </section>}
         {runId && runQuery.isPending && <p role="status">Loading benchmark run...</p>}
         <ErrorMessage error={runQuery.error} />
         {runQuery.error && <Button variant="secondary" onClick={() => runQuery.refetch()}>Retry loading run</Button>}

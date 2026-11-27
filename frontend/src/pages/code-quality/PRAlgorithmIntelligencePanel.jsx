@@ -126,23 +126,24 @@ export function StaticComparison({ row }) {
   </section>;
 }
 
-export function PRAlgorithmIntelligencePanel({ prId, source }) {
+export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact = false }) {
   const [selected, setSelected] = useState('');
   const scope = useSessionScope();
-  const history = useQuery({ queryKey: ['pr-algorithm-intelligence', scope, prId || 'accessible-projects'],
-    queryFn: () => algorithmsApi.getPRIntelligence(prId ? { pr_id: prId } : {}),
+  const history = useQuery({ queryKey: ['pr-algorithm-intelligence', scope, prId || projectId || 'accessible-projects'],
+    queryFn: () => algorithmsApi.getPRIntelligence(prId ? { pr_id: prId } : projectId ? { project_id: projectId } : {}),
     refetchInterval: source ? false : 5000 });
   const comparison = useQuery({ queryKey: ['algorithms', 'run', scope, selected], queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected) });
   const explanation = useMutation({ mutationFn: runId => algorithmsApi.getExplanation(runId) });
   const staticExplanation = useMutation({
     mutationFn: ({ runId, functionId }) => algorithmsApi.explainPRFunction(runId, functionId),
   });
-  const runs = (history.error ? [] : history.data?.analyses || []).filter((run) => !source || (
+  const runs = (history.error ? [] : history.data?.analyses || []).filter(run => !projectId || run.project_id === projectId).filter((run) => !source || (
     run.project_id === source.projectId && run.head_sha === source.head &&
     run.pr_number === source.number && run.repository?.toLowerCase() === source.repository.toLowerCase()
   ));
-  return <Card className="cq-panel" title="PR algorithm checks"
-    subtitle={source ? 'Static findings and measured comparisons for this PR revision' : 'Automatic comparisons for connected projects'}
+  const FunctionContainer = compact ? 'details' : 'article';
+  return <Card className="cq-panel" title={compact ? 'Pull request analyses' : 'PR algorithm checks'}
+    subtitle={source ? 'Static findings and measured comparisons for this PR revision' : 'Static analysis and eligible benchmarks for connected projects'}
     style={{ marginBottom: '1.75rem' }}>
     <p className="cq-note">Results cover tested workloads only. Behaviour without an approved contract is reported as unknown.</p>
     {history.isLoading && <p role="status">Loading PR analysis…</p>}
@@ -155,20 +156,25 @@ export function PRAlgorithmIntelligencePanel({ prId, source }) {
       const analysed = rows.filter(row => row.static_status === 'analyzed').length;
       return <details key={run.run_id} open={!run.historical_only}>
         <summary>{run.repository} PR #{run.pr_number} · {statusLabel(run.status)}{run.historical_only ? ' · Historical only' : ''}</summary>
-        <p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p>
+        {compact ? <details><summary>Source revisions</summary><p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p></details> : <p>Project: {run.project_id} · Base: {run.base_sha} · Head: {run.head_sha}</p>}
         {run.repository && <a href={`https://github.com/${run.repository}/pull/${run.pr_number}`} target="_blank" rel="noreferrer">Open pull request</a>}
         <p>Analyzed functions: {rows.length} · Validated comparisons: {rows.filter(f => f.compatibility === 'COMPATIBLE_WITHIN_TESTED_CONTRACT').length}</p>
-        {(analysed > 0 || Object.keys(modes).length > 0) && <section aria-label="Analysis summary">
+        {!compact && (analysed > 0 || Object.keys(modes).length > 0) && <section aria-label="Analysis summary">
           <p>Static analysis: {analysed} of {rows.length} functions analysed</p>
           <ul>
             {Object.entries(modes).map(([mode, total]) => <li key={mode}>{modeLabel(mode)}: {total}</li>)}
             {Object.entries(categories).map(([category, total]) => <li key={category}>{categoryLabel(category)}: {total}</li>)}
           </ul>
         </section>}
-        {run.comparison_modes && <p>Comparison modes: {Object.entries(run.comparison_modes).map(([mode, total]) => `${modeLabel(mode)} — ${total}`).join(' · ')}</p>}
+        {!compact && run.comparison_modes && <p>Comparison modes: {Object.entries(run.comparison_modes).map(([mode, total]) => `${modeLabel(mode)} — ${total}`).join(' · ')}</p>}
         {run.reason && <p>{run.reason}</p>}{run.error && <p role="alert">{run.error}</p>}
-        {rows.map((fn, i) => <article key={fn.current?.function_id || i}>
+        {rows.map((fn, i) => <FunctionContainer key={fn.current?.function_id || i}>
+          {compact && <summary><span className="ai-function-summary"><strong>{fn.current?.qualified_name || 'Unnamed function'}</strong>
+            <span>{fn.mode === 'A' ? 'Standalone' : fn.mode === 'B' ? 'Revision comparison' : fn.mode === 'C' ? 'Alternatives' : 'Analysis'}</span>
+            <span>Time: {fn.complexity?.time_complexity || 'Unknown'} · Space: {fn.complexity?.space_complexity || 'Unknown'}</span>
+          </span></summary>}
           <h4>{fn.current?.path} · {fn.current?.qualified_name}</h4>
+          {compact && fn.static_status === 'analyzed' && !(staticExplanation.variables?.runId === run.run_id && staticExplanation.variables?.functionId === fn.current?.function_id) && <p>AI explanation: Not requested</p>}
           <p>{fn.benchmark_run_id && fn.mode === 'A' ? 'Static analysis complete' : statusLabel(fn.status)} · {fn.finding_status || fn.compatibility || (fn.mode === 'A' ? 'Standalone assessment' : 'No replacement conclusion')}</p>
           <p>Mode: {modeLabel(fn.mode) || 'Not recorded'} · Classification: {categoryLabel(fn.classification?.category)}
             {fn.classification?.attribution ? ` (attributed to ${fn.classification.attribution})` : ''}</p>
@@ -205,9 +211,9 @@ export function PRAlgorithmIntelligencePanel({ prId, source }) {
           </Button>}
           {fn.datasets && <details><summary>Approved dataset provenance</summary><pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(fn.datasets, null, 2)}</pre></details>}
           {fn.requirements_discovery && <RequirementsSection report={fn.requirements_discovery} />}
-        </article>)}
+        </FunctionContainer>)}
         {(run.analysis_truncated || run.input_truncated) && <p>Analysis is partial; these findings do not cover every PR change.</p>}
-        <ul>{(run.limitations || []).map((text, i) => <li key={i}>{text}</li>)}</ul>
+        {compact ? (run.limitations || []).length > 0 && <details><summary>Limitations</summary><ul>{run.limitations.map((text, i) => <li key={i}>{text}</li>)}</ul></details> : <ul>{(run.limitations || []).map((text, i) => <li key={i}>{text}</li>)}</ul>}
       </details>;
     })}
     {comparison.error && <p role="alert">{comparison.error.message}</p>}

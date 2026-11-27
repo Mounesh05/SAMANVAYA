@@ -333,7 +333,8 @@ describe('Numeric sorting benchmark', () => {
     );
     client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(<MemoryRouter><QueryClientProvider client={client}><CodeQualityPage /></QueryClientProvider></MemoryRouter>);
-    await screen.findByText('Benchmark worker available.');
+    await screen.findByRole('button', { name: 'Open Algorithm Intelligence' });
+    expect(screen.queryByText('Benchmark worker available.')).not.toBeInTheDocument();
     expect(screen.getByText('Analysis history')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start analysis' }));
     await screen.findByText('owner/repo');
@@ -344,7 +345,7 @@ describe('Numeric sorting benchmark', () => {
       repository_id: '1', changed_files: ['src/real.py'], analysis_level: 'standard', use_ai: true,
     })));
     expect(algorithmsApi.startRun).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Candidate 1 source')).toHaveValue('');
+    expect(screen.queryByLabelText('Candidate 1 source')).not.toBeInTheDocument();
   });
 
   it('renders untrusted explanation text without interpreting HTML', async () => {
