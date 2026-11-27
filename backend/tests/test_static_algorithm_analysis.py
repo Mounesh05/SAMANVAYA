@@ -199,3 +199,43 @@ def test_no_repository_function_or_framework_name_is_matched():
     # non-test path with a non-test name must never be labelled a test.
     for name in ("latest_report", "contest_entry", "attestation", "special_case"):
         assert classify("app/reporting.py", name, name)["category"] == APPLICATION
+
+
+
+def test_independent_symbolic_dimensions_are_not_discarded_by_total_degree():
+    n, m = complexity.D("n"), complexity.D("m")
+    bound = complexity.ADD(complexity.MUL(n, n), m)
+    assert complexity.big_o(bound) == "O(n² + m)"
+
+
+def test_unproved_recursive_depth_is_not_reported_as_linear():
+    result = estimate("def fib(n):\n    if n <= 1: return n\n    return fib(n - 1) + fib(n - 2)\n", "fib")
+    assert result["time_complexity"] is None
+    assert result["space_complexity"] is None
+
+
+def test_while_length_condition_does_not_prove_progress():
+    result = estimate("def wait(xs):\n    while len(xs):\n        pass\n", "wait")
+    assert result["time_complexity"] is None
+
+
+def test_range_division_is_not_a_logarithmic_update():
+    result = estimate("def f(n):\n    for i in range(0, n, n // 2):\n        pass\n", "f")
+    assert result["time_complexity"] is None
+
+
+@pytest.mark.parametrize("path,source,expected", [
+    ("x.js", "function f(x){return x+1}", "O(1)"),
+    ("x.js", "function f(xs,ys){let s=0;for(const x of xs){s+=x;}for(const y of ys){s+=y;}return s;}", "O(n + m)"),
+    ("x.js", "function f(xs,ys){let s=0;for(const x of xs){for(const y of ys){s+=x*y;}}return s;}", "O(n·m)"),
+    ("x.ts", "function f(n:number){let s=0;for(let i=0;i<n;i++){for(let j=0;j<i;j++){s+=j;}}return s;}", "O(n²)"),
+    ("x.ts", "function f(xs:number[]){return xs.sort()}", None),
+])
+def test_js_ts_cost_discovery_supported_subset(path, source, expected):
+    from domain.services.pr_algorithm_intelligence_service import static_findings
+    report = asyncio.run(discover_sources({path: source}, "fixture-repository", "fixture-revision"))
+    if not report.functions:
+        pytest.skip("The pinned JS/TS parser runtime is unavailable")
+    record = static_findings(report.functions[0].model_dump(), source)["complexity"]
+    assert record["method"] == "static-ts-ast-cost-v1"
+    assert record["time_complexity"] == expected

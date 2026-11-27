@@ -3,6 +3,7 @@
 // This file never imports, transpiles for execution, or evaluates submitted source.
 const ts = require('typescript');
 const {analyzeStructure} = require('./node_worker.cjs');
+const {estimate: estimateCost} = require('./static_cost.cjs');
 
 function extract(sourceText, filePath) {
   if (Buffer.byteLength(sourceText, 'utf8') > 200000) throw new Error('Source size limit');
@@ -126,7 +127,8 @@ function extract(sourceText, filePath) {
           is_async: !!node.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword),
           parameters: node.parameters.slice(0, 32).map(p => ({name: p.name.getText(source).slice(0, 80), annotation: p.type?.getText(source).slice(0, 120) || null, has_default: !!p.initializer, variadic: !!p.dotDotDotToken})),
           return_annotation: node.type?.getText(source).slice(0, 120) || null,
-          structure: structural.functions.find(f => f.line === line(node)) || {loops, branches},
+          structure: {...(structural.functions.find(f => f.line === line(node)) || {loops, branches}),
+            static_cost: estimateCost(ts, node, source)},
           facts: facts.sort((a, b) => a.line - b.line), calls, returns: returns.slice(0, 16), collections, imports, assertions: assertions.slice(0, 32)});
       }
     }

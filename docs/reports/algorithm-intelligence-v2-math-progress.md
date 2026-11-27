@@ -1,0 +1,6 @@
+# Phase 2 mathematical progress (not accepted)
+Adds a bounded TypeScript compiler AST cost model for ordinary scalar arithmetic, for-of scans, stable zero-based indexed loops, independent and dependent nested loops. Unsupported expressions/calls/allocations/recursion/control flow abstain. The worker discovery adapter exposes its conditional upper bounds in PR analysis. Local standalone module checks: 10/10 on globally installed TypeScript 5.8.3; pinned parser and full application were not executed. The new test cases require the supported parser to be present for meaningful acceptance.
+
+Python corrections: preserve incomparable independent dimensions; dimension cap; multiply nested comprehension trips; count branch predicate cost; do not infer logarithmic additive range step or termination from len alone; abstain on unproved recursive cost/depth. Existing exact-output mathematical regressions may need corrected independent derivations after alias analysis, not weakened tests. Existing graph refinement and operation binding require further investigation.
+
+This is only the supported-domain foundation, not a complete shared IR, proven recurrence solver or empirical engine. Full suite, benchmark, agent, requirement lifecycle and browser verification still pending. Do not merge as Phase 2 accepted.

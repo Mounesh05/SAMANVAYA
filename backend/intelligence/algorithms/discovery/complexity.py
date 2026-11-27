@@ -116,8 +116,34 @@ def ADD(*terms):
         return C(1)
     if len(unique) == 1:
         return unique[0]
-    best = max(_key(term) for term in unique)
-    kept = [term for term in unique if _key(term) == best]
+    # Degree alone cannot compare independent dimensions (n² and m).
+    # Drop a term only when the same monomial factors are dominated.
+    def factors(term):
+        kind = term[0]
+        if kind == "const":
+            return {}
+        if kind in ("dim", "log"):
+            return {render(term): 1}
+        if kind == "pow":
+            base = factors(term[1])
+            return None if base is None else {k: v * term[2] for k, v in base.items()}
+        if kind == "mul":
+            left, right = factors(term[1]), factors(term[2])
+            if left is None or right is None:
+                return None
+            return {k: left.get(k, 0) + right.get(k, 0) for k in left.keys() | right.keys()}
+        return None
+
+    forms = [factors(term) for term in unique]
+    kept = []
+    for index, term in enumerate(unique):
+        form = forms[index]
+        dominated = form is not None and any(
+            other is not None and all(other.get(k, 0) >= v for k, v in form.items())
+            and (other != form or other_index < index)
+            for other_index, other in enumerate(forms) if other_index != index)
+        if not dominated:
+            kept.append(term)
     return kept[0] if len(kept) == 1 else ("add", kept)
 
 
@@ -185,6 +211,8 @@ class Context:
             return UNK("collection size is not statically known")
         if name in self.dims:
             return self.dims[name]
+        if len(self.bindings) >= len(LETTERS):
+            return UNK("input dimension limit reached")
         letter = LETTERS[len(self.bindings)]
         if letter in self.bindings.values():
             for candidate in LETTERS:
@@ -334,14 +362,14 @@ def _membership_cost(container, subject, ctx):
 
 
 def comprehension_cost(expr, ctx, depth):
-    total = C(1)
-    for generator in expr.generators:
+    body = expression_cost(expr.value if isinstance(expr, ast.DictComp) else expr.elt, ctx, depth=depth + 1)
+    if isinstance(expr, ast.DictComp):
+        body = ADD(body, expression_cost(expr.key, ctx, depth=depth + 1))
+    for generator in reversed(expr.generators):
         trips = iteration_trips(generator.iter, ctx)
-        body = ADD(C(1), *(expression_cost(cond, ctx, depth=depth + 1) for cond in generator.ifs))
-        body = ADD(body, expression_cost(expr.value if isinstance(expr, ast.DictComp) else expr.elt,
-                                         ctx, depth=depth + 1))
-        total = ADD(total, MUL(trips, body))
-    return total
+        conditions = ADD(C(1), *(expression_cost(cond, ctx, depth=depth + 1) for cond in generator.ifs))
+        body = ADD(expression_cost(generator.iter, ctx, depth=depth + 1), MUL(trips, ADD(conditions, body)))
+    return body
 
 
 def _operation_cost(node, ctx, depth=0):
@@ -454,10 +482,9 @@ def _range_trips(node, ctx):
     if len(node.args) == 2:
         return stop if start[0] != "unknown" else stop
     step = node.args[2]
+    # range evaluates a fixed additive step once, not a multiplicative update.
     if isinstance(step, ast.BinOp) and isinstance(step.op, (ast.FloorDiv, ast.Div)):
-        base = collection_size(step.left, ctx)
-        ctx.assume("A range step that divides the bound each iteration yields a logarithmic trip count.")
-        return LOG(base) if base[0] != "unknown" else base
+        return UNK("range step is computed once; its positivity and magnitude are not established")
     if isinstance(step, ast.Constant) and isinstance(step.value, int) and abs(step.value) >= 1:
         return stop
     return UNK("range() step does not establish a trip count")
@@ -513,7 +540,8 @@ def statement_cost(statement, ctx, depth=0):
     if isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
         return loop_cost(statement, ctx, depth)
     if isinstance(statement, ast.If):
-        return ADD(block_cost(statement.body, ctx, depth + 1), block_cost(statement.orelse, ctx, depth + 1))
+        return ADD(expression_cost(statement.test, ctx, depth=depth + 1),
+                   block_cost(statement.body, ctx, depth + 1), block_cost(statement.orelse, ctx, depth + 1))
     if isinstance(statement, _tries()):
         total = block_cost(statement.body, ctx, depth + 1)
         for handler in statement.handlers:
@@ -611,7 +639,7 @@ def while_trips(loop, ctx):
     if isinstance(test, ast.Compare):
         return UNK("while-loop trip count depends on a runtime comparison")
     if isinstance(test, ast.Call) and (_call_label(test) or "") in ("len", "bool"):
-        return collection_size(test.args[0], ctx) if test.args else UNK("while-loop bound is not visible")
+        return UNK("while-loop progress is not established by a collection length check alone")
     if isinstance(test, ast.UnaryOp):
         return UNK("while-loop trip count depends on runtime state")
     return UNK("while-loop trip count is not statically established")
@@ -763,11 +791,12 @@ def estimate(node, name, facts=(), parameter_annotations=None, language="python"
         if space_term[0] == "unknown":
             unknown_reasons.insert(0, "space: " + space_term[1])
 
-    if any(_argument_shape(argument) in ("decrease", "halving")
-           for call in _self_calls(node, name) for argument in call.args):
-        depth_term = D("n")
-        space_term = ADD(space_term, depth_term)
-        derivation.append("Recursive calls consume call-stack space proportional to the recursion depth.")
+    if _self_calls(node, name) and not refinement:
+        # Argument shape alone cannot prove termination, depth or recurrence cost.
+        time_term = UNK("Recursive recurrence and termination are not established")
+        space_term = UNK("Recursive stack depth and retained allocations are not established")
+        status, confidence = "unknown", "none"
+        unknown_reasons.extend([time_term[1], space_term[1]])
 
     record = {
         "method": METHOD, "status": status, "language": language,

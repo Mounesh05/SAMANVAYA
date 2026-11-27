@@ -262,17 +262,18 @@ def static_findings(function, source):
             for argument in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
                 annotations[argument.arg] = ast.unparse(argument.annotation) if argument.annotation else ""
     try:
-        record["complexity"] = complexity.estimate(node, function.get("name") or "", facts=facts,
-                                                   parameter_annotations=annotations, language=language)
+        parser_cost = (function.get("structure") or {}).get("static_cost") if language != "python" else None
+        record["complexity"] = ({**parser_cost, "language": language} if parser_cost else
+                                complexity.estimate(node, function.get("name") or "", facts=facts,
+                                                    parameter_annotations=annotations, language=language))
     except Exception:  # pragma: no cover - defensive; a bound is never guessed
         record["complexity"] = complexity.estimate(None, function.get("name") or "", facts=[],
                                                    parameter_annotations={}, language=language)
         record["limitations"].append("Static complexity estimation could not complete; no bound is claimed.")
     if language == "python" and node is None:
         record["limitations"].append("The definition could not be located in the stored source, so no complexity bound is claimed.")
-    if language != "python":
-        record["limitations"].append("Static complexity estimation is implemented for Python in this milestone; "
-                                     "no bound is claimed for this language.")
+    if language != "python" and not (function.get("structure") or {}).get("static_cost"):
+        record["limitations"].append("The source-only parser did not return a supported cost analysis; no bound is claimed.")
     record["classification"] = classify(function.get("path"), function.get("qualified_name"),
                                         function.get("name"), language, patterns=record["patterns"],
                                         complexity=record["complexity"])
