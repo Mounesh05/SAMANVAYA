@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from pymongo.errors import PyMongoError
 
 from agents.pr_multi_agent_durable import DurablePRGraph, RetryableInference
+from core.config import settings
 from core.database import col
 from domain.models.pr_multi_agent import ManualPRRequest, PRScope
 from domain.services.pr_multi_agent_service import ManualPRWorkflowService
@@ -17,7 +18,8 @@ from repositories.pr_repository import PRRepository
 from repositories.pr_workflow_repository import JOB_VERSION, PRWorkflowRepository, LeaseLost, InvalidWorkflowRecord, parse
 
 HEARTBEAT_SECONDS = 20
-EXECUTION_SECONDS = 180
+# AI-01: two sequential specialists plus evidence work must fit in one execution.
+EXECUTION_SECONDS = max(180, 2 * settings.PR_AGENT_SPECIALIST_TIMEOUT_SECONDS + 60)
 
 
 class DurablePRWorkflowService:
@@ -59,6 +61,7 @@ class DurablePRWorkflowService:
             key = self.repository.identity(scope)
             if await self.repository.header(key) is not None:
                 return self.summary(await self.get(key, current_user))
+            await self._enforce_quota(scope)
             pinned = ManualPRRequest(project_id=request.project_id, pr_number=request.pr_number, expected_head_sha=head)
             snapshot = await self.manual.resolver.resolve(current_user, pinned)
             if snapshot.scope != scope:
@@ -67,6 +70,28 @@ class DurablePRWorkflowService:
             await self.repository.ensure_indexes()
             key = await self.repository.create(pinned, snapshot)
             return self.summary(await self.get(key, current_user))
+
+    async def _enforce_quota(self, scope):
+        """AI-02: bounded queue with per-requester and per-organisation limits."""
+        counts = await self.repository.active_counts(scope.owner_id, scope.organization_id)
+        if counts["actor"] >= settings.PR_WORKFLOW_MAX_ACTIVE_PER_ACTOR:
+            raise HTTPException(429, "You already have the maximum number of advisory analyses in progress. "
+                                     "Wait for one to finish or cancel it.")
+        if counts["organization"] >= settings.PR_WORKFLOW_MAX_ACTIVE_PER_ORG:
+            raise HTTPException(429, "Your organisation has the maximum number of advisory analyses in progress. Retry later.")
+        if counts["total"] >= settings.PR_WORKFLOW_MAX_ACTIVE_TOTAL:
+            raise HTTPException(503, "The advisory analysis queue is full. Retry later.")
+
+    async def cancel(self, key, current_user):
+        """AI-02: the requester stops their own queued or running analysis."""
+        self.manual.check_enabled()
+        header = await self.repository.header(key)
+        scope, _ = await self.authorize_header(header, current_user)
+        if header["status"] not in ("PENDING", "RUNNING", "RETRY_WAIT"):
+            raise HTTPException(409, "This analysis has already finished")
+        if not await self.repository.cancel(key, scope.owner_id):
+            raise HTTPException(409, "This analysis has already finished")
+        return await self.get(key, current_user)
 
     async def get(self, key, current_user):
         self.manual.check_enabled()

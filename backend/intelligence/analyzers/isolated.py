@@ -55,6 +55,28 @@ def snapshot_payload(changed_files, context):
                         "source_provenance": provenance}, "sources": sources}
 
 
+def verify_evidence(evidence, payload, context):
+    """Accept measurements only for the exact snapshot that was sent to the worker."""
+    if (evidence.commit_sha != context["commit_sha"] or evidence.repository_id != context["project_id"]
+            or not 0 <= evidence.files_analyzed <= len(payload["changed_files"])
+            or any(f.file_path not in payload["sources"] for f in evidence.static_findings)
+            or any(f.file_path not in payload["sources"] for f in evidence.security.findings)):
+        raise ValueError("Quality measurements do not belong to the selected source")
+    return evidence
+
+
+def verify_brokered_evidence(evidence, payload, context):
+    """OPS-03: the API re-checks a broker result; it never trusts the broker's identity claims."""
+    verify_evidence(evidence, payload, context)
+    provenance = evidence.execution_provenance or {}
+    if (provenance.get("method") != PROTOCOL or provenance.get("network") != "none"
+            or provenance.get("host_source_execution") is not False
+            or provenance.get("source_hashes") != payload["context"]["source_provenance"]["source_hashes"]
+            or provenance.get("revision") != context["commit_sha"]):
+        raise ValueError("Worker broker returned measurements without matching isolation provenance")
+    return evidence
+
+
 class DockerQualityRunner:
     async def analyze(self, changed_files, context):
         from intelligence.algorithms.runner import DockerBenchmarkRunner, BenchmarkFailure
@@ -77,11 +99,7 @@ class DockerQualityRunner:
                 if (result.get("protocol") != PROTOCOL or result.get("revision") != context["commit_sha"]
                         or result.get("source_hashes") != payload["context"]["source_provenance"]["source_hashes"]):
                     raise ValueError("Quality worker returned mismatched source identity")
-                evidence = CodeQualityEvidence.model_validate(result["evidence"])
-                if (evidence.commit_sha != context["commit_sha"] or evidence.repository_id != context["project_id"]
-                        or not 0 <= evidence.files_analyzed <= len(payload["changed_files"])
-                        or any(f.file_path not in payload["sources"] for f in evidence.static_findings)):
-                    raise ValueError("Quality measurements do not belong to the selected source")
+                evidence = verify_evidence(CodeQualityEvidence.model_validate(result["evidence"]), payload, context)
                 evidence.execution_provenance = {**payload["context"]["source_provenance"], **environment,
                     "method": PROTOCOL, "network": "none", "host_source_execution": False,
                     "limitations": ["Static tools do not establish correctness or test execution",

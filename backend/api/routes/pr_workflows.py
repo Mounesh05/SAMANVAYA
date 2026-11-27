@@ -71,6 +71,13 @@ async def job_status(job_id: JobID, request: Request, user: dict = Depends(get_c
         return status_projection(await runtime(request).service.get(job_id, user))
 
 
+@router.post("/jobs/{job_id}/cancel", response_model=ManualWorkflowStatus)
+async def cancel_job(job_id: JobID, request: Request, user: dict = Depends(get_current_user)):
+    """AI-02: cancel your own queued or running advisory analysis."""
+    async with available_storage():
+        return status_projection(await runtime(request).service.cancel(job_id, user))
+
+
 @router.get("/jobs/{job_id}/report", response_model=DurablePRReport)
 async def advisory_report(job_id: JobID, request: Request, user: dict = Depends(get_current_user)):
     async with available_storage():

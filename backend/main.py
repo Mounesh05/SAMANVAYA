@@ -85,6 +85,7 @@ async def lifespan(app: FastAPI):
     from api.routes.webhooks import event_processor
     from domain.services.pr_workflow_runtime import PRWorkflowRuntime
     from domain.services.github_pr_poller import pr_poller
+    from api.routes.code_quality import recovery as code_quality_recovery
     workflow_runtime = PRWorkflowRuntime()
     app.state.pr_workflow_runtime = workflow_runtime
     try:
@@ -92,8 +93,11 @@ async def lifespan(app: FastAPI):
         await workflow_runtime.start()
         # Pull requests of linked repositories without webhooks (e.g. localhost).
         await pr_poller.start()
+        # CQ-05: restart never-claimed analysis runs; fail interrupted ones.
+        code_quality_recovery.start()
         yield
     finally:
+        await code_quality_recovery.stop()
         await pr_poller.stop()
         await workflow_runtime.stop()
         await event_processor.stop()

@@ -24,12 +24,14 @@ from typing import Any, Dict, List, Optional, Literal
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from core.config import settings
 from core.database import col
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
 from core.authorization import code_quality_tenant_filter, verify_code_quality_access, verify_project_access
 from domain.models.project_code_config import ProjectCodeConfig
 from domain.services.code_quality_service import CodeQualityService
+from domain.services import code_quality_jobs as jobs
 from domain.services.quality_run_results import expired, run_deadline, RUN_TIMEOUT_SECONDS
 from domain.services.ai_run_access import invocation_scope, permissions, ACCESS_VERSION
 from intelligence.analyzers.language_detector import LanguageDetector
@@ -139,6 +141,10 @@ async def start_analysis(
         update={"repository_id": repository_id, "changed_files": changed_files}
     )
 
+    # CQ-05: bounded intake per organisation; waiting work is never unbounded.
+    if await col(RUNS_COLLECTION).count_documents(jobs.active_filter(user.get("org_id"))) >= settings.CODE_QUALITY_MAX_PENDING_PER_ORG:
+        raise HTTPException(429, "Too many analyses are already waiting or running for your organisation. Retry shortly.")
+
     run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
     pinned_revision = None
     if body.reanalysis_of:
@@ -192,6 +198,8 @@ async def start_analysis(
         "tools_skipped": [],
         "analysis_duration_ms": None,
         "error": None,
+        # CQ-05: durable intake; recovery restarts a run that no process claimed.
+        "request": jobs.stored_request(normalized_body, user.get("employee_id"), pinned_revision, user.get("org_id")),
     }
 
     collection = col(RUNS_COLLECTION)
@@ -206,6 +214,7 @@ async def start_analysis(
         return {"run_id": run_id, "status": existing["status"], "duplicate": True}
 
     # Queue the heavy analysis in the background
+    jobs.mark_queued(run_id)
     background_tasks.add_task(
         _run_analysis,
         run_id=run_id,
@@ -433,15 +442,42 @@ def analysis_scope(run):
 
 async def _run_analysis(run_id: str, body: AnalyzeRequest, profile: Any, actor_id: Optional[str] = None,
                         pinned_revision: Optional[str] = None, expected_org: Optional[str] = None) -> None:
+    # CQ-05: bounded concurrency, then an atomic claim. A run another process
+    # (or recovery) already took is left alone.
     try:
-        async with asyncio.timeout(RUN_TIMEOUT_SECONDS):
-            await _execute_analysis(run_id, body, actor_id, pinned_revision, expected_org)
-    except (TimeoutError, asyncio.CancelledError) as exc:
-        await col(RUNS_COLLECTION).update_one({"run_id": run_id, "status": {"$in": ["pending", "running"]}},
-            {"$set": {"status": "failed", "quality_analysis_status": "failed", "error": "Quality worker interrupted or timed out",
-                      "completed_at": datetime.now(timezone.utc).isoformat()}})
-        if isinstance(exc, asyncio.CancelledError):
-            raise
+        async with jobs.slots():
+            collection = col(RUNS_COLLECTION)
+            if not await jobs.claim(collection, run_id):
+                return
+            try:
+                async with asyncio.timeout(RUN_TIMEOUT_SECONDS):
+                    await jobs.run_with_lease(collection, run_id, lambda: _execute_analysis(
+                        run_id, body, actor_id, pinned_revision, expected_org))
+            except (TimeoutError, asyncio.CancelledError) as exc:
+                await collection.update_one(jobs.owned(run_id),
+                    {"$set": {"status": "failed", "quality_analysis_status": "failed", "error": "Quality worker interrupted or timed out",
+                              "completed_at": datetime.now(timezone.utc).isoformat()}})
+                if isinstance(exc, asyncio.CancelledError):
+                    raise
+    finally:
+        jobs.mark_done(run_id)
+
+
+def _dispatch_recovered(run: dict) -> None:
+    """Start a stored run that no process claimed (CQ-05 recovery)."""
+    stored = run["request"]
+    body = AnalyzeRequest.model_validate(stored["body"])
+    profile = lang_detector.detect_from_files(body.changed_files)
+    jobs.mark_queued(run["run_id"])
+    task = asyncio.create_task(_run_analysis(run["run_id"], body, profile, actor_id=stored.get("actor_id"),
+                                             pinned_revision=stored.get("pinned_revision"),
+                                             expected_org=stored.get("expected_org")))
+    _recovered_tasks.add(task)
+    task.add_done_callback(_recovered_tasks.discard)
+
+
+_recovered_tasks: set = set()
+recovery = jobs.RecoveryLoop(lambda: col(RUNS_COLLECTION), _dispatch_recovered)
 
 
 async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_org):
@@ -452,11 +488,9 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
     collection = col(RUNS_COLLECTION)
     findings_col = col(FINDINGS_COLLECTION)
 
-    try:
-        await collection.update_one(
-            {"run_id": run_id}, {"$set": {"status": "running"}}
-        )
+    owned = jobs.owned(run_id)  # CQ-05: every write is fenced on this process's claim
 
+    try:
         # Load project config
         cfg_col = col(CONFIGS_COLLECTION)
         cfg_doc = await cfg_col.find_one({"project_id": body.repository_id})
@@ -494,7 +528,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     else:
                         commit = await github.client.get_commit(owner, repo, body.repository_ref or config["default_branch"])
                         revision = commit.get("sha")
-                    await collection.update_one({"run_id": run_id}, {"$set": {"commit_sha": revision, "repository": owner + "/" + repo}})
+                    await collection.update_one(owned, {"$set": {"commit_sha": revision, "repository": owner + "/" + repo}})
                     sources, diagnostics = await github.fetch_analysis_sources(
                         owner, repo, [{"filename": p} for p in body.changed_files], revision, include_context=True, verified_snapshot=True,
                     )
@@ -506,7 +540,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     context.update(source_files={}, source_diagnostics=[{"kind": "connected_source_unavailable"}])
         if body.analysis_level == "purpose_discovery":
             discovery = await cq_service.discover_functions(body.changed_files, context)
-            await collection.update_one({"run_id": run_id}, {"$set": {
+            await collection.update_one(owned, {"$set": {
                 "status": "failed" if discovery.status == "unavailable" else "completed",
                 "analysis_scope": "purpose_discovery", "quality_analysis_status": "not_run",
                 "function_discovery": discovery.model_dump(mode="json"), "commit_sha": context.get("commit_sha"),
@@ -550,6 +584,8 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                 ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
 
         # Persist findings to their own collection
+        if not await jobs.renew(collection, run_id):
+            return  # CQ-05: claim lost (recovered elsewhere); store nothing
         await store_findings(findings_col, run_id, body.repository_id, context["organization_id"], findings)
 
         # Update baseline with this run's metrics
@@ -572,7 +608,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
         # Update run document with final results
         now = datetime.now(timezone.utc).isoformat()
         await collection.update_one(
-            {"run_id": run_id},
+            owned,
             {
                 "$set": {
                     **result,
@@ -589,7 +625,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
 
     except Exception as e:
         await collection.update_one(
-            {"run_id": run_id},
+            owned,
             {
                 "$set": {
                     "status": "failed",

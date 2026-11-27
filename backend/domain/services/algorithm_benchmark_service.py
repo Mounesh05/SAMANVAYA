@@ -19,7 +19,8 @@ from pymongo.errors import DuplicateKeyError
 
 from core.database import col
 from intelligence.algorithms.evidence import recommend
-from intelligence.algorithms.runner import BenchmarkUnavailable, DockerBenchmarkRunner
+from integrations.worker_broker import benchmark_runner
+from intelligence.algorithms.runner import BenchmarkUnavailable
 from intelligence.algorithms.structure import analyze_python
 from intelligence.algorithms.decision import evaluate_decision, fingerprint as decision_fingerprint
 from domain.schemas.decision_policy import DecisionPolicy
@@ -106,7 +107,8 @@ def decision_revision(request, evidence, policy, run_id, user, number):
 class AlgorithmBenchmarkService:
     def __init__(self, collection=None, runner=None, requirements=None):
         self._collection = collection
-        self.runner = runner or DockerBenchmarkRunner()
+        # OPS-03: the internal worker broker in production, local Docker in development.
+        self.runner = runner or benchmark_runner()
         self.requirements = requirements
         self._indexes_ready = False
         self._index_lock = asyncio.Lock()

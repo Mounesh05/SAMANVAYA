@@ -6,6 +6,7 @@ export const prWorkflowsApi = {
   start: (request) => apiClient.post(`${root}/pr-analysis`, request),
   importActionsResults: (projectId, request) => apiClient.post(`/qa/projects/${encodeURIComponent(projectId)}/import-actions-results`, request),
   status: (id, signal) => apiClient.get(`${root}/jobs/${encodeURIComponent(id)}`, { signal }),
+  cancel: (id) => apiClient.post(`${root}/jobs/${encodeURIComponent(id)}/cancel`),
   report: (id, signal) => apiClient.get(`${root}/jobs/${encodeURIComponent(id)}/report`, { signal }),
   lookupReport: (params, signal) => apiClient.get(`${root}/pr-analysis/report`, { params, signal }),
 };

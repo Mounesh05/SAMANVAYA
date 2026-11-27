@@ -10,6 +10,7 @@ vi.mock('../../api/evaluation.api', () => ({
   evaluationApi: {
     getLatest: vi.fn(),
     evaluateDeveloperAI: vi.fn(),
+    getHealth: vi.fn().mockResolvedValue({ human_baseline_enabled: false }),
   },
 }));
 

@@ -7,6 +7,10 @@ export const evaluationApi = {
   evaluateDeveloperAI: async (data) => {
     return apiClient.post('/evaluation/evaluate', data, { timeout: EVALUATION_TIMEOUT_MS });
   },
+  // EV-05: dependency status and evaluation policy flags.
+  getHealth: async () => {
+    return apiClient.get('/evaluation/health');
+  },
   getLatest: async () => {
     return apiClient.get('/evaluation/latest');
   },

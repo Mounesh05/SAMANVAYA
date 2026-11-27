@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
-const initialToken = localStorage.getItem('samanvaya_token') || null;
+// SEC-05: the session token is an HttpOnly cookie the page cannot read. Only
+// the non-secret profile is kept here so the UI can render after a reload;
+// the server still checks the cookie on every request.
+localStorage.removeItem('samanvaya_token');
 let initialUser = null;
 try {
   const savedUser = localStorage.getItem('samanvaya_user');
@@ -10,14 +13,14 @@ try {
 }
 
 export const useAuthStore = create((set) => ({
-  token: initialToken,
+  token: null,
   user: initialUser,
-  isAuthenticated: !!initialToken,
+  isAuthenticated: !!initialUser,
 
-  setAuth: (token, user) => {
-    localStorage.setItem('samanvaya_token', token);
+  // The first argument is ignored (kept so existing callers keep working).
+  setAuth: (_token, user) => {
     localStorage.setItem('samanvaya_user', JSON.stringify(user));
-    set({ token, user, isAuthenticated: true });
+    set({ token: null, user, isAuthenticated: true });
   },
 
   setUser: (user) => {

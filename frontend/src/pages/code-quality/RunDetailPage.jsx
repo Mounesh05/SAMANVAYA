@@ -26,6 +26,47 @@ const WITHHELD_REASONS = {
   dimensions_differ: 'different quality dimensions were measured',
 };
 
+// CQ-03: findings matched across the PR's base and head revisions. Identity
+// ignores line numbers and follows renamed files.
+function FindingList({ title, items }) {
+  if (!items?.length) return null;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <h4>{title}</h4>
+      <ul>
+        {items.map((item) => (
+          <li key={item.fingerprint}>
+            <strong>{item.severity}</strong> · {item.rule_id} ({item.source_tool}) ·{' '}
+            <code>{item.file_path}{item.line_number ? `:${item.line_number}` : ''}</code> — {item.message}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function FindingChanges({ changes }) {
+  if (changes.status !== 'available') {
+    return (
+      <Card title="Findings since base">
+        <p>Not compared: evidence is partial on at least one revision, so findings could look new or resolved only because they were not measured.</p>
+      </Card>
+    );
+  }
+  const { counts } = changes;
+  return (
+    <Card title="Findings since base">
+      <p>
+        <strong>{counts.new}</strong> new · <strong>{counts.existing}</strong> still present ·{' '}
+        <strong>{counts.resolved}</strong> resolved
+      </p>
+      <FindingList title="New in this PR" items={changes.new} />
+      <FindingList title="Resolved by this PR" items={changes.resolved} />
+      {changes.truncated && <p>Only the first 100 of each are listed.</p>}
+    </Card>
+  );
+}
+
 export function RunDetailPage() {
   const { runId } = useParams();
   const navigate = useNavigate();
@@ -148,6 +189,7 @@ export function RunDetailPage() {
           {run.quality_comparison.delta == null && WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]
             ? ` (${WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]})` : ''}</p>
       </Card>}
+      {run?.finding_changes && <FindingChanges changes={run.finding_changes} />}
       {run?.commit_sha && <p>Revision <code>{run.commit_sha}</code></p>}
       {run?.commit_sha && !['running', 'pending', 'analyzing'].includes(run.status) &&
         <PermissionGuard permission={PERMISSIONS.TRIGGER_CODE_ANALYSIS}><Button variant="secondary"

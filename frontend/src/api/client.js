@@ -2,25 +2,41 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { API_BASE_URL } from '../utils/constants';
 
+// SEC-05: the session lives in an HttpOnly cookie that page scripts cannot
+// read. Requests send it automatically; state-changing requests echo the
+// readable CSRF cookie in X-CSRF-Token (double-submit).
+const CSRF_COOKIE = 'samanvaya_csrf';
+const SAFE_METHODS = ['get', 'head', 'options'];
+
+export function csrfToken() {
+  const entry = document.cookie.split('; ').find((part) => part.startsWith(`${CSRF_COOKIE}=`));
+  return entry ? decodeURIComponent(entry.slice(CSRF_COOKIE.length + 1)) : '';
+}
+
+function withCsrf(config) {
+  const method = (config.method || 'get').toLowerCase();
+  const token = csrfToken();
+  if (!SAFE_METHODS.includes(method) && token) {
+    config.headers = config.headers || {};
+    config.headers['X-CSRF-Token'] = token;
+  }
+  return config;
+}
+
+// Tokens from older versions are no longer kept in browser storage.
+localStorage.removeItem('samanvaya_token');
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// ── Request interceptor: attach token ─────────────────────────────────────
+// ── Request interceptor: CSRF header for cookie sessions ──────────────────
 
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('samanvaya_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+apiClient.interceptors.request.use(withCsrf, (error) => Promise.reject(error));
 
 // ── Response interceptor: 401 auto-refresh ────────────────────────────────
 
@@ -32,12 +48,12 @@ let failedQueue = [];
  * On success, retry each queued request with the new token.
  * On failure, reject them all so the UI can handle it.
  */
-function processQueue(error, token = null) {
+function processQueue(error) {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
     } else {
-      resolve(token);
+      resolve();
     }
   });
   failedQueue = [];
@@ -88,7 +104,6 @@ apiClient.interceptors.response.use(
         originalRequest.url?.includes('/auth/login');
 
       if (isAuthEndpoint) {
-        localStorage.removeItem('samanvaya_token');
         localStorage.removeItem('samanvaya_user');
         if (window.location.pathname !== '/login') {
           window.location.assign('/login?expired=true');
@@ -102,10 +117,7 @@ apiClient.interceptors.response.use(
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then((newToken) => {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(originalRequest);
-        });
+        }).then(() => apiClient(originalRequest));
       }
 
       // Mark that we're refreshing
@@ -113,44 +125,16 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Call the refresh endpoint with the current (possibly near-expired) token
-        const currentToken = localStorage.getItem('samanvaya_token');
-        const response = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${currentToken}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
+        // The server rotates the session cookie; no token reaches page scripts.
+        await axios.post(`${API_BASE_URL}/auth/refresh`, {},
+          withCsrf({ method: 'post', withCredentials: true, headers: { 'Content-Type': 'application/json' } }));
 
-        const newToken = response.data?.token;
-        if (!newToken) {
-          throw new Error('No token in refresh response');
-        }
-
-        // Persist the new token
-        localStorage.setItem('samanvaya_token', newToken);
-
-        // Keep the Zustand store in sync with the refreshed token.
-        const state = useAuthStore.getState();
-        if (state?.setAuth && state?.user) {
-          state.setAuth(newToken, state.user);
-        }
-
-        // Process queued requests with the new token
-        processQueue(null, newToken);
-
-        // Retry the original request
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        processQueue(null);
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed — clear session and redirect to login
-        processQueue(refreshError, null);
-        localStorage.removeItem('samanvaya_token');
-        localStorage.removeItem('samanvaya_user');
+        processQueue(refreshError);
+        useAuthStore.getState()?.logout?.();
         if (window.location.pathname !== '/login') {
           window.location.assign('/login?expired=true');
         }

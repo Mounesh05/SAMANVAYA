@@ -711,42 +711,43 @@ describe('Explicit compatible history', () => {
 describe('Algorithms API adapter', () => {
   it('posts a new policy for exactly one saved run using the authenticated adapter', async () => {
     const { algorithmsApi: actualApi } = await vi.importActual('../api/algorithms.api');
-    localStorage.setItem('samanvaya_token', 'revision-token');
+    localStorage.setItem('samanvaya_token', 'stale-token');
+    document.cookie = 'samanvaya_csrf=csrf-revision';
     const policy = { id: 'strict', version: '1' };
     let captured;
     server.use(http.post('*/api/algorithms/runs/saved-1/reevaluate', async ({ request }) => {
-      captured = { token: request.headers.get('Authorization'), body: await request.json() };
+      captured = { token: request.headers.get('Authorization'), csrf: request.headers.get('X-CSRF-Token'), body: await request.json() };
       return HttpResponse.json({ revision_number: 2 });
     }));
     expect(await actualApi.reevaluate('saved-1', policy)).toEqual({ revision_number: 2 });
-    expect(captured).toEqual({ token: 'Bearer revision-token', body: { decision_policy: policy } });
+    expect(captured).toEqual({ token: null, csrf: 'csrf-revision', body: { decision_policy: policy } });
   });
   it('authenticates structure inspection and explicit compatible-history access through the real client', async () => {
     const { algorithmsApi: actualApi } = await vi.importActual('../api/algorithms.api');
-    localStorage.setItem('samanvaya_token', 'structure-test-token');
+    document.cookie = 'samanvaya_csrf=csrf-structure';
     const payload = { project_id: 'p', language: 'python', candidates: [{ name: 'total', entrypoint: 'total', source: 'def total(values): return sum(values)' }], resources: { cpus: 0.5 } };
     const structure = { structural_analysis: { total: { loops: 0 } }, execution_performed: false, environment: {} };
     const history = { history: [], historical_only: true, limitations: ['Historical only'] };
     const requests = [];
     server.use(
       http.post('*/api/algorithms/structure', async ({ request }) => {
-        requests.push({ token: request.headers.get('Authorization'), body: await request.json() });
+        requests.push({ token: request.headers.get('Authorization'), csrf: request.headers.get('X-CSRF-Token'), body: await request.json() });
         return HttpResponse.json(structure);
       }),
       http.get('*/api/algorithms/runs/saved-run/compatible-history', ({ request }) => {
-        requests.push({ token: request.headers.get('Authorization') });
+        requests.push({ token: request.headers.get('Authorization'), csrf: request.headers.get('X-CSRF-Token') });
         return HttpResponse.json(history);
       }),
     );
     await expect(actualApi.inspectStructure(payload)).resolves.toEqual(structure);
     await expect(actualApi.getCompatibleHistory('saved-run')).resolves.toEqual(history);
     expect(requests).toEqual([
-      { token: 'Bearer structure-test-token', body: payload },
-      { token: 'Bearer structure-test-token' },
+      { token: null, csrf: 'csrf-structure', body: payload },
+      { token: null, csrf: null },
     ]);
   });
 
-  it('attaches the bearer token and unwraps an async 202 response through the real client', async () => {
+  it('sends the CSRF header (never a stored token) and unwraps an async 202 response through the real client', async () => {
     const { algorithmsApi: actualApi } = await vi.importActual('../api/algorithms.api');
     const payload = {
       project_id: 'project-1',
@@ -754,23 +755,23 @@ describe('Algorithms API adapter', () => {
       datasets: [{ id: 'custom-input', args: [{ values: [1, 2] }, null], dimensions: { count: 2 } }],
       resources: { timeout_seconds: 30, cpus: 0.5, memory_bytes: 67108864, pids: 16 },
     };
-    localStorage.setItem('samanvaya_token', 'benchmark-test-token');
+    document.cookie = 'samanvaya_csrf=csrf-benchmark';
     const requests = [];
     server.use(
       http.post('*/api/algorithms/runs', async ({ request }) => {
-        requests.push({ token: request.headers.get('Authorization'), body: await request.json() });
+        requests.push({ token: request.headers.get('Authorization'), csrf: request.headers.get('X-CSRF-Token'), body: await request.json() });
         return HttpResponse.json({ run_id: 'async-run', status: 'pending' }, { status: 202 });
       }),
       http.get('*/api/algorithms/runs/async-run', ({ request }) => {
-        requests.push({ token: request.headers.get('Authorization') });
+        requests.push({ token: request.headers.get('Authorization'), csrf: request.headers.get('X-CSRF-Token') });
         return HttpResponse.json({ run_id: 'async-run', status: 'running' });
       }),
     );
     await expect(actualApi.startRun(payload)).resolves.toEqual({ run_id: 'async-run', status: 'pending' });
     await expect(actualApi.getRun('async-run')).resolves.toEqual({ run_id: 'async-run', status: 'running' });
     expect(requests).toEqual([
-      { token: 'Bearer benchmark-test-token', body: payload },
-      { token: 'Bearer benchmark-test-token' },
+      { token: null, csrf: 'csrf-benchmark', body: payload },
+      { token: null, csrf: null },
     ]);
   });
   it('uses the authenticated client with encoded identifiers and the expected endpoints', async () => {

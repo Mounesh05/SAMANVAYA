@@ -8,12 +8,15 @@ import httpx
 from langgraph.graph import END, START, StateGraph
 
 from agents.parsers import safe_parse, AgentResponseError
+from core import model_metrics
+from core.config import settings
 from domain.models.pr_multi_agent import (
     AgentOutcome, AssessedClaim, ManualPRRequest, PRSnapshot, PRAdvisoryReport, SpecialistReply, SpecialistView,
     AssertionStatus, ReportStatus, Collaboration,
 )
 
-SPECIALIST_TIMEOUT_SECONDS = 30.0
+# AI-01: configurable per deployment; slow (CPU-only) hosts need more time.
+SPECIALIST_TIMEOUT_SECONDS = settings.PR_AGENT_SPECIALIST_TIMEOUT_SECONDS
 MAX_PROMPT_BYTES = 49152
 
 
@@ -186,7 +189,8 @@ class PRMultiAgentGraph:
             view = SpecialistView(specialist=specialist, snapshot_id=snapshot.snapshot_id, scope=snapshot.scope,
                 references=snapshot.references, observations=snapshot.observations, prior_outcomes=prior)
             try:
-                raw = await asyncio.wait_for(runner(view), SPECIALIST_TIMEOUT_SECONDS)
+                with model_metrics.measure("pr_agent_specialist"):
+                    raw = await asyncio.wait_for(runner(view), SPECIALIST_TIMEOUT_SECONDS)
                 reply = safe_parse(raw.model_dump_json() if isinstance(raw, SpecialistReply) else raw, SpecialistReply)
                 result = AgentOutcome(specialist=specialist, status="SUCCEEDED", summary=reply.summary,
                     claims=reply.claims, limitations=reply.limitations, consumed_outputs=consumed,

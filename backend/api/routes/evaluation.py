@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from agents.llm_provider import check_ollama_connection, get_ollama_llm
+from core import model_metrics
 from core.config import settings
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
@@ -1323,12 +1324,13 @@ Return JSON only with this exact shape:
     )
     try:
         llm = get_ollama_llm(temperature=0.3)
-        response = await asyncio.wait_for(
-            asyncio.to_thread(llm.invoke, prompt,
-                              format=_evaluation_response_shape(assessable_dimensions, citation_catalog),
-                              options={'temperature': 0.3, 'num_predict': 2048, 'num_ctx': 16384}),
-            timeout=MODEL_REQUEST_TIMEOUT_SECONDS,
-        )
+        with model_metrics.measure("developer_evaluation"):  # AI-01: latency visible in /evaluation/health
+            response = await asyncio.wait_for(
+                asyncio.to_thread(llm.invoke, prompt,
+                                  format=_evaluation_response_shape(assessable_dimensions, citation_catalog),
+                                  options={'temperature': 0.3, 'num_predict': 2048, 'num_ctx': 16384}),
+                timeout=MODEL_REQUEST_TIMEOUT_SECONDS,
+            )
         logger.info(
             "Completed Ollama evaluation inference model=%s duration_seconds=%.2f",
             settings.OLLAMA_MODEL,
@@ -1491,6 +1493,11 @@ async def evaluate_developer_ai(
     employee_id = request.employee_id or user.get("employee_id")
     if not employee_id:
         raise HTTPException(status_code=400, detail="Employee ID is required")
+    # EV-05: a routine numeric human score is not accepted until the organisation
+    # approves a calibrated human-score policy. Stored legacy values stay readable.
+    if request.human_score is not None and not settings.EVALUATION_HUMAN_BASELINE_ENABLED:
+        raise HTTPException(status_code=422, detail="Manual baseline scores are disabled by policy. "
+                            "Submit the evaluation without a human score.")
     # CR-004: Leads evaluate only their team members; the CEO anyone.
     await verify_can_view_person_evaluations(user, employee_id)
     await _verify_repository_in_scope(user, request.repo_owner, request.repo_name)
@@ -1756,6 +1763,14 @@ async def evaluation_health():
         "ai_available": ai_available,
         "github_available": github_status,
         "evaluation_ready": ai_available and github_status in ["configured", "not_configured"],
+        # EV-05: lets the page hide the manual score field when policy disables it.
+        "human_baseline_enabled": settings.EVALUATION_HUMAN_BASELINE_ENABLED,
+        "score_scope": "pr_advisory",
+        # AI-01: recent model latency against the configured limits (no prompts or content).
+        "model": {"name": settings.OLLAMA_MODEL,
+                  "inference_timeout_seconds": settings.OLLAMA_INFERENCE_TIMEOUT_SECONDS,
+                  "specialist_timeout_seconds": settings.PR_AGENT_SPECIALIST_TIMEOUT_SECONDS,
+                  "recent_latency": model_metrics.summary()},
     }
 
 

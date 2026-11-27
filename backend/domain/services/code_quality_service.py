@@ -92,7 +92,7 @@ class CodeQualityService:
             from pathlib import Path
             if not repo_path or not Path(repo_path).is_dir():
                 if pr_context.get("source_provenance"):
-                    from intelligence.analyzers.isolated import DockerQualityRunner
+                    from integrations.worker_broker import quality_runner
                     try:
                         selected = [path for path in changed_files if path in pr_context["source_files"]
                                     and Path(path).suffix.lower() in {".py", ".pyi", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}]
@@ -102,7 +102,7 @@ class CodeQualityService:
                                 tools_skipped=["quality-tools:selected-source-unavailable"],
                                 analysis_quality=AnalysisQuality(level=AnalysisLevelEnum.INFERRED_ONLY, confidence=0,
                                     reason="No selected supported file was available in the verified revision."))
-                        isolated = await DockerQualityRunner().analyze(selected, pr_context)
+                        isolated = await quality_runner().analyze(selected, pr_context)
                         selected_profile = self._detector.detect_from_files(selected)
                         isolated.detected_languages = selected_profile.detected_languages
                         isolated.primary_language = selected_profile.primary_language

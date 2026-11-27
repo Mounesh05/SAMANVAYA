@@ -57,6 +57,28 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "llama3.2"  # or llama3.1, mistral, etc.
     # Read timeout for one model call. CPU-only hosts need more (often 300+).
     OLLAMA_INFERENCE_TIMEOUT_SECONDS: float = Field(default=120.0, gt=0, le=1800)
+    # AI-01: per-specialist limit for the PR multi-agent workflow.
+    PR_AGENT_SPECIALIST_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0, le=900)
+
+    # ── Isolated workers (OPS-03) ─────────────────────────────────
+    # Empty: the API runs the fixed worker images through the local Docker CLI
+    # (development). Set: the API calls the internal worker broker instead and
+    # never needs Docker access itself (production).
+    WORKER_BROKER_URL: str = ""
+    WORKER_BROKER_TOKEN: str = ""
+    WORKER_BROKER_TIMEOUT_SECONDS: float = Field(default=180.0, gt=0, le=900)
+
+    # ── Background work limits (CQ-05, AI-02) ─────────────────────
+    CODE_QUALITY_MAX_CONCURRENT_RUNS: int = Field(default=2, ge=1, le=16)
+    CODE_QUALITY_MAX_PENDING_PER_ORG: int = Field(default=20, ge=1, le=1000)
+    PR_WORKFLOW_MAX_ACTIVE_PER_ACTOR: int = Field(default=3, ge=1, le=100)
+    PR_WORKFLOW_MAX_ACTIVE_PER_ORG: int = Field(default=20, ge=1, le=1000)
+    PR_WORKFLOW_MAX_ACTIVE_TOTAL: int = Field(default=100, ge=1, le=10000)
+
+    # ── Evaluation policy (EV-05) ─────────────────────────────────
+    # Manual 1-10 baseline scores blend into the PR-only advisory score. Off
+    # until the organisation approves a calibrated human-score policy.
+    EVALUATION_HUMAN_BASELINE_ENABLED: bool = False
 
     # ── GitHub ────────────────────────────────────────────────────
     GITHUB_TOKEN: str = ""
@@ -139,7 +161,10 @@ class Settings(BaseSettings):
         
         if self.DEBUG:
             errors.append("DEBUG must be False in production")
-        
+
+        if self.WORKER_BROKER_URL and len(self.WORKER_BROKER_TOKEN) < 32:
+            errors.append("WORKER_BROKER_TOKEN must be at least 32 characters when WORKER_BROKER_URL is set")
+
         return errors
 
 

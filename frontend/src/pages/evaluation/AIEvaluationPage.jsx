@@ -53,6 +53,14 @@ export function AIEvaluationPage() {
     queryKey: ['latest-evaluation'],
     queryFn: evaluationApi.getLatest,
   });
+  // EV-05: the manual score field appears only when policy enables it.
+  const evaluationPolicy = useQuery({
+    queryKey: ['evaluation-policy'],
+    queryFn: evaluationApi.getHealth,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const humanBaselineEnabled = evaluationPolicy.data?.human_baseline_enabled === true;
 
   useEffect(() => {
     if (latestEvaluation.data) {
@@ -65,7 +73,7 @@ export function AIEvaluationPage() {
       evaluationApi.evaluateDeveloperAI({
         ...data,
         pr_number: data.pr_number ? parseInt(data.pr_number, 10) : null,
-        human_score: data.human_score ? parseFloat(data.human_score) : null,
+        human_score: humanBaselineEnabled && data.human_score ? parseFloat(data.human_score) : null,
       }),
     onSuccess: (res) => {
       setEvalResult(res);
@@ -174,15 +182,17 @@ export function AIEvaluationPage() {
                 placeholder="e.g. 42"
                 required
               />
-              <Input
-                label="Human Baseline Score (1-10, optional)"
-                type="number"
-                step="0.1"
-                min="1"
-                max="10"
-                value={formData.human_score}
-                onChange={(e) => setFormData({ ...formData, human_score: e.target.value })}
-              />
+              {humanBaselineEnabled && (
+                <Input
+                  label="Human Baseline Score (1-10, optional)"
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="10"
+                  value={formData.human_score}
+                  onChange={(e) => setFormData({ ...formData, human_score: e.target.value })}
+                />
+              )}
             </div>
 
             <Button
@@ -225,7 +235,8 @@ export function AIEvaluationPage() {
                 </strong>
                 <div>
                   This result evaluates the available evidence from PR #{evalResult.pr_number}; it is not a
-                  complete assessment of the developer&apos;s engineering performance.
+                  complete assessment of the developer&apos;s engineering performance. The score is advisory
+                  for review of this PR only and must not be used as an employee rating.
                 </div>
               </div>
               <div
@@ -240,7 +251,7 @@ export function AIEvaluationPage() {
               >
                 <div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-                    OVERALL SCORE (NORMALIZED TO ASSESSED DIMENSIONS)
+                    PR-ONLY ADVISORY SCORE (NOT AN EMPLOYEE PERFORMANCE RATING)
                   </span>
                   <div style={{ fontSize: '2rem', fontWeight: '600', color: 'var(--cyan)' }}>
                     {evalResult.overall_score == null ? 'Overall score unavailable' : `${evalResult.overall_score} / 10`}

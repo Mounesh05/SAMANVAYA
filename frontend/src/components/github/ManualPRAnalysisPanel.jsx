@@ -25,6 +25,7 @@ const messages = {
   CI_COUNTS_ARE_RECORDED_SUBMISSIONS_NOT_INDEPENDENT_EXECUTION_PROOF: 'CI counts are recorded submissions; execution was not independently verified.',
   STRUCTURAL_FACTS_DO_NOT_PROVE_CORRECTNESS: 'Structural observations do not establish correctness.',
   MODEL_STATEMENTS_ARE_ADVISORY: 'Model statements remain advisory.',
+  CANCELLED_BY_REQUESTER: 'You cancelled this analysis. Nothing produced after cancelling was kept.',
 };
 const label = (value) => messages[value] || String(value || '').replaceAll('_', ' ').toLowerCase();
 const claimLabels = { SUPPORTED: 'Supported structured observation', PROPOSED: 'Proposed interpretation',
@@ -34,7 +35,8 @@ function errorMessage(error) {
   const status = error?.status ?? error?.response?.status;
   if (status === 403 || status === 401) return 'Access is no longer authorized. Analysis content is hidden.';
   if (status === 404) return 'Manual PR analysis is unavailable or not enabled for this account.';
-  if (status === 429) return 'Another request is being prepared. Retry shortly.';
+  if (status === 429) return error?.message || 'Another request is being prepared. Retry shortly.';
+  if (status === 409) return error?.message || 'This analysis has already finished.';
   if (status === 503) return 'The analysis service is temporarily unavailable. Please retry.';
   return error?.message || 'Unable to load this advisory analysis.';
 }
@@ -108,12 +110,15 @@ function AnalysisForm({ user }) {
   const start = useMutation({ mutationFn: (request) => prWorkflowsApi.start(request), onSuccess: (job) => setJobId(job.job_id) });
   const status = useQuery({ queryKey: ['manual-pr-status', ...identity, jobId], enabled: !!jobId,
     queryFn: ({ signal }) => prWorkflowsApi.status(jobId, signal), retry: false, gcTime: 0,
-    refetchInterval: (query) => query.state.error || ['FINALIZED', 'FAILED'].includes(query.state.data?.status) ? false : 2000 });
+    refetchInterval: (query) => query.state.error || ['FINALIZED', 'FAILED', 'CANCELLED'].includes(query.state.data?.status) ? false : 2000 });
+  // AI-02: the requester can stop a queued or running analysis.
+  const cancel = useMutation({ mutationFn: () => prWorkflowsApi.cancel(jobId), onSuccess: () => status.refetch() });
   const report = useQuery({ queryKey: ['manual-pr-report', ...identity, jobId],
     enabled: !!jobId && !!status.data?.report_available && !status.isError,
     queryFn: ({ signal }) => prWorkflowsApi.report(jobId, signal), retry: false, gcTime: 0 });
   const error = validation || (start.error ? errorMessage(start.error) : '')
-    || (status.error ? errorMessage(status.error) : '') || (report.error ? errorMessage(report.error) : '');
+    || (status.error ? errorMessage(status.error) : '') || (report.error ? errorMessage(report.error) : '')
+    || (cancel.error ? errorMessage(cancel.error) : '');
   const options = (projects.data?.projects || []).map((item) => ({ value: item.id, label: item.name }));
   const data = error ? null : status.data;
   const analysis = error ? null : report.data;
@@ -177,11 +182,15 @@ function AnalysisForm({ user }) {
     {jobId && <div style={{ marginTop: '1rem', overflowWrap: 'anywhere' }}>
       <p>Analysis ID: <code>{jobId}</code></p>
       <Button variant="secondary" onClick={refresh} disabled={status.isFetching}>Refresh analysis</Button>
+      {['PENDING', 'RUNNING', 'RETRY_WAIT'].includes(status.data?.status) &&
+        <Button variant="ghost" onClick={() => cancel.mutate()} disabled={cancel.isPending}>
+          {cancel.isPending ? 'Cancelling…' : 'Cancel analysis'}</Button>}
     </div>}
     {jobId && status.isPending && !status.isError && <p role="status">Loading analysis…</p>}
     {data && <section aria-label="Analysis progress" style={{ marginTop: '1rem', overflowWrap: 'anywhere' }}>
       <p role="status">{({ PENDING: 'Queued for advisory analysis', RUNNING: 'Analyzing the pinned revision',
-        RETRY_WAIT: 'Waiting to retry advisory analysis', FAILED: 'Analysis stopped', FINALIZED: 'Advisory report ready' })[data.status]}</p>
+        RETRY_WAIT: 'Waiting to retry advisory analysis', FAILED: 'Analysis stopped', FINALIZED: 'Advisory report ready',
+        CANCELLED: 'Analysis cancelled' })[data.status]}</p>
       <p>{data.repository} · PR #{data.pr_number} · Revision <code>{data.head_sha}</code></p>
       <p>Evidence snapshot: <code>{data.snapshot_id}</code></p>
       <ul>{data.specialists?.map((step) => <li key={step.specialist}>{names[step.specialist]}: {label(step.status)}
