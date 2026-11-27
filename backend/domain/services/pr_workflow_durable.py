@@ -28,6 +28,9 @@ class DurablePRWorkflowService:
         self.repository = repository if repository is not None else PRWorkflowRepository()
         self.worker_id = uuid4().hex
         self._slot = asyncio.Lock()
+        # v4 MA-19: the quota re-check and the insert happen together, so simultaneous
+        # starts cannot all pass the count. Held only for those two fast steps.
+        self._admission = asyncio.Lock()
 
     async def authorize_header(self, header, user):
         self.manual.check_enabled()
@@ -68,7 +71,10 @@ class DurablePRWorkflowService:
                 raise HTTPException(409, "PR scope changed during job creation")
             await self.manual.authorize_snapshot({"actor_id": scope.owner_id, "request": pinned, "snapshot": snapshot})
             await self.repository.ensure_indexes()
-            key = await self.repository.create(pinned, snapshot)
+            async with self._admission:
+                if await self.repository.header(key) is None:
+                    await self._enforce_quota(scope)
+                key = await self.repository.create(pinned, snapshot)
             return self.summary(await self.get(key, current_user))
 
     async def _enforce_quota(self, scope):

@@ -34,6 +34,7 @@ def snapshot_payload(changed_files, context):
     seen, total, hashes = set(), 0, {}
     for path, source in sources.items():
         if (not isinstance(path, str) or not path or len(path) > 500 or "\\" in path or ":" in path
+                or any(ord(character) < 32 or ord(character) == 127 for character in path)
                 or path.startswith("/") or any(p in {"", ".", "..", ".git", "node_modules", ".venv", "venv"} for p in path.split("/"))
                 or str(PurePosixPath(path)) != path or path.casefold() in seen
                 or not isinstance(source, str)):

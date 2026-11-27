@@ -17,26 +17,46 @@ from intelligence.analyzers.isolated import source_provenance
 logger = logging.getLogger(__name__)
 
 
+# Skips the isolated static worker reports on every snapshot by design (no tests,
+# no network, no project config). They are the same on both revisions, so they do
+# not make a comparison partial. Any other skip (a tool that failed) still does.
+ENVIRONMENT_SKIPS = frozenset({"dependency-advisories-offline", "pytest", "coverage",
+                               "tsc:configuration-unavailable", "npm-audit:package-manifest-unavailable"})
+
+
+def _fully_observed(record):
+    status, skipped = record.get("quality_analysis_status"), set(record.get("tools_skipped") or [])
+    # A partial side with no recorded skip is partial for an unknown reason: not comparable.
+    return status == "available" or (status == "partial" and bool(skipped) and skipped <= ENVIRONMENT_SKIPS)
+
+
+def comparable_sides(before, after, truncated=False):
+    """v4 CQ-13/CQ-14: None when both revisions were measured alike, else the reason they are not.
+
+    Both sides must be scored, complete apart from the worker's fixed environment
+    skips, and have run and skipped exactly the same tools under the same policy.
+    """
+    if None in (before.get("quality_score"), after.get("quality_score")):
+        return "score_unavailable"
+    if truncated or not (_fully_observed(before) and _fully_observed(after)):
+        return "partial_evidence"
+    if before.get("policy_digest") != after.get("policy_digest"):
+        return "policy_changed"
+    if (set(before.get("tools_executed") or []) != set(after.get("tools_executed") or [])
+            or set(before.get("tools_skipped") or []) != set(after.get("tools_skipped") or [])):
+        return "tools_differ"
+    if ({k for k, v in (before.get("quality_dimensions") or {}).items() if v is not None}
+            != {k for k, v in (after.get("quality_dimensions") or {}).items() if v is not None}):
+        return "dimensions_differ"
+    return None
+
+
 def comparable_delta(before, after, truncated=False):
     """CQ-02: a delta only between fully measured sides under the same policy, tools and dimensions."""
-    scores = (before.get("quality_score"), after.get("quality_score"))
-    reason = None
-    if None in scores:
-        reason = "score_unavailable"
-    elif truncated:
-        reason = "partial_evidence"
-    elif (before.get("quality_analysis_status"), after.get("quality_analysis_status")) != ("available", "available"):
-        reason = "partial_evidence"
-    elif before.get("policy_digest") != after.get("policy_digest"):
-        reason = "policy_changed"
-    elif set(before.get("tools_executed") or []) != set(after.get("tools_executed") or []):
-        reason = "tools_differ"
-    elif ({k for k, v in (before.get("quality_dimensions") or {}).items() if v is not None}
-          != {k for k, v in (after.get("quality_dimensions") or {}).items() if v is not None}):
-        reason = "dimensions_differ"
+    reason = comparable_sides(before, after, truncated)
     if reason:
         return {"delta": None, "delta_withheld_reason": reason}
-    return {"delta": scores[1] - scores[0], "delta_withheld_reason": None,
+    return {"delta": after["quality_score"] - before["quality_score"], "delta_withheld_reason": None,
             "policy_digest": after.get("policy_digest")}
 
 
@@ -231,11 +251,10 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
         summary.update({k: after.get(k) for k in ("quality_score", "quality_grade", "risk_score", "risk_level")})
         # CQ-03: new / existing / resolved findings across the two revisions.
         renames = rename_map(files)
+        # v4 CQ-14: classify only when both revisions were measured alike (same tools run and skipped).
+        comparable = comparable_sides(before, after, truncated=pr.get("changed_files", len(files)) > len(files)) is None
         finding_changes, identities = classify_findings(
-            base_findings, head_findings, renames,
-            base_available=before.get("quality_analysis_status") == "available",
-            head_available=after.get("quality_analysis_status") == "available"
-            and not pr.get("changed_files", len(files)) > len(files))
+            base_findings, head_findings, renames, base_available=comparable, head_available=comparable)
         summary["finding_changes"] = finding_changes
         if identities:
             stored = col("code_quality_findings")

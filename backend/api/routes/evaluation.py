@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import math
 import logging
 import re
 import time
@@ -1464,10 +1465,13 @@ Return JSON only with this exact shape:
     _validate_evidence_bound_claims(ai_data, manifest)
     _validate_dimension_reasoning_sources(dimensions, manifest)
     _validate_recommendations(ai_data["recommendations"], ai_data["evidence"], manifest)
-    try:
-        ai_data["confidence"] = max(0.0, min(1.0, float(ai_data.get("confidence", 0.0))))
-    except (TypeError, ValueError) as exc:
-        raise ModelResponseValidationError("AI confidence must be numeric") from exc
+    # v4 item 7: reject an invalid self-reported confidence instead of clamping it.
+    # Clamping turned NaN, Infinity, 7 and true into 1.0 and a missing value into 0.0.
+    confidence = ai_data.get("confidence")
+    if (isinstance(confidence, bool) or not isinstance(confidence, (int, float))
+            or not math.isfinite(confidence) or not 0 <= confidence <= 1):
+        raise ModelResponseValidationError("AI confidence must be a number between 0 and 1")
+    ai_data["confidence"] = confidence
     return ai_data
 
 

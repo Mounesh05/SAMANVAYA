@@ -42,7 +42,7 @@ class TestRunSubmission(BaseModel):
     tests_failed: int = Field(..., ge=0)
     tests_skipped: int = Field(default=0, ge=0)
     duration_seconds: float | None = Field(default=None, ge=0)
-    status: str = Field(..., pattern="^(passed|failed|error|cancelled)$")
+    status: str = Field(..., pattern="^(passed|failed|error|cancelled|skipped)$")
     created_at: datetime | None = None
     
     # GitHub Actions metadata
@@ -56,6 +56,9 @@ class TestRunSubmission(BaseModel):
     def validate_counts(self):
         if self.tests_passed + self.tests_failed > self.tests_run:
             raise ValueError("tests_passed + tests_failed cannot exceed tests_run")
+        if self.status == "passed" and self.tests_failed:
+            # v4 CI-11: a report cannot claim success while counting failures.
+            raise ValueError("passed status cannot report failed tests")
         return self
 
 
@@ -126,6 +129,10 @@ async def submit_test_run(
         submission.created_at.isoformat() if submission.created_at else now.isoformat()
     )
     document["received_at"] = now.isoformat()
+    if submission.status == "passed" and submission.tests_passed == 0:
+        # v4 CI-09: nothing passed (every test skipped, or none ran), so this is not
+        # a successful run. Keep what CI claimed for audit.
+        document["status"], document["reported_status"] = "skipped", "passed"
 
     document["ingestion_provenance"] = provenance
     if provenance == "project_ci_token":

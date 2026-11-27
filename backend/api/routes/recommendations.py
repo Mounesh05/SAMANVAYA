@@ -65,6 +65,8 @@ async def get_user_recommendations(
             "recommendations": recs,
             "count": len(recs)
         }
+    except HTTPException:
+        raise  # v4 REC-15: a refusal stays a refusal (was turned into 500)
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -92,6 +94,8 @@ async def get_role_recommendations(
             "recommendations": recs,
             "count": len(recs)
         }
+    except HTTPException:
+        raise  # v4 REC-15
     except Exception:
         raise HTTPException(status_code=500, detail="Internal server error")
 

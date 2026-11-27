@@ -137,29 +137,32 @@ def changed_functions(base, head, files, before, after):
 
 
 def same_revision_alternatives(rows):
-    """Functions co-referenced by a single static assertion are Mode C candidates.
+    """Functions one static assertion compares with each other are Mode C candidates.
 
-    One assertion that mentions two distinct changed functions is structural
-    evidence that the author treats them as interchangeable answers to the same
-    requirement. Nothing about chronology or superiority is implied.
+    v4 AL-16: an assertion that compares two distinct changed functions as equals
+    (``assert f(x) == g(x)``, ``expect(f(x)).toEqual(g(x))``) is structural evidence
+    that the author treats them as interchangeable answers to the same requirement.
+    Merely appearing in one assertion is not: composition (``f(g(x))``), round
+    trips and unrelated checks joined with ``and`` are never paired. Both sides
+    must name each other at the same assertion site. Nothing about chronology or
+    superiority is implied.
     """
-    by_assertion: dict[tuple, set] = {}
+    ids = {row["current"]["function_id"] for row in rows}
+    compared: set[tuple] = set()
     for row in rows:
+        me = row["current"]["function_id"]
         for evidence in row["current"].get("evidence", []):
             if evidence.get("kind") != "test_expectation":
                 continue
             key = (evidence.get("path"), evidence.get("line"))
-            if key[0] is None or key[1] is None:
+            peer = evidence.get("related")
+            if key[0] is None or key[1] is None or peer not in ids or peer == me:
                 continue
-            by_assertion.setdefault(key, set()).add(row["current"]["function_id"])
+            compared.add((me, peer, key))
     links: dict[str, dict[str, list]] = {}
-    for key, ids in by_assertion.items():
-        if len(ids) < 2:
-            continue
-        for left in ids:
-            for right in ids:
-                if left != right:
-                    links.setdefault(left, {}).setdefault(right, []).append(key)
+    for left, right, key in compared:
+        if (right, left, key) in compared:
+            links.setdefault(left, {}).setdefault(right, []).append(key)
     return links
 
 

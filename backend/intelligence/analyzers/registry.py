@@ -81,6 +81,11 @@ ANALYZER_REGISTRY: Dict[str, str] = {
     # "ruby":    "intelligence.analyzers.ruby.analyzer:RubyAnalyzer",
 }
 
+# Languages whose adapter and full toolchain are proven in the quality worker image
+# (v4 CQ-01). The other registered adapters stay available but are experimental:
+# the image has no Java, C or C++ toolchain, so they are not advertised as analyzed.
+RUNTIME_VERIFIED_LANGUAGES = frozenset({"python", "javascript", "typescript"})
+
 # Internal cache — avoids re-importing the same class on every request
 _analyzer_cache: Dict[str, BaseAnalyzer] = {}
 
@@ -161,6 +166,11 @@ def get_analyzers_for_profile(profile: LanguageProfile) -> Dict[str, BaseAnalyze
             analyzers[lang] = analyzer
 
     return analyzers
+
+
+def list_runtime_verified_languages() -> list[str]:
+    """Registered languages whose toolchain is proven in the worker image."""
+    return sorted(set(ANALYZER_REGISTRY) & RUNTIME_VERIFIED_LANGUAGES)
 
 
 def list_supported_languages() -> list[str]:

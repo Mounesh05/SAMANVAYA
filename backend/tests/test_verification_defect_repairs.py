@@ -123,7 +123,8 @@ async def test_conflicting_run_tenant_is_denied_and_filtered(quality_api, metada
     auth = await headers(db, "CEO")
     for path in endpoints("OWN")[:3]:
         response = await client.get(path, headers=auth)
-        assert response.status_code == 403
+        # v4 BASE-04: a run outside the caller's tenant is indistinguishable from a missing run.
+        assert response.status_code == 404
         assert "PRIVATE_EVIDENCE" not in response.text
     history = await client.get('/quality/repositories/OWN/history', headers=auth)
     assert history.json()["count"] == 0
