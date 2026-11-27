@@ -454,3 +454,56 @@ def test_run_status_distinguishes_nothing_analysed_from_analysis_without_a_compa
     assert run_status([{"status": "completed"}]) == "completed"
     assert run_status([{"status": "failed"}]) == "failed"
     assert run_status([{"status": "insufficient_evidence", "finding_status": "CORRECTNESS_FAILURE"}]) == "completed"
+
+
+
+async def test_approval_queues_new_revision_without_mutating_original(workflow):
+    initial = await run(workflow)
+    accepted = await contract(workflow)
+    results = await workflow.service.resume_after_approval(accepted, launch=False)
+    assert len(results) == 1
+    assert results[0]["run_id"] != initial["run_id"]
+    assert (await workflow.service.get(initial["run_id"]))["status"] == "insufficient_evidence"
+    await workflow.service.execute(results[0]["run_id"])
+    assert (await workflow.service.get(results[0]["run_id"]))["functions"][0]["compatibility"] == "COMPATIBLE_WITHIN_TESTED_CONTRACT"
+    workflow.runner.run.assert_awaited_once()
+
+
+async def test_approval_does_not_resume_stale_pr(workflow):
+    await run(workflow)
+    accepted = await contract(workflow)
+    workflow.pr["head"]["sha"] = "new-head"
+    assert await workflow.service.resume_after_approval(accepted, launch=False) == []
+    workflow.runner.run.assert_not_awaited()
+
+
+async def test_ai_draft_is_not_approval_or_execution(workflow, monkeypatch):
+    import json
+    import httpx
+    from core.config import settings
+    monkeypatch.setattr(settings, "ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED", True)
+    value = {"status": "proposed", "input_schema": {"type": "array"}, "output_schema": {"type": "array"},
+             "mutation": "forbidden", "datasets": [{"id": "empty", "args": [[]], "expected": []}],
+             "requirements": [{"description": "Return the required values", "dataset_ids": ["empty"]}]}
+    response = httpx.Response(200, json={"response": json.dumps(value)}, request=httpx.Request("POST", "http://model/api/generate"))
+    monkeypatch.setattr(httpx.AsyncClient, "post", AsyncMock(return_value=response))
+    result = await run(workflow)
+    draft_id = result["functions"][0]["requirement_proposal"]["contract_id"]
+    draft = await workflow.service.contracts.get(draft_id)
+    assert draft["status"] == "PROPOSED" and draft["approval"] is None
+    assert draft["automatic_scope"]["qualified_name"] == "solve"
+    assert draft["requirements"][0]["source_reference"].startswith(result["head_discovery_run_id"])
+    workflow.runner.run.assert_not_awaited()
+
+
+async def test_malformed_ai_draft_preserves_static_results(workflow, monkeypatch):
+    import httpx
+    from core.config import settings
+    monkeypatch.setattr(settings, "ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED", True)
+    response = httpx.Response(200, json={"response": '{"status":"APPROVED"}'}, request=httpx.Request("POST", "http://model/api/generate"))
+    monkeypatch.setattr(httpx.AsyncClient, "post", AsyncMock(return_value=response))
+    result = await run(workflow)
+    assert result["functions"][0]["static_status"] == "analyzed"
+    assert result["functions"][0]["requirement_proposal"]["status"] == "unavailable"
+    assert await workflow.service.contracts.collection.count_documents({}) == 0
+    workflow.runner.run.assert_not_awaited()

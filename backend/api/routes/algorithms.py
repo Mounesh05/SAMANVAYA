@@ -22,6 +22,9 @@ from core.database import col
 from domain.services.requirement_discovery_service import RequirementDiscoveryService
 from domain.schemas.requirement_discovery import RequirementDiscoveryRequest, RequirementSourceProposal, RequirementReview
 
+import logging
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 requirement_service = RequirementDiscoveryService()
 service = AlgorithmBenchmarkService(requirements=requirement_service)
@@ -178,11 +181,25 @@ async def read_contract(contract_id: str, user: dict = Depends(get_current_user)
     return document
 
 
+async def continue_approved_analysis(approved):
+    # Approval remains committed if GitHub or the local worker is unavailable.
+    try:
+        from domain.services.github_api_service import GitHubAPIService
+        from domain.services.pr_algorithm_intelligence_service import PRAlgorithmIntelligenceService
+        await PRAlgorithmIntelligenceService(GitHubAPIService()).resume_after_approval(approved)
+    except Exception:
+        logger.exception("Approval continuation unavailable; normal PR sync can retry")
+
+
 @router.post("/contracts/{contract_id}/approve")
-async def approve_contract(contract_id: str, body: ContractApproval, user: dict = Depends(engineering_user)):
+async def approve_contract(contract_id: str, body: ContractApproval, user: dict = Depends(engineering_user),
+                           background_tasks: BackgroundTasks = None):
     document = await read_contract(contract_id, user)
     try:
-        return await contract_service.approve(document, body.model_dump(), user)
+        approved = await contract_service.approve(document, body.model_dump(), user)
+        if background_tasks is not None:
+            background_tasks.add_task(continue_approved_analysis, approved)
+        return approved
     except PermissionError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
     except ValueError as error:
@@ -269,13 +286,17 @@ async def list_requirement_sources(project_id: str, user: dict = Depends(enginee
 
 
 @router.post("/requirements/sources/{source_id}/approve")
-async def approve_requirement_source(source_id: str, body: RequirementReview, user: dict = Depends(engineering_user)):
+async def approve_requirement_source(source_id: str, body: RequirementReview, user: dict = Depends(engineering_user),
+                                     background_tasks: BackgroundTasks = None):
     document = await requirement_service.get(source_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Requirement source not found")
     await project_access(user, document["project_id"])
     try:
-        return await requirement_service.approve(document, body.model_dump(), user)
+        approved = await requirement_service.approve(document, body.model_dump(), user)
+        if background_tasks is not None:
+            background_tasks.add_task(continue_approved_analysis, approved)
+        return approved
     except PermissionError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
     except ValueError as error:

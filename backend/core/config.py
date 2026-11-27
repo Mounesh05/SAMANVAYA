@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     
     # Opt in only after configuring isolated Docker Linux benchmark workers.
     ALGORITHM_BENCHMARK_ENABLED: bool = False
+    # Opt in to sending bounded function snippets to the configured Ollama service.
+    ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED: bool = False
 
     # ── Logging ───────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL

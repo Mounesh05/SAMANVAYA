@@ -182,6 +182,11 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
             {' · '}Comparison: {comparisonLabel(fn.comparison_status)}
             {fn.benchmark_status && <> · Benchmark: {statusLabel(fn.benchmark_status)}</>}</p>
           {fn.benchmark_reason && <p>{fn.benchmark_reason}</p>}
+          {fn.requirement_proposal && <p>Requirement draft: {['proposed', 'existing'].includes(fn.requirement_proposal.status)
+            ? 'Awaiting independent review in Requirements' : fn.requirement_proposal.status.replaceAll('_', ' ')}
+            {fn.requirement_proposal.contract_id && <> · {fn.requirement_proposal.contract_id}</>}
+            {fn.requirement_proposal.reason && <> · {fn.requirement_proposal.reason}</>}
+          </p>}
           {fn.previous && <p>{fn.mode === 'C' ? 'Alternative' : 'Previous'}: {fn.previous.qualified_name} · Current: {fn.current?.qualified_name}</p>}
           <StaticComparison row={fn} />
           {fn.complexity && <ComplexitySummary complexity={fn.complexity} />}

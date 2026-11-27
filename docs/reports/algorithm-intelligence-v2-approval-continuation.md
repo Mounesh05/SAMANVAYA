@@ -1,0 +1,7 @@
+# Automatic requirement drafting and approval continuation (partial implementation)
+
+- Enable `ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED=true` after confirming that the configured Ollama endpoint may receive bounded source snippets. Default off is a deliberate privacy/rollout safeguard. The existing benchmark execution flag remains independent.
+- Eligible changed functions lacking a uniquely applicable approved contract may receive up to two bounded data-only AI drafts per PR run. The server establishes project, scope and exact discovery reference. AI outputs remain unapproved hypotheses; independently check expected outputs before approval.
+- Successful authorized approval schedules bounded best-effort resumption of current blocked PR analyses. New jobs include approved source and contract fingerprints and are linked only if the prior current-run pointer still matches. The existing isolation, freshness, approval, worker flags and comparison checks remain in force. Old runs are retained.
+- Current limits: only automatic-scope contracts are resumed directly; binding-only contracts and active jobs are handled by normal PR synchronization. A local-process crash or transient GitHub failure can require another sync. No durable outbox or rejection/revocation lifecycle is claimed. Manual expert proposals remain an escape hatch. Missing budgets are not invented by AI.
+- Focused tests were authored, not executed here; real MongoDB, Ollama, Docker, and CI verification are required. Full Phase 2 and mandatory algorithm reasoning remain incomplete.
