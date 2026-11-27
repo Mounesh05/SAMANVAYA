@@ -51,6 +51,12 @@ def auth_rate_limit():
     return limiter.limit(f"{settings.MAX_LOGIN_ATTEMPTS}/minute")
 
 
+def login_rate_limit():
+    """Request-flood limit for sign-in: all attempts per IP, shared by /login and
+    /login/full. Failed-attempt limits per account and IP are in core.login_throttle."""
+    return limiter.shared_limit(f"{settings.LOGIN_MAX_REQUESTS_PER_IP_PER_MINUTE}/minute", scope="login")
+
+
 def api_rate_limit():
     """Rate limit for general API endpoints."""
     return limiter.limit(f"{settings.MAX_REQUESTS_PER_MINUTE}/minute")

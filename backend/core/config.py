@@ -46,7 +46,12 @@ class Settings(BaseSettings):
     # ── Security ──────────────────────────────────────────────────
     RATE_LIMIT_ENABLED: bool = True  # Rate limiting on by default
     MAX_REQUESTS_PER_MINUTE: int = Field(default=100, gt=0)
-    MAX_LOGIN_ATTEMPTS: int = Field(default=5, gt=0)
+    MAX_LOGIN_ATTEMPTS: int = Field(default=5, gt=0)  # failed sign-ins per account + IP per window
+    # Sign-in abuse protection; thresholds are explained in core/login_throttle.py.
+    LOGIN_FAILURE_WINDOW_MINUTES: int = Field(default=15, gt=0, le=1440)
+    LOGIN_MAX_FAILURES_PER_ACCOUNT: int = Field(default=20, gt=0)
+    LOGIN_MAX_FAILURES_PER_IP: int = Field(default=50, gt=0)
+    LOGIN_MAX_REQUESTS_PER_IP_PER_MINUTE: int = Field(default=60, gt=0)
     # Public POST /api/auth/register (DEVELOPER role only). Off by default;
     # HR/admin create accounts via POST /api/employees instead.
     ALLOW_SELF_REGISTRATION: bool = False
