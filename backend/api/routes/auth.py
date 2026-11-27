@@ -149,6 +149,12 @@ async def refresh_token(request: Request, user: dict = Depends(get_current_user)
     new_token = await auth_service.refresh_session(user.get("employee_id", ""))
     if not new_token:
         raise HTTPException(status_code=401, detail="Account is inactive or no longer exists")
+    # SEC-04: rotation — the presented token stops working once a new one is issued.
+    try:
+        await revoke_token(user["jti"], datetime.fromtimestamp(user["exp"], tz=timezone.utc))
+    except PyMongoError:
+        logger.exception("Refresh revocation persistence unavailable")
+        raise HTTPException(status_code=503, detail="Token refresh temporarily unavailable")
     return {"token": new_token}
 
 

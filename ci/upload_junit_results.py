@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -60,7 +61,13 @@ def main() -> int:
 
     test_exit_code = int(os.environ.get("CI_TEST_EXIT_CODE", "0"))
 
-    root = ET.parse(args.junit).getroot()
+    with open(args.junit, "rb") as handle:
+        document = handle.read()
+    # Reports are untrusted: no DTDs or entity declarations (XML bomb / XXE).
+    if b"<!DOCTYPE" in document.upper() or b"<!ENTITY" in document.upper():
+        raise ValueError("JUnit XML must not declare a DOCTYPE or entities")
+    # Bandit B314: DTD/entity declarations rejected above.
+    root = ET.fromstring(document)  # nosec B314
     suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
     if not suites:
         raise ValueError("JUnit file contains no testsuite elements")
@@ -75,6 +82,8 @@ def main() -> int:
     skipped = sum(int(float(s.get("skipped", 0))) for s in suites)
     tests_failed = failures + errors
     api_url = api_url.rstrip("/")
+    if urllib.parse.urlsplit(api_url).scheme not in {"https", "http"}:
+        raise ValueError("SAMANVAYA_API_URL must be an http(s) URL")
     payload = {
         "project_id": project_id,
         "repository": os.environ["GITHUB_REPOSITORY"],
@@ -98,7 +107,8 @@ def main() -> int:
         },
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    # Bandit B310: scheme validated above.
+    with urllib.request.urlopen(request, timeout=30) as response:  # nosec B310
         if response.status not in (200, 201):
             raise RuntimeError(f"Samanvaya rejected test result: HTTP {response.status}")
     return 0

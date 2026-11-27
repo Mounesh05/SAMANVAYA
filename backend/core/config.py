@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     # ── AI / Ollama ───────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"  # or llama3.1, mistral, etc.
+    # Read timeout for one model call. CPU-only hosts need more (often 300+).
+    OLLAMA_INFERENCE_TIMEOUT_SECONDS: float = Field(default=120.0, gt=0, le=1800)
 
     # ── GitHub ────────────────────────────────────────────────────
     GITHUB_TOKEN: str = ""

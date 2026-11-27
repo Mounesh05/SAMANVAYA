@@ -116,7 +116,7 @@ async def interpret_code(evidence, context, authority, evidence_available=True, 
     if not evidence or not evidence_available:
         return failed_interpretation("MISSING_EVIDENCE")
     try:
-        if not check_ollama_connection():
+        if not await asyncio.to_thread(check_ollama_connection):
             return failed_interpretation("MODEL_UNAVAILABLE", unavailable=True)
         state: AgentState = {
             "task_type": "code_review", "evidence": evidence, "context": context,

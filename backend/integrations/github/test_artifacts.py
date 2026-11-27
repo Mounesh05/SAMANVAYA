@@ -25,14 +25,16 @@ def _coverage(data):
         pairs.append((covered, statements))
     if len(pairs) != len(files) + 1 or pairs[0][1] == 0 or tuple(map(sum, zip(*pairs[1:]))) != pairs[0]:
         raise ValueError('Coverage totals conflict with files')
+    # '_paths' lets the importer detect overlapping reports; it is not persisted.
     return {'coverage_status': 'reported', 'coverage_percentage': 100 * pairs[0][0] / pairs[0][1],
-            'covered_lines': pairs[0][0], 'statement_lines': pairs[0][1]}
+            'covered_lines': pairs[0][0], 'statement_lines': pairs[0][1], '_paths': frozenset(files)}
 
 
 def _junit(data):
     if b'\x00' in data or b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
         raise ValueError('XML declarations/entities are unsupported')
-    root = ET.fromstring(data)
+    # Bandit B314: DOCTYPE/ENTITY declarations rejected above.
+    root = ET.fromstring(data)  # nosec B314
     if root.tag not in {'testsuite', 'testsuites'}:
         raise ValueError('Expected JUnit root')
     suites = list(root.iter('testsuite'))

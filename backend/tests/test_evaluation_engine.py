@@ -624,6 +624,7 @@ async def test_backend_path_remains_usable_after_model_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluation_persists_employee_and_pr_association(monkeypatch):
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())  # person scope tested in test_lead_access
     # This test isolates persistence/model behavior. Repository authorization
     # has separate negative and positive adapter regressions.
     monkeypatch.setattr(evaluation, "_verify_repository_in_scope", AsyncMock())
@@ -676,6 +677,7 @@ async def test_evaluation_persists_employee_and_pr_association(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_evaluation_rejects_scores_for_dimensions_without_evidence(monkeypatch):
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())  # person scope tested in test_lead_access
     monkeypatch.setattr(evaluation, "_verified_subject_github", AsyncMock(return_value="developer"))
     monkeypatch.setattr(evaluation, "_verify_repository_in_scope", AsyncMock())
     service = Mock()
@@ -718,6 +720,7 @@ async def test_evaluation_rejects_scores_for_dimensions_without_evidence(monkeyp
 
 @pytest.mark.asyncio
 async def test_author_mismatch_is_not_a_successful_evaluation(monkeypatch):
+    monkeypatch.setattr(evaluation, "verify_can_view_person_evaluations", AsyncMock())  # person scope tested in test_lead_access
     monkeypatch.setattr(evaluation, "_verified_subject_github", AsyncMock(return_value="developer"))
     monkeypatch.setattr(evaluation, "_verify_repository_in_scope", AsyncMock())
     service = Mock()

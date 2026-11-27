@@ -485,6 +485,25 @@ async def verify_can_view_user_tasks(user: dict, target_user_id: str) -> None:
     )
 
 
+def same_organization_filter(organization: str) -> dict:
+    """Rows in this organisation: org_id equal and no conflicting organization_id alias."""
+    return {"org_id": {"$eq": organization, "$not": {"$type": "array"}},
+            "$or": [{"organization_id": {"$exists": False}},
+                    {"organization_id": {"$eq": organization, "$not": {"$type": "array"}}}]}
+
+
+async def organization_employee_ids(user: dict) -> set[str]:
+    """Employee IDs in the caller's organisation; empty when the caller has no tenant."""
+    from core.database import col
+
+    organization = user.get("org_id")
+    if not isinstance(organization, str) or not organization.strip():
+        return set()
+    rows = await col("users").find(same_organization_filter(organization),
+                                   {"_id": 0, "employee_id": 1}).to_list(None)
+    return {row["employee_id"] for row in rows if isinstance(row.get("employee_id"), str)}
+
+
 async def team_member_ids(user: dict) -> set[str]:
     """
     CR-004: the people a Lead manages: their team, plus anyone assigned to a
@@ -493,6 +512,9 @@ async def team_member_ids(user: dict) -> set[str]:
     from core.database import col  # local import keeps this module's imports light
 
     own_id = user.get("employee_id", user.get("id", ""))
+    organization = user.get("org_id")
+    if not isinstance(organization, str) or not organization.strip():
+        return {own_id} if own_id else set()  # no tenant: nobody else, fail closed
     clauses = []
     if user.get("team_id"):
         clauses.append({"team_id": user["team_id"]})
@@ -501,7 +523,8 @@ async def team_member_ids(user: dict) -> set[str]:
         clauses.append({"project_ids": {"$in": project_ids}})
     ids = {own_id} if own_id else set()
     if clauses:
-        rows = await col("users").find({"$or": clauses}, {"_id": 0, "employee_id": 1}).to_list(5000)
+        rows = await col("users").find({"$and": [{"$or": clauses}, same_organization_filter(organization)]},
+                                       {"_id": 0, "employee_id": 1}).to_list(5000)
         ids.update(row["employee_id"] for row in rows if row.get("employee_id"))
     return ids
 
@@ -516,8 +539,13 @@ async def verify_can_view_person_evaluations(user: dict, employee_id: str) -> No
     - Others: no one else.
     """
     own_id = user.get("employee_id", user.get("id", ""))
-    if employee_id == own_id or has_global_access(user):
+    if employee_id == own_id:
         return
+    if has_global_access(user):
+        # Organisation-wide means the CEO's organisation only (audit EV-01).
+        if employee_id in await organization_employee_ids(user):
+            return
+        raise HTTPException(status_code=403, detail="This employee is not in your organization")
     role = user.get("role", user.get("organizational_role", "")).upper()
     if role == "LEAD" and employee_id in await team_member_ids(user):
         return

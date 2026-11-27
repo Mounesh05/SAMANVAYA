@@ -1,4 +1,6 @@
 """Persistence contract shared by manual and GitHub revision analyses."""
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 
 from intelligence.algorithms.discovery.service import source_language
@@ -12,6 +14,14 @@ def run_deadline():
     return (datetime.now(timezone.utc) + timedelta(seconds=RUN_TIMEOUT_SECONDS)).isoformat()
 
 
+def policy_digest(quality_policy, risk_policy):
+    """Stable identity of the effective quality + risk policy (CQ-02/CQ-04)."""
+    if quality_policy is None and risk_policy is None:
+        return None
+    raw = json.dumps({"quality": quality_policy, "risk": risk_policy}, sort_keys=True, default=str)
+    return "policy-" + hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
 def expired(run):
     deadline = run.get("work_deadline")
     return (run.get("status") in ("pending", "running") and isinstance(deadline, str)
@@ -21,9 +31,13 @@ def expired(run):
 async def measure_quality(evidence, paths, baseline=None):
     tools = set(evidence.tools_executed) - {"ast-test-discovery"}
     measured = bool(evidence.files_analyzed and tools)
-    quality = await QualityEngine().calculate(evidence) if measured else {}
+    engine = QualityEngine()
+    quality = await engine.calculate(evidence) if measured else {}
+    quality_policy = await engine.effective_policy(evidence) if measured else None
     measured = measured and quality.get("quality_score") is not None
-    risk = await RiskEngine().analyze_evidence(evidence, baseline) if measured else {}
+    risk_engine = RiskEngine()
+    risk = await risk_engine.analyze_evidence(evidence, baseline) if measured else {}
+    risk_policy = await risk_engine.effective_policy(evidence, baseline) if measured else None
     supported = any(source_language(path) for path in paths)
     state = ("partial" if evidence.tools_skipped or evidence.analysis_quality.confidence < 1
              else "available") if measured else ("failed" if supported else "unsupported")
@@ -37,6 +51,8 @@ async def measure_quality(evidence, paths, baseline=None):
         "risk_score": risk.get("risk_score"), "risk_level": risk.get("risk_level"),
         "quality_dimensions": quality.get("dimension_scores", {}), "risk_dimensions": risk.get("dimension_scores", {}),
         "risk_factors": risk.get("risk_factors", []), "commit_sha": evidence.commit_sha,
+        "quality_policy": quality_policy, "risk_policy": risk_policy,
+        "policy_digest": policy_digest(quality_policy, risk_policy),
         "files_analyzed": evidence.files_analyzed, "language": evidence.primary_language,
         "detected_languages": evidence.detected_languages, "tools_executed": evidence.tools_executed,
         "tools_skipped": evidence.tools_skipped, "execution_provenance": evidence.execution_provenance,

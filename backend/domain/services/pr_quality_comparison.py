@@ -17,6 +17,29 @@ from intelligence.analyzers.isolated import source_provenance
 logger = logging.getLogger(__name__)
 
 
+def comparable_delta(before, after, truncated=False):
+    """CQ-02: a delta only between fully measured sides under the same policy, tools and dimensions."""
+    scores = (before.get("quality_score"), after.get("quality_score"))
+    reason = None
+    if None in scores:
+        reason = "score_unavailable"
+    elif truncated:
+        reason = "partial_evidence"
+    elif (before.get("quality_analysis_status"), after.get("quality_analysis_status")) != ("available", "available"):
+        reason = "partial_evidence"
+    elif before.get("policy_digest") != after.get("policy_digest"):
+        reason = "policy_changed"
+    elif set(before.get("tools_executed") or []) != set(after.get("tools_executed") or []):
+        reason = "tools_differ"
+    elif ({k for k, v in (before.get("quality_dimensions") or {}).items() if v is not None}
+          != {k for k, v in (after.get("quality_dimensions") or {}).items() if v is not None}):
+        reason = "dimensions_differ"
+    if reason:
+        return {"delta": None, "delta_withheld_reason": reason}
+    return {"delta": scores[1] - scores[0], "delta_withheld_reason": None,
+            "policy_digest": after.get("policy_digest")}
+
+
 def now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -113,7 +136,7 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
         summary = {"status": "completed" if state in ("partial", "available") else state,
                    "quality_analysis_status": state, "completed_at": now(), "language": after.get("language"),
                    "quality_comparison": {"base_score": scores[0], "head_score": scores[1],
-                       "delta": scores[1] - scores[0] if None not in scores else None,
+                       **comparable_delta(before, after, truncated=pr.get("changed_files", len(files)) > len(files)),
                        "base_status": outcomes[0], "head_status": outcomes[1]}}
         summary.update({k: after.get(k) for k in ("quality_score", "quality_grade", "risk_score", "risk_level")})
         summary["score_basis"] = child_ids["head"]

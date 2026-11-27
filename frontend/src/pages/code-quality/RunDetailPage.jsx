@@ -17,6 +17,15 @@ import { PERMISSIONS } from '../../auth/permissions';
 import { qualityStatus } from './qualityStatus';
 import { DiscoveredFunctions } from './DiscoveredFunctions';
 
+// CQ-02: why a before/after quality change is not shown.
+const WITHHELD_REASONS = {
+  score_unavailable: 'one revision has no measured score',
+  partial_evidence: 'evidence is partial on at least one revision',
+  policy_changed: 'quality policy differs between revisions',
+  tools_differ: 'different analysis tools ran on each revision',
+  dimensions_differ: 'different quality dimensions were measured',
+};
+
 export function RunDetailPage() {
   const { runId } = useParams();
   const navigate = useNavigate();
@@ -135,7 +144,9 @@ export function RunDetailPage() {
           {run.quality_comparison[side + '_score'] ?? 'Not measured'} ({run.quality_comparison[side + '_status']})
         </p>)}
         <p>Displayed quality and risk scores use the head revision.</p>
-        <p>Quality score change: {run.quality_comparison.delta ?? 'Not comparable'}</p>
+        <p>Quality score change: {run.quality_comparison.delta ?? 'Not comparable'}
+          {run.quality_comparison.delta == null && WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]
+            ? ` (${WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]})` : ''}</p>
       </Card>}
       {run?.commit_sha && <p>Revision <code>{run.commit_sha}</code></p>}
       {run?.commit_sha && !['running', 'pending', 'analyzing'].includes(run.status) &&

@@ -63,13 +63,7 @@ class QualityEngine:
             project_id=evidence.repository_id
         )
         
-        w = {
-            "static_security": config.quality_weights.static_security,
-            "testing": config.quality_weights.testing,
-            "complexity": config.quality_weights.complexity,
-            "architecture": config.quality_weights.architecture,
-            "duplication": config.quality_weights.duplication,
-        }
+        w = self._weights(config)
 
         penalties = {
             "static_security": self._static_security_penalty(evidence),
@@ -79,19 +73,7 @@ class QualityEngine:
             "duplication":     self._duplication_penalty(evidence),
         }
 
-        # Pinned snapshots only score dimensions the worker could observe.
-        missing = set()
-        if evidence.execution_provenance.get("method") == "quality-snapshot-v1":
-            if evidence.testing.coverage_percentage is None:
-                missing.add("testing")
-            if not evidence.complexity.is_available or evidence.complexity.average_complexity is None:
-                missing.add("complexity")
-            if "python" not in evidence.detected_languages or "architecture" in evidence.analysis_quality.degraded_dimensions:
-                missing.add("architecture")
-            if "duplication-pipeline-failed" in evidence.tools_skipped:
-                missing.add("duplication")
-            if not set(evidence.tools_executed).intersection({"ruff", "mypy", "bandit", "eslint", "tsc", "ast-syntax-fallback", "flake8"}):
-                missing.add("static_security")
+        missing = self._missing_dimensions(evidence)
         weight = sum(w[dim] for dim in penalties if dim not in missing)
         if not weight:
             return {"quality_score": None, "quality_grade": None, "dimension_scores": {}, "penalties": {}}
@@ -111,6 +93,43 @@ class QualityEngine:
             "dimension_scores": dimension_scores,
             "penalties": {k: None if k in missing else round(v, 2) for k, v in penalties.items()},
         }
+
+    @staticmethod
+    def _weights(config) -> dict:
+        return {
+            "static_security": config.quality_weights.static_security,
+            "testing": config.quality_weights.testing,
+            "complexity": config.quality_weights.complexity,
+            "architecture": config.quality_weights.architecture,
+            "duplication": config.quality_weights.duplication,
+        }
+
+    @staticmethod
+    def _missing_dimensions(evidence: CodeQualityEvidence) -> set:
+        """Pinned snapshots only score dimensions the worker could observe."""
+        missing = set()
+        if evidence.execution_provenance.get("method") == "quality-snapshot-v1":
+            if evidence.testing.coverage_percentage is None:
+                missing.add("testing")
+            if not evidence.complexity.is_available or evidence.complexity.average_complexity is None:
+                missing.add("complexity")
+            if "python" not in evidence.detected_languages or "architecture" in evidence.analysis_quality.degraded_dimensions:
+                missing.add("architecture")
+            if "duplication-pipeline-failed" in evidence.tools_skipped:
+                missing.add("duplication")
+            if not set(evidence.tools_executed).intersection({"ruff", "mypy", "bandit", "eslint", "tsc", "ast-syntax-fallback", "flake8"}):
+                missing.add("static_security")
+        return missing
+
+    async def effective_policy(self, evidence: CodeQualityEvidence) -> dict:
+        """CQ-04: the weights and scored dimensions that calculate() applies to this evidence.
+
+        Kept separate so the v1 engine result contract is unchanged.
+        """
+        config = await self._config_service.get_configuration(project_id=evidence.repository_id)
+        weights = self._weights(config)
+        return {"weights": weights, "scored_dimensions": sorted(set(weights) - self._missing_dimensions(evidence)),
+                "source": "project" if getattr(config, "project_id", None) else "default"}
 
     # ── Penalty Calculators ───────────────────────────────────────────────────
 

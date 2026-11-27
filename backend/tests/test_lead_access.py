@@ -38,10 +38,10 @@ async def people(mock_db, monkeypatch):
     monkeypatch.setattr(database, "get_db", lambda: mock_db)
     await mock_db.projects.insert_many([dict(PROJECT_A), dict(PROJECT_B)])
     await mock_db.users.insert_many([
-        {"employee_id": "LEAD-1", "team_id": "TEAM-A"},
-        {"employee_id": "DEV-A", "team_id": "TEAM-A"},
-        {"employee_id": "DEV-B", "team_id": "TEAM-B"},
-        {"employee_id": "DEV-P", "team_id": "TEAM-B", "project_ids": ["PRJ-A"]},
+        {"employee_id": "LEAD-1", "team_id": "TEAM-A", "org_id": "O1"},
+        {"employee_id": "DEV-A", "team_id": "TEAM-A", "org_id": "O1"},
+        {"employee_id": "DEV-B", "team_id": "TEAM-B", "org_id": "O1"},
+        {"employee_id": "DEV-P", "team_id": "TEAM-B", "project_ids": ["PRJ-A"], "org_id": "O1"},
     ])
     from repositories.project_repository import ProjectRepository
     projects = ProjectRepository()
@@ -114,9 +114,12 @@ class TestEvaluationScope:
         from api.routes import evaluation
         with patch.object(evaluation.EvaluationRepository, "latest", new=AsyncMock(return_value=None)) as latest:
             await evaluation.get_latest_evaluation(user=LEAD)
-            assert latest.await_args.args[0] == {"employee_id": {"$in": ["DEV-A", "DEV-P", "LEAD-1"]}}
+            tenant = evaluation.code_quality_tenant_filter(LEAD)
+            assert latest.await_args.args[0] == {"$and": [{"employee_id": {"$in": ["DEV-A", "DEV-P", "LEAD-1"]}}, tenant]}
             await evaluation.get_latest_evaluation(user=CEO)
-            assert latest.await_args.args[0] == {}
+            # Audit EV-01: organisation-wide means the CEO's own organisation only.
+            assert latest.await_args.args[0] == {"$and": [
+                {"employee_id": {"$in": ["DEV-A", "DEV-B", "DEV-P", "LEAD-1"]}}, tenant]}
 
     async def test_employee_evaluation_list_is_scoped(self, people):
         from api.routes import evaluation

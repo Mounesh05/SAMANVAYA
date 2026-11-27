@@ -3,6 +3,9 @@ AI Agent API Routes
 Invoke specialized agents to interpret Intelligence Engine evidence
 """
 
+import asyncio
+
+from core.config import settings
 from typing import Dict, Any, Literal
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
@@ -48,7 +51,7 @@ class AgentResponse(BaseModel):
 @router.get("/health")
 async def ai_health_check():
     """Check AI agent system health (Ollama connection)."""
-    ollama_ok = check_ollama_connection()
+    ollama_ok = await asyncio.to_thread(check_ollama_connection)
 
     return {
         "status": "healthy" if ollama_ok else "degraded",
@@ -85,7 +88,7 @@ async def invoke_agent_endpoint(
         current_user, scope, request.task_type, request.evidence, request.context, request.evidence_sources_v1)
     context = {**request.context, "project_id": scope["project_id"], "organization_id": scope["organization_id"]}
 
-    if not check_ollama_connection():
+    if not await asyncio.to_thread(check_ollama_connection):
         raise HTTPException(
             status_code=503,
             detail="Ollama service not available. Ensure Ollama is running at OLLAMA_BASE_URL."
@@ -112,7 +115,6 @@ async def invoke_agent_endpoint(
             "confidence": None,
         }
 
-        import asyncio
         result = await asyncio.to_thread(invoke_agent, request.task_type, initial_state)
 
         execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
@@ -134,7 +136,7 @@ async def invoke_agent_endpoint(
                 status="completed" if not result.get("errors") else "failed",
                 error_message="; ".join(result.get("errors", [])) if result.get("errors") else None,
                 execution_time_ms=execution_time,
-                model_name="ollama",
+                model_name=f"ollama/{settings.OLLAMA_MODEL}",  # AI-03: record the actual model
                 triggered_by=current_user["email"],
             )
             run_id = await ai_run_repo.create(ai_run)

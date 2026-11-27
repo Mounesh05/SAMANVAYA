@@ -82,7 +82,9 @@ async def test_pr_quality_delta_uses_each_revision_and_replays_without_work(mock
     monkeypatch.setattr(comparison, "measure_quality", measure)
     parent, _ = await comparison.compare_revisions(api, "P", "owner", "repo", pr, files, "actor")
     again, replay = await comparison.compare_revisions(api, "P", "owner", "repo", pr, files, "actor")
+    # CQ-02: comparable sides also record why no delta was withheld and the shared policy.
     assert parent["quality_comparison"] == {"base_score": 72, "head_score": 86, "delta": 14,
+                                            "delta_withheld_reason": None, "policy_digest": None,
                                             "base_status": "available", "head_status": "available"}
     assert parent["score_basis"] == parent["child_run_ids"]["head"]
     assert parent["run_id"] == again["run_id"] and replay.commit_sha == head

@@ -69,6 +69,30 @@ class RunStatus(BaseModel):
     error: Optional[str] = None
 
 
+MAX_PR_ANALYSIS_PATHS = 100
+
+
+async def _pull_request_paths(project_id: str, org_id: Optional[str], pr_number: int) -> List[str]:
+    """Changed (non-deleted) paths of one PR in the project's connected repository."""
+    from domain.services.ai_evidence_service import _repository
+    from domain.services.github_api_service import GitHubAPIService
+    owner, repo = await _repository(project_id, org_id)
+    try:
+        files = await GitHubAPIService().client.get_pr_files(owner, repo, pr_number)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503, "Pull request files are unavailable from GitHub") from None
+    paths = list(dict.fromkeys(
+        item["filename"] for item in files or []
+        if isinstance(item, dict) and isinstance(item.get("filename"), str)
+        and item.get("status") != "removed" and 0 < len(item["filename"]) <= 500
+    ))[:MAX_PR_ANALYSIS_PATHS]
+    if not paths:
+        raise HTTPException(422, "The pull request has no analysable changed files")
+    return paths
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/analyze", status_code=202)
@@ -88,12 +112,18 @@ async def start_analysis(
         raise HTTPException(422, "Select at most 100 repository paths of up to 500 characters each")
     if not repository_id:
         raise HTTPException(status_code=422, detail="A real repository or project ID is required")
-    if not changed_files:
+    if not changed_files and not body.pr_number:
         raise HTTPException(status_code=422, detail="At least one real changed file is required")
     # CR-002: TRIGGER_CODE_ANALYSIS holders (QA, DevOps) analyse projects they
     # are assigned to. Requiring project *write* access made this unusable:
     # no role holding the permission ever has write access.
     await verify_project_access(user, repository_id)
+    changed_files_source = "explicit"
+    if not changed_files:
+        # CQ-01: a PR request without paths analyses the PR's own changed files,
+        # resolved server-side from the connected repository (never client paths).
+        changed_files = await _pull_request_paths(repository_id, user.get("org_id"), body.pr_number)
+        changed_files_source = "pull_request"
     # Public callers select a project and files, never host filesystem roots or
     # supposedly verified source bytes/revisions. Connected snapshots are
     # resolved by the server in _run_analysis; internal adapters retain their
@@ -148,6 +178,7 @@ async def start_analysis(
         "triggered_by": user.get("employee_id", user.get("id", "")),
         "org_id": user.get("org_id"),
         "changed_files": changed_files,
+        "changed_files_source": changed_files_source,
         "triggered_by_name": user.get("name", ""),
         "created_at": now,
         "work_deadline": run_deadline(),

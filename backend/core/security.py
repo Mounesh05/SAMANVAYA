@@ -13,9 +13,18 @@ from .database import col
 
 JWT_SESSION_VERSION = 1
 
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
 def hash_password(plain: str) -> str:
-    """Hash a plain-text password using bcrypt."""
-    pw_bytes = plain.encode("utf-8")[:72]
+    """Hash a plain-text password using bcrypt.
+
+    bcrypt only uses the first 72 bytes; longer secrets are rejected instead of
+    silently truncated, so two different passwords can never share a hash (SEC-02).
+    """
+    pw_bytes = plain.encode("utf-8")
+    if len(pw_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError(f"Password must be at most {BCRYPT_MAX_PASSWORD_BYTES} bytes")
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(pw_bytes, salt).decode("utf-8")
 
@@ -27,7 +36,9 @@ get_password_hash = hash_password
 def verify_password(plain: str, hashed: str) -> bool:
     """Verify a plain-text password against a hashed password."""
     try:
-        pw_bytes = plain.encode("utf-8")[:72]
+        pw_bytes = plain.encode("utf-8")
+        if len(pw_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+            return False  # never match on a truncated prefix
         hashed_bytes = hashed.encode("utf-8")
         return bcrypt.checkpw(pw_bytes, hashed_bytes)
     except Exception:
@@ -95,6 +106,9 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
     """
     if len(password) < 12:
         return False, "Password must be at least 12 characters long"
+
+    if len(password.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        return False, f"Password must be at most {BCRYPT_MAX_PASSWORD_BYTES} bytes (UTF-8)"
     
     if not any(c.isupper() for c in password):
         return False, "Password must contain at least one uppercase letter"

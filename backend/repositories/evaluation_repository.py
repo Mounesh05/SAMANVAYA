@@ -40,25 +40,18 @@ class EvaluationRepository:
         )
         eligibility = {
             "status": "completed",
-            "overall_score": {"$gte": 0, "$lte": 10},
+            # EV-04: a valid evaluation may have no overall score (insufficient evidence).
+            "$or": [{"overall_score": {"$gte": 0, "$lte": 10}}, {"overall_score": None}],
             "schema_validated": True,
             "evidence_validated": True,
             "is_preliminary": False,
             "evidence_manifest.files.0": {"$exists": True},
             "unsupported_references": {"$exists": True, "$eq": []},
         }
+        # EV-03: only an identical receipt (same tenant, evidence, model and human input)
+        # is a retry; anything else is a new evaluation.
         existing_cursor = self.collection.find(
-            {**eligibility, "$or": [
-                {"duplicate_key": duplicate_key},
-                {
-                    "employee_id": evaluation.employee_id,
-                    "repo_owner": evaluation.repo_owner,
-                    "repo_name": evaluation.repo_name,
-                    "pr_number": evaluation.pr_number,
-                    "head_commit_sha": evaluation.head_commit_sha,
-                    "evaluation_focus": evaluation.evaluation_focus,
-                },
-            ]},
+            {**eligibility, "duplicate_key": duplicate_key},
             {"_id": 0},
         )
         async for existing in existing_cursor:
@@ -84,15 +77,24 @@ class EvaluationRepository:
 
     @staticmethod
     def _duplicate_key(evaluation: DeveloperEvaluation) -> str:
+        evidence_digest = hashlib.sha256(json.dumps(
+            evaluation.evidence_manifest, sort_keys=True, default=str, ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
         identity = json.dumps(
             (
-                "score-contract-v3",
+                "score-contract-v4",
+                evaluation.org_id,
                 evaluation.employee_id,
                 evaluation.repo_owner,
                 evaluation.repo_name,
                 str(evaluation.pr_number),
                 evaluation.head_commit_sha,
                 evaluation.evaluation_focus,
+                evaluation.ai_provider,
+                evaluation.model_name,
+                evaluation.human_score,
+                evidence_digest,
             ),
             ensure_ascii=False,
             separators=(",", ":"),
@@ -103,7 +105,6 @@ class EvaluationRepository:
     def _is_duplicate_eligible(evaluation: DeveloperEvaluation) -> bool:
         base_eligibility = (
             evaluation.status == "completed"
-            and evaluation.overall_score is not None
             and evaluation.schema_validated
             and evaluation.evidence_validated
             and not evaluation.is_preliminary
@@ -113,6 +114,10 @@ class EvaluationRepository:
             and set(evaluation.dimensions) == set(evaluation.evidence_coverage)
         )
         if not base_eligibility:
+            return False
+        scored = [c for c in evaluation.evidence_coverage.values() if c in {"assessed", "partially_assessable"}]
+        if (evaluation.overall_score is None) != (not scored):
+            # A score needs scored dimensions; an unscored outcome must have none.
             return False
         for name, coverage in evaluation.evidence_coverage.items():
             dimension = evaluation.dimensions.get(name)

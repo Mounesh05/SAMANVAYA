@@ -13,6 +13,7 @@ class DeveloperEvaluation(BaseModel):
 
     evaluation_id: str
     employee_id: str
+    org_id: Optional[str] = None  # tenant of the evaluator; legacy rows have none
     github_username: str
     repo_owner: str
     repo_name: str

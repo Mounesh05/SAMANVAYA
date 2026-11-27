@@ -16,14 +16,21 @@ from agents.llm_provider import check_ollama_connection, get_ollama_llm
 from core.config import settings
 from core.dependencies import get_current_user, require_permission
 from core.permissions import Permission
-from core.authorization import has_global_access, team_member_ids, verify_can_view_person_evaluations
+from core.authorization import (
+    code_quality_tenant_filter,
+    has_global_access,
+    organization_employee_ids,
+    team_member_ids,
+    verify_can_view_person_evaluations,
+)
 from domain.models.developer_evaluation import DeveloperEvaluation
 from domain.services.github_api_service import GitHubAPIService
 from repositories.evaluation_repository import EvaluationRepository
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-MODEL_REQUEST_TIMEOUT_SECONDS = 150
+# Backstop above the client read timeout so the client timeout fires first.
+MODEL_REQUEST_TIMEOUT_SECONDS = settings.OLLAMA_INFERENCE_TIMEOUT_SECONDS + 30
 MAX_EVIDENCE_MANIFEST_BYTES = 24_000
 MAX_MODEL_PROMPT_BYTES = 32_000
 
@@ -1181,7 +1188,8 @@ async def _run_ai_evaluation(
         raise EvidenceUnavailableError(
             "No evaluation dimensions have sufficient evidence for scoring"
         )
-    if not check_ollama_connection():
+    # AI-04: the provider probe is blocking HTTP; run it in the default executor.
+    if not await asyncio.get_running_loop().run_in_executor(None, check_ollama_connection):
         raise EvaluationProcessingError("Ollama is not available")
 
     compact_evidence = _compact_evidence_for_prompt(evidence)
@@ -1466,7 +1474,8 @@ async def _authorized_evaluation(
     user: dict,
 ) -> DeveloperEvaluation:
     evaluation = await EvaluationRepository().get_by_id(evaluation_id)
-    if not evaluation:
+    if not evaluation or evaluation.org_id not in (None, user.get("org_id")):
+        # Another organisation's evaluation is indistinguishable from a missing one.
         raise HTTPException(status_code=404, detail="Evaluation not found")
     # CR-004: own, the CEO, or a Lead for their team members.
     await verify_can_view_person_evaluations(user, evaluation.employee_id)
@@ -1581,6 +1590,7 @@ async def evaluate_developer_ai(
         evaluation = DeveloperEvaluation(
             evaluation_id=evaluation_id,
             employee_id=employee_id,
+            org_id=user.get("org_id"),
             github_username=request.github_username,
             repo_owner=request.repo_owner,
             repo_name=request.repo_name,
@@ -1635,7 +1645,9 @@ async def evaluate_developer_ai(
         status = 503 if "Ollama" in detail or "AI evaluation failed" in detail else 500
         raise HTTPException(status_code=status, detail=detail) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}") from exc
+        # EV-06: log the cause server-side; never return internal exception text.
+        logger.exception("Evaluation failed for %s/%s#%s", request.repo_owner, request.repo_name, request.pr_number)
+        raise HTTPException(status_code=500, detail="Evaluation failed due to an internal error") from exc
 
 
 @router.get("/latest", response_model=Optional[EvaluationResult])
@@ -1644,11 +1656,13 @@ async def get_latest_evaluation(user: dict = Depends(get_current_user)):
     # CR-004: the CEO sees the latest in the organisation; a Lead the latest
     # in their team; everyone else their own.
     if has_global_access(user):
-        query: Dict[str, Any] = {}
+        people = await organization_employee_ids(user)  # EV-01: own organisation only
     elif role == "LEAD":
-        query = {"employee_id": {"$in": sorted(await team_member_ids(user))}}
+        people = await team_member_ids(user)
     else:
-        query = {"employee_id": user.get("employee_id")}
+        people = {user.get("employee_id")}
+    query: Dict[str, Any] = {"$and": [{"employee_id": {"$in": sorted(p for p in people if p)}},
+                                      code_quality_tenant_filter(user)]}
     evaluation = await EvaluationRepository().latest(query)
     return _result_from_evaluation(evaluation) if evaluation else None
 
@@ -1656,7 +1670,8 @@ async def get_latest_evaluation(user: dict = Depends(get_current_user)):
 @router.get("/employee/{employee_id}", response_model=List[EvaluationResult])
 async def list_employee_evaluations(employee_id: str, user: dict = Depends(get_current_user)):
     await verify_can_view_person_evaluations(user, employee_id)
-    evaluations = await EvaluationRepository().list({"employee_id": employee_id})
+    evaluations = await EvaluationRepository().list(
+        {"$and": [{"employee_id": employee_id}, code_quality_tenant_filter(user)]})
     return [_result_from_evaluation(item) for item in evaluations]
 
 
@@ -1711,14 +1726,15 @@ async def list_pr_evaluations(
     role = user.get("role", user.get("organizational_role", "")).upper()
     if role not in {"CEO", "LEAD"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    if not has_global_access(user):
-        # CR-004: a Lead only for repositories linked to their projects.
-        await _verify_repository_in_scope(user, owner, repo)
-    evaluations = await EvaluationRepository().list({
-        "repo_owner": owner,
-        "repo_name": repo,
-        "pr_number": pr_number,
-    })
+    # CR-004 / EV-02: a Lead for repositories linked to their projects; the CEO for
+    # repositories linked to their organisation's projects. Results stay in-tenant.
+    await _verify_repository_in_scope(user, owner, repo)
+    people = await organization_employee_ids(user) if has_global_access(user) else await team_member_ids(user)
+    evaluations = await EvaluationRepository().list({"$and": [
+        {"repo_owner": owner, "repo_name": repo, "pr_number": pr_number},
+        {"employee_id": {"$in": sorted(people)}},
+        code_quality_tenant_filter(user),
+    ]})
     return [_result_from_evaluation(item) for item in evaluations]
 
 
@@ -1734,11 +1750,12 @@ async def evaluation_health():
     except Exception:
         github_status = "error"
 
+    ai_available = await asyncio.to_thread(check_ollama_connection)  # AI-04: off the event loop, once
     return {
         "status": "operational",
-        "ai_available": check_ollama_connection(),
+        "ai_available": ai_available,
         "github_available": github_status,
-        "evaluation_ready": check_ollama_connection() and github_status in ["configured", "not_configured"],
+        "evaluation_ready": ai_available and github_status in ["configured", "not_configured"],
     }
 
 

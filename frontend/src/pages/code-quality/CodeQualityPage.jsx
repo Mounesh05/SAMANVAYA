@@ -26,6 +26,11 @@ import './CodeQuality.css';
 
 const LANGUAGES = ['Python', 'JavaScript', 'TypeScript'];
 
+// CQ-01: with a PR number the server resolves the PR's changed files itself.
+const canSubmit = (data) => Boolean(
+  data.repository_id.trim() && (data.changed_files.trim() || String(data.pr_number || '').trim()),
+);
+
 export function CodeQualityPage() {
   const prior = useLocation().state?.reanalysis;
   const [selectedRepo, setSelectedRepo] = useState(prior?.repository_id || '');
@@ -76,7 +81,7 @@ export function CodeQualityPage() {
 
   const handleStartAnalysis = (e) => {
     e.preventDefault();
-    if (!formData.repository_id.trim() || !formData.changed_files.trim()) return;
+    if (!canSubmit(formData)) return;
     analyzeMutation.mutate(formData);
   };
 
@@ -202,7 +207,7 @@ export function CodeQualityPage() {
               onClick={handleStartAnalysis}
               isLoading={analyzeMutation.isPending}
             >
-              {formData.repository_id.trim() && formData.changed_files.trim() ? 'Run Analysis' : 'Enter repository and files'}
+              {canSubmit(formData) ? 'Run Analysis' : 'Enter repository and files or a PR number'}
             </Button>
           </>
         }
@@ -247,7 +252,7 @@ export function CodeQualityPage() {
 
           <div>
             <label style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
-              Changed files (one per line)
+              Changed files (one per line{formData.pr_number ? "; leave empty to use the PR's changed files" : ''})
             </label>
             <textarea
               rows={4}

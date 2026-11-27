@@ -171,7 +171,7 @@ class GitHubAPIService:
                     if len(raw) > MAX_SOURCE_BYTES:
                         return path, None
                     if verified_snapshot:
-                        git_hash = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+                        git_hash = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw, usedforsecurity=False).hexdigest()  # Git blob id, not a security hash
                         if data.get("path") != path or data.get("size") != len(raw) or git_hash != regular[path].get("sha"):
                             return path, None
                     return path, raw.decode("utf-8-sig")
