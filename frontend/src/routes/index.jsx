@@ -131,6 +131,12 @@ const BoardPage = React.lazy(() =>
 );
 
 // Intelligence & Engineering
+const AlgorithmIntelligencePage = React.lazy(() =>
+  import('../pages/algorithm-intelligence/AlgorithmIntelligencePage').then((m) => ({
+    default: m.AlgorithmIntelligencePage,
+  }))
+);
+
 const CodeQualityPage = React.lazy(() =>
   import('../pages/code-quality/CodeQualityPage').then((m) => ({
     default: m.CodeQualityPage,
@@ -436,6 +442,7 @@ export function AppRoutes() {
 
           {/* Intelligence & Engineering */}
           <Route path="code-quality" element={<RoleGuard page="codeQuality"><CodeQualityPage /></RoleGuard>} />
+          <Route path="algorithm-intelligence" element={<RoleGuard page="algorithmIntelligence"><AlgorithmIntelligencePage /></RoleGuard>} />
           <Route path="code-quality/runs/:runId" element={<RoleGuard page="codeQuality"><RunDetailPage /></RoleGuard>} />
           <Route path="github/sync" element={<RoleGuard page="githubSync"><GitHubSyncPage /></RoleGuard>} />
           <Route path="pull-requests" element={<RoleGuard page="pullRequests"><PullRequestsPage /></RoleGuard>} />

@@ -178,3 +178,18 @@ it('distinguishes an analysis with no comparable predecessor from an unsupported
   expect(screen.getByText(/Static analysis: 1 of 1 functions analysed/)).toBeInTheDocument();
   expect(screen.queryByText(/Unsupported/)).not.toBeInTheDocument();
 });
+
+
+it('does not render an artificial comparison table for a standalone algorithm', async () => {
+  algorithmsApi.getPRIntelligence.mockResolvedValue({ analyses: [{ run_id: 'PRI1', functions: [analysedRow()] }] });
+  panel();
+  expect(await screen.findByText(/time O\(V \+ E\) · space O\(V\)/)).toBeInTheDocument();
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Previous: Unavailable/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/No replacement conclusion/)).not.toBeInTheDocument();
+});
+
+it('does not show measured comparison for a standalone candidate', () => {
+  render(<WorkloadDifferences decision={{ candidates: [{ candidate: 'current' }], dataset_comparisons: [{ dataset_id: 'one' }] }} />);
+  expect(screen.queryByRole('region', { name: 'Measured workload differences' })).not.toBeInTheDocument();
+});

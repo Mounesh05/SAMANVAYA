@@ -57,6 +57,7 @@ export const PAGE_ACCESS = Object.freeze({
 
   // Quality (CR-002).
   codeQuality: { anyOf: [P.VIEW_CODE_QUALITY] },
+  algorithmIntelligence: { anyOf: [P.VIEW_CODE_QUALITY] },
   tests: { anyOf: [P.MANAGE_TEST_CASES] },
   bugs: { anyOf: [P.VIEW_DEFECTS] },
 

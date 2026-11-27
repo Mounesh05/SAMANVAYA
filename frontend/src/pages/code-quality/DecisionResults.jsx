@@ -21,7 +21,9 @@ export function DecisionResults({ decision, revisions = [] }) {
       </li>)}</ul>
       <ul aria-label={`Constraint evaluations for ${candidate.candidate}`}>{candidate.constraint_evaluations.map((check, i) => <li key={i}>
         {check.constraint_id}: {check.status} · {check.classification} · Scope: {check.dataset_id ?? 'required dataset set'} · Source: {check.source_reference}
-        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(check, null, 2)}</pre>
+        <details><summary>Constraint evidence</summary>
+          <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(check, null, 2)}</pre>
+        </details>
       </li>)}</ul>
     </div>)}
     <h5>Dataset comparisons</h5>

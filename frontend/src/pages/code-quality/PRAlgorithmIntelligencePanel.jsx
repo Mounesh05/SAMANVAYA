@@ -31,6 +31,7 @@ export function WorkloadDifferences({ decision }) {
   if (!decision) return null;
   const previous = decision.candidates?.find(c => c.candidate === 'previous');
   const current = decision.candidates?.find(c => c.candidate === 'current');
+  if (!previous || !current) return null;
   return <section aria-label="Measured workload differences"><h4>Measured differences: current minus previous</h4>
     <p>These are descriptive measurements. Contract correctness, eligibility, uncertainty and the deterministic decision control their interpretation.</p>
     <ul>{(decision.dataset_comparisons || []).map(dataset => {
@@ -89,9 +90,9 @@ export function TestEvidenceGrouping({ evidence }) {
   </details>;
 }
 
-/** Previous and current static findings side by side; absent sides are stated, not implied. */
+/** Only render a comparison for a real counterpart. Standalone bounds are rendered separately. */
 export function StaticComparison({ row }) {
-  if (!row.previous && !row.static) return null;
+  if (!row.previous) return null;
   const before = row.static_previous;
   const after = row.static;
   const cell = (value, fallback) => value || fallback;
@@ -100,9 +101,9 @@ export function StaticComparison({ row }) {
   const afterPatterns = after?.patterns?.length ? after.patterns
     : (row.current?.detected_patterns || []).map(pattern => pattern.kind);
   return <section aria-label="Static comparison">
-    <h5>Static comparison</h5>
+    <h5>{row.mode === 'C' ? 'Same-revision alternatives' : 'Static comparison'}</h5>
     <table>
-      <thead><tr><th>Aspect</th><th>{row.previous ? 'Previous' : '—'}</th><th>Current</th></tr></thead>
+      <thead><tr><th>Aspect</th><th>{row.mode === 'C' ? row.previous.qualified_name : 'Previous'}</th><th>{row.mode === 'C' ? row.current?.qualified_name : 'Current'}</th></tr></thead>
       <tbody>
         <tr><td>Declaration</td><td>{row.previous ? row.previous.qualified_name : 'No base counterpart'}</td>
           <td>{row.current?.qualified_name}</td></tr>
@@ -168,14 +169,14 @@ export function PRAlgorithmIntelligencePanel({ prId, source }) {
         {run.reason && <p>{run.reason}</p>}{run.error && <p role="alert">{run.error}</p>}
         {rows.map((fn, i) => <article key={fn.current?.function_id || i}>
           <h4>{fn.current?.path} · {fn.current?.qualified_name}</h4>
-          <p>{fn.benchmark_run_id && fn.mode === 'A' ? 'Static analysis complete' : statusLabel(fn.status)} · {fn.finding_status || fn.compatibility || 'No replacement conclusion'}</p>
+          <p>{fn.benchmark_run_id && fn.mode === 'A' ? 'Static analysis complete' : statusLabel(fn.status)} · {fn.finding_status || fn.compatibility || (fn.mode === 'A' ? 'Standalone assessment' : 'No replacement conclusion')}</p>
           <p>Mode: {modeLabel(fn.mode) || 'Not recorded'} · Classification: {categoryLabel(fn.classification?.category)}
             {fn.classification?.attribution ? ` (attributed to ${fn.classification.attribution})` : ''}</p>
           <p>Static analysis: {fn.static_status === 'analyzed' ? 'Analysed' : 'Not analysed'}
             {' · '}Comparison: {comparisonLabel(fn.comparison_status)}
             {fn.benchmark_status && <> · Benchmark: {statusLabel(fn.benchmark_status)}</>}</p>
           {fn.benchmark_reason && <p>{fn.benchmark_reason}</p>}
-          <p>Previous: {fn.previous?.qualified_name || 'Unavailable'} · Current: {fn.current?.qualified_name}</p>
+          {fn.previous && <p>{fn.mode === 'C' ? 'Alternative' : 'Previous'}: {fn.previous.qualified_name} · Current: {fn.current?.qualified_name}</p>}
           <StaticComparison row={fn} />
           {fn.complexity && <ComplexitySummary complexity={fn.complexity} />}
           <p>Possible tasks: {(fn.current?.task_hypotheses || []).map(h => `${h.kind} (${h.status})`).join(', ') || 'Unknown'}</p>
@@ -191,6 +192,7 @@ export function PRAlgorithmIntelligencePanel({ prId, source }) {
             })}>Explain static findings</Button>}
           {staticExplanation.variables?.runId === run.run_id && staticExplanation.variables?.functionId === fn.current?.function_id && (
             <>
+              <p>AI explanation: {staticExplanation.data?.status === 'generated' ? 'Model response received' : staticExplanation.data?.status === 'unavailable' ? 'Unavailable — deterministic evidence shown' : staticExplanation.isPending ? 'Running' : 'Not completed'}</p>
               {staticExplanation.data?.explanation && <p style={{ whiteSpace: 'pre-line' }}>{staticExplanation.data.explanation}</p>}
               {staticExplanation.data?.error && <p role="status">{staticExplanation.data.error}</p>}
               {staticExplanation.error && <p role="alert">{staticExplanation.error.message}</p>}
@@ -216,7 +218,11 @@ export function PRAlgorithmIntelligencePanel({ prId, source }) {
       <WorkloadDifferences decision={comparison.data.decision} />
       <DecisionResults decision={comparison.data.decision} revisions={comparison.data.decision_revisions} />
       <Button onClick={() => explanation.mutate(selected)} disabled={explanation.isPending}>Explain measured findings</Button>
-      {explanation.data && explanation.variables === selected && <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(explanation.data, null, 2)}</pre>}
+      {explanation.data && explanation.variables === selected && <div>
+        <p>AI explanation: {explanation.data.status === 'generated' ? 'Model response received' : explanation.data.status === 'unavailable' ? 'Unavailable — deterministic evidence shown' : 'Not completed'}</p>
+        <p style={{ whiteSpace: 'pre-line' }}>{explanation.data.explanation || 'No explanation available.'}</p>
+        {explanation.data.error && <p role="status">{explanation.data.error}</p>}
+      </div>}
       {explanation.error && explanation.variables === selected && <p role="alert">{explanation.error.message}</p>}
       <details><summary>Candidate source</summary>{(comparison.data.request?.candidates || []).map(candidate => <section key={candidate.name}>
         <h4>{candidate.name}: {candidate.entrypoint}</h4><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{candidate.source}</pre>

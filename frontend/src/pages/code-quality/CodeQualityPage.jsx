@@ -21,10 +21,6 @@ import { formatDate } from '../../utils/dates';
 import { getGradeColor } from '../../utils/formatters';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
-import { AlgorithmComparisonPanel } from './AlgorithmComparisonPanel';
-import { BehavioralCompatibilityPanel } from './BehavioralCompatibilityPanel';
-import { RequirementsPanel } from './RequirementsPanel';
-import { PRAlgorithmIntelligencePanel } from './PRAlgorithmIntelligencePanel';
 import { fileScopeLabel, isQualityActive, qualityStatus, qualityTone } from './qualityStatus';
 import './CodeQuality.css';
 
@@ -325,16 +321,10 @@ function QualityHistory({ prior, user }) {
         )}
       </Card>
 
-      <PRAlgorithmIntelligencePanel />
-
-      <details className="cq-advanced">
-        <summary>Advanced tools<span>Benchmarks, compatibility and requirements</span></summary>
-        <div className="cq-advanced-body cq-panel">
-          <AlgorithmComparisonPanel />
-          <BehavioralCompatibilityPanel />
-          <RequirementsPanel />
-        </div>
-      </details>
+      <Card title="Algorithm Intelligence">
+        <p className="cq-note">Function analysis, complexity, benchmarks and requirements are available in a separate workspace.</p>
+        <Button variant="secondary" onClick={() => navigate('/algorithm-intelligence')}>Open Algorithm Intelligence</Button>
+      </Card>
 
       <PermissionGuard permission={PERMISSIONS.TRIGGER_CODE_ANALYSIS}>
         <Modal

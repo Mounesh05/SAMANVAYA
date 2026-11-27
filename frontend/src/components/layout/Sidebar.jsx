@@ -40,7 +40,7 @@ import { hasAnyPermission, hasPermission, PERMISSIONS, TEAM_LIST_PERMISSIONS, TR
 const NAV_SECTIONS = [
   { title: 'Overview', pages: ['dashboard'] },
   { title: 'Delivery', pages: ['projects', 'sprints', 'stories', 'tasks', 'board', 'releases'] },
-  { title: 'Engineering', pages: ['codeQuality', 'pullRequests', 'githubSync', 'tests', 'bugs', 'pipelines', 'deployments', 'incidents', 'cicdLogs'] },
+  { title: 'Engineering', pages: ['codeQuality', 'algorithmIntelligence', 'pullRequests', 'githubSync', 'tests', 'bugs', 'pipelines', 'deployments', 'incidents', 'cicdLogs'] },
   { title: 'People', pages: ['employees', 'approvals', 'transfers', 'teams', 'teamDetail', 'evaluation', 'performance', 'feedback'] },
   { title: 'Insights', pages: ['reports', 'audit', 'ceoQuality', 'ceoRisk', 'ceoOrganization'] },
 ];
@@ -79,6 +79,7 @@ export function Sidebar() {
         ? [{ page: 'teamDetail', to: `/teams/${user.team_id}`, icon: <Building2 size={18} />, label: 'My Team' }]
         : []),
       { page: 'codeQuality', to: '/code-quality', icon: <ShieldCheck size={18} />, label: 'Code Quality' },
+      { page: 'algorithmIntelligence', to: '/algorithm-intelligence', icon: <Cpu size={18} />, label: 'Algorithm Intelligence' },
       { page: 'pullRequests', to: '/pull-requests', icon: <GitPullRequest size={18} />, label: 'Pull Requests' },
       { page: 'githubSync', to: '/github/sync', icon: <GitPullRequest size={18} />, label: 'GitHub Sync' },
       { page: 'tests', to: '/tests', icon: <FlaskConical size={18} />, label: 'Tests' },
