@@ -26,4 +26,20 @@ export const codeQualityApi = {
       params: { limit },
     });
   },
+
+  getBranches: async (repositoryId) => {
+    return apiClient.get(`/code-quality/repositories/${repositoryId}/branches`);
+  },
+
+  getRepositoryFiles: async (repositoryId, ref = null) => {
+    return apiClient.get(`/code-quality/repositories/${repositoryId}/files`, {
+      params: ref ? { ref } : {},
+    });
+  },
+
+  getPullRequests: async (repositoryId, state = 'all') => {
+    return apiClient.get(`/code-quality/repositories/${repositoryId}/pull-requests`, {
+      params: { state },
+    });
+  },
 };

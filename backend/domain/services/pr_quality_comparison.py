@@ -124,7 +124,8 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
-async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_by, retry_of=None):
+async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_by, retry_of=None, *,
+                            claimed_run=None, expected_org=None, deep_analysis=False):
     from domain.services.internal_agent_adapter import GitHubAutomation, resolve_code_authority
     repository = owner + "/" + repo
     base, head = pr["base"]["sha"], pr["head"]["sha"]
@@ -146,13 +147,19 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
               "triggered_by": triggered_by, "created_at": now(), "work_deadline": run_deadline(), "analysis_scope": "code_quality"}
     old_paths = [f.get("previous_filename", f["filename"]) for f in files if f.get("status") != "added"]
     new_paths = [f["filename"] for f in files if f.get("status") != "removed"]
+    if claimed_run is not None:
+        if not expected_org or org != expected_org:
+            raise ValueError("The project organization has changed")
+        parent = claimed_run["run_id"]
+    parent_filter = claimed_run if claimed_run is not None else {"_id": parent}
     child_ids = {side: parent + "-" + side for side in ("base", "head")}
     try:
-        await runs.insert_one({**shared, "_id": parent, "run_id": parent, "kind": "pr_quality_comparison",
-            "base_sha": base, "head_sha": head, "child_run_ids": child_ids, "reanalysis_of": retry_of, "status": "running"})
+        if claimed_run is None:
+            await runs.insert_one({**shared, "_id": parent, "run_id": parent, "kind": "pr_quality_comparison",
+                "base_sha": base, "head_sha": head, "child_run_ids": child_ids, "reanalysis_of": retry_of, "status": "running"})
     except DuplicateKeyError:
         query = {"org_id": org, "repository_id": project_id, "pr_number": pr["number"], "kind": "pr_quality_comparison",
-                 "base_sha": base, "head_sha": head, "repository": repository}
+                 "base_sha": base, "head_sha": head, "repository": repository, "file_scope": {"$ne": "pr_comparison"}}
         if retry_of:
             query["_id"] = parent
         existing = await runs.find_one(query, sort=[("created_at", -1)])
@@ -180,7 +187,10 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
             context = {"project_id": project_id, "organization_id": org, "pr_number": pr["number"], "commit_sha": revision,
                        "source_files": sources, "source_diagnostics": diagnostics,
                        "source_provenance": source_provenance(project_id, repository, revision, sources, org)}
-            evidence = await service.analyze_pr(paths, context)
+            if deep_analysis:
+                evidence = await service.analyze_pr(paths, context, deep_analysis=True)
+            else:
+                evidence = await service.analyze_pr(paths, context)
             record = await measure_quality(evidence, paths)
             findings = quality_findings(evidence)
             await store_findings(col("code_quality_findings"), run_id, project_id, org, findings)
@@ -232,9 +242,12 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
             await _mark_findings(stored, child_ids["head"], identities["head"], identities["new"], "new")
             await _mark_findings(stored, child_ids["base"], identities["base"], identities["resolved"], "resolved")
         summary["score_basis"] = child_ids["head"]
-        await runs.update_one({"_id": parent}, {"$set": summary})
+        if claimed_run is not None:
+            summary.update(kind="pr_quality_comparison", file_scope="pr_comparison", base_sha=base, head_sha=head,
+                           repository=repository, child_run_ids=child_ids, analysis_scope="code_quality")
+        await runs.update_one(parent_filter, {"$set": summary})
         return {**summary, "run_id": parent, "child_run_ids": child_ids}, head_evidence
     except (Exception, asyncio.CancelledError):
-        await runs.update_one({"_id": parent}, {"$set": {"status": "failed", "quality_analysis_status": "failed",
+        await runs.update_one(parent_filter, {"$set": {"status": "failed", "quality_analysis_status": "failed",
                               "completed_at": now(), "error": "PR quality comparison interrupted"}})
         raise

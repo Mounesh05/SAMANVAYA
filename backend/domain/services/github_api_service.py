@@ -108,6 +108,115 @@ class GitHubAPIService:
             "comments": comments,
         }
 
+    async def _verified_analysis_tree(self, owner, repo, revision):
+        if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
+            raise ValueError("Exact revision required")
+        commit = await self.client.get_commit(owner, repo, revision)
+        tree_sha = commit.get("commit", {}).get("tree", {}).get("sha")
+        if not isinstance(tree_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", tree_sha):
+            raise ValueError("Missing commit tree identity")
+        tree = await self.client.get_source_tree(owner, repo, tree_sha)
+        if commit.get("sha") != revision or tree.get("truncated", False) or tree.get("sha") != tree_sha:
+            raise ValueError("Exact regular-file tree required")
+        entries = tree["tree"]
+        regular = {entry["path"]: entry for entry in entries
+                   if entry.get("type") == "blob" and entry.get("mode") in {"100644", "100755"}}
+        return tree, regular
+
+    @staticmethod
+    def _is_excluded_path(path: str, excluded_paths: Optional[List[str]] = None) -> bool:
+        if not excluded_paths:
+            return False
+        excluded = {entry.strip("/").lower() for entry in excluded_paths if isinstance(entry, str) and entry.strip()}
+        parts = path.replace("\\", "/").split("/")
+        return any(part.lower() in excluded for part in parts[:-1])
+
+    async def list_repository_tree_summary(
+        self,
+        owner: str,
+        repo: str,
+        revision: str,
+        excluded_paths: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Inspect a verified commit tree for supported source files, directories, and exclusions."""
+        from pathlib import PurePosixPath
+        from intelligence.algorithms.discovery.service import safe_relative_path, source_language
+
+        _, regular = await self._verified_analysis_tree(owner, repo, revision)
+        supported_files: List[str] = []
+        directories: set[str] = set()
+        excluded_files_count = 0
+        unsupported_files_count = 0
+        unsupported_extensions: Dict[str, int] = {}
+
+        for path in sorted(regular):
+            if not safe_relative_path(path) or self._is_excluded_path(path, excluded_paths):
+                excluded_files_count += 1
+                continue
+            if source_language(path):
+                supported_files.append(path)
+                parts = PurePosixPath(path).parts[:-1]
+                for idx in range(1, len(parts) + 1):
+                    directories.add("/".join(parts[:idx]))
+            else:
+                unsupported_files_count += 1
+                ext = PurePosixPath(path).suffix.lower() or "(no extension)"
+                unsupported_extensions[ext] = unsupported_extensions.get(ext, 0) + 1
+
+        return {
+            "files": supported_files,
+            "directories": sorted(directories),
+            "total_blobs": len(regular),
+            "excluded_files_count": excluded_files_count,
+            "unsupported_files_count": unsupported_files_count,
+            "unsupported_extensions": dict(sorted(unsupported_extensions.items(), key=lambda item: (-item[1], item[0]))[:10]),
+        }
+
+    async def list_repository_analysis_paths(
+        self,
+        owner: str,
+        repo: str,
+        revision: str,
+        excluded_paths: Optional[List[str]] = None,
+    ) -> List[str]:
+        summary = await self.list_repository_tree_summary(owner, repo, revision, excluded_paths=excluded_paths)
+        return summary["files"]
+
+    async def expand_selected_paths(
+        self,
+        owner: str,
+        repo: str,
+        revision: str,
+        selections: List[str],
+        excluded_paths: Optional[List[str]] = None,
+    ) -> List[str]:
+        """Expand selected files or directory prefixes against the verified revision tree."""
+        from intelligence.algorithms.discovery.service import safe_relative_path, source_language
+
+        _, regular = await self._verified_analysis_tree(owner, repo, revision)
+        all_supported = sorted(
+            path for path in regular
+            if safe_relative_path(path) and source_language(path) and not self._is_excluded_path(path, excluded_paths)
+        )
+        dir_prefixes = set()
+        for path in regular:
+            parts = path.split("/")[:-1]
+            for idx in range(1, len(parts) + 1):
+                dir_prefixes.add("/".join(parts[:idx]))
+
+        resolved: List[str] = []
+        for raw in selections:
+            item = raw.strip().replace("\\", "/").strip("/")
+            if not item:
+                continue
+            is_dir_hint = raw.strip().endswith("/") or (item in dir_prefixes and item not in regular)
+            if is_dir_hint:
+                prefix = item + "/"
+                resolved.extend(path for path in all_supported if path.startswith(prefix))
+            else:
+                resolved.append(item)
+        return list(dict.fromkeys(resolved))
+
     async def fetch_analysis_sources(self, owner, repo, files, revision, include_context=False, verified_snapshot=False,
                                      *, include_quality_context=True):
         """Fetch bounded supported source at the immutable PR head, never patches."""

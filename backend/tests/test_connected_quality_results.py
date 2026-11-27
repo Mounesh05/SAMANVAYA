@@ -91,6 +91,19 @@ async def test_pr_quality_delta_uses_each_revision_and_replays_without_work(mock
     assert api.fetch_analysis_sources.await_count == 2
     assert await mock_db.code_quality_runs.count_documents({"org_id": "O"}) == 3
 
+    claim = {"run_id": "RUN-MANUAL", "status": "running", "claimed_by": "worker"}
+    await mock_db.code_quality_runs.insert_one({**claim, "repository_id": "P", "org_id": "O"})
+    await comparison.compare_revisions(
+        api, "P", "owner", "repo", pr, files, "actor", claimed_run=claim, expected_org="O",
+    )
+    manual = await mock_db.code_quality_runs.find_one({"run_id": "RUN-MANUAL"})
+    assert manual["kind"] == "pr_quality_comparison"
+    assert manual["quality_comparison"]["delta"] == 14
+    assert manual["child_run_ids"] == {"base": "RUN-MANUAL-base", "head": "RUN-MANUAL-head"}
+    auto_replay, _ = await comparison.compare_revisions(api, "P", "owner", "repo", pr, files, "actor")
+    assert auto_replay["run_id"] == parent["run_id"]
+
+
 
 @pytest.mark.anyio
 async def test_risk_level_uses_the_adjusted_score(monkeypatch):
@@ -106,3 +119,29 @@ async def test_risk_level_uses_the_adjusted_score(monkeypatch):
     result = await RiskEngine().analyze_evidence(evidence)
     assert result["risk_score"] == 33
     assert result["risk_level"] == "MEDIUM"
+
+
+@pytest.mark.anyio
+async def test_repository_analysis_discovers_verified_tree_and_expands_directories():
+    api = GitHubAPIService()
+    revision, tree_id = "a" * 40, "b" * 40
+    api.client.get_commit = AsyncMock(return_value={"sha": revision, "commit": {"tree": {"sha": tree_id}}})
+    api.client.get_source_tree = AsyncMock(return_value={
+        "sha": tree_id, "truncated": False,
+        "tree": [
+            {"path": "src/app.py", "mode": "100644", "type": "blob"},
+            {"path": "src/web/App.tsx", "mode": "100644", "type": "blob"},
+            {"path": "vendor/third_party.py", "mode": "100644", "type": "blob"},
+            {"path": "README.md", "mode": "100644", "type": "blob"},
+            {"path": "src/link.py", "mode": "120000", "type": "blob"},
+        ],
+    })
+    summary = await api.list_repository_tree_summary("owner", "repo", revision, excluded_paths=["vendor"])
+    assert summary["files"] == ["src/app.py", "src/web/App.tsx"]
+    assert summary["directories"] == ["src", "src/web"]
+    assert summary["unsupported_files_count"] == 1
+    assert await api.expand_selected_paths("owner", "repo", revision, ["src/web/"]) == ["src/web/App.tsx"]
+
+    api.client.get_source_tree.return_value["truncated"] = True
+    with pytest.raises(ValueError, match="Exact regular-file tree required"):
+        await api.list_repository_tree_summary("owner", "repo", revision)

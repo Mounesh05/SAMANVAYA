@@ -14,7 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
-import { qualityStatus } from './qualityStatus';
+import { fileScopeLabel, qualityStatus } from './qualityStatus';
 import { DiscoveredFunctions } from './DiscoveredFunctions';
 
 // CQ-02: why a before/after quality change is not shown.
@@ -168,8 +168,11 @@ export function RunDetailPage() {
         }
       />
 
-      {!run?.quality_comparison && (discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope" style={{ marginBottom: 24 }}>
-        <p>{run?.quality_unavailable_reason || (discoveryOnly ? 'Static function discovery only. Quality and risk were not measured.' : run?.error)}</p>
+      {!run?.quality_comparison && (isCompleted || discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope" style={{ marginBottom: 24 }}>
+        <p>Source scope: {fileScopeLabel(run)}</p>
+        {(run?.quality_unavailable_reason || discoveryOnly || run?.error) && <p>
+          {run?.quality_unavailable_reason || (discoveryOnly ? 'Static function discovery only. Quality and risk were not measured.' : run?.error)}
+        </p>}
         <p>Tools executed: {run?.tools_executed?.join(', ') || 'None recorded'}</p>
         <p>Tools skipped or unavailable: {run?.tools_skipped?.join(', ') || 'None recorded'}</p>
         <p>Test coverage: {run?.testing?.coverage_percentage != null ? `${run.testing.coverage_percentage}%` : 'Not measured'}</p>
@@ -190,11 +193,13 @@ export function RunDetailPage() {
             ? ` (${WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]})` : ''}</p>
       </Card>}
       {run?.finding_changes && <FindingChanges changes={run.finding_changes} />}
+      {run?.is_truncated && <p>Analysis was limited to {run.changed_files?.length ?? 0} of {run.source_selection_count} selected files.</p>}
       {run?.commit_sha && <p>Revision <code>{run.commit_sha}</code></p>}
       {run?.commit_sha && !['running', 'pending', 'analyzing'].includes(run.status) &&
         <PermissionGuard permission={PERMISSIONS.TRIGGER_CODE_ANALYSIS}><Button variant="secondary"
           onClick={() => navigate('/code-quality', {state: {reanalysis: {
-            run_id: runId, repository_id: run.repository_id, pr_number: run.pr_number, changed_files: run.changed_files
+            run_id: runId, repository_id: run.repository_id, pr_number: run.pr_number, changed_files: run.changed_files,
+            file_scope: run.file_scope, selected_scope: run.selected_scope
           }}})}>Reanalyze revision</Button></PermissionGuard>}
       {run?.complexity && <Card title="Source metrics">
         <p>Average cyclomatic complexity: {run.complexity.average_complexity ?? 'Not measured'}</p>

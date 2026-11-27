@@ -34,6 +34,7 @@ from domain.services.code_quality_service import CodeQualityService
 from domain.services import code_quality_jobs as jobs
 from domain.services.quality_run_results import expired, run_deadline, RUN_TIMEOUT_SECONDS
 from domain.services.ai_run_access import invocation_scope, permissions, ACCESS_VERSION
+from intelligence.algorithms.discovery.service import MAX_FILES
 from intelligence.analyzers.language_detector import LanguageDetector
 from intelligence.analyzers.registry import list_supported_languages
 
@@ -55,6 +56,7 @@ class AnalyzeRequest(BaseModel):
     analysis_level: Literal["quick", "standard", "deep", "purpose_discovery"] = "standard"   # "quick" | "standard" | "deep"
     use_ai: bool = True
     reanalysis_of: Optional[str] = None
+    file_scope: Optional[Literal["repository", "selected_files", "pr_comparison"]] = None
     repository_ref: Optional[str] = Field(default=None, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 
 
@@ -114,14 +116,20 @@ async def start_analysis(
         raise HTTPException(422, "Select at most 100 repository paths of up to 500 characters each")
     if not repository_id:
         raise HTTPException(status_code=422, detail="A real repository or project ID is required")
-    if not changed_files and not body.pr_number:
+    if body.file_scope == "repository" and (changed_files or body.pr_number):
+        raise HTTPException(422, "Whole repository analysis requires a branch or commit without file or PR inputs")
+    if body.file_scope == "pr_comparison" and (not body.pr_number or changed_files or body.reanalysis_of):
+        raise HTTPException(422, "Select a pull request to compare its base and head revisions")
+    if body.file_scope == "pr_comparison" and body.analysis_level == "purpose_discovery":
+        raise HTTPException(422, "Function discovery requires repository or selected files scope")
+    if not changed_files and not body.pr_number and body.file_scope != "repository":
         raise HTTPException(status_code=422, detail="At least one real changed file is required")
     # CR-002: TRIGGER_CODE_ANALYSIS holders (QA, DevOps) analyse projects they
     # are assigned to. Requiring project *write* access made this unusable:
     # no role holding the permission ever has write access.
     await verify_project_access(user, repository_id)
     changed_files_source = "explicit"
-    if not changed_files:
+    if not changed_files and body.file_scope in (None, "selected_files") and body.pr_number:
         # CQ-01: a PR request without paths analyses the PR's own changed files,
         # resolved server-side from the connected repository (never client paths).
         changed_files = await _pull_request_paths(repository_id, user.get("org_id"), body.pr_number)
@@ -163,8 +171,14 @@ async def start_analysis(
         recorded_repo = (original.get("execution_provenance") or {}).get("repository") or original.get("repository")
         if recorded_repo and recorded_repo.casefold() != (owner + "/" + repo).casefold():
             raise HTTPException(409, "Original repository mapping has changed")
+        if body.file_scope == "repository" and original.get("file_scope") != "repository":
+            raise HTTPException(422, "Whole repository reanalysis requires an original whole repository run")
         key = [repository_id, user.get("org_id"), body.reanalysis_of, sorted(set(changed_files)), body.analysis_level, body.use_ai]
         run_id = "RUN-" + hashlib.sha256(json.dumps(key).encode()).hexdigest()[:24].upper()
+    if body.file_scope == "repository":
+        changed_files_source = "repository_tree"
+    elif body.file_scope == "pr_comparison":
+        changed_files_source = "pull_request_comparison"
     now = datetime.now(timezone.utc).isoformat()
 
     # Detect language immediately (fast — no tools needed)
@@ -185,6 +199,8 @@ async def start_analysis(
         "org_id": user.get("org_id"),
         "changed_files": changed_files,
         "changed_files_source": changed_files_source,
+        **({"file_scope": body.file_scope} if body.file_scope else {}),
+        **({"selected_scope": changed_files} if body.file_scope == "selected_files" else {}),
         "triggered_by_name": user.get("name", ""),
         "created_at": now,
         "work_deadline": run_deadline(),
@@ -338,6 +354,7 @@ async def get_run_history(
              "quality_score": 1, "quality_grade": 1, "risk_score": 1,
              "risk_level": 1, "status": 1, "pr_number": 1,
              "analysis_level": 1, "analysis_scope": 1, "quality_analysis_status": 1,
+             "file_scope": 1, "repository_ref": 1, "commit_sha": 1, "is_truncated": 1,
              "kind": 1, "work_deadline": 1, "source_provenance.method": 1, "reason": 1, "quality_unavailable_reason": 1, "tools_executed": 1, "tools_skipped": 1},
         )
         .sort("created_at", -1)
@@ -345,6 +362,137 @@ async def get_run_history(
         .to_list(limit)
     )
     return {"repository_id": repository_id, "history": [analysis_scope(run) for run in runs], "count": len(runs)}
+
+
+@router.get("/repositories/{repository_id}/branches")
+async def list_repository_branches(
+    repository_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """List branches for a connected project's GitHub repository."""
+    await verify_code_quality_access(user, repository_id)
+    config = await col("github_project_configs").find_one({"project_id": repository_id}, {"_id": 0})
+    if not config:
+        raise HTTPException(status_code=404, detail="No GitHub repository is connected to this project")
+    from domain.services.ai_evidence_service import _repository
+    owner, repo = await _repository(repository_id, user.get("org_id"))
+    default_branch = config.get("default_branch") or "main"
+    try:
+        from domain.services.github_api_service import GitHubAPIService
+        raw_branches = await GitHubAPIService().client.list_branches(owner, repo)
+        branches = [
+            {
+                "name": b["name"],
+                "commit_sha": (b.get("commit") or {}).get("sha"),
+                "protected": bool(b.get("protected", False)),
+            }
+            for b in (raw_branches or [])
+            if isinstance(b, dict) and isinstance(b.get("name"), str)
+        ]
+        if default_branch and not any(b["name"] == default_branch for b in branches):
+            branches.insert(0, {"name": default_branch, "commit_sha": None, "protected": False})
+        return {
+            "repository_id": repository_id,
+            "repository": f"{owner}/{repo}",
+            "default_branch": default_branch,
+            "branches": branches,
+            "branches_available": True,
+        }
+    except Exception:
+        return {
+            "repository_id": repository_id,
+            "repository": f"{owner}/{repo}",
+            "default_branch": default_branch,
+            "branches": [{"name": default_branch, "commit_sha": None, "protected": False}],
+            "branches_available": False,
+        }
+
+
+@router.get("/repositories/{repository_id}/files")
+async def list_repository_files(
+    repository_id: str,
+    ref: Optional[str] = Query(default=None, max_length=200),
+    user: dict = Depends(get_current_user),
+):
+    """Browse supported source files and directories at a specific branch or commit."""
+    await verify_code_quality_access(user, repository_id)
+    if ref and (".." in ref or "//" in ref or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", ref)):
+        raise HTTPException(status_code=422, detail="Invalid branch or commit reference")
+    config = await col("github_project_configs").find_one({"project_id": repository_id}, {"_id": 0})
+    if not config:
+        raise HTTPException(status_code=404, detail="No GitHub repository is connected to this project")
+    cfg_doc = await col(CONFIGS_COLLECTION).find_one({"project_id": repository_id}, {"_id": 0})
+    project_config = ProjectCodeConfig(**cfg_doc) if cfg_doc else ProjectCodeConfig(project_id=repository_id)
+    from domain.services.ai_evidence_service import _repository
+    owner, repo = await _repository(repository_id, user.get("org_id"))
+    target_ref = ref or config.get("default_branch") or "main"
+    try:
+        from domain.services.github_api_service import GitHubAPIService
+        github = GitHubAPIService()
+        commit = await github.client.get_commit(owner, repo, target_ref)
+        revision = commit.get("sha")
+        summary = await github.list_repository_tree_summary(
+            owner, repo, revision, excluded_paths=project_config.excluded_paths
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=502, detail="Could not retrieve repository source tree from GitHub") from error
+
+    return {
+        "repository_id": repository_id,
+        "repository": f"{owner}/{repo}",
+        "ref": target_ref,
+        "commit_sha": revision,
+        "files": summary["files"],
+        "directories": summary["directories"],
+        "total_supported_files": len(summary["files"]),
+        "excluded_files_count": summary["excluded_files_count"],
+        "unsupported_files_count": summary["unsupported_files_count"],
+        "unsupported_extensions": summary["unsupported_extensions"],
+        "max_files_per_run": MAX_FILES,
+    }
+
+
+@router.get("/repositories/{repository_id}/pull-requests")
+async def list_repository_pull_requests(
+    repository_id: str,
+    state: str = Query(default="all", pattern="^(open|closed|all)$"),
+    user: dict = Depends(get_current_user),
+):
+    """List pull requests for a connected repository so users can choose a PR without typing paths."""
+    await verify_code_quality_access(user, repository_id)
+    config = await col("github_project_configs").find_one({"project_id": repository_id}, {"_id": 0})
+    if not config:
+        raise HTTPException(status_code=404, detail="No GitHub repository is connected to this project")
+    from domain.services.ai_evidence_service import _repository
+    owner, repo = await _repository(repository_id, user.get("org_id"))
+    try:
+        from domain.services.github_api_service import GitHubAPIService
+        raw_prs = await GitHubAPIService().list_pull_requests(owner, repo, state=state, per_page=30)
+        pull_requests = [
+            {
+                "number": pr.get("number"),
+                "title": pr.get("title", ""),
+                "state": pr.get("state", "open"),
+                "base_ref": (pr.get("base") or {}).get("ref"),
+                "head_ref": (pr.get("head") or {}).get("ref"),
+                "base_sha": (pr.get("base") or {}).get("sha"),
+                "head_sha": (pr.get("head") or {}).get("sha"),
+                "author": (pr.get("user") or {}).get("login"),
+                "updated_at": pr.get("updated_at"),
+            }
+            for pr in (raw_prs or [])
+            if isinstance(pr, dict) and isinstance(pr.get("number"), int)
+        ]
+        return {
+            "repository_id": repository_id,
+            "repository": f"{owner}/{repo}",
+            "pull_requests": pull_requests,
+            "source": "github",
+        }
+    except Exception as error:
+        raise HTTPException(502, "Could not retrieve pull requests from GitHub") from error
 
 
 @router.post("/projects/{project_id}/config")
@@ -501,6 +649,27 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
 
         # Run analysis via CodeQualityService
         deep = body.analysis_level == "deep"
+        paths = body.changed_files
+        scope_details = {}
+        if body.file_scope == "pr_comparison":
+            from domain.services.ai_evidence_service import _repository
+            from domain.services.github_api_service import GitHubAPIService
+            from domain.services.pr_quality_comparison import compare_revisions
+
+            owner, repo = await _repository(body.repository_id, expected_org)
+            github = GitHubAPIService()
+            pr = await github.client.get_pull_request(owner, repo, body.pr_number)
+            files = await github.client.get_pr_files(owner, repo, body.pr_number)
+            current = await github.client.get_pull_request(owner, repo, body.pr_number)
+            if pr.get("number") != body.pr_number or any(
+                pr[side]["sha"] != current[side]["sha"] for side in ("base", "head")
+            ):
+                raise ValueError("Pull request revisions changed during source selection. Start a new comparison.")
+            await compare_revisions(
+                github, body.repository_id, owner, repo, pr, files, actor_id,
+                claimed_run=owned, expected_org=expected_org, deep_analysis=deep,
+            )
+            return
         context = {**body.pr_context, "project_id": body.repository_id, "pr_number": body.pr_number}
         project_record = await col("projects").find_one({"id": body.repository_id}, {"org_id": 1})
         context["organization_id"] = project_record.get("org_id") if project_record else None
@@ -510,6 +679,8 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
             # The UI submits a project, not host paths. Use the already-configured
             # GitHub repository and freeze all discovery reads to one revision.
             config = await col("github_project_configs").find_one({"project_id": body.repository_id})
+            if not config and body.file_scope == "repository":
+                raise ValueError("Connect a GitHub repository to analyze a whole revision")
             if config:
                 try:
                     from domain.services.github_api_service import GitHubAPIService
@@ -526,20 +697,49 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                         pr = await github.client.get_pull_request(owner, repo, body.pr_number)
                         revision = pr.get("head", {}).get("sha")
                     else:
-                        commit = await github.client.get_commit(owner, repo, body.repository_ref or config["default_branch"])
+                        commit = await github.client.get_commit(
+                            owner, repo, body.repository_ref or config.get("default_branch") or "main",
+                        )
                         revision = commit.get("sha")
                     await collection.update_one(owned, {"$set": {"commit_sha": revision, "repository": owner + "/" + repo}})
+                    if body.file_scope == "repository":
+                        paths = await github.list_repository_analysis_paths(
+                            owner, repo, revision, excluded_paths=project_config.excluded_paths,
+                        )
+                    elif body.file_scope == "selected_files" and any(path.endswith("/") for path in paths):
+                        paths = await github.expand_selected_paths(
+                            owner, repo, revision, paths, excluded_paths=project_config.excluded_paths,
+                        )
+                    if body.file_scope:
+                        if not paths:
+                            await collection.update_one(owned, {"$set": {
+                                "status": "unsupported",
+                                "quality_analysis_status": "unsupported",
+                                "quality_unavailable_reason": "No supported source files found in the selected scope.",
+                                "source_selection_count": 0,
+                                "changed_files": [],
+                                "completed_at": datetime.now(timezone.utc).isoformat(),
+                            }})
+                            return
+                        scope_details = {
+                            "source_selection_count": len(paths),
+                            "is_truncated": len(paths) > MAX_FILES,
+                        }
+                        paths = paths[:MAX_FILES]
+                        await collection.update_one(owned, {"$set": {"changed_files": paths, **scope_details}})
                     sources, diagnostics = await github.fetch_analysis_sources(
-                        owner, repo, [{"filename": p} for p in body.changed_files], revision, include_context=True, verified_snapshot=True,
+                        owner, repo, [{"filename": p} for p in paths], revision, include_context=True, verified_snapshot=True,
                     )
                     context.update(source_files=sources, source_diagnostics=diagnostics, commit_sha=revision)
                     from intelligence.analyzers.isolated import source_provenance
                     context["source_provenance"] = source_provenance(body.repository_id, owner + "/" + repo, revision, sources,
                                                                     context["organization_id"])
                 except Exception:
+                    if body.file_scope == "repository" or any(path.endswith("/") for path in body.changed_files):
+                        raise ValueError("Could not resolve the selected source scope from GitHub") from None
                     context.update(source_files={}, source_diagnostics=[{"kind": "connected_source_unavailable"}])
         if body.analysis_level == "purpose_discovery":
-            discovery = await cq_service.discover_functions(body.changed_files, context)
+            discovery = await cq_service.discover_functions(paths, context)
             await collection.update_one(owned, {"$set": {
                 "status": "failed" if discovery.status == "unavailable" else "completed",
                 "analysis_scope": "purpose_discovery", "quality_analysis_status": "not_run",
@@ -548,7 +748,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
             }})
             return
         evidence = await cq_service.analyze_pr(
-            changed_files=body.changed_files,
+            changed_files=paths,
             pr_context=context,
             project_config=project_config,
             deep_analysis=deep,
@@ -556,8 +756,10 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
 
         from domain.services.quality_run_results import measure_quality, quality_findings, store_findings
         from intelligence.baselines.repository_baseline import RepositoryBaseline
-        baseline = RepositoryBaseline()
-        result = await measure_quality(evidence, body.changed_files, baseline)
+        baseline = None if body.file_scope == "repository" else RepositoryBaseline()
+        result = await measure_quality(evidence, paths, baseline)
+        if scope_details.get("is_truncated"):
+            result["quality_analysis_status"] = "partial" if result.get("quality_score") is not None else result["quality_analysis_status"]
         findings = quality_findings(evidence)
 
         # AI Code Agent (if requested and not quick)
@@ -589,7 +791,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
         await store_findings(findings_col, run_id, body.repository_id, context["organization_id"], findings)
 
         # Update baseline with this run's metrics
-        if result["quality_score"] is not None:
+        if baseline is not None and result["quality_score"] is not None and not scope_details.get("is_truncated"):
             metrics = {
                 "files_changed": float(evidence.files_analyzed),
                 "lines_added": float(evidence.lines_added),

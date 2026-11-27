@@ -319,15 +319,30 @@ describe('Numeric sorting benchmark', () => {
     // Permissions come from /api/auth/me; QA holds TRIGGER_CODE_ANALYSIS.
     useAuthStore.setState({ user: withPermissions({ role: 'QA', permissions: ['TRIGGER_CODE_ANALYSIS'] }) });
     const analyze = vi.spyOn(codeQualityApi, 'startAnalysis').mockResolvedValue({});
+    server.use(
+      http.get('*/api/code-quality/repositories/1/history', () => HttpResponse.json({ history: [] })),
+      http.get('*/api/github/projects/1/config', () => HttpResponse.json({
+        repository_owner: 'owner', repository_name: 'repo', default_branch: 'main',
+      })),
+      http.get('*/api/code-quality/repositories/1/branches', () => HttpResponse.json({
+        default_branch: 'main', branches: [{ name: 'main' }], branches_available: true,
+      })),
+      http.get('*/api/code-quality/repositories/1/files', () => HttpResponse.json({
+        files: ['src/real.py'], directories: ['src'], total_supported_files: 1, ref: 'main',
+      })),
+    );
     client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(<MemoryRouter><QueryClientProvider client={client}><CodeQualityPage /></QueryClientProvider></MemoryRouter>);
     await screen.findByText('Benchmark worker available.');
     expect(screen.getByText('Analysis history')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start analysis' }));
-    change(/Repository or Project ID/, 'real-repository');
-    fireEvent.change(screen.getByPlaceholderText('Paste real changed repository paths, one per line'), { target: { value: 'src/real.py' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Run Analysis' }));
-    await waitFor(() => expect(analyze).toHaveBeenCalledWith(expect.objectContaining({ repository_id: 'real-repository', changed_files: ['src/real.py'], analysis_level: 'standard', use_ai: true })));
+    await screen.findByText('owner/repo');
+    fireEvent.click(screen.getByRole('tab', { name: /Selected files/i }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'src/real.py' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run analysis' }));
+    await waitFor(() => expect(analyze).toHaveBeenCalledWith(expect.objectContaining({
+      repository_id: '1', changed_files: ['src/real.py'], analysis_level: 'standard', use_ai: true,
+    })));
     expect(algorithmsApi.startRun).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Candidate 1 source')).toHaveValue('');
   });
