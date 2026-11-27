@@ -196,3 +196,56 @@ it('defaults to whole-repository analysis with branch selector and supports sele
     changed_files: [],
   })));
 });
+
+it('shows PR comparison scope for active/failed runs, legacy scopes, measurement gaps, and PR fetch errors', async () => {
+  codeQualityApi.getHistory.mockResolvedValue({
+    repository_id: 'PRJ-1',
+    history: [
+      {
+        run_id: 'RUN-PENDING-PR',
+        status: 'pending',
+        file_scope: 'pr_comparison',
+        changed_files: [],
+        pr_number: 17,
+        language: 'unknown',
+        created_at: '2026-11-27T10:00:00Z',
+      },
+      {
+        run_id: 'RUN-LEGACY-GAPS',
+        status: 'completed',
+        quality_analysis_status: 'partial',
+        changed_files: ['a.py'],
+        source_selection_count: 1,
+        files_analyzed: 1,
+        language: 'python',
+        quality_score: 88,
+        quality_grade: 'B',
+        risk_score: 15,
+        risk_level: 'low',
+        created_at: '2026-11-27T09:00:00Z',
+      },
+    ],
+    count: 2,
+  });
+  codeQualityApi.getPullRequests.mockRejectedValue(new Error('GitHub PR list unavailable'));
+  codeQualityApi.startAnalysis.mockResolvedValue({});
+  showHistoryPage();
+
+  expect(await screen.findByText('RUN-PENDING-PR')).toBeInTheDocument();
+  expect(screen.getByText('PR comparison')).toBeInTheDocument();
+  expect(screen.getByText('Selected files')).toBeInTheDocument();
+  expect(screen.getByText('Analyzed with measurement gaps')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Start analysis' }));
+  fireEvent.click(screen.getByRole('tab', { name: /PR comparison/i }));
+  const prError = await screen.findByText(/Could not load pull requests \(GitHub PR list unavailable\)/);
+  expect(prError).toHaveAttribute('role', 'alert');
+  fireEvent.change(screen.getByLabelText(/Pull request number/), { target: { value: '42' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Run analysis' }));
+  await waitFor(() => expect(codeQualityApi.startAnalysis).toHaveBeenCalledWith(expect.objectContaining({
+    repository_id: 'PRJ-1',
+    file_scope: 'pr_comparison',
+    pr_number: 42,
+    changed_files: [],
+  })));
+});

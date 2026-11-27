@@ -442,6 +442,11 @@ function QualityHistory({ prior, user }) {
             {!formData.reanalysis_of && prComparison && connection.isSuccess && (
               <div className="cq-form">
                 {prsQuery.isFetching && <p role="status" className="cq-note">Loading repository pull requests…</p>}
+                {prsQuery.isError && (
+                  <p role="alert" className="cq-note">
+                    Could not load pull requests ({prsQuery.error?.message || 'GitHub unavailable'}). You can still enter a PR number below.
+                  </p>
+                )}
                 {prOptions.length > 0 && (
                   <Select
                     label="Pull request"

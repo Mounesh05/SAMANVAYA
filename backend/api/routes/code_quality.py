@@ -355,6 +355,7 @@ async def get_run_history(
              "risk_level": 1, "status": 1, "pr_number": 1,
              "analysis_level": 1, "analysis_scope": 1, "quality_analysis_status": 1,
              "file_scope": 1, "repository_ref": 1, "commit_sha": 1, "is_truncated": 1,
+             "changed_files": 1, "source_selection_count": 1, "files_analyzed": 1, "file_counts": 1,
              "kind": 1, "work_deadline": 1, "source_provenance.method": 1, "reason": 1, "quality_unavailable_reason": 1, "tools_executed": 1, "tools_skipped": 1},
         )
         .sort("created_at", -1)
@@ -679,8 +680,8 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
             # The UI submits a project, not host paths. Use the already-configured
             # GitHub repository and freeze all discovery reads to one revision.
             config = await col("github_project_configs").find_one({"project_id": body.repository_id})
-            if not config and body.file_scope == "repository":
-                raise ValueError("Connect a GitHub repository to analyze a whole revision")
+            if not config and body.file_scope in ("repository", "selected_files"):
+                raise ValueError("Connect a GitHub repository to analyze selected files or a whole revision")
             if config:
                 try:
                     from domain.services.github_api_service import GitHubAPIService
@@ -706,7 +707,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                         paths = await github.list_repository_analysis_paths(
                             owner, repo, revision, excluded_paths=project_config.excluded_paths,
                         )
-                    elif body.file_scope == "selected_files" and any(path.endswith("/") for path in paths):
+                    elif body.file_scope == "selected_files":
                         paths = await github.expand_selected_paths(
                             owner, repo, revision, paths, excluded_paths=project_config.excluded_paths,
                         )
@@ -735,7 +736,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     context["source_provenance"] = source_provenance(body.repository_id, owner + "/" + repo, revision, sources,
                                                                     context["organization_id"])
                 except Exception:
-                    if body.file_scope == "repository" or any(path.endswith("/") for path in body.changed_files):
+                    if body.file_scope in ("repository", "selected_files") or any(path.endswith("/") for path in body.changed_files):
                         raise ValueError("Could not resolve the selected source scope from GitHub") from None
                     context.update(source_files={}, source_diagnostics=[{"kind": "connected_source_unavailable"}])
         if body.analysis_level == "purpose_discovery":

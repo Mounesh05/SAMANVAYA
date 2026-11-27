@@ -12,7 +12,7 @@ export function qualityTone(run) {
 
 export function fileScopeLabel(run = {}) {
   if (run.kind === 'pr_algorithm_intelligence' || run.analysis_scope === 'pr_algorithm_intelligence') return 'Algorithm';
-  if (run.kind === 'pr_quality_comparison') return 'PR comparison';
+  if (run.kind === 'pr_quality_comparison' || run.file_scope === 'pr_comparison') return 'PR comparison';
   if (run.file_scope === 'pr_changes' || run.kind?.startsWith('pr_quality_')) return 'PR changed files';
   if (run.file_scope === 'repository') return 'Whole revision';
   return Array.isArray(run.changed_files) || run.file_scope === 'selected_files' ? 'Selected files' : 'Unrecorded';
