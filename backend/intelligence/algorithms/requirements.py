@@ -18,7 +18,7 @@ def source_content(doc):
 
 def trusted_source(doc, include_superseded=False):
     approval = doc.get("approval") or {}
-    allowed = {"APPROVED", "SUPERSEDED"} if include_superseded else {"APPROVED"}
+    allowed = {"APPROVED", "SUPERSEDED", "REVOKED"} if include_superseded else {"APPROVED"}
     return (doc.get("status") in allowed and approval.get("scope_reviewed") is True
             and approval.get("approved_by") and approval.get("approved_by") != doc.get("proposed_by")
             and approval.get("organization_id") == doc.get("organization_id")
@@ -73,7 +73,10 @@ def resolve_requirements(project_id, context, sources, observations=(), suggesti
                             source_fingerprint=doc.get("payload_fingerprint"))
             row["applicability_status"] = applicability(row["scope"], context, dataset_ids)
             if doc.get("status") == "SUPERSEDED" or not trusted and doc.get("status") != "PROPOSED":
-                row["exclusion_reason"] = "Superseded or invalid source approval/fingerprint"
+                row["exclusion_reason"] = "Source no longer active or approval integrity invalid"
+                if doc.get("status") == "REVOKED" and row["applicability_status"] != "NOT_APPLICABLE":
+                    report["conflicts"].append({"reason": "An applicable requirement was revoked; reviewed replacement required",
+                                                "evidence_refs": [reference], "requirement_ids": [row["id"]]})
                 report["excluded"].append(row)
             elif row["applicability_status"] == "NOT_APPLICABLE":
                 report["excluded"].append(row)

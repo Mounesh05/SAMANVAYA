@@ -27,7 +27,7 @@ from intelligence.algorithms.discovery.classification import NESTED, TEST, TEST_
 from intelligence.algorithms.discovery.service import discover_sources, source_language, safe_relative_path
 
 METHOD = "pr-algorithm-intelligence-v1"
-ANALYSIS_REVISION = "static-and-standalone-v2"
+ANALYSIS_REVISION = "authority-lifecycle-v3"
 TERMINAL = {"completed", "insufficient_evidence", "unsupported", "failed", "superseded"}
 _SLOTS = asyncio.Semaphore(2)
 _TASKS = set()
@@ -358,12 +358,21 @@ class PRAlgorithmIntelligenceService:
         ).sort("source_id", 1).limit(33).to_list(33)
         if requirement_approvals:
             identity.append(fingerprint(requirement_approvals))
+        # Revocation is distinct from the original no-approval state.
+        revoked_contracts = await self.contracts.collection.find(
+            {"project_id": project_id, "organization_id": user["org_id"], "status": "REVOKED"},
+            {"_id": 0, "contract_id": 1, "payload_fingerprint": 1}).sort("contract_id", 1).limit(101).to_list(101)
+        revoked_sources = await self.collection("algorithm_requirement_sources").find(
+            {"project_id": project_id, "organization_id": user["org_id"], "status": "REVOKED"},
+            {"_id": 0, "source_id": 1, "payload_fingerprint": 1}).sort("source_id", 1).limit(33).to_list(33)
+        identity.extend([fingerprint(revoked_contracts), fingerprint(revoked_sources)])
         key = hashlib.sha256(str(identity).encode()).hexdigest()
         run_id = "PRI-" + key[:24].upper()
         runs = self.collection("code_quality_runs")
         await runs.create_index("algorithm_job_key", unique=True, sparse=True)
         doc = {"run_id": run_id, "algorithm_job_key": key, "kind": "pr_algorithm_intelligence", "method": METHOD,
                "approved_contracts": approvals, "approved_requirement_sources": requirement_approvals,
+               "organization_id": user["org_id"],
                "repository_id": project_id, "project_id": project_id, "repository": repository, "pr_id": pr_id,
                "pr_number": pr["number"], "base_sha": base, "head_sha": head, "commit_sha": head,
                "created_at": now(), "lease_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=8)).isoformat(),
@@ -443,6 +452,8 @@ class PRAlgorithmIntelligenceService:
         return queued
 
     async def fresh(self, doc):
+        if await self.collection("code_quality_runs").find_one({"run_id": doc["run_id"], "authority_review_required": True}):
+            return False
         owner, repo = doc["repository"].split("/")
         current = await self.api.client.get_pull_request(owner, repo, doc["pr_number"])
         return (current.get("state") == "open" and current.get("head", {}).get("sha") == doc["head_sha"]
@@ -516,7 +527,8 @@ class PRAlgorithmIntelligenceService:
             "repetitions": 5, "resources": {"cpus": 1, "memory_bytes": 536870912, "pids": 64, "timeout_seconds": 45},
             "decision_policy": {"id": "automatic-pr-standalone", "version": "1", "objective": "TRADEOFF_ONLY",
                                 "required_dataset_ids": contract["required_dataset_ids"]},
-            "requirement_context": {"pr_ids": [doc["pr_id"]]},
+            "requirement_context": {"pr_ids": [doc["pr_id"]], "contract_ids": [contract["contract_id"]],
+                                    "discovery_run_ids": [head_run], "function_ids": [function["function_id"]]},
         }
         from domain.schemas.algorithm_benchmark import BenchmarkRequest
         validated = BenchmarkRequest.model_validate(request).model_dump()
@@ -720,7 +732,7 @@ class PRAlgorithmIntelligenceService:
             child = await self.benchmarks.get(created["run_id"])
             row["benchmark_run_id"] = child["run_id"]
             report = child.get("requirements_discovery", {})
-            if created["status"] == "pending" and (report.get("conflicts") or any(c.get("applicability") == "UNRESOLVED" for c in child["request"]["decision_policy"]["constraints"])):
+            if created["status"] == "pending" and (not await self.fresh(doc) or report.get("conflicts") or any(c.get("applicability") == "UNRESOLVED" for c in child["request"]["decision_policy"]["constraints"])):
                 await self.benchmarks._finish(child["run_id"], {"status": "completed", "error": "Applicable requirement or validator is unresolved; automatic execution skipped"})
                 row.update(status="insufficient_evidence", comparison_status="blocked",
                            reason="Requirements need resolution before automatic execution", requirements_discovery=report)

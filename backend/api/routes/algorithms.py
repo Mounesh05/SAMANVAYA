@@ -25,6 +25,8 @@ from domain.schemas.requirement_discovery import RequirementDiscoveryRequest, Re
 import logging
 
 logger = logging.getLogger(__name__)
+from domain.services.algorithm_requirement_lifecycle import ReviewAction, transition
+
 router = APIRouter()
 requirement_service = RequirementDiscoveryService()
 service = AlgorithmBenchmarkService(requirements=requirement_service)
@@ -200,6 +202,38 @@ async def continue_approved_analysis(approved):
         logger.exception("Approval continuation unavailable; normal PR sync can retry")
 
 
+async def review_requirement(collection, document, body, user, is_contract):
+    try:
+        reviewed = await transition(collection, document, body.model_dump(), user, is_contract)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if reviewed["status"] == "REVOKED":
+        # Conservative invalidation: project results may depend on revoked authority.
+        await col("recommendations").update_many({"project_id": reviewed["project_id"], "generated_by": "pr-algorithm-intelligence-v1"},
+            {"$set": {"status": "obsolete", "historical_only": True}})
+        await col("code_quality_runs").update_many({"project_id": reviewed["project_id"],
+            "organization_id": reviewed["organization_id"], "kind": "pr_algorithm_intelligence"},
+            {"$set": {"authority_review_required": True, "report_status": "incomplete"}})
+    return reviewed
+
+
+@router.post("/contracts/{contract_id}/review-action")
+async def review_contract(contract_id: str, body: ReviewAction, user: dict = Depends(engineering_user)):
+    document = await read_contract(contract_id, user)
+    return await review_requirement(contract_service.collection, document, body, user, True)
+
+
+@router.post("/requirements/sources/{source_id}/review-action")
+async def review_source(source_id: str, body: ReviewAction, user: dict = Depends(engineering_user)):
+    document = await requirement_service.get(source_id)
+    if not document or document.get("organization_id") != user.get("org_id"):
+        raise HTTPException(status_code=404, detail="Requirement source not found")
+    await project_access(user, document["project_id"])
+    return await review_requirement(requirement_service.collection("algorithm_requirement_sources"), document, body, user, False)
+
+
 @router.post("/contracts/{contract_id}/approve")
 async def approve_contract(contract_id: str, body: ContractApproval, user: dict = Depends(engineering_user),
                            background_tasks: BackgroundTasks = None):
@@ -343,7 +377,7 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
     # Only the latest revision is actionable. Earlier records remain historical.
     for row in rows:
         pr = await col("pull_requests").find_one({"id": row["pr_id"], "project_id": row["project_id"]})
-        row["historical_only"] = row["status"] == "superseded" or not pr or pr.get("status") != "open" or pr.get("head_sha") != row["head_sha"] or pr.get("algorithm_intelligence_run_id") != row["run_id"]
+        row["historical_only"] = bool(row.get("authority_review_required")) or row["status"] == "superseded" or not pr or pr.get("status") != "open" or pr.get("head_sha") != row["head_sha"] or pr.get("algorithm_intelligence_run_id") != row["run_id"]
         for function in row.get("functions", []):
             if not function.get("benchmark_run_id") or function.get("mode") == "A":
                 continue
@@ -362,7 +396,7 @@ async def retry_pr_advisory(run_id: str, user: dict = Depends(engineering_user))
     if not record:
         raise HTTPException(status_code=404, detail="PR analysis not found")
     await project_access(user, record["project_id"])
-    if record["status"] not in {"completed", "insufficient_evidence", "unsupported", "failed"} or not record.get("functions"):
+    if record.get("authority_review_required") or record["status"] not in {"completed", "insufficient_evidence", "unsupported", "failed"} or not record.get("functions"):
         raise HTTPException(status_code=409, detail="Deterministic analysis is unavailable")
     from domain.services.github_api_service import GitHubAPIService
     from domain.services.pr_algorithm_intelligence_service import PRAlgorithmIntelligenceService

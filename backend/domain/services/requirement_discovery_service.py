@@ -67,7 +67,7 @@ class RequirementDiscoveryService:
             raise ValueError("Reviewed source revision changed or is no longer proposed")
         if document.get("supersedes"):
             old = await self.get(document["supersedes"])
-            if not old or not trusted_source(old) or old["project_id"] != document["project_id"]:
+            if not old or old.get("status") not in {"APPROVED", "REVOKED"} or not trusted_source(old, include_superseded=True) or old["project_id"] != document["project_id"]:
                 raise ValueError("Only a currently approved source revision can be superseded")
         review.update(approved_by=actor(user), organization_id=user["org_id"], approved_at=datetime.now(timezone.utc).isoformat())
         result = await self.collection("algorithm_requirement_sources").update_one(
@@ -79,7 +79,7 @@ class RequirementDiscoveryService:
         # cannot make both revisions silently compete or discard both originals.
         if document.get("supersedes"):
             await self.collection("algorithm_requirement_sources").update_one(
-                {"source_id": document["supersedes"], "status": "APPROVED"},
+                {"source_id": document["supersedes"], "status": {"$in": ["APPROVED", "REVOKED"]}},
                 {"$set": {"status": "SUPERSEDED", "superseded_by": document["source_id"]}})
         await self.collection("project_configs").update_one({"project_id": document["project_id"]},
             {"$addToSet": {"algorithm_requirement_source_ids": document["source_id"]}}, upsert=True)

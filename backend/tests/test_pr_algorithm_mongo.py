@@ -16,7 +16,7 @@ pytestmark = [pytest.mark.anyio, pytest.mark.skipif(os.environ.get("SAMANVAYA_MO
 async def test_real_mongo_duplicate_job_keys_coexist_with_function_snapshots():
     client = AsyncIOMotorClient(os.environ.get("MONGO_URI", "mongodb://localhost:27017"), serverSelectionTimeoutMS=2000)
     prefix = "test_pr_algorithm_" + uuid.uuid4().hex
-    names = ["projects", "github_project_configs", "pull_requests", "code_quality_runs", "algorithm_function_contracts", "algorithm_benchmark_runs", "recommendations"]
+    names = ["projects", "github_project_configs", "pull_requests", "code_quality_runs", "algorithm_function_contracts", "algorithm_benchmark_runs", "algorithm_requirement_sources", "recommendations"]
     collections = {name: client["samanvaya_test"][prefix + "_" + name] for name in names}
     try:
         await client.admin.command("ping")

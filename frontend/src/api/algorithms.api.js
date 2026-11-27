@@ -2,6 +2,8 @@ import apiClient from './client';
 
 export const algorithmsApi = {
   getPRIntelligence: params => apiClient.get('/algorithms/pr-intelligence', { params }),
+  reviewContract: (id, body) => apiClient.post(`/algorithms/contracts/${encodeURIComponent(id)}/review-action`, body),
+  reviewRequirementSource: (id, body) => apiClient.post(`/algorithms/requirements/sources/${encodeURIComponent(id)}/review-action`, body),
   retryPRAdvisory: id => apiClient.post(`/algorithms/pr-intelligence/${encodeURIComponent(id)}/advisory`),
   retryBenchmarkAdvisory: id => apiClient.post(`/algorithms/runs/${encodeURIComponent(id)}/advisory`),
   discoverRequirements: body => apiClient.post('/algorithms/requirements/discover', body),
