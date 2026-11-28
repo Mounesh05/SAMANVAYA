@@ -11,6 +11,9 @@ interpretation into ``code-quality-advisory-v1``:
   (<= 180), ``action`` the model's advice (<= 240). Unsafe or empty advice is dropped.
 * ``limitations`` (<= 3, <= 160 chars each): server-written from measured gaps.
 
+Model text that inflates a finding's severity, echoes injected instructions or looks
+like a credential is withheld (CQ-31..34).
+
 No score, severity or confidence field is part of the contract.
 """
 import re
@@ -31,6 +34,24 @@ _UNSAFE_ACTIONS = re.compile(
     r"(curl[^\n|]*\|\s*(?:ba)?sh|rm\s+-rf|chmod\s+777|disable\s+(?:the\s+)?(?:linter|security|bandit|eslint|checks?)"
     r"|#\s*nosec|eslint-disable|noqa|type:\s*ignore|eval\()", re.IGNORECASE)
 _NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])")
+# Model text that echoes injected instructions or looks like a credential is withheld.
+_INJECTION_ECHO = re.compile(r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions|system\s+prompt"
+                             r"|you\s+are\s+now\b", re.IGNORECASE)
+_SECRET_LIKE = re.compile(r"AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}"
+                          r"|-----BEGIN [A-Z ]*PRIVATE KEY|\b(?:password|passwd|secret|api[_-]?key|token)\s*[=:]\s*\S{4,}",
+                          re.IGNORECASE)
+_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+_SEVERITY_CLAIM = re.compile(r"\b(critical|high[- ]severity|severe)\b", re.IGNORECASE)
+
+
+def _claimed_rank(text):
+    """Most severe level the text asserts (None when it asserts none)."""
+    ranks = [0 if m.lower() == "critical" else 1 for m in _SEVERITY_CLAIM.findall(text)]
+    return min(ranks) if ranks else None
+
+
+def _withheld(text):
+    return bool(_INJECTION_ECHO.search(text) or _SECRET_LIKE.search(text))
 
 
 def _citation(finding):
@@ -100,7 +121,10 @@ def advisory_v1(interpretation, evidence):
             continue
         finding = by_citation[cited[0]]
         action = text.replace(cited[0], "").strip(" \t:-–—.")
-        if not action or _UNSAFE_ACTIONS.search(action) or _UNMEASURED_CLAIMS.search(action) or finding["id"] in used:
+        claimed = _claimed_rank(action)
+        inflated = claimed is not None and claimed < _SEVERITY_RANK.get(finding.get("severity"), 5)
+        if (not action or _UNSAFE_ACTIONS.search(action) or _UNMEASURED_CLAIMS.search(action) or _withheld(action)
+                or inflated or finding["id"] in used):
             rejected += 1
             continue
         used.add(finding["id"])
@@ -110,7 +134,10 @@ def advisory_v1(interpretation, evidence):
             break
     model_summary = str(interpretation.get("analysis") or "").strip()
     numbers_ok = set(_NUMBER.findall(model_summary)) <= _allowed_numbers(evidence, findings)
-    grounded = bool(findings) and model_summary and numbers_ok and not _UNMEASURED_CLAIMS.search(model_summary)
+    worst = min((_SEVERITY_RANK.get(f.get("severity"), 5) for f in findings), default=5)
+    claimed = _claimed_rank(model_summary)
+    grounded = (bool(findings) and model_summary and numbers_ok and not _UNMEASURED_CLAIMS.search(model_summary)
+                and not _withheld(model_summary) and (claimed is None or claimed >= worst))
     summary = model_summary if grounded else server_summary(evidence, findings)
     return {"schema_version": SCHEMA_VERSION, "summary": summary[:MAX_SUMMARY],
             "summary_source": "model" if grounded else "server",

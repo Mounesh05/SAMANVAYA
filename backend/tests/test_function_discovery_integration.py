@@ -83,6 +83,9 @@ async def test_discovery_snapshot_uses_existing_runs_and_authorization(mock_db, 
     saved = await mock_db.code_quality_runs.find_one({"run_id": run_id})
     assert saved["analysis_level"] == "purpose_discovery"
     assert saved["quality_score"] is None and saved["risk_score"] is None
+    # Phase 1 CQ-28: discovery alone is exempt from the compulsory AI, and labelled so.
+    assert saved["ai_required"] is False and saved["ai_status"] == "not_applicable"
+    assert saved["report_status"] == "not_a_quality_report"
 
 
 async def test_legacy_run_reports_not_analyzed_instead_of_inventing_evidence(mock_db, monkeypatch):

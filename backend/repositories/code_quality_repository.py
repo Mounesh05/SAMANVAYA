@@ -14,6 +14,7 @@ class CodeQualityRepository:
         await col("code_quality_runs").insert_one({
             "run_id": run_id, "repository_id": project_id, "pr_number": pr_number,
             "commit_sha": report.source_revision, "analysis_level": "purpose_discovery",
+            "ai_required": False, "ai_status": "not_applicable", "report_status": "not_a_quality_report",
             "status": "completed", "created_at": now, "completed_at": now,
             "triggered_by": triggered_by, "language": languages[0] if languages else "unknown",
             "detected_languages": languages, "function_discovery": report.model_dump(mode="json"),

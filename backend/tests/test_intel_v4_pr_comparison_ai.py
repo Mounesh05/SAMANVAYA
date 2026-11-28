@@ -97,6 +97,8 @@ async def test_pr_comparison_interpretation_is_compulsory_even_when_ai_was_not_r
     assert parent["status"] == "completed"
     assert parent["ai_status"] == "completed"
     assert parent["report_status"] == "complete" and parent["report_incomplete_reasons"] == []
+    # CQ-28: the legacy false is normalised to true and recorded as sent, never silently honoured.
+    assert parent["use_ai"] is True and parent["use_ai_requested"] is False and parent["ai_required"] is True
     interpret.assert_awaited_once()
     assert interpret.await_args.args[0]["dependency_audit"] == "not_checked"
     assert parent["dependency_audit"] == {"base": "not_checked", "head": "not_checked"}

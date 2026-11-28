@@ -278,8 +278,15 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
         if claimed_run is not None:
             summary.update(kind="pr_quality_comparison", file_scope="pr_comparison", base_sha=base, head_sha=head,
                            repository=repository, child_run_ids=child_ids, analysis_scope="code_quality")
+        if interpret is None:
+            # Automatic (webhook) comparisons get the same compulsory interpretation,
+            # under the server-owned automation authority for this exact head revision.
+            from domain.services.quality_interpretation import interpret_comparison
+
+            async def interpret(measured, evidence):
+                return await interpret_comparison(measured, evidence, authority, project_id, head)
         if interpret is not None:
-            # Optional advisory interpretation, stored with the final result in one write.
+            # Advisory interpretation, stored with the final result in one write.
             # It reads the measured summary and never changes it.
             try:
                 summary.update(await interpret(dict(summary), head_evidence))
