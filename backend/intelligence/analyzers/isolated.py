@@ -8,7 +8,7 @@ from pathlib import PurePosixPath
 
 from intelligence.evidence.models import CodeQualityEvidence
 
-IMAGE = "samanvaya-quality:2"  # v4 DEF-V4-026: worker ESLint config changed
+IMAGE = "samanvaya-quality:3"  # v4: analyzer noise fixes and algorithm v2 discovery changes
 PROTOCOL = "quality-snapshot-v1"
 
 

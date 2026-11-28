@@ -145,7 +145,7 @@ def now():
 
 
 async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_by, retry_of=None, *,
-                            claimed_run=None, expected_org=None, deep_analysis=False):
+                            claimed_run=None, expected_org=None, deep_analysis=False, interpret=None):
     from domain.services.internal_agent_adapter import GitHubAutomation, resolve_code_authority
     repository = owner + "/" + repo
     base, head = pr["base"]["sha"], pr["head"]["sha"]
@@ -264,6 +264,13 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
         if claimed_run is not None:
             summary.update(kind="pr_quality_comparison", file_scope="pr_comparison", base_sha=base, head_sha=head,
                            repository=repository, child_run_ids=child_ids, analysis_scope="code_quality")
+        if interpret is not None:
+            # Optional advisory interpretation, stored with the final result in one write.
+            # It reads the measured summary and never changes it.
+            try:
+                summary.update(await interpret(dict(summary), head_evidence))
+            except Exception:
+                logger.exception("PR comparison interpretation could not be stored for %s", parent)
         await runs.update_one(parent_filter, {"$set": summary})
         return {**summary, "run_id": parent, "child_run_ids": child_ids}, head_evidence
     except (Exception, asyncio.CancelledError):

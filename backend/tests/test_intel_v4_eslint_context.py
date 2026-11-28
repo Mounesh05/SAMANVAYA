@@ -57,4 +57,4 @@ def test_worker_config_declares_standard_globals_and_typescript_overrides():
 
 def test_changed_worker_config_ships_under_a_new_image_tag():
     # Changing the worker image contents requires a new tag (worker_broker/README.md).
-    assert IMAGE == "samanvaya-quality:2"
+    assert IMAGE == "samanvaya-quality:3"

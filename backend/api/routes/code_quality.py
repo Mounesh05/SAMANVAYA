@@ -634,6 +634,45 @@ _recovered_tasks: set = set()
 recovery = jobs.RecoveryLoop(lambda: col(RUNS_COLLECTION), _dispatch_recovered)
 
 
+def _ai_fields(ai_analysis, authority):
+    return {"ai_analysis": ai_analysis, "ai_status": ai_analysis["status"],
+            "ai_authorization_scope": authority.scope if authority is not None else None,
+            "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
+                              "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"}}
+
+
+async def _interpret_quality(body, actor_id, context, evidence, findings, result, comparison=None):
+    """Advisory AI interpretation of server-measured evidence; it never changes scores."""
+    from domain.services.internal_agent_adapter import resolve_code_authority, interpret_code, failed_interpretation
+    if not body.use_ai or body.analysis_level == "quick":
+        return {"status": "skipped", "errors": []}, None
+    authority = None
+    try:
+        authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
+        from intelligence.quality_engine import snapshot_context_diagnostic
+        observed_findings = [f for f in findings if not snapshot_context_diagnostic(f.source_tool, f.rule_id)]
+        observations = [{"file": f.file_path, "line": f.line_number, "rule_id": f.rule_id,
+                         "message": f.message[:500]} for f in observed_findings[:20]]
+        complexity = result.get("complexity")
+        if complexity is None and comparison is not None and evidence.complexity.is_available:
+            complexity = evidence.complexity.model_dump(mode="json")
+        package = {"files_analyzed": evidence.files_analyzed, "static_analysis": {"findings": observations},
+                   "complexity": complexity,
+                   "tests": {"coverage": {"line_coverage": evidence.testing.coverage_percentage}}}
+        if comparison is not None:
+            package["pr_comparison"] = comparison
+        ai_analysis = await interpret_code(
+            package, {"project_id": body.repository_id, "commit_sha": evidence.commit_sha or context.get("commit_sha")},
+            authority, evidence_available=result.get("quality_score") is not None,
+            quality_result={"quality_score": result.get("quality_score"), "quality_grade": result.get("quality_grade")},
+            risk_result={"risk_score": result.get("risk_score"), "risk_level": result.get("risk_level")})
+    except HTTPException:
+        ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
+    except Exception:
+        ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
+    return ai_analysis, authority
+
+
 async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_org):
     """
     Heavy analysis executed in the background.
@@ -671,9 +710,25 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                 pr[side]["sha"] != current[side]["sha"] for side in ("base", "head")
             ):
                 raise ValueError("Pull request revisions changed during source selection. Start a new comparison.")
+            async def interpret(summary, head_evidence):
+                # v4 AI-PR: the parent gets one advisory interpretation of the measured head
+                # revision plus the comparison evidence; the child runs carry none.
+                if head_evidence is None:  # the head revision was not measured
+                    from domain.services.internal_agent_adapter import failed_interpretation
+                    skipped = not body.use_ai or body.analysis_level == "quick"
+                    return _ai_fields({"status": "skipped", "errors": []} if skipped
+                                      else failed_interpretation("MISSING_EVIDENCE"), None)
+                from domain.services.quality_run_results import quality_findings
+                comparison = {**(summary.get("quality_comparison") or {}),
+                              "finding_changes": summary.get("finding_changes") or {}}
+                return _ai_fields(*await _interpret_quality(
+                    body, actor_id, {"project_id": body.repository_id, "commit_sha": pr["head"]["sha"],
+                                     "organization_id": expected_org},
+                    head_evidence, quality_findings(head_evidence), summary, comparison=comparison))
+
             await compare_revisions(
                 github, body.repository_id, owner, repo, pr, files, actor_id,
-                claimed_run=owned, expected_org=expected_org, deep_analysis=deep,
+                claimed_run=owned, expected_org=expected_org, deep_analysis=deep, interpret=interpret,
             )
             return
         context = {**body.pr_context, "project_id": body.repository_id, "pr_number": body.pr_number}
@@ -769,27 +824,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
         findings = quality_findings(evidence)
 
         # AI Code Agent (if requested and not quick)
-        from domain.services.internal_agent_adapter import resolve_code_authority, interpret_code, failed_interpretation
-        ai_analysis = {"status": "skipped", "errors": []}
-        authority = None
-        if body.use_ai and body.analysis_level != "quick":
-            try:
-                authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
-                from intelligence.quality_engine import snapshot_context_diagnostic
-                observed_findings = [f for f in findings if not snapshot_context_diagnostic(f.source_tool, f.rule_id)]
-                observations = [{"file": f.file_path, "line": f.line_number, "rule_id": f.rule_id,
-                                 "message": f.message[:500]} for f in observed_findings[:20]]
-                ai_analysis = await interpret_code(
-                    {"files_analyzed": evidence.files_analyzed, "static_analysis": {"findings": observations},
-                     "complexity": result["complexity"], "tests": {"coverage": {"line_coverage": evidence.testing.coverage_percentage}}},
-                    {"project_id": body.repository_id, "commit_sha": evidence.commit_sha}, authority,
-                    evidence_available=result["quality_score"] is not None,
-                    quality_result={"quality_score": result["quality_score"], "quality_grade": result["quality_grade"]},
-                    risk_result={"risk_score": result["risk_score"], "risk_level": result["risk_level"]})
-            except HTTPException:
-                ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
-            except Exception:
-                ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
+        ai_analysis, authority = await _interpret_quality(body, actor_id, context, evidence, findings, result)
 
         # Persist findings to their own collection
         if not await jobs.renew(collection, run_id):
@@ -822,11 +857,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     **result,
                     "completed_at": now,
                     "findings_count": min(500, len(findings)),
-                    "ai_analysis": ai_analysis,
-                    "ai_status": ai_analysis["status"],
-                    "ai_authorization_scope": authority.scope if authority is not None else None,
-                    "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
-                                      "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"},
+                    **_ai_fields(ai_analysis, authority),
                 }
             },
         )

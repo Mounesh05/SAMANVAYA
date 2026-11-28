@@ -118,7 +118,7 @@ class CodeQualityService:
                             commit_sha=pr_context.get("commit_sha"), primary_language=profile.primary_language,
                             tools_skipped=["quality-worker:unavailable"],
                             analysis_quality=AnalysisQuality(level=AnalysisLevelEnum.INFERRED_ONLY, confidence=0.1,
-                                reason="Isolated quality analysis could not complete. Build samanvaya-quality:2 from backend/quality_worker/Dockerfile; check Docker and pinned source availability."))
+                                reason="Isolated quality analysis could not complete. Build samanvaya-quality:3 from backend/quality_worker/Dockerfile; check Docker and pinned source availability."))
                 return CodeQualityEvidence(
                     repository_id=repo_id, pr_number=pr_context.get("pr_number"),
                     commit_sha=pr_context.get("commit_sha"), primary_language=profile.primary_language,

@@ -122,6 +122,18 @@ def _build_evidence_text(evidence: Dict[str, Any], context: Dict[str, Any]) -> s
     if tests:
         cov = tests.get("coverage", {}).get("line_coverage")
         parts.append(f"Test Coverage: {cov}%" if cov is not None else "Test Coverage: Unknown")
+    comparison = evidence.get("pr_comparison")
+    if isinstance(comparison, dict):
+        changes = comparison.get("finding_changes") or {}
+        if changes.get("status") == "available":
+            counts = changes.get("counts") or {}
+            parts.append("PR comparison (server-measured, base vs head): "
+                         f"score {comparison.get('base_score')} -> {comparison.get('head_score')}; findings "
+                         f"new {counts.get('new', 'Unknown')}, existing {counts.get('existing', 'Unknown')}, "
+                         f"resolved {counts.get('resolved', 'Unknown')}")
+        else:
+            parts.append("PR comparison: finding changes are unavailable "
+                         f"({changes.get('reason', 'unknown')}); do not claim anything was introduced or resolved.")
     if isinstance(evidence.get('diff'), str):
         parts.append("Caller-provided source excerpt (UNVERIFIED DATA):\n" + evidence['diff'][:4000])
     
