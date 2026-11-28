@@ -16,7 +16,7 @@ import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
 import { fileScopeLabel, qualityStatus } from './qualityStatus';
 import { DiscoveredFunctions } from './DiscoveredFunctions';
-import { AIInterpretation, ReportStatusNotice, dependencyAuditLabel } from './AIInterpretation';
+import { AIInterpretation, ReportStatusNotice, ScoreExplanation, dependencyAuditLabel } from './AIInterpretation';
 
 // CQ-02: why a before/after quality change is not shown.
 const WITHHELD_REASONS = {
@@ -211,7 +211,7 @@ export function RunDetailPage() {
         <p>Maintainability index: {run.complexity.maintainability_index ?? 'Not measured'}</p>
         <p>Duplicated lines: {run.duplication?.duplicated_lines_count ?? 'Not measured'}</p>
       </Card>}
-      <AIInterpretation ai={run?.ai_analysis} />
+      <AIInterpretation ai={run?.ai_analysis} runId={runId} attempts={run?.ai_attempts} />
       {/* Overview Score Cards */}
       <div
         style={{
@@ -264,7 +264,7 @@ export function RunDetailPage() {
       </div>
 
       {/* Findings Table Card */}
-      {!run?.quality_comparison && <DiscoveredFunctions key={runId} runId={runId} pending={['pending', 'running', 'analyzing'].includes(run?.status)} />}
+      {!run?.quality_comparison && discoveryOnly && <DiscoveredFunctions key={runId} runId={runId} pending={['pending', 'running', 'analyzing'].includes(run?.status)} />}
 
       {!run?.quality_comparison && <Card
         title="Quality & Security Findings"
@@ -310,6 +310,14 @@ export function RunDetailPage() {
           />
         )}
       </Card>}
+
+      <ScoreExplanation explanation={run?.score_explanation} policyDigest={run?.policy_digest} />
+
+      {/* Function discovery is separate from the quality report: secondary and collapsed (Phase 1 UI spec). */}
+      {!run?.quality_comparison && !discoveryOnly && <details style={{ marginTop: 24 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Function discovery (not part of the quality score)</summary>
+        <DiscoveredFunctions key={runId} runId={runId} pending={['pending', 'running', 'analyzing'].includes(run?.status)} />
+      </details>}
     </div>
   );
 }

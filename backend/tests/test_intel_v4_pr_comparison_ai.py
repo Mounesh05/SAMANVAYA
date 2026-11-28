@@ -68,7 +68,7 @@ async def test_pr_comparison_parent_receives_one_scoped_interpretation(repositor
     parent = await mock_db.code_quality_runs.find_one({"run_id": run_id})
     assert parent["status"] == "completed"
     assert parent["ai_status"] == "completed"
-    assert parent["ai_analysis"] == interpretation
+    assert {k: parent["ai_analysis"][k] for k in interpretation} == interpretation
     assert parent["ai_authorization_scope"]["project_id"] == "P"
     assert parent["ai_provenance"]["model_interpretation"] == "ADVISORY"
 
@@ -114,7 +114,7 @@ async def test_failed_inference_marks_the_report_incomplete_and_keeps_measured_s
     assert parent["status"] == "completed"  # the measured comparison stands
     assert parent["quality_comparison"]["delta"] == 14
     assert parent["ai_status"] == "unavailable"
-    assert parent["report_status"] == "incomplete"
+    assert parent["report_status"] == "partial"
     assert parent["report_incomplete_reasons"] == ["ai_interpretation_unavailable:MODEL_UNAVAILABLE"]
 
 

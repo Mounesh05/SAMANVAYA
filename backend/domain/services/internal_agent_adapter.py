@@ -187,6 +187,8 @@ def grounded_interpretation(interpretation, evidence):
         for field in ("recommendations", "critical_issues"):
             result[field] = [str(text)[:MAX_AI_POINT_CHARS] for text in (result.get(field) or [])[:MAX_AI_POINTS]]
     result["evidence_basis"] = evidence_basis(evidence)
+    from domain.services.quality_advisory import advisory_v1
+    result["advisory"] = advisory_v1(result, evidence)
     return result
 
 

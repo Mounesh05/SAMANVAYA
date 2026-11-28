@@ -265,6 +265,49 @@ async def get_run(run_id: str, user: dict = Depends(get_current_user)):
     return await _visible_ai_result(run, user)
 
 
+@router.post("/runs/{run_id}/ai-retry")
+async def retry_ai_interpretation(run_id: str,
+                                  user: dict = Depends(require_permission(Permission.TRIGGER_CODE_ANALYSIS))):
+    """CQ-30: retry only the AI interpretation, on the exact stored evidence.
+
+    Static analysis is never re-run. The caller's authorization is checked again,
+    attempts are bounded, and an atomic claim stops concurrent retries.
+    """
+    from domain.services.internal_agent_adapter import interpret_code, resolve_code_authority, failed_interpretation
+    collection = col(RUNS_COLLECTION)
+    run = await collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)}, {"_id": 0})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    await verify_code_quality_access(user, run.get("repository_id"), run)
+    request = run.get("ai_request")
+    if run.get("status") != "completed" or not request or run.get("ai_status") not in ("failed", "unavailable"):
+        raise HTTPException(status_code=409, detail="This report has no failed AI interpretation to retry")
+    if (run.get("ai_attempts") or 1) >= MAX_AI_ATTEMPTS:
+        raise HTTPException(status_code=409, detail="The AI interpretation retry limit was reached")
+    claim = await collection.update_one(
+        {"run_id": run_id, "ai_status": run["ai_status"], "ai_attempts": run.get("ai_attempts") or 1,
+         "ai_retry_state": {"$ne": "running"}},
+        {"$set": {"ai_retry_state": "running"}, "$inc": {"ai_attempts": 1}})
+    if claim.matched_count != 1:
+        raise HTTPException(status_code=409, detail="An AI interpretation retry is already running")
+    authority = None
+    try:
+        authority = await resolve_code_authority({"employee_id": user.get("employee_id")}, request["context"],
+                                                 operation="code_quality")
+        ai_analysis = await interpret_code(request["package"], request["context"], authority,
+                                           evidence_available=request["evidence_available"],
+                                           quality_result=request["quality_result"], risk_result=request["risk_result"])
+    except HTTPException:
+        ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
+    except Exception:
+        ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
+    fields = _ai_fields(ai_analysis, authority, request.get("static_reasons"))
+    await collection.update_one({"run_id": run_id, "ai_retry_state": "running"},
+                                {"$set": {**fields, "ai_retry_state": "done"}})
+    updated = await collection.find_one({"run_id": run_id}, {"_id": 0})
+    return await _visible_ai_result(updated, user)
+
+
 @router.get("/runs/{run_id}/findings")
 async def get_run_findings(
     run_id: str,
@@ -575,6 +618,7 @@ def analysis_scope(run):
     """Read-time metadata for historical discovery snapshots; never rewrite them."""
     result = dict(run)
     result.pop("analyzer_evidence", None)
+    result.pop("ai_request", None)  # server-side AI input, kept only for the bounded retry
     if expired(run):
         result.update(status="failed", quality_analysis_status="failed", error="Worker deadline expired before a result was recorded.")
         return result
@@ -634,17 +678,27 @@ _recovered_tasks: set = set()
 recovery = jobs.RecoveryLoop(lambda: col(RUNS_COLLECTION), _dispatch_recovered)
 
 
-def _ai_fields(ai_analysis, authority):
-    # AI interpretation is part of every normal report: when it did not complete,
-    # the report says so explicitly instead of looking finished.
-    complete = ai_analysis["status"] == "completed"
-    return {"ai_analysis": ai_analysis, "ai_status": ai_analysis["status"],
-            "report_status": "complete" if complete else "incomplete",
-            "report_incomplete_reasons": [] if complete else
-                ["ai_interpretation_" + ai_analysis["status"] + ":" + ",".join(ai_analysis.get("errors") or [])],
-            "ai_authorization_scope": authority.scope if authority is not None else None,
-            "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
-                              "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"}}
+MAX_AI_ATTEMPTS = 3
+_SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+
+def _ai_fields(ai_analysis, authority, static_reasons=(), request=None):
+    """AI interpretation is part of every normal report (Phase 1 CQ-W5).
+
+    ``report_status`` is ``complete`` only with full static evidence and a validated
+    interpretation; otherwise ``partial`` (or ``failed`` without static evidence),
+    with the reasons. The exact AI input is kept server-side for a bounded AI-only retry.
+    """
+    from domain.services.quality_advisory import report_state
+    state, reasons = report_state(static_reasons, ai_analysis)
+    fields = {"ai_analysis": ai_analysis, "ai_status": ai_analysis["status"],
+              "report_status": state, "report_incomplete_reasons": reasons,
+              "ai_authorization_scope": authority.scope if authority is not None else None,
+              "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
+                                "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"}}
+    if request is not None:
+        fields.update(ai_request={**request, "static_reasons": static_reasons}, ai_attempts=1)
+    return fields
 
 
 async def _interpret_quality(body, actor_id, context, evidence, findings, result, comparison=None):
@@ -660,9 +714,13 @@ async def _interpret_quality(body, actor_id, context, evidence, findings, result
     try:
         authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
         from intelligence.quality_engine import snapshot_context_diagnostic
-        observed_findings = [f for f in findings if not snapshot_context_diagnostic(f.source_tool, f.rule_id)]
-        observations = [{"file": f.file_path, "line": f.line_number, "rule_id": f.rule_id,
-                         "message": f.message[:500]} for f in observed_findings[:20]]
+        observed_findings = sorted(
+            (f for f in findings if not snapshot_context_diagnostic(f.source_tool, f.rule_id)),
+            key=lambda f: (_SEVERITY_ORDER.get(getattr(f.severity, "value", f.severity), 5), f.file_path or "",
+                           f.line_number or 0, f.rule_id or "", f.id))
+        observations = [{"id": f.id, "file": f.file_path, "line": f.line_number, "rule_id": f.rule_id,
+                         "severity": getattr(f.severity, "value", f.severity), "message": f.message[:500]}
+                        for f in observed_findings[:20]]
         complexity = result.get("complexity")
         if complexity is None and comparison is not None and evidence.complexity.is_available:
             complexity = evidence.complexity.model_dump(mode="json")
@@ -671,18 +729,28 @@ async def _interpret_quality(body, actor_id, context, evidence, findings, result
                    "tests": {"coverage": {"line_coverage": evidence.testing.coverage_percentage}}}
         package["dependency_audit"] = dependency_audit(
             {"tools_skipped": evidence.tools_skipped, "tools_executed": evidence.tools_executed})
+        package["omitted_findings"] = max(0, len(observed_findings) - len(observations))
+        package["quality_score"], package["risk_score"] = result.get("quality_score"), result.get("risk_score")
         if comparison is not None:
             package["pr_comparison"] = comparison
+        request = {"package": package,
+                   "context": {"project_id": body.repository_id,
+                               "commit_sha": evidence.commit_sha or context.get("commit_sha")},
+                   "evidence_available": result.get("quality_score") is not None,
+                   "quality_result": {"quality_score": result.get("quality_score"),
+                                      "quality_grade": result.get("quality_grade")},
+                   "risk_result": {"risk_score": result.get("risk_score"), "risk_level": result.get("risk_level")}}
         ai_analysis = await interpret_code(
-            package, {"project_id": body.repository_id, "commit_sha": evidence.commit_sha or context.get("commit_sha")},
-            authority, evidence_available=result.get("quality_score") is not None,
-            quality_result={"quality_score": result.get("quality_score"), "quality_grade": result.get("quality_grade")},
-            risk_result={"risk_score": result.get("risk_score"), "risk_level": result.get("risk_level")})
+            package, request["context"], authority, evidence_available=request["evidence_available"],
+            quality_result=request["quality_result"], risk_result=request["risk_result"])
+        if "MISSING_EVIDENCE" in (ai_analysis.get("errors") or []):
+            # Phase 1: without usable static evidence the interpretation is blocked, not retried.
+            ai_analysis, request = {**ai_analysis, "status": "blocked"}, None
     except HTTPException:
-        ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
+        ai_analysis, request = failed_interpretation("AUTHORIZATION_FAILED"), None
     except Exception:
-        ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
-    return ai_analysis, authority
+        ai_analysis, request = failed_interpretation("AGENT_ADAPTER_FAILED"), None
+    return ai_analysis, authority, request
 
 
 async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_org):
@@ -726,16 +794,19 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                 # v4 AI-PR: every PR comparison parent gets one compulsory, advisory
                 # interpretation of the measured head revision plus the comparison
                 # evidence; the child runs carry none.
+                from domain.services.quality_advisory import static_reasons_for_comparison
                 if head_evidence is None:  # the head revision was not measured
                     from domain.services.internal_agent_adapter import failed_interpretation
-                    return _ai_fields(failed_interpretation("MISSING_EVIDENCE"), None)
+                    blocked = {**failed_interpretation("MISSING_EVIDENCE"), "status": "blocked"}
+                    return _ai_fields(blocked, None, static_reasons_for_comparison(summary))
                 from domain.services.quality_run_results import quality_findings
                 comparison = {**(summary.get("quality_comparison") or {}),
                               "finding_changes": summary.get("finding_changes") or {}}
-                return _ai_fields(*await _interpret_quality(
+                ai_analysis, authority, request = await _interpret_quality(
                     body, actor_id, {"project_id": body.repository_id, "commit_sha": pr["head"]["sha"],
                                      "organization_id": expected_org},
-                    head_evidence, quality_findings(head_evidence), summary, comparison=comparison))
+                    head_evidence, quality_findings(head_evidence), summary, comparison=comparison)
+                return _ai_fields(ai_analysis, authority, static_reasons_for_comparison(summary), request)
 
             await compare_revisions(
                 github, body.repository_id, owner, repo, pr, files, actor_id,
@@ -835,7 +906,8 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
         findings = quality_findings(evidence)
 
         # AI Code Agent (if requested and not quick)
-        ai_analysis, authority = await _interpret_quality(body, actor_id, context, evidence, findings, result)
+        ai_analysis, authority, ai_request = await _interpret_quality(body, actor_id, context, evidence, findings, result)
+        from domain.services.quality_advisory import static_reasons_for_run
 
         # Persist findings to their own collection
         if not await jobs.renew(collection, run_id):
@@ -868,7 +940,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     **result,
                     "completed_at": now,
                     "findings_count": min(500, len(findings)),
-                    **_ai_fields(ai_analysis, authority),
+                    **_ai_fields(ai_analysis, authority, static_reasons_for_run(result), ai_request),
                 }
             },
         )
