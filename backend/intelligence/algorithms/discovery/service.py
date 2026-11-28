@@ -9,6 +9,7 @@ from pathlib import Path
 from intelligence.analyzers.base import EXCLUDED_DIRS
 from intelligence.analyzers.registry import get_function_extractor
 from intelligence.algorithms.discovery.rules import resolve
+from intelligence.algorithms.discovery.control_flow import analyze as analyze_flow
 from intelligence.evidence.function_purpose import DiscoveredFunction, FunctionDiscovery, PurposeEvidence
 
 MAX_FILES = 100
@@ -107,6 +108,7 @@ def _resolve_calls(records, raw_records, source_paths=()):
                 kind="test_expectation", path=caller.path, line=assertion["line"], end_line=assertion["line"],
                 source_revision=caller.source_revision, source_hash=caller.source_hash,
                 subject=target.qualified_name, detail=assertion["detail"],
+                literal_fixture=assertion.get("fixture") if caller.path != target.path else None,
             )
             if any(existing.id == evidence.id for existing in target.evidence):
                 continue
@@ -158,6 +160,8 @@ async def discover_sources(sources: dict[str, str], repository_id: str, revision
                     report.diagnostics.append({"path": path, "kind": "function_bound"})
                     break
                 fid = identifier(repository_id, path, digest, raw["qualified_name"], raw["line"], raw.get("column", 0))
+                raw["structure"]["control_flow"] = analyze_flow(
+                    raw.pop("control_statements", None), [p["name"] for p in raw["parameters"]])
                 evidence = [PurposeEvidence(
                     id=identifier(fid, i, fact["kind"], fact["line"]), path=path,
                     source_revision=revision, source_hash=digest, **fact,

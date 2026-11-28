@@ -88,7 +88,10 @@ async def test_missing_contract_can_be_reported_with_workers_disabled(api, monke
 async def test_contracts_and_runs_do_not_cross_organization_boundaries(api):
     document = await publish(api)
     api.user["org_id"] = "another-org"
-    assert (await api.client.get('/algorithms/contracts/' + document['contract_id'])).status_code == 403
+    foreign = await api.client.get('/algorithms/contracts/' + document['contract_id'])
+    missing = await api.client.get('/algorithms/contracts/absent')
+    assert foreign.status_code == missing.status_code == 404
+    assert foreign.json() == missing.json()
     assert (await api.client.post('/algorithms/compatibility/runs', json=body([document['contract_id']]))).status_code == 403
 
 

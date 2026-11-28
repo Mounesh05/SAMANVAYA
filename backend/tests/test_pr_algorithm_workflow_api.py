@@ -107,8 +107,8 @@ async def test_mapped_algorithm_history_needs_no_manual_project_id_and_stays_ten
         assert any(fact["id"] == "task_hypotheses" for fact in facts)
         user["org_id"] = "foreign"
         response = await client.get("/pr-intelligence", params={"pr_id": "PR1"})
-        assert response.status_code == 403
-        assert (await client.post(explanation_path)).status_code == 403
+        assert response.status_code == 200 and response.json()["analyses"] == []
+        assert (await client.post(explanation_path)).status_code == 404
         select_facts.assert_awaited_once()
 
 

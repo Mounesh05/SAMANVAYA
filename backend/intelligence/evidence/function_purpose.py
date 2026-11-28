@@ -23,6 +23,7 @@ class PurposeEvidence(BaseModel):
     binding: str = ""
     arguments: list[str] = Field(default_factory=list)
     detail: str = ""
+    literal_fixture: dict | None = None
 
 
 class PurposeConclusion(BaseModel):

@@ -154,6 +154,8 @@ def render(term, precedence=0):
     kind = term[0]
     if kind == "unknown":
         return "unknown"
+    if kind == "exponential":
+        return f"{term[1]}^{render(term[2])}"
     if kind == "const":
         return str(term[1])
     if kind == "dim":
@@ -185,8 +187,13 @@ def big_o(term):
 @dataclass
 class Context:
     parameters: dict = field(default_factory=dict)      # name -> annotation text
+    shadowed: set = field(default_factory=set)
+    functions: dict = field(default_factory=dict)
+    active_calls: tuple = ()
+    heap_module: bool = True
     kinds: dict = field(default_factory=dict)           # name -> collection kind
     dims: dict = field(default_factory=dict)            # name -> canonical dimension term
+    elements: dict = field(default_factory=dict)        # loop scalars -> source collections
     bindings: dict = field(default_factory=dict)        # canonical letter -> source label
     derivation: list = field(default_factory=list)
     assumptions: list = field(default_factory=list)
@@ -209,16 +216,14 @@ class Context:
     def size(self, name, label=None):
         if not isinstance(name, str) or not name:
             return UNK("collection size is not statically known")
+        if name in self.elements:
+            owner = self.elements[name]
+            return self.size(owner + ":element", owner + ":maximum element magnitude")
         if name in self.dims:
             return self.dims[name]
         if len(self.bindings) >= len(LETTERS):
             return UNK("input dimension limit reached")
         letter = LETTERS[len(self.bindings)]
-        if letter in self.bindings.values():
-            for candidate in LETTERS:
-                if candidate not in self.bindings.values():
-                    letter = candidate
-                    break
         term = D(letter)
         self.dims[name] = term
         self.bindings[letter] = label or name
@@ -259,6 +264,8 @@ def _call_label(node):
 
 
 def _literal_size(node):
+    if isinstance(node, ast.Constant) and type(node.value) is int:
+        return C(max(1, abs(node.value)))
     if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
         return C(len(node.elts if not isinstance(node, ast.Dict) else node.keys))
     return None
@@ -290,9 +297,14 @@ def collection_size(expr, ctx, *, allow_unknown=True):
     if isinstance(expr, ast.Attribute):
         return collection_size(expr.value, ctx, allow_unknown=allow_unknown)
     if isinstance(expr, ast.Subscript):
+        if isinstance(expr.slice, ast.Slice):
+            return collection_size(expr.value, ctx, allow_unknown=allow_unknown)
         return UNK("size of an indexed element is not statically known") if allow_unknown else C(1)
     if isinstance(expr, (ast.ListComp, ast.SetComp, ast.DictComp)):
-        return C(1)
+        cardinality = C(1)
+        for generator in expr.generators:
+            cardinality = MUL(cardinality, iteration_trips(generator.iter, ctx))
+        return cardinality
     return UNK("size of this expression is not statically known") if allow_unknown else C(1)
 
 
@@ -310,7 +322,8 @@ def expression_cost(expr, ctx, *, depth=0):
     if isinstance(expr, ast.Name):
         return C(1)
     if isinstance(expr, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
-        return C(1)
+        children = [*expr.keys, *expr.values] if isinstance(expr, ast.Dict) else expr.elts
+        return ADD(C(1), *(expression_cost(child, ctx, depth=depth + 1) for child in children))
     if isinstance(expr, ast.Lambda):
         return C(1)
     if isinstance(expr, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
@@ -318,6 +331,11 @@ def expression_cost(expr, ctx, *, depth=0):
     if isinstance(expr, ast.BoolOp):
         return ADD(*(expression_cost(v, ctx, depth=depth + 1) for v in expr.values))
     if isinstance(expr, ast.BinOp):
+        if isinstance(expr.op, ast.Mult):
+            for value, count in ((expr.left, expr.right), (expr.right, expr.left)):
+                if isinstance(value, (ast.List, ast.Tuple)):
+                    return ADD(expression_cost(value, ctx, depth=depth + 1),
+                               MUL(collection_size(value, ctx), collection_size(count, ctx)))
         return ADD(expression_cost(expr.left, ctx, depth=depth + 1),
                    expression_cost(expr.right, ctx, depth=depth + 1))
     if isinstance(expr, ast.UnaryOp):
@@ -335,7 +353,13 @@ def expression_cost(expr, ctx, *, depth=0):
                    expression_cost(expr.body, ctx, depth=depth + 1),
                    expression_cost(expr.orelse, ctx, depth=depth + 1))
     if isinstance(expr, ast.Subscript):
-        return expression_cost(expr.value, ctx, depth=depth + 1)
+        base = expression_cost(expr.value, ctx, depth=depth + 1)
+        if isinstance(expr.slice, ast.Slice):
+            ctx.assume("Slicing uses ordinary built-in list semantics and copies at most the input length.")
+            bounds = (expr.slice.lower, expr.slice.upper, expr.slice.step)
+            return ADD(base, collection_size(expr.value, ctx),
+                       *(expression_cost(bound, ctx, depth=depth + 1) for bound in bounds))
+        return ADD(base, expression_cost(expr.slice, ctx, depth=depth + 1))
     if isinstance(expr, ast.Attribute):
         return expression_cost(expr.value, ctx, depth=depth + 1)
     if isinstance(expr, ast.Starred):
@@ -376,6 +400,30 @@ def _operation_cost(node, ctx, depth=0):
     label = _call_label(node) or ""
     tail = label.rsplit(".", 1)[-1]
     receiver = node.func.value if isinstance(node.func, ast.Attribute) else None
+    if label in ctx.functions:
+        callee = ctx.functions[label]
+        formal = [*callee.args.posonlyargs, *callee.args.args]
+        if (callee.decorator_list or callee.args.vararg or callee.args.kwarg or callee.args.kwonlyargs
+                or node.keywords or len(formal) != len(node.args) or label in ctx.active_calls
+                or len(ctx.active_calls) >= 3 or len(callee.body) != 1 or not isinstance(callee.body[0], ast.Return)):
+            return UNK(f"Body or signature of '{label}' exceeds the supported call summary")
+        nested = Context(parameters={p.arg: "" for p in formal}, shadowed=ctx.shadowed | {p.arg for p in formal},
+                         functions=ctx.functions, active_calls=(*ctx.active_calls, label), heap_module=ctx.heap_module)
+        nested.dims = {p.arg: collection_size(arg, ctx) for p, arg in zip(formal, node.args)}
+        result = expression_cost(callee.body[0].value, nested, depth=depth + 1)
+        if set(nested.bindings):
+            return UNK(f"'{label}' depends on an unbound dimension")
+        for assumption in nested.assumptions:
+            ctx.assume(assumption)
+        ctx.note(f"Line {node.lineno} uses the body of '{label}' at line {callee.lineno} with substituted arguments.")
+        return result
+    if receiver is None and label in ctx.shadowed:
+        return UNK(f"'{label}' is shadowed and cannot use a built-in cost")
+    if receiver is not None and tail not in {"heapify", "heappop", "heappush"}:
+        if not isinstance(receiver, ast.Name) or receiver.id not in ctx.kinds:
+            return UNK(f"The receiver of '{label}' has no established built-in collection type")
+    if tail in {"heapify", "heappop", "heappush"} and (label != "heapq." + tail or not ctx.heap_module):
+        return UNK(f"'{label}' does not resolve to the heapq module")
 
     if tail == "sorted":
         return _sorted_cost(node.args[0], ctx) if node.args else UNK("sorted() without a visible argument")
@@ -388,12 +436,14 @@ def _operation_cost(node, ctx, depth=0):
         size = collection_size(target, ctx) if target is not None else UNK("heap operation target is unknown")
         return LOG(size) if size[0] != "unknown" else size
     if tail in _REMOVING_METHODS and receiver is not None:
-        if tail in ("pop", "popitem") and node.args and isinstance(node.args[0], ast.Constant):
+        if tail == "remove" or tail == "pop" and node.args:
             size = collection_size(receiver, ctx)
             return size  # pop(0) / pop(index) shifts the remaining sequence
         return C(1)
     if tail in _GROWING_METHODS and receiver is not None:
-        if tail in ("extend", "update", "insert", "appendleft"):
+        if tail == "insert":
+            return collection_size(receiver, ctx)
+        if tail in ("extend", "update"):
             argument = node.args[0] if node.args else None
             return collection_size(argument, ctx) if argument is not None else C(1)
         return C(1)
@@ -440,6 +490,7 @@ def call_cost(node, ctx, depth=0):
                  for argument in (getattr(node, "args", None) or [])]
     if isinstance(node.func, ast.Attribute):
         arguments.append(expression_cost(node.func.value, ctx, depth=depth + 1))
+    arguments.extend(expression_cost(keyword.value, ctx, depth=depth + 1) for keyword in node.keywords)
     return ADD(operation, *arguments)
 
 
@@ -477,32 +528,57 @@ def _range_trips(node, ctx):
         return UNK("range() has no arguments")
     if len(node.args) == 1:
         return collection_size(node.args[0], ctx)
-    start = expression_cost(node.args[0], ctx)
+    # With independent signed endpoints, |stop-start| <= |start|+|stop|.
+    start = collection_size(node.args[0], ctx)
     stop = collection_size(node.args[1], ctx)
     if len(node.args) == 2:
-        return stop if start[0] != "unknown" else stop
+        return ADD(start, stop)
     step = node.args[2]
     # range evaluates a fixed additive step once, not a multiplicative update.
     if isinstance(step, ast.BinOp) and isinstance(step.op, (ast.FloorDiv, ast.Div)):
         return UNK("range step is computed once; its positivity and magnitude are not established")
     if isinstance(step, ast.Constant) and isinstance(step.value, int) and abs(step.value) >= 1:
-        return stop
+        return ADD(start, stop)
     return UNK("range() step does not establish a trip count")
+
+
+def _bind_copied_sizes(node, ctx):
+    """A nonescaping local copy subject only to permutation/removal cannot grow."""
+    uses = {}
+    for item in ast.walk(node):
+        if isinstance(item, ast.Name):
+            uses.setdefault(item.id, []).append(item)
+    for stmt in node.body:
+        if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
+            continue
+        target, value = stmt.targets[0], stmt.value
+        if isinstance(value, ast.Call) and _call_label(value) == "list" and len(value.args) == 1:
+            iterable = value.args[0]
+        elif isinstance(value, ast.ListComp) and len(value.generators) == 1:
+            iterable = value.generators[0].iter
+        else:
+            continue
+        if not isinstance(iterable, ast.Name) or iterable.id not in ctx.parameters:
+            continue
+        for use in uses[target.id]:
+            parent = use._parent
+            if use is target or isinstance(parent, ast.While) and parent.test is use:
+                continue
+            if isinstance(parent, ast.Attribute) and parent.attr in {"sort", "pop", "reverse"}:
+                call = parent._parent
+                if isinstance(call, ast.Call) and call.func is parent:
+                    continue
+            if isinstance(parent, ast.Call) and _call_label(parent) in {"heapq.heapify", "heapq.heappop"}:
+                continue
+            break
+        else:
+            ctx.dims[target.id] = ctx.size(iterable.id)
+            ctx.note(f"'{target.id}' is a fresh list bounded by the length of '{iterable.id}' throughout its uses.")
 
 
 # --------------------------------------------------------------------------- #
 # Statement / block analysis
 # --------------------------------------------------------------------------- #
-
-def _enclosing_loops(node, root):
-    loops = []
-    parent = getattr(node, "_parent", None)
-    while parent is not None and parent is not root:
-        if isinstance(parent, (ast.For, ast.AsyncFor, ast.While)):
-            loops.append(parent)
-        parent = getattr(parent, "_parent", None)
-    return loops
-
 
 def _index_parents(node):
     for child in ast.walk(node):
@@ -581,21 +657,25 @@ def _tries():
     return (ast.Try,) + ((ast.TryStar,) if hasattr(ast, "TryStar") else ())
 
 
-def _removals_inside(loop, ctx):
-    """Subjects reduced inside the loop body and the lines that reduce them."""
+def _removals_inside(loop):
+    """Only eager calls in the straight-line prefix can establish progress."""
     found = []
-    for child in ast.walk(loop):
-        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)) and child is not loop:
+    for statement in loop.body:
+        if not isinstance(statement, (ast.Expr, ast.Assign, ast.AnnAssign, ast.Pass)):
+            break
+        value = getattr(statement, "value", None)
+        if not isinstance(value, ast.Call):
             continue
-        if not isinstance(child, ast.Call):
-            continue
-        label = _call_label(child) or ""
-        tail = label.rsplit(".", 1)[-1]
-        receiver = child.func.value if isinstance(child.func, ast.Attribute) else None
-        if tail in _REMOVING_METHODS and isinstance(receiver, ast.Name):
-            found.append((receiver.id, getattr(child, "lineno", 0)))
-        elif tail == "heappop" and child.args and isinstance(child.args[0], ast.Name):
-            found.append((child.args[0].id, getattr(child, "lineno", 0)))
+        calls = [value]
+        while calls:
+            child = calls.pop()
+            calls.extend(arg for arg in child.args if isinstance(arg, ast.Call))
+            label = _call_label(child) or ""
+            receiver = child.func.value if isinstance(child.func, ast.Attribute) else None
+            if label.rsplit(".", 1)[-1] in _REMOVING_METHODS and isinstance(receiver, ast.Name):
+                found.append((receiver.id, child.lineno))
+            elif label == "heapq.heappop" and child.args and isinstance(child.args[0], ast.Name):
+                found.append((child.args[0].id, child.lineno))
     return found
 
 
@@ -613,7 +693,26 @@ def _growth_inside(loop):
 
 def loop_cost(loop, ctx, depth=0):
     trips = while_trips(loop, ctx) if isinstance(loop, ast.While) else iteration_trips(loop.iter, ctx)
+    target = loop.target.id if isinstance(loop, ast.For) and isinstance(loop.target, ast.Name) else None
+    if target:
+        previous = ctx.dims.pop(target, None)
+        previous_element = ctx.elements.pop(target, None)
+        iterable = loop.iter
+        if any(isinstance(n, ast.Name) and n.id == target and isinstance(n.ctx, ast.Store)
+               for statement in loop.body for n in ast.walk(statement)):
+            ctx.dims[target] = UNK("The loop binding is reassigned in the body")
+        elif isinstance(iterable, ast.Call) and _call_label(iterable) == "range" and len(iterable.args) == 1:
+            ctx.dims[target] = trips
+        elif isinstance(iterable, ast.Name) and iterable.id in ctx.parameters:
+            ctx.elements[target] = iterable.id
     body = block_cost(loop.body, ctx, depth + 1)
+    if target:
+        ctx.dims.pop(target, None)
+        ctx.elements.pop(target, None)
+        if previous is not None:
+            ctx.dims[target] = previous
+        if previous_element is not None:
+            ctx.elements[target] = previous_element
     trailing = block_cost(getattr(loop, "orelse", None), ctx, depth + 1)
     if trips[0] == "unknown":
         return ADD(MUL(UNK(trips[1]), body), trailing)
@@ -624,7 +723,7 @@ def while_trips(loop, ctx):
     test = loop.test
     if isinstance(test, ast.Name):
         subject = test.id
-        removals = [line for name, line in _removals_inside(loop, ctx) if name == subject]
+        removals = [line for name, line in _removals_inside(loop) if name == subject]
         if removals:
             growth = _growth_inside(loop)
             if subject not in growth:
@@ -637,6 +736,26 @@ def while_trips(loop, ctx):
                        "its current size alone.")
         return UNK(f"while-loop trip count over '{subject}' depends on runtime mutation")
     if isinstance(test, ast.Compare):
+        if (isinstance(test.left, ast.Name) and len(test.ops) == 1 and isinstance(test.ops[0], (ast.Gt, ast.GtE))
+                and isinstance(test.comparators[0], ast.Constant) and type(test.comparators[0].value) is int
+                and test.comparators[0].value >= int(isinstance(test.ops[0], ast.GtE))):
+            subject = test.left.id
+            writes = [n for s in loop.body for n in ast.walk(s)
+                      if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store) and n.id == subject]
+            for s in loop.body:
+                if not isinstance(s, (ast.AugAssign, ast.Assign, ast.Expr, ast.Pass)):
+                    break
+                if len(writes) != 1 or not isinstance(s, ast.AugAssign) or s.target is not writes[0]:
+                    continue
+                if not isinstance(s.value, ast.Constant) or type(s.value.value) is not int:
+                    continue
+                if isinstance(s.op, ast.FloorDiv) and s.value.value >= 2:
+                    ctx.assume("Nonnegative integer loop counter with constant-cost arithmetic.")
+                    ctx.note(f"Line {s.lineno} floor-divides '{subject}' by {s.value.value} on every continuing iteration.")
+                    return LOG(ctx.size(subject))
+                if isinstance(s.op, ast.Sub) and s.value.value > 0:
+                    ctx.assume("Nonnegative integer loop counter with constant-cost arithmetic.")
+                    return ctx.size(subject)
         return UNK("while-loop trip count depends on a runtime comparison")
     if isinstance(test, ast.Call) and (_call_label(test) or "") in ("len", "bool"):
         return UNK("while-loop progress is not established by a collection length check alone")
@@ -659,38 +778,61 @@ def _self_calls(node, name):
     return calls
 
 
-def _argument_shape(argument):
-    if isinstance(argument, ast.BinOp) and isinstance(argument.op, (ast.Sub, ast.Add)):
-        if isinstance(argument.right, ast.Constant) and isinstance(argument.right.value, (int, float)):
-            return "decrease" if isinstance(argument.op, ast.Sub) else "increase"
-    if isinstance(argument, ast.BinOp) and isinstance(argument.op, (ast.FloorDiv, ast.Div, ast.RShift)):
-        return "halving"
-    if isinstance(argument, ast.Name):
-        return "same"
-    return "unknown"
-
-
 def recursion_cost(node, name, ctx):
-    calls = _self_calls(node, name)
-    if not calls:
+    """A guarded one-parameter recurrence over fixed-cost integer expressions."""
+    if not isinstance(node, ast.FunctionDef) or len(ctx.parameters) != 1 or len(node.body) != 2 or node.decorator_list:
         return None
-    shapes = sorted({_argument_shape(argument) for call in calls for argument in call.args} or {"unknown"})
-    inside_loops = sum(1 for call in calls if _enclosing_loops(call, node))
-    if shapes == ["decrease"] or shapes == ["decrease", "unknown"]:
-        ctx.note(f"Direct recursion decrements an argument on every self-call, giving T(n) = T(n-1) + work.")
-        return "linear", D("n")
-    if shapes == ["halving"]:
-        ctx.note("Direct recursion halves an argument on every self-call, giving T(n) = T(n/2) + work.")
-        return "logarithmic", LOG(D("n"))
-    if "increase" in shapes or (len(shapes) > 1 and "same" in shapes and inside_loops == 0 and len(calls) > 1):
-        ctx.assume("Several self-calls per invocation without a shrinking argument can expand exponentially.")
-        return "exponential", UNK("recursion branch factor is not bounded by syntax")
-    if inside_loops:
-        ctx.assume("Self-calls inside an iteration are bounded only when each element is expanded once; "
-                   "the guard that would establish that is reported with the traversal evidence.")
-        return "structure_bound", UNK("recursive work per element is not established")
-    ctx.unknown("Direct recursion has no argument-shape evidence establishing a recurrence")
-    return "unknown", UNK("recurrence cannot be established from syntax")
+    parameter, = ctx.parameters
+    guard, step = node.body
+    if not isinstance(guard, ast.If) or guard.orelse or len(guard.body) != 1 or not isinstance(guard.body[0], ast.Return):
+        return None
+    test = guard.test
+    if (not isinstance(test, ast.Compare) or not isinstance(test.left, ast.Name) or test.left.id != parameter
+            or len(test.ops) != 1 or not isinstance(test.ops[0], (ast.Lt, ast.LtE))
+            or not isinstance(test.comparators[0], ast.Constant) or type(test.comparators[0].value) is not int):
+        return None
+    threshold = test.comparators[0].value - int(isinstance(test.ops[0], ast.Lt))
+    if threshold < 0 or not isinstance(step, ast.Return):
+        return None
+
+    def scalar(expr):
+        return ((isinstance(expr, ast.Constant) and type(expr.value) is int)
+                or (isinstance(expr, ast.Name) and expr.id == parameter))
+
+    if not scalar(guard.body[0].value):
+        return None
+    factors = []
+    pending = [step.value]
+    while pending:
+        expr = pending.pop()
+        if scalar(expr):
+            continue
+        if isinstance(expr, ast.BinOp) and isinstance(expr.op, (ast.Add, ast.Sub, ast.Mult)):
+            pending.extend([expr.left, expr.right])
+            continue
+        if (not isinstance(expr, ast.Call) or _call_label(expr) != name or expr.keywords or len(expr.args) != 1):
+            return None
+        arg = expr.args[0]
+        if (not isinstance(arg, ast.BinOp) or not isinstance(arg.left, ast.Name) or arg.left.id != parameter
+                or not isinstance(arg.right, ast.Constant) or type(arg.right.value) is not int):
+            return None
+        if isinstance(arg.op, ast.Sub) and arg.right.value >= 1:
+            factors.append("decreasing")
+        elif isinstance(arg.op, ast.FloorDiv) and arg.right.value >= 2:
+            factors.append("dividing")
+        else:
+            return None
+    if not factors:
+        return None
+    size = ctx.size(parameter)
+    depth = LOG(size) if set(factors) == {"dividing"} else size
+    if len(factors) > 1 and depth != size:
+        return None
+    time = depth if len(factors) == 1 else ("exponential", len(factors), size)
+    ctx.assume("Nonnegative integer input, fixed-cost scalar arithmetic and storage, unchanged function binding.")
+    ctx.note(f"The base guard terminates inputs at or below {threshold}. Each remaining frame makes "
+             f"{len(factors)} shrinking call(s) with constant local work; depth is bounded by {render(depth)}.")
+    return time, depth
 
 
 # --------------------------------------------------------------------------- #
@@ -701,32 +843,63 @@ def _fact_kinds(facts, kind):
     return [fact for fact in facts if fact.kind == kind]
 
 
-def traversal_refinement(facts, ctx):
-    """Bound total work when an observed guard ensures each element is processed once."""
+def traversal_refinement(node, facts, ctx):
+    """Discharge a worklist bound only when the complete loop is accounted for."""
     adjacency = _fact_kinds(facts, "adjacency_iteration")
-    if adjacency:
-        bindings = {fact.binding for fact in adjacency if fact.binding}
-        guarded = any(
-            update.kind == "set_add" and any(
-                guard.kind == "membership_guard" and guard.subject == update.subject
-                and guard.related in bindings for guard in facts)
-            for update in _fact_kinds(facts, "set_add"))
-        if guarded:
-            ctx.note("A membership guard precedes insertion into the tracked set on every adjacency path, "
-                     "so each discovered element is expanded at most once.")
-            return "V", "E"
-    sentinel_tables: dict = {}
-    for write in _fact_kinds(facts, "constant_indexed_write"):
-        sentinel_tables.setdefault(write.subject, set()).add(write.related)
-    qualified = {table: values for table, values in sentinel_tables.items() if len(values) >= 2}
-    if qualified and _fact_kinds(facts, "constant_return") and _fact_kinds(facts, "while_loop") \
-            and _fact_kinds(facts, "indexed_read"):
-        table, values = sorted(qualified.items())[0]
-        ctx.note(f"'{table}' is written with {len(values)} distinct constant sentinel states and read before "
-                 "further exploration, so each element changes state a bounded number of times.")
-        ctx.assume("The state guard is checked before an element is re-expanded on every inspected path.")
-        return "V", "E"
-    return None
+    if len(adjacency) != 1 or "traversal_unresolved" in adjacency[0].arguments:
+        return None
+    loops = [s for s in node.body if isinstance(s, ast.While)]
+    if len(loops) != 1 or not isinstance(loops[0].test, ast.Name):
+        return None
+    loop = loops[0]
+    queue = loop.test.id
+    if loop.orelse or len(loop.body) != 2:
+        return None
+    remove, scan = loop.body
+    if (not isinstance(remove, ast.Assign) or not isinstance(remove.value, ast.Call)
+            or _call_label(remove.value) not in {queue + ".popleft", queue + ".pop"}
+            or remove.value.args or remove.value.keywords):
+        return None
+    if (not isinstance(scan, ast.For) or not isinstance(scan.target, ast.Name) or scan.orelse
+            or len(scan.body) != 1 or not isinstance(scan.body[0], ast.If)):
+        return None
+    guard = scan.body[0]
+    test = guard.test
+    if (not isinstance(test, ast.Compare) or len(test.ops) != 1 or not isinstance(test.ops[0], ast.NotIn)
+            or not isinstance(test.left, ast.Name) or test.left.id != scan.target.id
+            or not isinstance(test.comparators[0], ast.Name) or guard.orelse or len(guard.body) != 2):
+        return None
+    seen = test.comparators[0].id
+    for stmt, label in zip(guard.body, (seen + ".add", queue + ".append")):
+        if (not isinstance(stmt, ast.Expr) or not isinstance(stmt.value, ast.Call)
+                or _call_label(stmt.value) != label or stmt.value.keywords or len(stmt.value.args) != 1
+                or not isinstance(stmt.value.args[0], ast.Name) or stmt.value.args[0].id != scan.target.id):
+            return None
+    # No unrelated work or subsequent mutation may be hidden by this refinement.
+    initial = {}
+    for stmt in node.body:
+        if stmt is loop:
+            continue
+        if isinstance(stmt, ast.Return) and isinstance(stmt.value, ast.Name) and stmt.value.id == seen:
+            continue
+        if (not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name)
+                or stmt.lineno >= loop.lineno or stmt.targets[0].id in initial):
+            return None
+        initial[stmt.targets[0].id] = stmt.value
+    if set(initial) != {seen, queue} or not isinstance(initial[seen], ast.Set):
+        return None
+    seed = initial[queue]
+    if isinstance(seed, ast.Call) and _call_label(seed) in {"deque", "collections.deque"} and len(seed.args) == 1 and not seed.keywords:
+        seed = seed.args[0]
+    elif _call_label(remove.value).endswith(".popleft"):
+        return None
+    if (not isinstance(seed, ast.List) or len(seed.elts) != 1 or not isinstance(seed.elts[0], ast.Name)
+            or len(initial[seen].elts) != 1 or not isinstance(initial[seen].elts[0], ast.Name)
+            or initial[seen].elts[0].id != seed.elts[0].id):
+        return None
+    ctx.assume("Finite adjacency lists, constant-cost deque operations and expected constant-time hashing of fixed-size vertices.")
+    ctx.note("The membership guard adds the neighbor before enqueueing it. Each reachable vertex is queued once and each outgoing adjacency entry is visited once.")
+    return "V", "E"
 
 
 # --------------------------------------------------------------------------- #
@@ -735,7 +908,10 @@ def traversal_refinement(facts, ctx):
 
 def estimate(node, name, facts=(), parameter_annotations=None, language="python"):
     """Return a bounded, auditable complexity record for one function."""
-    context = Context(parameters=dict(parameter_annotations or {}))
+    parameters = {arg.arg: "" for arg in (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs)} if isinstance(
+        node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)) else {}
+    parameters.update(parameter_annotations or {})
+    context = Context(parameters=parameters)
     for parameter, annotation in context.parameters.items():
         kind = annotation_kind(annotation)
         if kind:
@@ -754,13 +930,15 @@ def estimate(node, name, facts=(), parameter_annotations=None, language="python"
 
     try:
         _index_parents(node)
-        local_time = block_cost(list(getattr(node, "body", []) or [node.body] if isinstance(node, ast.Lambda) else node.body),
-                                context)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            _bind_copied_sizes(node, context)
+        local_time = (expression_cost(node.body, context) if isinstance(node, ast.Lambda)
+                      else block_cost(node.body, context))
         local_space, space_notes = _space(node, context)
     except (RecursionError, ValueError, TypeError, AttributeError) as error:  # pragma: no cover - defensive
         return _unknown_record(f"structural analysis could not be completed ({type(error).__name__})")
 
-    refinement = traversal_refinement(facts, context)
+    refinement = traversal_refinement(node, facts, context)
     dimensions = list(context.bindings)
     derivation = list(context.derivation)
 
@@ -792,11 +970,19 @@ def estimate(node, name, facts=(), parameter_annotations=None, language="python"
             unknown_reasons.insert(0, "space: " + space_term[1])
 
     if _self_calls(node, name) and not refinement:
-        # Argument shape alone cannot prove termination, depth or recurrence cost.
-        time_term = UNK("Recursive recurrence and termination are not established")
-        space_term = UNK("Recursive stack depth and retained allocations are not established")
-        status, confidence = "unknown", "none"
-        unknown_reasons.extend([time_term[1], space_term[1]])
+        recurrence = recursion_cost(node, name, context)
+        if recurrence:
+            time_term, space_term = recurrence
+            unknown_reasons = []
+            derivation = list(context.derivation)
+            dimensions = list(context.bindings)
+            space_notes = ["One fixed-size stack frame per active call."]
+            status, confidence = "estimated", "medium"
+        else:
+            time_term = UNK("Recursive recurrence and termination are not established")
+            space_term = UNK("Recursive stack depth and retained allocations are not established")
+            status, confidence = "unknown", "none"
+            unknown_reasons.extend([time_term[1], space_term[1]])
 
     record = {
         "method": METHOD, "status": status, "language": language,
@@ -869,12 +1055,22 @@ def _space(node, ctx):
             terms.append(term)
             notes.append(f"Collection growth at line {getattr(current, 'lineno', '?')} contributes "
                          f"{render(term) if term[0] != 'unknown' else 'an unknown amount'} of auxiliary space.")
-        if isinstance(current, ast.Assign) and isinstance(current.value, (ast.ListComp, ast.SetComp, ast.DictComp)):
-            trips = comprehension_cost(current.value, ctx, 0)
-            term = trips
-            for loop_trips in reversed(loops):
-                term = MUL(loop_trips, term) if loop_trips[0] != "unknown" else UNK(loop_trips[1])
-            terms.append(term)
+        allocation = None
+        if isinstance(current, ast.Subscript) and isinstance(current.slice, ast.Slice):
+            allocation = collection_size(current.value, ctx)
+            notes.append(f"Copied slice at line {current.lineno} includes storage for the resulting list.")
+        if isinstance(current, ast.BinOp) and isinstance(current.op, ast.Mult):
+            for value, count in ((current.left, current.right), (current.right, current.left)):
+                if isinstance(value, (ast.List, ast.Tuple)):
+                    allocation = MUL(collection_size(value, ctx), collection_size(count, ctx))
+                    break
+        if isinstance(current, (ast.ListComp, ast.SetComp, ast.DictComp)):
+            allocation = collection_size(current, ctx)
+            notes.append(f"Comprehension at line {current.lineno} materializes at most one entry per generator tuple.")
+        if allocation is not None:
+            for trips in loops:
+                allocation = MUL(trips, allocation)
+            terms.append(allocation)
         if isinstance(current, (ast.List, ast.Set, ast.Dict, ast.ListComp, ast.SetComp, ast.DictComp)):
             parent = getattr(current, "_parent", None)
             if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):

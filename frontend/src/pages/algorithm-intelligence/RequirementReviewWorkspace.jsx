@@ -9,6 +9,8 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 
+import { FunctionFixtures, fixturePayload, newFixtureForm } from './FunctionFixtures';
+
 const idOf = doc => doc.contract_id || doc.source_id;
 const titleOf = doc => doc.contract_id ? doc.contract?.name || doc.contract_id : doc.source_reference || doc.source_id;
 const valueText = value => value == null ? 'Not specified' : typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -86,33 +88,62 @@ function ReviewCard({ doc, canApprove, actor, onApproved }) {
   </article>;
 }
 
-function ManualProposal({ projectId, onProposed }) {
-  const [kind, setKind] = useState('contract');
-  const [content, setContent] = useState('');
+function ManualProposal({ projectId, onProposed, parent }) {
+  const [kind, setKind] = useState(parent?.source_id ? 'source' : 'contract');
+  const [fixtures, setFixtures] = useState(newFixtureForm);
+  const [reference, setReference] = useState(parent?.source_reference || '');
+  const [revision, setRevision] = useState('');
+  const [description, setDescription] = useState('');
+  const [scope, setScope] = useState('');
+  const [metric, setMetric] = useState('OUTPUT_BEHAVIOR');
+  const [threshold, setThreshold] = useState('');
   const [error, setError] = useState('');
   const proposal = useMutation({
     mutationFn: body => kind === 'contract' ? algorithmsApi.proposeContract(body) : algorithmsApi.proposeRequirementSource(body),
-    onSuccess: () => { setContent(''); onProposed(); },
+    onSuccess: onProposed,
   });
-  function submit() {
+  function submit(event) {
+    event.preventDefault();
     try {
-      const parsed = JSON.parse(content);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('Provide a JSON object.');
-      setError('');
-      proposal.mutate({ ...parsed, project_id: projectId });
+      if (!description.trim() || !reference.trim()) throw Error('Enter the requirement and its independent source.');
+      const body = {project_id: projectId, ...(parent ? {supersedes: idOf(parent)} : {})};
+      if (kind === 'contract') {
+        if (!scope.trim()) throw Error('Describe the approved input domain and intended behavior.');
+        const payload = fixturePayload(fixtures);
+        const ids = payload.datasets.map(d => d.id);
+        Object.assign(body, payload, {required_dataset_ids: ids, scope_description: scope.trim(),
+          requirements: [{id: 'behavior', description: description.trim(), source_reference: reference.trim(), dataset_ids: ids}]});
+      } else {
+        if (!revision.trim()) throw Error('Enter a source revision.');
+        const performance = metric !== 'OUTPUT_BEHAVIOR';
+        if (performance && (!threshold.trim() || !Number.isFinite(Number(threshold)) || Number(threshold) <= 0)) throw Error('Enter a positive measured limit.');
+        const units = metric === 'MAX_LATENCY' ? {unit:'seconds',metric:'elapsed_invocation_seconds'} : {unit:'bytes',metric:'memray_peak_tracked_allocations_bytes'};
+        Object.assign(body,{source_reference: reference.trim(), source_revision: revision.trim(),
+          requirements: [{id: metric.toLowerCase(), key: metric.toLowerCase(), type:metric, description:description.trim(),
+            value: performance ? Number(threshold) : description.trim(), ...(performance ? units : {})}]});
+      }
+      setError(''); proposal.mutate(body);
     } catch (err) { setError(err.message); }
   }
-  return <details className="ai-disclosure">
-    <summary>Manual proposal (expert)</summary>
-    <div className="ai-stack">
-      <p>Use a reviewed source or contract payload. The server validates the proposal; submission never approves it.</p>
-      <Select label="Proposal type" value={kind} placeholder={null} disabled={proposal.isPending} options={[{value:'contract',label:'Functional contract'},{value:'source',label:'Requirement source'}]} onChange={e => { setKind(e.target.value); setContent(''); setError(''); proposal.reset(); }} />
-      <label htmlFor="algorithm-proposal-content">Proposal JSON</label>
-      <textarea id="algorithm-proposal-content" rows={7} value={content} onChange={e => setContent(e.target.value)} />
-      <Button disabled={!content.trim()} isLoading={proposal.isPending} onClick={submit}>Submit for review</Button>
+  return <details className="ai-disclosure" open={parent ? true : undefined}>
+    <summary>{parent ? 'Propose revised version' : 'New proposal'}</summary>
+    <form className="ai-stack" onSubmit={submit}>
+      {parent && <p>Revises {idOf(parent)} ? {label(parent.status)}. Submit the complete replacement and a new version.</p>}
+      <Select label="Proposal type" value={kind} placeholder={null} disabled={Boolean(parent) || proposal.isPending}
+        options={[{value:'contract',label:'Functional contract'},{value:'source',label:'Requirement source'}]} onChange={e => {setKind(e.target.value);setError('');proposal.reset();}} />
+      <Input label="Independent source reference" value={reference} onChange={e => setReference(e.target.value)} maxLength={500}/>
+      <Input label="Requirement" value={description} onChange={e => setDescription(e.target.value)} maxLength={1000}/>
+      {kind === 'contract' ? <><Input label="Applicable scope" value={scope} onChange={e => setScope(e.target.value)} maxLength={2000}/>
+        <FunctionFixtures value={fixtures} onChange={setFixtures}/></> : <>
+        <Input label="Source revision" value={revision} onChange={e => setRevision(e.target.value)} maxLength={200}/>
+        <Select label="Requirement type" value={metric} placeholder={null} options={[{value:'OUTPUT_BEHAVIOR',label:'Output behavior'},
+          {value:'MAX_LATENCY',label:'Maximum invocation time'},{value:'MAX_MEMORY',label:'Peak tracked allocation'}]} onChange={e => setMetric(e.target.value)}/>
+        {metric !== 'OUTPUT_BEHAVIOR' && <Input label={metric === 'MAX_LATENCY' ? 'Limit in seconds' : 'Limit in bytes'} value={threshold} type="number" step="any" onChange={e => setThreshold(e.target.value)}/>}
+      </>}
+      <Button type="submit" disabled={proposal.isSuccess} isLoading={proposal.isPending}>Submit for review</Button>
       {(error || proposal.isError) && <p role="alert">{error || proposal.error.message}</p>}
-      {proposal.isSuccess && <p role="status">Proposal submitted; independent review required.</p>}
-    </div>
+      {proposal.isSuccess && <p role="status">Proposal submitted for independent review.</p>}
+    </form>
   </details>;
 }
 
@@ -136,6 +167,8 @@ export function RequirementReviewWorkspace({ projectId }) {
     queryClient.invalidateQueries({ queryKey: ['algorithm-contracts', scope, projectId] }),
     queryClient.invalidateQueries({ queryKey: ['algorithm-requirement-sources', scope, projectId] }),
     queryClient.invalidateQueries({ queryKey: ['pr-algorithm-intelligence', scope] }),
+    queryClient.invalidateQueries({ queryKey: ['algorithms', 'run'] }),
+    queryClient.invalidateQueries({ queryKey: ['algorithms', 'history'] }),
   ]);
   return <Card title="Requirements" subtitle="Review contracts and constraints once, then reuse approved versions." className="ai-stack">
     {(contracts.isPending || (canSubmit && sources.isPending)) && <p role="status">Loading requirements…</p>}
@@ -149,6 +182,7 @@ export function RequirementReviewWorkspace({ projectId }) {
     </div>)}
     {contracts.isSuccess && (!canSubmit || sources.isSuccess) && docs.filter(d => filter === 'all' || d.status === filter).length === 0 && <p>No matching requirements.</p>}
     {current && <ReviewCard key={idOf(current) + ':' + current.payload_fingerprint + ':' + current.status} doc={current} actor={user?.employee_id || user?.sub} canApprove={canApprove} onApproved={refresh} />}
+    {canSubmit && current && ['CHANGES_REQUESTED', 'REJECTED', 'REVOKED'].includes(current.status) && <ManualProposal key={idOf(current)} projectId={projectId} onProposed={refresh} parent={current} />}
     {canSubmit && <ManualProposal projectId={projectId} onProposed={refresh} />}
   </Card>;
 }

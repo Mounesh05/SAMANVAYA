@@ -214,11 +214,13 @@ def _function_node(source, function):
         tree = ast.parse(source)
     except (SyntaxError, ValueError, MemoryError):
         return None
-    wanted_line = function.get("definition_line") or function.get("line")
+    wanted_line = function.get("line") or function.get("definition_line")
     wanted_name = function.get("name")
     candidates = [node for node in ast.walk(tree)
                   if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda))
                   and getattr(node, "lineno", None) == wanted_line]
+    for candidate in candidates:
+        candidate._analysis_module = tree
     if not candidates:
         return None
     if wanted_name == "<lambda>":
@@ -263,7 +265,8 @@ def static_findings(function, source):
                 annotations[argument.arg] = ast.unparse(argument.annotation) if argument.annotation else ""
     try:
         parser_cost = (function.get("structure") or {}).get("static_cost") if language != "python" else None
-        record["complexity"] = ({**parser_cost, "language": language} if parser_cost else
+        record["complexity"] = ({**parser_cost, "language": language,
+                                 "confidence": parser_cost.get("confidence", "medium" if parser_cost.get("status") == "estimated" else "none")} if parser_cost else
                                 complexity.estimate(node, function.get("name") or "", facts=facts,
                                                     parameter_annotations=annotations, language=language))
     except Exception:  # pragma: no cover - defensive; a bound is never guessed
@@ -338,24 +341,30 @@ class PRAlgorithmIntelligenceService:
         return {"employee_id": "github-automation:" + project_id, "org_id": project["org_id"], "role": "DEVOPS",
                 "authority_basis": "server-resolved connected project; approved functional scope; existing worker execution feature flag"}
 
+    async def approval_manifest(self, project_id, organization_id, repository):
+        # A new approval can unblock an unchanged PR. Draft contracts do not invalidate a job.
+        approvals = await self.contracts.collection.find(
+            {"project_id": project_id, "organization_id": organization_id, "status": "APPROVED",
+             "$or": [{"automatic_scope.repository": repository}, {"function_bindings.0": {"$exists": True}}]},
+            {"_id": 0, "contract_id": 1, "payload_fingerprint": 1},
+        ).sort("contract_id", 1).limit(101).to_list(101)
+        requirement_approvals = await self.collection("algorithm_requirement_sources").find(
+            {"project_id": project_id, "organization_id": organization_id, "status": "APPROVED"},
+            {"_id": 0, "source_id": 1, "payload_fingerprint": 1},
+        ).sort("source_id", 1).limit(33).to_list(33)
+        if len(approvals) > 100 or len(requirement_approvals) > 32:
+            raise ValueError("Project approval manifest exceeds supported bounds")
+        return approvals, requirement_approvals
+
     async def enqueue(self, project_id, repository, pr, files, pr_id, launch=True, expected_run_id=None):
         user = await self.authority(project_id, repository)
         base, head = pr.get("base", {}).get("sha"), pr.get("head", {}).get("sha")
         if not base or not head or pr.get("state") != "open":
             return {"status": "unsupported", "reason": "Open PR with immutable base and head revisions is required"}
         identity = [METHOD, ANALYSIS_REVISION, project_id, repository, pr["number"], base, head]
-        # A new approval can unblock an unchanged PR. Draft contracts do not invalidate a job.
-        approvals = await self.contracts.collection.find(
-            {"project_id": project_id, "organization_id": user["org_id"], "status": "APPROVED",
-             "$or": [{"automatic_scope.repository": repository}, {"function_bindings.0": {"$exists": True}}]},
-            {"_id": 0, "contract_id": 1, "payload_fingerprint": 1},
-        ).sort("contract_id", 1).limit(101).to_list(101)
+        approvals, requirement_approvals = await self.approval_manifest(project_id, user["org_id"], repository)
         if approvals:
             identity.append(fingerprint(approvals))
-        requirement_approvals = await self.collection("algorithm_requirement_sources").find(
-            {"project_id": project_id, "organization_id": user["org_id"], "status": "APPROVED"},
-            {"_id": 0, "source_id": 1, "payload_fingerprint": 1},
-        ).sort("source_id", 1).limit(33).to_list(33)
         if requirement_approvals:
             identity.append(fingerprint(requirement_approvals))
         # Revocation is distinct from the original no-approval state.
@@ -375,6 +384,7 @@ class PRAlgorithmIntelligenceService:
                "organization_id": user["org_id"],
                "repository_id": project_id, "project_id": project_id, "repository": repository, "pr_id": pr_id,
                "pr_number": pr["number"], "base_sha": base, "head_sha": head, "commit_sha": head,
+               "approval_continuation": bool(expected_run_id and launch),
                "created_at": now(), "lease_expires_at": (datetime.now(timezone.utc) + timedelta(minutes=8)).isoformat(),
                "status": "pending", "functions": [], "evidence_refs": [], "limitations": [
                    "Finite approved contracts only; no universal equivalence or production-optimality claim",
@@ -387,13 +397,19 @@ class PRAlgorithmIntelligenceService:
             await runs.insert_one(copy.deepcopy(doc))
         except DuplicateKeyError:
             existing = await runs.find_one({"algorithm_job_key": key}, {"_id": 0})
-            return {"run_id": run_id, "status": existing["status"], "duplicate": True}
+            if not expected_run_id or existing["status"] != "pending":
+                return {"run_id": run_id, "status": existing["status"], "duplicate": True}
+            # Recover an insert committed just before the previous process stopped.
+            # The pointer comparison below prevents reattaching stale work.
         current_filter = {"id": pr_id, "project_id": project_id, "head_sha": head}
         if expected_run_id:
             current_filter.update(status="open", algorithm_intelligence_run_id=expected_run_id)
         attached = await self.collection("pull_requests").update_one(current_filter,
             {"$set": {"algorithm_intelligence_run_id": run_id, "algorithm_intelligence_status": "pending"}})
         if expected_run_id and attached.matched_count != 1:
+            if await self.collection("pull_requests").find_one({
+                    "id": pr_id, "project_id": project_id, "algorithm_intelligence_run_id": run_id}):
+                return {"run_id": run_id, "status": "pending", "duplicate": True}
             await runs.update_one({"run_id": run_id, "status": "pending"},
                                   {"$set": {"status": "superseded", "completed_at": now()}})
             return {"run_id": run_id, "status": "superseded"}
@@ -406,23 +422,35 @@ class PRAlgorithmIntelligenceService:
         return {"run_id": run_id, "status": "pending"}
 
     async def resume_after_approval(self, approved, launch=True):
-        """Bounded continuation of current blocked PRs, using new immutable jobs."""
-        project_id = approved["project_id"]
-        organization_id = approved["organization_id"]
+        """Resume matching current PRs, paging by stable PR identity."""
+        cursor, queued = "", []
+        while cursor is not None:
+            cursor, batch = await self.continuation_page(approved, cursor, launch)
+            queued.extend(batch)
+        return queued
+
+    async def continuation_page(self, approved, cursor, launch=True):
+        project_id, organization_id = approved["project_id"], approved["organization_id"]
         scope = approved.get("automatic_scope")
-        is_contract = bool(approved.get("contract_id"))
-        # Legacy binding-only contracts remain available to regular PR sync.
-        if is_contract and not scope:
-            return []
-        query = {"kind": "pr_algorithm_intelligence", "project_id": project_id,
-                 "organization_id": organization_id, "status": {"$in": ["completed", "insufficient_evidence", "unsupported"]}}
-        if scope:
-            query["repository"] = scope["repository"]
-        docs = await self.collection("code_quality_runs").find(query, {"_id": 0}).sort("created_at", -1).limit(50).to_list(50)
+        query = {"project_id": project_id, "status": "open", "id": {"$gt": cursor},
+                 "algorithm_intelligence_run_id": {"$exists": True}}
+        prs = await self.collection("pull_requests").find(query).sort("id", 1).limit(8).to_list(8)
         queued = []
-        for doc in docs:
-            if len(queued) >= 10:
-                break
+        for current in prs:
+            doc = await self.collection("code_quality_runs").find_one({
+                "run_id": current["algorithm_intelligence_run_id"], "project_id": project_id,
+                "organization_id": organization_id, "kind": "pr_algorithm_intelligence",
+                "head_sha": current.get("head_sha")})
+            if not doc or scope and doc["repository"] != scope["repository"]:
+                continue
+            key = "contract_id" if "contract_id" in approved else "source_id"
+            manifest = "approved_contracts" if key == "contract_id" else "approved_requirement_sources"
+            if any(item.get(key) == approved[key] and item.get("payload_fingerprint") == approved["payload_fingerprint"]
+                   for item in doc.get(manifest, [])):
+                continue
+            if doc["status"] not in TERMINAL:
+                await expire_pr_jobs(self.collection("code_quality_runs"), self.collection("pull_requests"), doc["run_id"])
+                raise RuntimeError("Previous analysis is still active")
             blocked = [row for row in doc.get("functions", []) if row.get("comparison_status") == "blocked"
                        or row.get("benchmark_status") == "blocked"]
             if scope:
@@ -430,29 +458,25 @@ class PRAlgorithmIntelligenceService:
                            and (row.get("current") or {}).get("qualified_name") == scope["qualified_name"]]
             if not blocked:
                 continue
-            current = await self.collection("pull_requests").find_one(
-                {"id": doc["pr_id"], "project_id": project_id, "status": "open",
-                 "head_sha": doc["head_sha"], "algorithm_intelligence_run_id": doc["run_id"]})
-            if not current:
+            actor = await self.authority(project_id, doc["repository"])
+            if actor["org_id"] != organization_id:
                 continue
-            try:
-                actor = await self.authority(project_id, doc["repository"])
-                if actor["org_id"] != organization_id:
-                    continue
-                owner, name = doc["repository"].split("/")
-                pr = await self.api.client.get_pull_request(owner, name, doc["pr_number"])
-                if (pr.get("state") != "open" or pr.get("base", {}).get("sha") != doc["base_sha"]
-                        or pr.get("head", {}).get("sha") != doc["head_sha"]):
-                    continue
-                result = await self.enqueue(project_id, doc["repository"], pr, doc["files"], doc["pr_id"],
-                                            launch=launch, expected_run_id=doc["run_id"])
-                queued.append(result)
-            except Exception:
-                logger.exception("Approval continuation could not enqueue scoped PR %s", doc["run_id"])
-        return queued
+            owner, name = doc["repository"].split("/")
+            pr = await self.api.client.get_pull_request(owner, name, doc["pr_number"])
+            if (pr.get("state") == "open" and pr.get("base", {}).get("sha") == doc["base_sha"]
+                    and pr.get("head", {}).get("sha") == doc["head_sha"]):
+                queued.append(await self.enqueue(project_id, doc["repository"], pr, doc["files"], doc["pr_id"],
+                                                 launch=launch, expected_run_id=doc["run_id"]))
+        return (prs[-1]["id"] if len(prs) == 8 else None), queued
 
     async def fresh(self, doc):
         if await self.collection("code_quality_runs").find_one({"run_id": doc["run_id"], "authority_review_required": True}):
+            return False
+        if not await self.collection("pull_requests").find_one({"id": doc["pr_id"], "project_id": doc["project_id"],
+                "head_sha": doc["head_sha"], "algorithm_intelligence_run_id": doc["run_id"]}):
+            return False
+        if await self.approval_manifest(doc["project_id"], doc["organization_id"], doc["repository"]) != (
+                doc.get("approved_contracts", []), doc.get("approved_requirement_sources", [])):
             return False
         owner, repo = doc["repository"].split("/")
         current = await self.api.client.get_pull_request(owner, repo, doc["pr_number"])
@@ -460,7 +484,12 @@ class PRAlgorithmIntelligenceService:
                 and current.get("base", {}).get("sha") == doc["base_sha"])
 
     async def set_status(self, doc, status, **fields):
-        await self.collection("code_quality_runs").update_one({"run_id": doc["run_id"]}, {"$set": {"status": status, **fields}})
+        query = {"run_id": doc["run_id"], "status": {"$nin": list(TERMINAL)}}
+        if status != "superseded":
+            query["authority_review_required"] = {"$ne": True}
+        update = await self.collection("code_quality_runs").update_one(query, {"$set": {"status": status, **fields}})
+        if not update.matched_count:
+            return
         if status == "superseded":
             await self.collection("recommendations").update_many(
                 {"algorithm_analysis_run_id": doc["run_id"], "project_id": doc["project_id"]},
@@ -533,7 +562,7 @@ class PRAlgorithmIntelligenceService:
         from domain.schemas.algorithm_benchmark import BenchmarkRequest
         validated = BenchmarkRequest.model_validate(request).model_dump()
         created = await self.benchmarks.create(validated, user, metadata={
-            "kind": "pr_standalone", "pr_automation": {
+            "kind": "pr_standalone", "approved_growth_series": contract.get("growth_series"), "pr_automation": {
                 "run_id": doc["run_id"], "repository": doc["repository"], "pr_id": doc["pr_id"],
                 "head_sha": doc["head_sha"], "function_id": function["function_id"], "discovery_run_id": head_run,
                 "contract_id": contract["contract_id"], "contract_fingerprint": fingerprint(contract),
@@ -598,8 +627,7 @@ class PRAlgorithmIntelligenceService:
 
     async def _analyze(self, doc):
         user = await self.authority(doc["project_id"], doc["repository"])
-        doc["organization_id"] = user["org_id"]
-        if not await self.fresh(doc):
+        if doc["organization_id"] != user["org_id"] or not await self.fresh(doc):
             await self.set_status(doc, "superseded", completed_at=now())
             return
         files = [f for f in doc["files"] if source_language(f["filename"]) and safe_relative_path(f["filename"])]
@@ -634,7 +662,7 @@ class PRAlgorithmIntelligenceService:
             proposals += 1
             from domain.services.algorithm_contract_proposals import propose_from_model
             row["requirement_proposal"] = await propose_from_model(
-                doc, fn, function_text(source, fn), head_run, row["static"], user, self.contracts)
+                doc, fn, head_run, user, self.contracts)
         if not pairs:
             await self.set_status(doc, "unsupported", reason="No changed function body could be extracted; inspect source diagnostics and module/caller changes", completed_at=now())
             return

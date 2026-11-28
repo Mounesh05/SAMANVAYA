@@ -4,6 +4,7 @@
 const ts = require('typescript');
 const {analyzeStructure} = require('./node_worker.cjs');
 const {estimate: estimateCost} = require('./static_cost.cjs');
+const {statements: controlFlow} = require('./control_flow.cjs');
 
 function extract(sourceText, filePath) {
   if (Buffer.byteLength(sourceText, 'utf8') > 200000) throw new Error('Source size limit');
@@ -107,7 +108,19 @@ function extract(sourceText, filePath) {
             }
             // Tests supply observed expectations, never verified requirements.
             if (target === 'expect' && n.arguments[0] && ts.isCallExpression(n.arguments[0])) {
-              assertions.push({target: symbol(n.arguments[0].expression), line: line(n), detail: 'Static expect call; test not executed or proven authoritative.'});
+              const actual = n.arguments[0], matcher = n.parent, assertion = matcher.parent;
+              let fixture = null;
+              if (ts.isPropertyAccessExpression(matcher) && ['toEqual','toStrictEqual','toBe'].includes(matcher.name.text)
+                  && ts.isCallExpression(assertion) && assertion.expression === matcher && assertion.arguments.length === 1) {
+                const literals = [...actual.arguments, assertion.arguments[0]].map(arg => arg.getText(source));
+                if (literals.join('').length <= 2048) {
+                  try {
+                    const values = literals.map(value => JSON.parse(value));
+                    fixture = {args: values.slice(0,-1), expected: values.at(-1)};
+                  } catch { /* Dynamic expectations have no independent literal answer. */ }
+                }
+              }
+              assertions.push({target: symbol(actual.expression), line: line(n), fixture, detail: 'Static expect call; test not executed or proven authoritative.'});
             }
           }
           if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) fact('accumulator_update', n, symbol(n.left));
@@ -121,14 +134,19 @@ function extract(sourceText, filePath) {
         }
         for (const returned of returns) returned.kind = collections[returned.symbol] || returned.kind;
         for (const observed of facts) if (observed.kind === 'return_value') observed.related = collections[observed.subject] || observed.related;
+        const cost = estimateCost(ts, node, source);
+        // The discovery contract carries measured observations and assumptions.
+        // The report adapter assigns confidence within the cost record.
+        delete cost.confidence;
         functions.push({name: binding.slice(0, 120), qualified_name: nestedScope.slice(0, 240), line: line(node), end_line: end(node),
           column: source.getLineAndCharacterOfPosition(node.getStart(source)).character,
           end_column: source.getLineAndCharacterOfPosition(node.end).character,
           is_async: !!node.modifiers?.some(m => m.kind === ts.SyntaxKind.AsyncKeyword),
           parameters: node.parameters.slice(0, 32).map(p => ({name: p.name.getText(source).slice(0, 80), annotation: p.type?.getText(source).slice(0, 120) || null, has_default: !!p.initializer, variadic: !!p.dotDotDotToken})),
           return_annotation: node.type?.getText(source).slice(0, 120) || null,
+          control_statements: controlFlow(ts, node, source),
           structure: {...(structural.functions.find(f => f.line === line(node)) || {loops, branches}),
-            static_cost: estimateCost(ts, node, source)},
+            static_cost: cost},
           facts: facts.sort((a, b) => a.line - b.line), calls, returns: returns.slice(0, 16), collections, imports, assertions: assertions.slice(0, 32)});
       }
     }

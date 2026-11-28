@@ -13,6 +13,7 @@ function estimate(ts, fn, source) {
   const params = new Set(fn.parameters.map(p => exprName(p.name)).filter(Boolean));
   const locals = new Set(params);
   const indices = new Map();
+  const elements = new Map();
   function size(name, kind) {
     if (!params.has(name)) return fail('Input size is not bound to a direct parameter');
     const key = name + ':' + kind;
@@ -26,7 +27,8 @@ function estimate(ts, fn, source) {
     if (!n) return one;
     if (++count>6000 || depth>40) return fail('Expression analysis limit reached');
     const e = x => expression(x,depth+1);
-    if (ts.isNumericLiteral(n) || ts.isStringLiteral(n) || [ts.SyntaxKind.TrueKeyword,ts.SyntaxKind.FalseKeyword,ts.SyntaxKind.NullKeyword].includes(n.kind)) return one;
+    if (ts.isStringLiteral(n)) return fail('String values require a length and allocation model');
+    if (ts.isNumericLiteral(n) || [ts.SyntaxKind.TrueKeyword,ts.SyntaxKind.FalseKeyword,ts.SyntaxKind.NullKeyword].includes(n.kind)) return one;
     if (ts.isIdentifier(n)) return locals.has(n.text) ? one : fail('Unresolved value '+n.text);
     if (ts.isParenthesizedExpression(n) || ts.isAsExpression(n) || ts.isNonNullExpression(n)) return e(n.expression);
     if (ts.isPropertyAccessExpression(n) && n.name.text==='length' && params.has(exprName(n.expression))) return one;
@@ -72,7 +74,12 @@ function estimate(ts, fn, source) {
     if(ts.isForOfStatement(n) && !n.awaitModifier && ts.isVariableDeclarationList(n.initializer) && n.initializer.declarations.length===1) {
       const name=exprName(n.initializer.declarations[0].name), input=exprName(n.expression);
       if(!name||locals.has(name)||!params.has(input)||containsWrite(n.statement,new Set([name,input])))return fail('Unsupported or mutable for-of loop');
-      const trips=size(input,'length');locals.add(name);indices.set(name,trips);const body=st(n.statement);indices.delete(name);locals.delete(name);
+      const trips=size(input,'length');
+      locals.add(name);
+      elements.set(name,input);
+      const body=st(n.statement);
+      elements.delete(name);
+      locals.delete(name);
       addNote(n,'One iteration per input element');return times(trips,body);
     }
     if(ts.isForStatement(n) && n.initializer && ts.isVariableDeclarationList(n.initializer) && n.initializer.declarations.length===1 && n.condition && ts.isBinaryExpression(n.condition)) {
@@ -80,7 +87,14 @@ function estimate(ts, fn, source) {
       if(!name||locals.has(name)||!d.initializer||!ts.isNumericLiteral(d.initializer)||d.initializer.text!=='0'||exprName(cond.left)!==name||cond.operatorToken.kind!==ts.SyntaxKind.LessThanToken||!inc||!(ts.isPostfixUnaryExpression(inc)||ts.isPrefixUnaryExpression(inc))||inc.operator!==ts.SyntaxKind.PlusPlusToken||exprName(inc.operand)!==name)return fail('Loop progress or termination not established');
       const bound=cond.right, input=ts.isPropertyAccessExpression(bound)&&bound.name.text==='length'?exprName(bound.expression):null;
       const boundName=exprName(bound);
-      const trips=input?size(input,'length'):indices.has(boundName)?indices.get(boundName):boundName?size(boundName,'numeric'):ts.isNumericLiteral(bound)?one:null;
+      let trips;
+      if (input) trips=size(input,'length');
+      else if (indices.has(boundName)) trips=indices.get(boundName);
+      else if (elements.has(boundName)) {
+        trips=size(elements.get(boundName),'max(1, maximum nonnegative element)');
+        addNote(n,'Each element bounds this loop by the maximum element magnitude, independently of collection length');
+      } else if (boundName) trips=size(boundName,'numeric');
+      else if (ts.isNumericLiteral(bound)) trips=one;
       if(!trips||containsWrite(n.statement,new Set([name,input,boundName].filter(Boolean))))return fail('Loop bound is unresolved or mutable');
       locals.add(name);indices.set(name,trips);const body=st(n.statement);indices.delete(name);locals.delete(name);
       addNote(n,'Zero-based unit-increment loop with stable upper bound');return times(trips,body);

@@ -9,131 +9,16 @@ import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection
 import { useSessionScope } from '../../store/useSessionScope';
 import { AlgorithmAdvisory } from '../algorithm-intelligence/AlgorithmAdvisory';
 
-const statusLabel = value => ({ pending: 'Pending', analyzing: 'Analyzing', benchmarking: 'Benchmarking', completed: 'Completed',
-  insufficient_evidence: 'Insufficient evidence', unsupported: 'Unsupported', failed: 'Failed', superseded: 'Superseded',
-  analyzed: 'Analysed (static only)', blocked: 'Blocked', not_applicable: 'Not applicable' }[value] || value);
+import { AnalysisReport } from '../algorithm-intelligence/AnalysisReport';
+import { ComplexitySummary, StaticComparison, TestEvidenceGrouping, WorkloadDifferences, statusLabel, comparisonLabel, modeLabel, categoryLabel, countBy } from '../algorithm-intelligence/ReportSections';
+export { ComplexitySummary, StaticComparison, TestEvidenceGrouping, WorkloadDifferences } from '../algorithm-intelligence/ReportSections';
 
-const comparisonLabel = value => ({ not_analyzed: 'Not analysed', not_applicable: 'Not applicable — no predecessor',
-  unsupported: 'Unsupported by the worker protocol', blocked: 'Blocked before execution', deferred: 'Deferred by the budget',
-  completed: 'Executed', inconclusive: 'Executed, inconclusive', failed: 'Worker failed' }[value] || value);
-
-const modeLabel = value => ({ A: 'Mode A · standalone', B: 'Mode B · base vs head', C: 'Mode C · same-revision alternatives' }[value] || value);
-
-const categoryLabel = value => ({ application: 'Application', test: 'Test', test_helper: 'Test helper',
-  helper: 'Helper', nested: 'Nested definition' }[value] || value);
-
-const countBy = (rows, pick) => rows.reduce((acc, row) => {
-  const key = pick(row);
-  if (key) acc[key] = (acc[key] || 0) + 1;
-  return acc;
-}, {});
-
-export function WorkloadDifferences({ decision }) {
-  if (!decision) return null;
-  const previous = decision.candidates?.find(c => c.candidate === 'previous');
-  const current = decision.candidates?.find(c => c.candidate === 'current');
-  if (!previous || !current) return null;
-  return <section aria-label="Measured workload differences"><h4>Measured differences: current minus previous</h4>
-    <p>These are descriptive measurements. Contract correctness, eligibility, uncertainty and the deterministic decision control their interpretation.</p>
-    <ul>{(decision.dataset_comparisons || []).map(dataset => {
-      const a = previous?.datasets.find(d => d.dataset_id === dataset.dataset_id);
-      const b = current?.datasets.find(d => d.dataset_id === dataset.dataset_id);
-      const comparable = ['ELIGIBLE_WINNER', 'CONDITIONAL_COMPARISON', 'MULTIPLE_ELIGIBLE'].includes(dataset.status)
-        && previous?.methodology_fingerprint && previous.methodology_fingerprint === current?.methodology_fingerprint;
-      const eligible = comparable && a?.eligibility === 'ELIGIBLE' && b?.eligibility === 'ELIGIBLE';
-      const timing = eligible && a?.timing?.status === 'AVAILABLE' && b?.timing?.status === 'AVAILABLE' && Number.isFinite(a.timing.median) && Number.isFinite(b.timing.median);
-      const memory = eligible && a?.memory?.status === 'AVAILABLE' && b?.memory?.status === 'AVAILABLE' && a.memory.metric === 'memray_peak_tracked_allocations_bytes' && b.memory.metric === a.memory.metric && Number.isFinite(a.memory.bytes) && Number.isFinite(b.memory.bytes);
-      return <li key={dataset.dataset_id}>{dataset.dataset_id}: {timing ? `Median time delta ${(b.timing.median - a.timing.median).toPrecision(6)} seconds` : 'Time difference unverified'}.
-        {' '}{memory ? `Peak tracked allocation delta ${b.memory.bytes - a.memory.bytes} bytes` : 'Peak memory difference unverified; compatible eligible peak measurements required'}.</li>;
-    })}</ul>
-  </section>;
-}
-
-/** Static bound with an explicit statement whenever a bound could not be established. */
-export function ComplexitySummary({ complexity, label = 'Estimated complexity' }) {
-  if (!complexity) return null;
-  const dimensions = Object.entries(complexity.dimension_bindings || {});
-  const unknown = complexity.unknown_reasons || [];
-  const strip = value => value ? String(value).replace(/^(time|space):\s*/, '') : null;
-  const timeReason = strip(complexity.time_complexity_reason) || strip(unknown.find(reason => reason.startsWith('time:')))
-    || unknown[0] || 'no reason was recorded';
-  const spaceReason = strip(complexity.space_complexity_reason) || strip(unknown.find(reason => reason.startsWith('space:')));
-  return <div className="cq-complexity">
-    <p>{label}: time {complexity.time_complexity || 'unavailable'} · space {complexity.space_complexity || 'unavailable'}
-      {' · '}{complexity.status || 'unknown'} ({complexity.confidence || 'none'} confidence)</p>
-    {dimensions.length > 0 && <p>Dimensions: {dimensions.map(([letter, binding]) => `${letter} = ${binding}`).join(', ')}</p>}
-    {!complexity.time_complexity && <p>No time bound established: {timeReason}</p>}
-    {!complexity.space_complexity && <p>No space bound established: {spaceReason || 'no reason was recorded'}</p>}
-    <details><summary>Basis, assumptions and limitations</summary>
-      <ul>
-        {(complexity.derivation || []).map((step, i) => <li key={`d${i}`}>Derivation: {step}</li>)}
-        {(complexity.space_derivation || []).map((step, i) => <li key={`s${i}`}>Space: {step}</li>)}
-        {(complexity.assumptions || []).map((step, i) => <li key={`a${i}`}>Assumption: {step}</li>)}
-        {(complexity.limitations || []).map((step, i) => <li key={`l${i}`}>Limitation: {step}</li>)}
-      </ul>
-    </details>
-  </div>;
-}
-
-/** Test evidence grouped by the file that asserts it, never merged into a single number. */
-export function TestEvidenceGrouping({ evidence }) {
-  if (!evidence?.length) return null;
-  const groups = evidence.reduce((acc, item) => {
-    const key = item.path || 'unknown file';
-    (acc[key] = acc[key] || []).push(item);
-    return acc;
-  }, {});
-  return <details><summary>Static test evidence ({evidence.length} assertion reference{evidence.length === 1 ? '' : 's'})</summary>
-    <ul>{Object.entries(groups).map(([path, items]) => <li key={path}>
-      {path}: {items.map(item => `line ${item.line}`).join(', ')}
-      <ul>{items.map((item, i) => <li key={i}>{item.detail || 'Static assertion reference; not executed or proven authoritative.'}</li>)}</ul>
-    </li>)}</ul>
-  </details>;
-}
-
-/** Only render a comparison for a real counterpart. Standalone bounds are rendered separately. */
-export function StaticComparison({ row }) {
-  if (!row.previous) return null;
-  const before = row.static_previous;
-  const after = row.static;
-  const cell = (value, fallback) => value || fallback;
-  const afterComplexity = after?.complexity || row.complexity;
-  const afterCategory = after?.classification?.category || row.classification?.category;
-  const afterPatterns = after?.patterns?.length ? after.patterns
-    : (row.current?.detected_patterns || []).map(pattern => pattern.kind);
-  return <section aria-label="Static comparison">
-    <h5>{row.mode === 'C' ? 'Same-revision alternatives' : 'Static comparison'}</h5>
-    <table>
-      <thead><tr><th>Aspect</th><th>{row.mode === 'C' ? row.previous.qualified_name : 'Previous'}</th><th>{row.mode === 'C' ? row.current?.qualified_name : 'Current'}</th></tr></thead>
-      <tbody>
-        <tr><td>Declaration</td><td>{row.previous ? row.previous.qualified_name : 'No base counterpart'}</td>
-          <td>{row.current?.qualified_name}</td></tr>
-        <tr><td>Classification</td>
-          <td>{before ? categoryLabel(before.classification?.category) : 'Not analysed'}</td>
-          <td>{afterCategory ? categoryLabel(afterCategory) : 'Not analysed'}</td></tr>
-        <tr><td>Time bound</td>
-          <td>{before?.complexity ? cell(before.complexity.time_complexity, 'Unavailable') : 'Not analysed'}</td>
-          <td>{afterComplexity ? cell(afterComplexity.time_complexity, 'Unavailable') : 'Not analysed'}</td></tr>
-        <tr><td>Space bound</td>
-          <td>{before?.complexity ? cell(before.complexity.space_complexity, 'Unavailable') : 'Not analysed'}</td>
-          <td>{afterComplexity ? cell(afterComplexity.space_complexity, 'Unavailable') : 'Not analysed'}</td></tr>
-        <tr><td>Observed patterns</td>
-          <td>{before?.patterns?.length ? before.patterns.join(', ') : 'None observed'}</td>
-          <td>{afterPatterns.length ? afterPatterns.join(', ') : 'None observed'}</td></tr>
-      </tbody>
-    </table>
-    {before?.complexity && <ComplexitySummary complexity={before.complexity} label="Previous-revision complexity" />}
-    {!before && row.previous && <p>Previous-revision static analysis is unavailable; only the current revision was analysed.</p>}
-  </section>;
-}
-
-export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact = false }) {
+export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact = false, onReview }) {
   const [selected, setSelected] = useState('');
   const scope = useSessionScope();
   const history = useQuery({ queryKey: ['pr-algorithm-intelligence', scope, prId || projectId || 'accessible-projects'],
     queryFn: () => algorithmsApi.getPRIntelligence(prId ? { pr_id: prId } : projectId ? { project_id: projectId } : {}),
     refetchInterval: source ? false : 5000 });
-  const comparison = useQuery({ queryKey: ['algorithms', 'run', scope, selected], queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected) });
   const explanation = useMutation({ mutationFn: runId => algorithmsApi.getExplanation(runId) });
   const staticExplanation = useMutation({
     mutationFn: ({ runId, functionId }) => algorithmsApi.explainPRFunction(runId, functionId),
@@ -143,6 +28,9 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
     run.pr_number === source.number && run.repository?.toLowerCase() === source.repository.toLowerCase()
   ));
   const FunctionContainer = compact ? 'details' : 'article';
+  const parentRun = runs.find(run => run.functions?.some(fn => fn.benchmark_run_id === selected));
+  const comparison = useQuery({ queryKey: ['algorithms', 'run', selected, scope, parentRun?.project_id],
+    queryFn: () => algorithmsApi.getRun(selected), enabled: Boolean(selected && parentRun && !history.isError) });
   return <Card className="cq-panel" title={compact ? 'Pull request analyses' : 'PR algorithm checks'}
     subtitle={source ? 'Static findings and measured comparisons for this PR revision' : 'Static analysis and eligible benchmarks for connected projects'}
     style={{ marginBottom: '1.75rem' }}>
@@ -151,6 +39,11 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
     {history.error && <p role="alert">{history.error.message}</p>}
     {!history.isLoading && !history.error && !runs.length && <p>{source ? 'No stored analysis matches this PR head.' : 'No automatic PR analyses recorded yet.'}</p>}
     {runs.map(run => {
+      if (compact) return <details key={run.run_id} className="ai-disclosure">
+        <summary>{run.repository} ? PR #{run.pr_number} ? {statusLabel(run.status)}{run.historical_only && ' ? Historical'}</summary>
+        <a href={'/algorithm-intelligence/pr/' + encodeURIComponent(run.run_id) + '?project=' + encodeURIComponent(run.project_id)}>Open report</a>
+        <AnalysisReport run={run} refresh={() => history.refetch()} onReview={onReview ? () => onReview(run.project_id) : undefined} />
+      </details>;
       const rows = run.functions || [];
       const modes = countBy(rows, row => row.mode);
       const categories = countBy(rows, row => row.classification?.category);
@@ -184,12 +77,12 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
             {' · '}Comparison: {comparisonLabel(fn.comparison_status)}
             {fn.benchmark_status && <> · Benchmark: {statusLabel(fn.benchmark_status)}</>}</p>
           {fn.benchmark_reason && <p>{fn.benchmark_reason}</p>}
-          {fn.requirement_proposal && <p>Requirement draft: {['proposed', 'existing'].includes(fn.requirement_proposal.status)
+          {fn.requirement_proposal && <p>Requirement draft: {fn.requirement_proposal.status === 'proposed'
             ? 'Awaiting independent review in Requirements' : fn.requirement_proposal.status.replaceAll('_', ' ')}
             {fn.requirement_proposal.contract_id && <> · {fn.requirement_proposal.contract_id}</>}
             {fn.requirement_proposal.reason && <> · {fn.requirement_proposal.reason}</>}
           </p>}
-          {fn.previous && <p>{fn.mode === 'C' ? 'Alternative' : 'Previous'}: {fn.previous.qualified_name} · Current: {fn.current?.qualified_name}</p>}
+          {fn.previous && fn.mode !== 'C' && <p>Previous: {fn.previous.qualified_name} · Current: {fn.current?.qualified_name}</p>}
           <StaticComparison row={fn} />
           {fn.complexity && <ComplexitySummary complexity={fn.complexity} />}
           <p>Possible tasks: {(fn.current?.task_hypotheses || []).map(h => `${h.kind} (${h.status})`).join(', ') || 'Unknown'}</p>
@@ -224,7 +117,7 @@ export function PRAlgorithmIntelligencePanel({ prId, source, projectId, compact 
       </details>;
     })}
     {comparison.error && <p role="alert">{comparison.error.message}</p>}
-    {comparison.data && !comparison.error && !history.error && <section aria-label={comparison.data.kind === 'pr_standalone' ? 'Standalone benchmark details' : 'Automatic comparison details'}>
+    {comparison.data && parentRun && comparison.data.run_id === selected && (!comparison.data.project_id || comparison.data.project_id === parentRun.project_id) && !comparison.error && !history.error && <section aria-label={comparison.data.kind === 'pr_standalone' ? 'Standalone benchmark details' : 'Automatic comparison details'}>
       <h3>{comparison.data.kind === 'pr_standalone' ? 'Standalone benchmark' : 'Comparison'} {comparison.data.run_id}</h3>
       <BehavioralCompatibilitySection report={comparison.data.behavioral_compatibility} />
       <RequirementsSection report={comparison.data.decision?.requirements_discovery || comparison.data.requirements_discovery} />

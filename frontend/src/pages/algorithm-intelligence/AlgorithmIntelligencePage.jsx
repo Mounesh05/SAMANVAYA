@@ -15,6 +15,8 @@ import { RequirementReviewWorkspace } from './RequirementReviewWorkspace';
 import '../code-quality/CodeQuality.css';
 import './AlgorithmIntelligence.css';
 
+import { RepositoryAnalysis } from './RepositoryAnalysis';
+
 const sections = ['Analyses', 'Experiments', 'Requirements', 'History'];
 
 function BenchmarkHistory({ projectId }) {
@@ -52,8 +54,8 @@ function BenchmarkHistory({ projectId }) {
 }
 
 function Workspace({ scope }) {
-  const [section, setSection] = useState('Analyses');
-  const [selection, setSelection] = useState('');
+  const [section, setSection] = useState(() => sections.find(s => s === new URLSearchParams(window.location.search).get('section')) || 'Analyses');
+  const [selection, setSelection] = useState(() => new URLSearchParams(window.location.search).get('project') || '');
   const projects = useQuery({ queryKey: ['algorithm-projects', scope], queryFn: () => projectsApi.list(), retry: false });
   const options = projects.isSuccess ? (projects.data || []).filter(p => p.id).map(p => ({ value: p.id, label: p.name || p.id })) : [];
   const projectId = options.some(p => p.value === selection) ? selection : '';
@@ -69,7 +71,8 @@ function Workspace({ scope }) {
       {projects.isPending && <p role="status">Loading projects…</p>}
       {projects.isError && <p role="alert">{projects.error.message} <Button variant="outline" size="sm" onClick={() => projects.refetch()}>Retry</Button></p>}
     </div>
-    {section === 'Analyses' && !projects.isError && <PRAlgorithmIntelligencePanel key={projectId || 'all'} projectId={projectId} compact />}
+    {section === 'Analyses' && projectId && <RepositoryAnalysis key={projectId} projectId={projectId} />}
+    {section === 'Analyses' && !projects.isError && <PRAlgorithmIntelligencePanel key={projectId || 'all'} projectId={projectId} onReview={id => {setSelection(id); setSection('Requirements');}} compact />}
     {needsProject && !projectId && <Card><p>Select a project to continue.</p></Card>}
     {section === 'Experiments' && projectId && <AlgorithmComparisonPanel key={projectId} workspaceProject={projectId} />}
     {section === 'Requirements' && projectId && <RequirementReviewWorkspace key={projectId} projectId={projectId} />}

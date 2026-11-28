@@ -141,6 +141,7 @@ async def test_all_endpoints_require_authenticated_dependency(api, body, method,
 async def test_project_authorization_on_all_evidence_paths(api, body, project_id, status, detail, endpoint):
     foreign_body = {**body, "project_id": project_id}
     if endpoint in {"get", "feedback", "explanation"}:
+        status, detail = 404, "Benchmark run not found"
         run_id = await seed_run(api, foreign_body)
         path = f"/algorithms/runs/{run_id}" + ("" if endpoint == "get" else "/" + endpoint)
         method = "GET" if endpoint == "get" else "POST"
@@ -294,7 +295,7 @@ async def test_request_schema_and_api_reject_invalid_bounds(api, body, key, valu
 
 
 @pytest.mark.parametrize("field,value", [
-    ("source", ""), ("source", " \n\t"), ("source", "x" * 200001), ("source", "é" * 100001),
+    ("source", ""), ("source", " \n\t"), ("source", "x" * 200001), ("source", "Ã©" * 100001),
     ("name", "  "), ("name", "x" * 201), ("name", "bad\x00key"), ("entrypoint", "sort();evil()"),
     ("entrypoint", "class"), ("entrypoint", "$sort"), ("entrypoint", "x" * 129),
     ("image", "untrusted:latest"),
@@ -336,7 +337,7 @@ async def test_node_peak_memory_constraints_unsupported(api, body, language, con
 @pytest.mark.parametrize("language", ["python", "javascript", "typescript"])
 def test_valid_boundary_contract_and_defaults(body, language):
     body.update(language=language, project_id=" P1 ", sizes=[0, 10000], repetitions=10, seed=2**32 - 1)
-    body["candidates"][0].update(name=" fast ", source="é" * 100000)
+    body["candidates"][0].update(name=" fast ", source="Ã©" * 100000)
     if language == "python":
         body.update(objective="memory", memory_limit_bytes=536870912)
     else:

@@ -54,7 +54,10 @@ it('starts experiments with one blank generic function and a selected project', 
   expect(screen.getByLabelText('Candidate 1 source')).toHaveValue('');
   expect(screen.queryByLabelText('Candidate 2 source')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Benchmark project ID')).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Contract and datasets JSON')).toHaveValue('');
+  expect(screen.queryByLabelText('Contract and datasets JSON')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Contract name')).toHaveValue('');
+  expect(screen.getByLabelText('Case name')).toHaveValue('');
+  expect(screen.getByLabelText('Expected return value')).toBeInTheDocument();
 });
 it('requires explicit independent review and sends the exact stored fingerprint', async () => {
   mount(); await choose('Requirements');

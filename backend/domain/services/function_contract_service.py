@@ -15,7 +15,7 @@ CONTENT_FIELDS = ("project_id", "contract", "datasets", "required_dataset_ids", 
 
 
 def contract_content(document):
-    return {key: copy.deepcopy(document[key]) for key in (*CONTENT_FIELDS, "automatic_scope") if key in document}
+    return {key: copy.deepcopy(document[key]) for key in (*CONTENT_FIELDS, "automatic_scope", "growth_series", "supersedes") if key in document}
 
 
 def actor(user):
@@ -43,6 +43,18 @@ class FunctionContractService:
         content = ContractProposal.model_validate(body).model_dump()
         if content.get("automatic_scope") is None:
             content.pop("automatic_scope", None)
+        if content.get("growth_series") is None:
+            content.pop("growth_series", None)
+        if not content.get("supersedes"):
+            content.pop("supersedes", None)
+        else:
+            previous = await self.collection.find_one({"contract_id": content["supersedes"],
+                "project_id": content["project_id"], "organization_id": user["org_id"]}, {"_id": 0})
+            if (not previous or previous["status"] not in {"REJECTED", "CHANGES_REQUESTED", "REVOKED"}
+                    or previous["contract"]["name"] != content["contract"]["name"]
+                    or previous["contract"]["version"] == content["contract"]["version"]):
+                raise ValueError("Revision requires the reviewed predecessor and a new version of the same contract")
+            await self.collection.create_index("supersedes", unique=True, sparse=True)
         content["contract"].setdefault("comparison", {"mode": "exact", "version": "1"})
         for binding in content["function_bindings"]:
             run = await self.runs.find_one({"run_id": binding["run_id"], "repository_id": content["project_id"]})
@@ -78,12 +90,14 @@ class FunctionContractService:
                   "approved_at": datetime.now(timezone.utc).isoformat(),
                   "authority_basis": "Independent authorized project review of explicit contract and finite validation scope"}
         outcome = await self.collection.update_one(
-            {"contract_id": document["contract_id"], "status": "PROPOSED", "payload_fingerprint": approval["expected_fingerprint"]},
-            {"$set": {"status": "APPROVED", "approval": review}},
+            {"contract_id": document["contract_id"], "project_id": document["project_id"], "organization_id": user["org_id"],
+             "status": "PROPOSED", "payload_fingerprint": approval["expected_fingerprint"]},
+            {"$set": {"status": "APPROVED", "approval": review,
+                      "continuation": {"status": "pending", "ready_at": review["approved_at"], "cursor": ""}}},
         )
         if outcome.matched_count != 1:
             raise ValueError("Concurrent approval changed this proposal")
-        return await self.get(document["contract_id"])
+        return await self.collection.find_one({"contract_id": document["contract_id"], "organization_id": user["org_id"]}, {"_id": 0})
 
     async def resolve(self, project_id, contract_ids):
         refs = ["algorithm_function_contracts/" + cid for cid in contract_ids]
@@ -105,6 +119,8 @@ class FunctionContractService:
             return resolution
         document = present[0]
         approved = all(doc.get("status") == "APPROVED" and (doc.get("approval") or {}).get("scope_reviewed") is True
+                       and doc["approval"].get("approved_by") and doc["approval"]["approved_by"] != doc.get("proposed_by")
+                       and doc["approval"].get("organization_id") == doc.get("organization_id")
                        and doc["approval"].get("expected_fingerprint") == doc["payload_fingerprint"] for doc in present)
         resolution.update(status="APPROVED" if approved else "PROPOSED", fingerprint=document["payload_fingerprint"],
                           snapshot=contract_content(document), approval=document.get("approval"),

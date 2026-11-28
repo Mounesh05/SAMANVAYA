@@ -227,6 +227,26 @@ class AlgorithmBenchmarkService:
                  "source_hashes": item.get("source_hashes", {}),
                  "feedback": item.get("feedback", [])} for item in matches]
 
+    async def authority_current(self, document):
+        request = document["request"]
+        resolution = request.get("compatibility_context", {}).get("resolution", {})
+        automation = document.get("pr_automation", {})
+        context = request.get("requirement_context") or {}
+        ids = resolution.get("contract_ids") or context.get("contract_ids") or []
+        if not ids:
+            return True
+        from domain.services.function_contract_service import FunctionContractService
+        contracts = self.requirements.contracts if self.requirements is not None else FunctionContractService(
+            self.collection.database["algorithm_function_contracts"])
+        current = await contracts.resolve(document["project_id"], ids)
+        expected = resolution.get("fingerprint") or automation.get("contract_fingerprint")
+        snapshot = current.get("snapshot") or {}
+        reviewed = {d["id"]: decision_fingerprint(d) for d in snapshot.get("datasets", [])}
+        return (current["status"] == "APPROVED" and current.get("validator_available")
+                and (expected is None or expected == current.get("fingerprint"))
+                and request.get("contract") == snapshot.get("contract")
+                and all(reviewed.get(d["id"]) == decision_fingerprint(d) for d in request.get("datasets", [])))
+
     async def execute(self, run_id):
         # Reject duplicate delivery. A lease covers queuing plus the 120s runner deadline.
         claimed = False
@@ -241,6 +261,8 @@ class AlgorithmBenchmarkService:
                     return
                 claimed = True
                 try:
+                    if not await self.authority_current(document):
+                        raise BenchmarkUnavailable("Reviewed contract no longer authorizes this benchmark")
                     if document.get("kind") == "behavioral_compatibility":
                         from domain.services.behavioral_compatibility_service import collect_compatibility_evidence
                         from intelligence.algorithms.compatibility import evaluate_compatibility
@@ -259,6 +281,13 @@ class AlgorithmBenchmarkService:
                     # automatic historical retrieval / RAG is deferred to a later phase.
                     history = [] if is_generic(document["request"]) else await self.retrieve(document, env_key)
                     measurements = {key: evidence[key] for key in ("results", "environment", "tools")}
+                    from intelligence.algorithms.empirical import estimate_series
+                    resolution = document["request"].get("compatibility_context", {}).get("resolution", {})
+                    series = document.get("approved_growth_series")
+                    if resolution.get("status") == "APPROVED" and resolution.get("validator_available"):
+                        series = (resolution.get("snapshot") or {}).get("growth_series")
+                    measurements["empirical_growth"] = estimate_series(
+                        series, document["request"].get("datasets", []), evidence["results"])
                     if "behavioral_compatibility" in evidence:
                         measurements["behavioral_compatibility"] = evidence["behavioral_compatibility"]
                         measurements["phase1_eligibility"] = {"eligible": evidence["behavioral_compatibility"]["phase1_eligible"],
@@ -291,6 +320,9 @@ class AlgorithmBenchmarkService:
                 except Exception:
                     logger.exception("Algorithm benchmark failed: %s", run_id)
                     update = {"status": "failed", "error": "Benchmark execution failed. Check worker logs and container setup."}
+                if update["status"] == "completed" and not await self.authority_current(document):
+                    update.update(status="unavailable", decision_authoritative=False, historical_only=True,
+                                  error="Reviewed contract changed during execution")
                 await self._finish(run_id, {**update, "report_status": "incomplete"})
                 # Normal benchmark reports require an advisory; the independent
                 # deterministic execution status remains unchanged.
