@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
-from pymongo.errors import DuplicateKeyError
 
 from core import authorization, database
 
@@ -191,7 +190,9 @@ async def test_evaluation_internal_errors_are_not_returned_to_the_client(monkeyp
 
 # ── CI-01: CI import never rewrites another tenant's rows ───────────────────
 
-from test_actions_report_import import importer  # noqa: E402,F401  (fixture reuse)
+import test_actions_report_import as ci_import_tests  # noqa: E402  (fixture reuse)
+
+importer = ci_import_tests.importer  # the same pytest fixture, registered under its own name here
 
 
 async def test_ci_import_does_not_take_over_a_foreign_receipt(importer):

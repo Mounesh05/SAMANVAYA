@@ -11,7 +11,8 @@ from core.dependencies import get_current_user
 from core.security import revoke_token
 from core.session_cookies import clear_session_cookies, set_session_cookies
 from pymongo.errors import PyMongoError
-from core.rate_limiting import auth_rate_limit, limiter
+from core import login_throttle
+from core.rate_limiting import limiter, login_rate_limit
 from core.config import settings
 from datetime import datetime, timezone
 from typing import Optional
@@ -78,20 +79,28 @@ async def _record_sign_in(request: Request, actor: dict, success: bool, login_id
 
 async def _sign_in(request: Request, credentials: LoginRequest) -> LoginResponse:
     login_id = (credentials.login_id or "").strip()
+    anonymous = {"employee_id": "anonymous", "name": "Unknown"}
+    try:
+        login_throttle.check(request, login_id)  # refuses before any password check
+    except HTTPException:
+        await _record_sign_in(request, anonymous, False, login_id)
+        raise
     result = await auth_service.authenticate_user(
         login_id,
         credentials.organisation_password,
         credentials.employee_password,
     )
     if not result:
-        await _record_sign_in(request, {"employee_id": "anonymous", "name": "Unknown"}, False, login_id)
+        login_throttle.record_failure(request, login_id)
+        await _record_sign_in(request, anonymous, False, login_id)
         raise HTTPException(status_code=401, detail=SIGN_IN_FAILED)
+    login_throttle.record_success(request, login_id)
     await _record_sign_in(request, {"employee_id": result.user.employee_id, "name": result.user.name}, True, login_id)
     return result
 
 
 @router.post("/login", response_model=LoginResponse)
-@auth_rate_limit()
+@login_rate_limit()
 async def login(request: Request, response: Response, credentials: LoginRequest):
     """
     Sign in with an employee ID or work email and both passwords (CR-016).
@@ -109,7 +118,7 @@ async def login(request: Request, response: Response, credentials: LoginRequest)
 
 
 @router.post("/login/full", response_model=LoginResponse)
-@auth_rate_limit()
+@login_rate_limit()
 async def login_full(request: Request, response: Response, credentials: LoginRequest):
     """Same rule as /login; kept for existing scripts and clients."""
     result = await _sign_in(request, credentials)

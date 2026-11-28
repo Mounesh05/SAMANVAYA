@@ -187,7 +187,7 @@ function QualityHistory({ prior, user }) {
       changed_files: selectedFilesMode ? changedFiles : [],
       repository_ref: prComparison || formData.reanalysis_of ? null : (formData.repository_ref.trim() || null),
       pr_number: prComparison ? prNumber : (selectedFilesMode ? prNumber : null),
-      use_ai: !prComparison && formData.analysis_level !== 'purpose_discovery' && formData.use_ai,
+      use_ai: formData.analysis_level !== 'purpose_discovery',  // compulsory for normal reports
     });
   }
 
@@ -565,15 +565,10 @@ function QualityHistory({ prior, user }) {
               />
             </div>
 
-            {formData.analysis_level !== 'purpose_discovery' && !prComparison && (
-              <label className="cq-checkbox">
-                <input
-                  type="checkbox"
-                  checked={formData.use_ai}
-                  onChange={(event) => update('use_ai', event.target.checked)}
-                />{' '}
-                Include AI suggestions
-              </label>
+            {formData.analysis_level !== 'purpose_discovery' && (
+              <p className="cq-note">
+                Every report includes an advisory AI interpretation of the measured results. If it cannot complete, the report is marked incomplete.
+              </p>
             )}
 
             <p className="cq-note">

@@ -57,7 +57,10 @@ export const PAGE_ACCESS = Object.freeze({
 
   // Quality (CR-002).
   codeQuality: { anyOf: [P.VIEW_CODE_QUALITY] },
-  algorithmIntelligence: { anyOf: [P.VIEW_CODE_QUALITY] },
+  // Same permission as the backend algorithm routes: Developer, Lead, QA, DevOps,
+  // PM and admins (incl. CEO admins); not HR. Contract approval and project-level
+  // checks stay on the backend.
+  algorithmIntelligence: { anyOf: [P.USE_ENGINEERING_INTELLIGENCE] },
   tests: { anyOf: [P.MANAGE_TEST_CASES] },
   bugs: { anyOf: [P.VIEW_DEFECTS] },
 

@@ -109,7 +109,8 @@ function extract(sourceText, filePath) {
             // Tests supply observed expectations, never verified requirements.
             if (target === 'expect' && n.arguments[0] && ts.isCallExpression(n.arguments[0])) {
               const actual = n.arguments[0], matcher = n.parent, assertion = matcher.parent;
-              let fixture = null;
+              const subject = symbol(actual.expression), detail = 'Static expect call; test not executed or proven authoritative.';
+              let fixture = null, peer = '';
               if (ts.isPropertyAccessExpression(matcher) && ['toEqual','toStrictEqual','toBe'].includes(matcher.name.text)
                   && ts.isCallExpression(assertion) && assertion.expression === matcher && assertion.arguments.length === 1) {
                 const literals = [...actual.arguments, assertion.arguments[0]].map(arg => arg.getText(source));
@@ -119,8 +120,16 @@ function extract(sourceText, filePath) {
                     fixture = {args: values.slice(0,-1), expected: values.at(-1)};
                   } catch { /* Dynamic expectations have no independent literal answer. */ }
                 }
+                // v4 AL-16: expect(f(x)).toEqual(g(x)) compares two calls as peers.
+                if (ts.isCallExpression(assertion.arguments[0])) {
+                  const other = symbol(assertion.arguments[0].expression);
+                  if (other && other !== subject) {
+                    peer = other;
+                    assertions.push({target: other, line: line(n), peer: subject, fixture: null, detail});
+                  }
+                }
               }
-              assertions.push({target: symbol(actual.expression), line: line(n), fixture, detail: 'Static expect call; test not executed or proven authoritative.'});
+              assertions.push({target: subject, line: line(n), peer, fixture, detail});
             }
           }
           if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) fact('accumulator_update', n, symbol(n.left));

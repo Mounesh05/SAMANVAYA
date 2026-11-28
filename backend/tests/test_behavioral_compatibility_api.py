@@ -92,7 +92,8 @@ async def test_contracts_and_runs_do_not_cross_organization_boundaries(api):
     missing = await api.client.get('/algorithms/contracts/absent')
     assert foreign.status_code == missing.status_code == 404
     assert foreign.json() == missing.json()
-    assert (await api.client.post('/algorithms/compatibility/runs', json=body([document['contract_id']]))).status_code == 403
+    # v4 BASE-04: another tenant's project reads as not found, never as forbidden.
+    assert (await api.client.post('/algorithms/compatibility/runs', json=body([document['contract_id']]))).status_code == 404
 
 
 async def test_client_cannot_submit_authority_or_executable_validator(api):

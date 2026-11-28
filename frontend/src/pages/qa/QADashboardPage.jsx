@@ -32,6 +32,18 @@ const OUTCOME_SERIES = [
   { key: 'blocked', label: 'Blocked', tone: 'warning' },
 ];
 
+/**
+ * React key for a CI configuration. `config_id` (the record id from the API)
+ * is stable and unique. `branch` is not a usable key: records registered by
+ * the test-report import have no branch, and old data may repeat one. The
+ * fallback, for responses without `config_id`, adds the list position so
+ * keys stay unique.
+ */
+export function ciConfigKey(config, index) {
+  if (config?.config_id) return `ci-${config.config_id}`;
+  return `ci-${config?.repository ?? 'no-repository'}-${config?.branch ?? 'no-branch'}-${index}`;
+}
+
 export function QADashboardPage() {
   const { user } = useAuthStore();
   // Enable/disable CI is MANAGE_TEST_AUTOMATION (QA, PM, Lead; not the CEO since CR-007), as on the backend.
@@ -99,7 +111,7 @@ export function QADashboardPage() {
   }
 
   const data = dashboardQuery.data || {};
-  const ciConfigs = ciConfigQuery.data?.configs || [];
+  const ciConfigs = (ciConfigQuery.data?.configs || []).filter((config) => config && typeof config === 'object');
   const testRuns = testRunsQuery.data?.runs || EMPTY_LIST;
   const totalCases = data.total_test_cases ?? 0;
   const notExecuted = data.not_executed ?? 0;
@@ -190,17 +202,21 @@ export function QADashboardPage() {
           <Card title="CI integration" subtitle="GitHub Actions">
             {ciConfigs.length > 0 ? (
               <ul className="dash-list">
-                {ciConfigs.map((config) => (
-                  <li key={config.branch}>
+                {ciConfigs.map((config, index) => (
+                  <li key={ciConfigKey(config, index)}>
                     <div className="dash-list-main" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <span className="viz-state viz-state--good">
                         <CheckCircle2 size={14} aria-hidden="true" /> Enabled
                       </span>
                       <span style={{ color: 'var(--text-secondary)' }}>
                         <GitBranch size={14} style={{ verticalAlign: '-2px', marginRight: '0.3rem' }} aria-hidden="true" />
-                        <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{config.repository}</strong>
+                        <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{config.repository || 'Repository not set'}</strong>
                         {' / '}
-                        <code style={{ padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-tertiary)' }}>{config.branch}</code>
+                        {config.branch ? (
+                          <code style={{ padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-tertiary)' }}>{config.branch}</code>
+                        ) : (
+                          <span>all branches (test-report import)</span>
+                        )}
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -209,7 +225,8 @@ export function QADashboardPage() {
                           View workflow
                         </a>
                       )}
-                      {canManageCi && (
+                      {/* Disabling works per branch; an import registration has none to disable. */}
+                      {canManageCi && config.branch && (
                         <Button variant="danger" size="sm" onClick={() => handleDisable(config.branch)} disabled={disableMutation.isPending}>
                           Disable
                         </Button>

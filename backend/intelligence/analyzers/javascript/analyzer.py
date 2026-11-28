@@ -141,7 +141,7 @@ class JavaScriptAnalyzer(BaseAnalyzer):
         lint_findings, tsc_findings, dep_vulns, complexity_ev = await asyncio.gather(
             self._eslint(files, repo_path, evidence),
             self._tsc(repo_path, evidence, changed_files=files),
-            self._npm_audit(repo_path, evidence),
+            self._npm_audit(repo_path, evidence, offline=bool((pr_context or {}).get("isolated_quality_worker"))),
             analyze_complexity(files, repo_path, evidence.tools_executed, evidence.tools_skipped),
         )
 
@@ -260,11 +260,16 @@ class JavaScriptAnalyzer(BaseAnalyzer):
     # ── npm audit ─────────────────────────────────────────────────────────────
 
     async def _npm_audit(
-        self, repo_path: str, evidence: CodeQualityEvidence
+        self, repo_path: str, evidence: CodeQualityEvidence, offline: bool = False
     ) -> List[Dict]:
         pkg_json = Path(repo_path) / "package.json"
         if not pkg_json.exists():
             self._degrade_quality(evidence, "security", "npm-audit:package-manifest-unavailable", penalty=0.05)
+            return []
+        if offline:
+            # v4 DEF-V4-028: the isolated worker has no network, so the advisory
+            # registry is unreachable. Recorded as for Python, not as a tool failure.
+            self._degrade_quality(evidence, "security", "dependency-advisories-offline", penalty=0.05)
             return []
 
         result = await _run(["npm", "audit", "--json"], cwd=repo_path)
@@ -338,6 +343,17 @@ class JavaScriptAnalyzer(BaseAnalyzer):
             fp = _relative_path(file_result["filePath"], repo_path)
             for msg in file_result.get("messages") or []:
                 if not isinstance(msg, dict) or msg.get("severity") == 0:
+                    continue
+                message = msg.get("message") or ""
+                if msg.get("fatal"):
+                    # v4 DEF-V4-026: a parse failure is a syntax defect (as for Python).
+                    findings.append(Finding(
+                        file_path=fp, line_number=msg.get("line"), rule_id="ESLINT-SYNTAX-ERROR",
+                        category="syntax", severity=SeverityEnum.CRITICAL, source_tool="eslint", message=message))
+                    continue
+                if msg.get("ruleId") is None or message.startswith("Definition for rule "):
+                    # Tool diagnostics about repository lint configuration
+                    # (unknown plugin rules, unused directives), not code defects.
                     continue
                 findings.append(Finding(
                     file_path=fp,

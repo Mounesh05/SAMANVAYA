@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { safeReturnPath } from '../../routes/home';
 import { authApi } from '../../api/auth.api';
 import { useThemeStore } from '../../store/useThemeStore';
 import { Input } from '../../components/common/Input';
@@ -23,13 +24,6 @@ import './LoginPage.css';
 export const SIGN_IN_FAILED =
   'Sign-in failed. Check your ID and both passwords, or contact your administrator.';
 
-const PUBLIC_PATHS = ['/login', '/setup'];
-
-function safeReturnPath(location) {
-  const path = location.state?.from?.pathname;
-  if (!path || !path.startsWith('/') || path.startsWith('//') || PUBLIC_PATHS.includes(path)) return '/';
-  return path + (location.state?.from?.search || '');
-}
 
 export function LoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -48,7 +42,7 @@ export function LoginPage() {
 
   // Already signed in: go to the home page instead of showing the form.
   if (isAuthenticated && user) {
-    return <Navigate to={safeReturnPath(location)} replace />;
+    return <Navigate to={safeReturnPath(location.state?.from)} replace />;
   }
 
   const trackCapsLock = (event) => {
@@ -79,7 +73,7 @@ export function LoginPage() {
       }
       setAuth(response.token, response.user);
       // The router sends each person to their own home page from "/".
-      navigate(safeReturnPath(location), { replace: true });
+      navigate(safeReturnPath(location.state?.from), { replace: true });
     } catch (err) {
       const status = err?.status ?? err?.response?.status;
       if (status === 429) {

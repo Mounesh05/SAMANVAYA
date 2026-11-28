@@ -237,6 +237,37 @@ _ANNOTATION_KINDS = (
 )
 
 
+_LITERAL_KINDS = ((ast.List, ast.ListComp, "list", "sequence"), (ast.Set, ast.SetComp, "set", "set"),
+                  (ast.Dict, ast.DictComp, "dict", "mapping"))
+
+
+def _bind_local_kinds(node, ctx):
+    """Give a local the built-in kind it is created with, when that cannot change.
+
+    Only a single top-level assignment from a list/set/dict literal, comprehension or
+    unshadowed constructor qualifies; any other store (augmented, loop, nested or
+    tuple target) leaves the local untyped, so its methods keep an unknown cost.
+    """
+    stores = {}
+    for item in ast.walk(node):
+        if isinstance(item, ast.Name) and isinstance(item.ctx, (ast.Store, ast.Del)):
+            stores[item.id] = stores.get(item.id, 0) + 1
+    for stmt in node.body:
+        if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
+            continue
+        name, value = stmt.targets[0].id, stmt.value
+        if stores.get(name) != 1 or name in ctx.parameters or name in ctx.kinds:
+            continue
+        for literal, comprehension, constructor, kind in _LITERAL_KINDS:
+            if (isinstance(value, (literal, comprehension))
+                    or isinstance(value, ast.Call) and isinstance(value.func, ast.Name)
+                    and value.func.id == constructor and constructor not in ctx.shadowed
+                    and constructor not in ctx.parameters
+                    and stores.get(constructor) is None):
+                ctx.kinds[name] = kind
+                break
+
+
 def annotation_kind(annotation):
     if not isinstance(annotation, str):
         return None
@@ -306,6 +337,33 @@ def collection_size(expr, ctx, *, allow_unknown=True):
             cardinality = MUL(cardinality, iteration_trips(generator.iter, ctx))
         return cardinality
     return UNK("size of this expression is not statically known") if allow_unknown else C(1)
+
+
+def _alias_size(statement, ctx):
+    """Let a collection copied from an input share that input's dimension.
+
+    ``remaining = list(tasks)`` or ``heap = [... for t in tasks]`` has the size of
+    ``tasks``; giving it a fresh letter would invent an unrelated input.
+    """
+    value = getattr(statement, "value", None)
+    targets = getattr(statement, "targets", None) or [getattr(statement, "target", None)]
+    if value is None or len(targets) != 1 or not isinstance(targets[0], ast.Name):
+        return
+    name = targets[0].id
+    if name in ctx.dims or name in ctx.parameters:
+        return
+    if isinstance(value, ast.Name) or _literal_size(value) is not None:
+        return
+    source = value
+    while isinstance(source, ast.Call) and source.args:
+        source = source.args[0]
+    if isinstance(source, (ast.ListComp, ast.SetComp, ast.DictComp)) and len(source.generators) == 1:
+        source = source.generators[0].iter
+    if not isinstance(source, ast.Name):
+        return
+    size = collection_size(value, ctx)
+    if size[0] == "dim":
+        ctx.dims[name] = size
 
 
 def _sorted_cost(value, ctx):
@@ -628,6 +686,7 @@ def statement_cost(statement, ctx, depth=0):
                    block_cost(statement.body, ctx, depth + 1))
     if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
         value = statement.value
+        _alias_size(statement, ctx)
         return expression_cost(value, ctx, depth=depth + 1) if value is not None else C(1)
     if isinstance(statement, ast.AugAssign):
         return ADD(expression_cost(statement.value, ctx, depth=depth + 1),
@@ -931,6 +990,7 @@ def estimate(node, name, facts=(), parameter_annotations=None, language="python"
     try:
         _index_parents(node)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            _bind_local_kinds(node, context)
             _bind_copied_sizes(node, context)
         local_time = (expression_cost(node.body, context) if isinstance(node, ast.Lambda)
                       else block_cost(node.body, context))

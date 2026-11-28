@@ -18,7 +18,7 @@ import json
 import re
 import uuid
 from pymongo.errors import DuplicateKeyError
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -36,7 +36,7 @@ from domain.services.quality_run_results import expired, run_deadline, RUN_TIMEO
 from domain.services.ai_run_access import invocation_scope, permissions, ACCESS_VERSION
 from intelligence.algorithms.discovery.service import MAX_FILES
 from intelligence.analyzers.language_detector import LanguageDetector
-from intelligence.analyzers.registry import list_supported_languages
+from intelligence.analyzers.registry import list_runtime_verified_languages, list_supported_languages
 
 router = APIRouter()
 cq_service = CodeQualityService()
@@ -173,7 +173,7 @@ async def start_analysis(
             raise HTTPException(409, "Original repository mapping has changed")
         if body.file_scope == "repository" and original.get("file_scope") != "repository":
             raise HTTPException(422, "Whole repository reanalysis requires an original whole repository run")
-        key = [repository_id, user.get("org_id"), body.reanalysis_of, sorted(set(changed_files)), body.analysis_level, body.use_ai]
+        key = [repository_id, user.get("org_id"), body.reanalysis_of, sorted(set(changed_files)), body.analysis_level, body.analysis_level != "purpose_discovery"]
         run_id = "RUN-" + hashlib.sha256(json.dumps(key).encode()).hexdigest()[:24].upper()
     if body.file_scope == "repository":
         changed_files_source = "repository_tree"
@@ -192,7 +192,13 @@ async def start_analysis(
         "language": profile.primary_language,
         "detected_languages": profile.detected_languages,
         "analysis_level": body.analysis_level,
-        "use_ai": body.use_ai,
+        # Phase 1 CQ-28: AI is compulsory for every normal report. A legacy
+        # ``use_ai=false`` is normalised to true (documented in
+        # docs/code-quality/AI_INTERPRETATION.md) and the request is recorded as sent.
+        # Function discovery alone is exempt and labelled as not a quality report.
+        "use_ai": body.analysis_level != "purpose_discovery",
+        "use_ai_requested": body.use_ai,
+        "ai_required": body.analysis_level != "purpose_discovery",
         "repository_ref": body.repository_ref,
         "status": "pending",
         "triggered_by": user.get("employee_id", user.get("id", "")),
@@ -253,7 +259,9 @@ async def start_analysis(
 async def get_run(run_id: str, user: dict = Depends(get_current_user)):
     """Get the current status and results of a code quality run."""
     collection = col(RUNS_COLLECTION)
-    run = await collection.find_one({"run_id": run_id}, {"_id": 0})
+    # v4 BASE-04: scope the lookup to the caller's tenant first, so another
+    # organisation's run is indistinguishable from a missing one.
+    run = await collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)}, {"_id": 0})
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     
@@ -263,6 +271,56 @@ async def get_run(run_id: str, user: dict = Depends(get_current_user)):
     return await _visible_ai_result(run, user)
 
 
+@router.post("/runs/{run_id}/ai-retry")
+async def retry_ai_interpretation(run_id: str,
+                                  user: dict = Depends(require_permission(Permission.TRIGGER_CODE_ANALYSIS))):
+    """CQ-30: retry only the AI interpretation, on the exact stored evidence.
+
+    Static analysis is never re-run. The caller's authorization is checked again,
+    attempts are bounded, and an atomic claim stops concurrent retries.
+    """
+    from domain.services.internal_agent_adapter import resolve_code_authority, failed_interpretation
+    collection = col(RUNS_COLLECTION)
+    run = await collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)}, {"_id": 0})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    await verify_code_quality_access(user, run.get("repository_id"), run)
+    request = run.get("ai_request")
+    if run.get("status") != "completed" or not request or run.get("ai_status") not in ("failed", "unavailable"):
+        raise HTTPException(status_code=409, detail="This report has no failed AI interpretation to retry")
+    if (run.get("ai_attempts") or 1) >= MAX_AI_ATTEMPTS:
+        raise HTTPException(status_code=409, detail="The AI interpretation retry limit was reached")
+    # A claim older than the lease belongs to a retry whose process died; it may be
+    # reclaimed (still within the attempt cap) so the report is never stuck "running".
+    now = datetime.now(timezone.utc)
+    claimed_at = now.isoformat()
+    stale_before = (now - timedelta(seconds=AI_RETRY_LEASE_SECONDS)).isoformat()
+    claim = await collection.update_one(
+        {"run_id": run_id, "ai_status": run["ai_status"], "ai_attempts": run.get("ai_attempts") or 1,
+         "$or": [{"ai_retry_state": {"$ne": "running"}},
+                 {"ai_retry_claimed_at": {"$exists": False}},
+                 {"ai_retry_claimed_at": {"$lt": stale_before}}]},
+        {"$set": {"ai_retry_state": "running", "ai_retry_claimed_at": claimed_at}, "$inc": {"ai_attempts": 1}})
+    if claim.matched_count != 1:
+        raise HTTPException(status_code=409, detail="An AI interpretation retry is already running")
+    from domain.services.quality_interpretation import run_interpretation, evidence_digest
+    authority, latency_ms = None, None
+    try:
+        authority = await resolve_code_authority({"employee_id": user.get("employee_id")}, request["context"],
+                                                 operation="code_quality")
+        ai_analysis, _, latency_ms = await run_interpretation(authority, request)
+    except HTTPException:
+        ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
+    except Exception:
+        ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
+    fields = _ai_fields(ai_analysis, authority, request.get("static_reasons"), latency_ms=latency_ms)
+    fields["ai_provenance"]["evidence_digest"] = evidence_digest(request)  # the same stored evidence
+    await collection.update_one({"run_id": run_id, "ai_retry_state": "running", "ai_retry_claimed_at": claimed_at},
+                                {"$set": {**fields, "ai_retry_state": "done"}})
+    updated = await collection.find_one({"run_id": run_id}, {"_id": 0})
+    return await _visible_ai_result(updated, user)
+
+
 @router.get("/runs/{run_id}/findings")
 async def get_run_findings(
     run_id: str,
@@ -270,12 +328,20 @@ async def get_run_findings(
     category: Optional[str] = Query(None, description="Filter: security|syntax|type|maintainability"),
     limit: int = Query(50, ge=1, le=500),
     skip: int = Query(0, ge=0),
+    file: Optional[str] = Query(None, max_length=500, description="Repository path or directory prefix"),
+    search: Optional[str] = Query(None, max_length=100, description="Text in the message or rule"),
+    comparison_status: Optional[Literal["new", "existing", "resolved"]] = Query(None),
     user: dict = Depends(get_current_user),
 ):
-    """Get paginated findings for a completed analysis run."""
+    """Get paginated findings for a completed analysis run.
+
+    Phase 1 CQ-48: ordered deterministically (severity, path, line, rule, ID) so
+    pages are stable, with file, text and PR transition filters and an exact total.
+    """
     # First verify user has access to this run
     runs_collection = col(RUNS_COLLECTION)
-    run = await runs_collection.find_one({"run_id": run_id}, {"repository_id": 1, "org_id": 1, "organization_id": 1})
+    run = await runs_collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)},
+                                         {"repository_id": 1, "org_id": 1, "organization_id": 1})
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     
@@ -289,9 +355,27 @@ async def get_run_findings(
         query["severity"] = severity
     if category:
         query["category"] = category
+    if file:
+        # The exact file, or everything under the folder: "src/a" never matches "src/ab.py".
+        path = file.strip().strip("/")
+        query["file_path"] = {"$regex": "^" + re.escape(path) + "(/|$)"}
+    if search and search.strip():
+        pattern = {"$regex": re.escape(search.strip()), "$options": "i"}
+        query["$and"] = [{"$or": [{"message": pattern}, {"rule_id": pattern}]}]
+    if comparison_status:
+        query["comparison_status"] = comparison_status
 
     collection = col(FINDINGS_COLLECTION)
-    findings = await collection.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    rank = 5  # unknown severities last
+    for position, level in reversed(list(enumerate(["critical", "high", "medium", "low", "info"]))):
+        rank = {"$cond": [{"$eq": ["$severity", level]}, position, rank]}
+    findings = await collection.aggregate([
+        {"$match": query},
+        {"$addFields": {"_severity_rank": rank}},
+        {"$sort": {"_severity_rank": 1, "file_path": 1, "line_number": 1, "rule_id": 1, "id": 1}},
+        {"$skip": skip}, {"$limit": limit},
+        {"$project": {"_id": 0, "_severity_rank": 0}},
+    ]).to_list(limit)
     total = await collection.count_documents(query)
 
     return {
@@ -536,8 +620,10 @@ async def get_project_config(
 
 @router.get("/languages")
 async def supported_languages():
-    """List all languages supported by the analyzer registry."""
-    return {"supported_languages": list_supported_languages()}
+    """Languages analyzed with a proven toolchain, and registered adapters that are not yet verified."""
+    verified = list_runtime_verified_languages()
+    return {"supported_languages": verified,
+            "experimental_languages": [lang for lang in list_supported_languages() if lang not in verified]}
 
 
 # ── Background task ───────────────────────────────────────────────────────────
@@ -570,6 +656,7 @@ def analysis_scope(run):
     """Read-time metadata for historical discovery snapshots; never rewrite them."""
     result = dict(run)
     result.pop("analyzer_evidence", None)
+    result.pop("ai_request", None)  # server-side AI input, kept only for the bounded retry
     if expired(run):
         result.update(status="failed", quality_analysis_status="failed", error="Worker deadline expired before a result was recorded.")
         return result
@@ -629,6 +716,37 @@ _recovered_tasks: set = set()
 recovery = jobs.RecoveryLoop(lambda: col(RUNS_COLLECTION), _dispatch_recovered)
 
 
+from domain.services.quality_interpretation import MAX_AI_ATTEMPTS  # noqa: E402
+AI_RETRY_LEASE_SECONDS = 15 * 60
+
+
+def _ai_fields(ai_analysis, authority, static_reasons=(), request=None, latency_ms=None):
+    from domain.services.quality_interpretation import ai_fields
+    return ai_fields(ai_analysis, authority, static_reasons, request, latency_ms)
+
+
+async def _interpret_quality(body, actor_id, context, evidence, findings, result, comparison=None):
+    """Compulsory, advisory AI interpretation of server-measured evidence.
+
+    It is attempted for every normal report, whatever the request's ``use_ai``;
+    when the model is unreachable or its answer is invalid, the result is recorded
+    as unavailable/failed and the report is marked partial. It never changes scores.
+    Returns ``(ai_analysis, authority, request, latency_ms)``.
+    """
+    from domain.services.internal_agent_adapter import resolve_code_authority, failed_interpretation
+    from domain.services.quality_interpretation import build_request, run_interpretation
+    try:
+        authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
+    except HTTPException:
+        return failed_interpretation("AUTHORIZATION_FAILED"), None, None, None
+    try:
+        request = build_request(body.repository_id, context.get("commit_sha"), evidence, findings, result, comparison)
+    except Exception:
+        return failed_interpretation("AGENT_ADAPTER_FAILED"), authority, None, None
+    ai_analysis, request, latency_ms = await run_interpretation(authority, request)
+    return ai_analysis, authority, request, latency_ms
+
+
 async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_org):
     """
     Heavy analysis executed in the background.
@@ -666,9 +784,25 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                 pr[side]["sha"] != current[side]["sha"] for side in ("base", "head")
             ):
                 raise ValueError("Pull request revisions changed during source selection. Start a new comparison.")
+            async def interpret(summary, head_evidence):
+                # Every PR comparison parent gets one compulsory, advisory interpretation
+                # of the measured head revision plus the comparison evidence; the child
+                # runs carry none. The signed-in user's authority is checked again here.
+                from domain.services.internal_agent_adapter import resolve_code_authority, failed_interpretation
+                from domain.services.quality_interpretation import interpret_comparison
+                try:
+                    authority = await resolve_code_authority(
+                        {"employee_id": actor_id}, {"project_id": body.repository_id, "commit_sha": pr["head"]["sha"],
+                                                    "organization_id": expected_org}, operation="code_quality")
+                except HTTPException:
+                    from domain.services.quality_advisory import static_reasons_for_comparison
+                    return _ai_fields(failed_interpretation("AUTHORIZATION_FAILED"), None,
+                                      static_reasons_for_comparison(summary))
+                return await interpret_comparison(summary, head_evidence, authority, body.repository_id, pr["head"]["sha"])
+
             await compare_revisions(
                 github, body.repository_id, owner, repo, pr, files, actor_id,
-                claimed_run=owned, expected_org=expected_org, deep_analysis=deep,
+                claimed_run=owned, expected_org=expected_org, deep_analysis=deep, interpret=interpret,
             )
             return
         context = {**body.pr_context, "project_id": body.repository_id, "pr_number": body.pr_number}
@@ -744,6 +878,7 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
             await collection.update_one(owned, {"$set": {
                 "status": "failed" if discovery.status == "unavailable" else "completed",
                 "analysis_scope": "purpose_discovery", "quality_analysis_status": "not_run",
+                "ai_status": "not_applicable", "report_status": "not_a_quality_report",
                 "function_discovery": discovery.model_dump(mode="json"), "commit_sha": context.get("commit_sha"),
                 "completed_at": datetime.now(timezone.utc).isoformat(),
             }})
@@ -764,27 +899,9 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
         findings = quality_findings(evidence)
 
         # AI Code Agent (if requested and not quick)
-        from domain.services.internal_agent_adapter import resolve_code_authority, interpret_code, failed_interpretation
-        ai_analysis = {"status": "skipped", "errors": []}
-        authority = None
-        if body.use_ai and body.analysis_level != "quick":
-            try:
-                authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
-                from intelligence.quality_engine import snapshot_context_diagnostic
-                observed_findings = [f for f in findings if not snapshot_context_diagnostic(f.source_tool, f.rule_id)]
-                observations = [{"file": f.file_path, "line": f.line_number, "rule_id": f.rule_id,
-                                 "message": f.message[:500]} for f in observed_findings[:20]]
-                ai_analysis = await interpret_code(
-                    {"files_analyzed": evidence.files_analyzed, "static_analysis": {"findings": observations},
-                     "complexity": result["complexity"], "tests": {"coverage": {"line_coverage": evidence.testing.coverage_percentage}}},
-                    {"project_id": body.repository_id, "commit_sha": evidence.commit_sha}, authority,
-                    evidence_available=result["quality_score"] is not None,
-                    quality_result={"quality_score": result["quality_score"], "quality_grade": result["quality_grade"]},
-                    risk_result={"risk_score": result["risk_score"], "risk_level": result["risk_level"]})
-            except HTTPException:
-                ai_analysis = failed_interpretation("AUTHORIZATION_FAILED")
-            except Exception:
-                ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
+        ai_analysis, authority, ai_request, ai_latency = await _interpret_quality(
+            body, actor_id, context, evidence, findings, result)
+        from domain.services.quality_advisory import static_reasons_for_run
 
         # Persist findings to their own collection
         if not await jobs.renew(collection, run_id):
@@ -817,11 +934,8 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     **result,
                     "completed_at": now,
                     "findings_count": min(500, len(findings)),
-                    "ai_analysis": ai_analysis,
-                    "ai_status": ai_analysis["status"],
-                    "ai_authorization_scope": authority.scope if authority is not None else None,
-                    "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
-                                      "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"},
+                    **_ai_fields(ai_analysis, authority, static_reasons_for_run(result, truncated=bool(scope_details.get("is_truncated"))),
+                                 ai_request, ai_latency),
                 }
             },
         )

@@ -72,7 +72,7 @@ async def test_quality_container_uses_existing_isolation_and_retains_provenance(
     response = {"protocol": "quality-snapshot-v1", "revision": "a" * 40,
                 "source_hashes": data["source_provenance"]["source_hashes"], "evidence": evidence.model_dump(mode="json")}
     command = AsyncMock(return_value=(0, json.dumps(response).encode(), b""))
-    monkeypatch.setattr(DockerBenchmarkRunner, "_inspect", AsyncMock(return_value={"images": {"samanvaya-quality:1": "sha256:trusted"}}))
+    monkeypatch.setattr(DockerBenchmarkRunner, "_inspect", AsyncMock(return_value={"images": {"samanvaya-quality:3": "sha256:trusted"}}))
     monkeypatch.setattr(DockerBenchmarkRunner, "_command", command)
     cleanup = AsyncMock()
     monkeypatch.setattr(DockerBenchmarkRunner, "_remove", cleanup)

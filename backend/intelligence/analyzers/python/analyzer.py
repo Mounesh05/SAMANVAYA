@@ -272,6 +272,8 @@ class PythonAnalyzer(BaseAnalyzer):
             self._degrade_quality(evidence, "static_analysis", "flake8-failed")
         else:
             self._degrade_quality(evidence, "static_analysis", "flake8")
+            if not self._tool_available("ruff"):
+                evidence.tools_skipped.append("ruff")  # v4 CQ-10: no linter ran; disclose both
 
         # AST syntax fallback
         evidence.tools_executed.append("ast-syntax-fallback")
@@ -303,7 +305,18 @@ class PythonAnalyzer(BaseAnalyzer):
 
         findings = []
         sev_map = {"HIGH": SeverityEnum.HIGH, "MEDIUM": SeverityEnum.MEDIUM, "LOW": SeverityEnum.LOW}
+        from intelligence.algorithms.discovery.classification import _is_test_path
         for issue in data.get("results", []):
+            # v4 DEF-V4-029: pytest relies on plain assert, so B101 in test files is
+            # expected usage, not a security issue (Bandit's own recommended skip).
+            if issue.get("test_id") == "B101":
+                filename = str(issue.get("filename", ""))
+                try:
+                    filename = str(Path(filename).resolve().relative_to(Path(repo_path).resolve()))
+                except (ValueError, OSError):
+                    pass
+                if _is_test_path(filename):
+                    continue
             findings.append(Finding(
                 file_path=issue.get("filename", ""),
                 line_number=issue.get("line_number"),
@@ -627,6 +640,19 @@ class PythonAnalyzer(BaseAnalyzer):
         findings = []
         for item in items:
             code = item.get("code", "E000")
+            if code is None:
+                # Ruff reports a file it cannot parse with "code": null. Keep it as a
+                # critical syntax finding, like the AST fallback, so the file never looks clean.
+                findings.append(Finding(
+                    file_path=item.get("filename", ""),
+                    line_number=(item.get("location") or {}).get("row"),
+                    rule_id="RUFF-SYNTAX-ERROR",
+                    category="syntax",
+                    severity=SeverityEnum.CRITICAL,
+                    source_tool="ruff",
+                    message=item.get("message", ""),
+                ))
+                continue
             findings.append(Finding(
                 file_path=item.get("filename", ""),
                 line_number=item.get("location", {}).get("row"),
@@ -650,7 +676,10 @@ class PythonAnalyzer(BaseAnalyzer):
                         line_number=item.get("line"),
                         rule_id=f"MYPY-{item.get('code', 'misc')}",
                         category="type",
-                        severity=SeverityEnum.HIGH if item["severity"] == "error" else SeverityEnum.MEDIUM,
+                        # v4 DEF-V4-030: unresolved imports in an offline snapshot are
+                        # review context (already excluded from scoring), not HIGH defects.
+                        severity=(SeverityEnum.INFO if item.get("code") in ("import-not-found", "import-untyped")
+                                  else SeverityEnum.HIGH if item["severity"] == "error" else SeverityEnum.MEDIUM),
                         source_tool="mypy",
                         message=item.get("message", ""),
                     ))

@@ -7,7 +7,7 @@ developer code itself.
 
 | Image | Built from | Used for |
 |---|---|---|
-| `samanvaya-quality:1` | `backend/quality_worker/Dockerfile` | Ruff, ESLint, TypeScript, mypy, Bandit on a pinned PR snapshot |
+| `samanvaya-quality:3` | `backend/quality_worker/Dockerfile` | Ruff, ESLint, TypeScript, mypy, Bandit on a pinned PR snapshot |
 | `samanvaya-benchmark-python:1` | `backend/benchmark_worker/Dockerfile.python` | Python benchmarks |
 | `samanvaya-benchmark-node:1` | `backend/benchmark_worker/Dockerfile.node` | JavaScript/TypeScript benchmarks and structure parsing |
 | `samanvaya-worker-broker:1` | `backend/worker_broker/Dockerfile` | Internal service that runs the three images above |

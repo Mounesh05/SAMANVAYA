@@ -295,3 +295,14 @@ def test_branch_join_preserves_both_possible_definitions(path, source):
 def test_copy_allocation_and_guarded_progress(body, time, space):
     result = estimate("def f(xs,flag):\n" + textwrap.indent(body, "    "), "f")
     assert (result["time_complexity"], result["space_complexity"]) == (time, space)
+
+
+def test_a_local_keeps_its_collection_kind_only_when_it_cannot_change():
+    typed = estimate("def f(xs):\n    out = []\n    for x in xs:\n        out.append(x)\n    return out\n", "f")
+    assert typed["time_complexity"] == "O(n)"
+    # Rebound to an unknown object: its method costs are not assumed.
+    rebound = estimate("def f(xs, make):\n    out = []\n    out = make()\n    for x in xs:\n        out.append(x)\n"
+                       "    return out\n", "f")
+    assert rebound["time_complexity"] is None
+    shadowed = estimate("def f(xs, list):\n    out = list(xs)\n    out.sort()\n    return out\n", "f")
+    assert shadowed["time_complexity"] is None

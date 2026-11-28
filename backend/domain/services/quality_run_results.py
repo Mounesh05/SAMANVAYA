@@ -28,6 +28,28 @@ def expired(run):
             and deadline <= datetime.now(timezone.utc).isoformat())
 
 
+def score_explanation(quality, policy):
+    """CQ-15/CQ-17: how the existing engine produced the quality score, from its own outputs.
+
+    Missing dimensions are excluded and the configured weights of the measured ones
+    are renormalised; that is shown, not hidden. No new formula is introduced.
+    """
+    weights = (policy or {}).get("weights") or {}
+    penalties = (quality or {}).get("penalties") or {}
+    if (quality or {}).get("quality_score") is None or not weights:
+        return None
+    measured = [dim for dim in weights if penalties.get(dim) is not None]
+    total = sum(weights[dim] for dim in measured)
+    dimensions = [{"dimension": dim, "configured_weight": weights[dim], "measured": dim in measured,
+                   "penalty": penalties.get(dim), "score": (quality.get("dimension_scores") or {}).get(dim),
+                   "effective_weight": round(weights[dim] / total, 4) if dim in measured and total else None}
+                  for dim in weights]
+    weighted = sum(weights[dim] * penalties[dim] for dim in measured) / total if total else None
+    return {"formula": "quality = round(100 - sum(effective_weight * penalty)) over measured dimensions, clamped to 0..100",
+            "renormalized": len(measured) < len(weights), "weighted_penalty": round(weighted, 2) if weighted is not None else None,
+            "dimensions": dimensions}
+
+
 async def measure_quality(evidence, paths, baseline=None):
     tools = set(evidence.tools_executed) - {"ast-test-discovery"}
     measured = bool(evidence.files_analyzed and tools)
@@ -52,6 +74,7 @@ async def measure_quality(evidence, paths, baseline=None):
         "quality_dimensions": quality.get("dimension_scores", {}), "risk_dimensions": risk.get("dimension_scores", {}),
         "risk_factors": risk.get("risk_factors", []), "commit_sha": evidence.commit_sha,
         "quality_policy": quality_policy, "risk_policy": risk_policy,
+        "score_explanation": score_explanation(quality, quality_policy),
         "policy_digest": policy_digest(quality_policy, risk_policy),
         "files_analyzed": evidence.files_analyzed, "language": evidence.primary_language,
         "detected_languages": evidence.detected_languages, "tools_executed": evidence.tools_executed,

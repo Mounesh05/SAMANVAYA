@@ -239,11 +239,18 @@ class AlgorithmBenchmarkService:
         contracts = self.requirements.contracts if self.requirements is not None else FunctionContractService(
             self.collection.database["algorithm_function_contracts"])
         current = await contracts.resolve(document["project_id"], ids)
-        expected = resolution.get("fingerprint") or automation.get("contract_fingerprint")
         snapshot = current.get("snapshot") or {}
+        if resolution.get("fingerprint"):
+            fingerprint_current = resolution["fingerprint"] == current.get("fingerprint")
+        elif automation.get("contract_fingerprint"):
+            # PR automation stores the fingerprint of the applied contract (the approved
+            # snapshot plus its ID), so it is recomputed the same way from the current snapshot.
+            fingerprint_current = automation["contract_fingerprint"] == decision_fingerprint(
+                {**snapshot, "contract_id": automation.get("contract_id")})
+        else:
+            fingerprint_current = True
         reviewed = {d["id"]: decision_fingerprint(d) for d in snapshot.get("datasets", [])}
-        return (current["status"] == "APPROVED" and current.get("validator_available")
-                and (expected is None or expected == current.get("fingerprint"))
+        return (current["status"] == "APPROVED" and current.get("validator_available") and fingerprint_current
                 and request.get("contract") == snapshot.get("contract")
                 and all(reviewed.get(d["id"]) == decision_fingerprint(d) for d in request.get("datasets", [])))
 

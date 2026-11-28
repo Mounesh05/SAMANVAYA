@@ -1,0 +1,1247 @@
+[
+ {
+  "run_id": "RUN-B7901558B802",
+  "repository_id": "PRJ-E2E-PLIMIT",
+  "pr_number": 93,
+  "language": "javascript",
+  "detected_languages": [],
+  "analysis_level": "standard",
+  "use_ai": true,
+  "use_ai_requested": true,
+  "ai_required": true,
+  "repository_ref": null,
+  "status": "completed",
+  "triggered_by": "T-QA-A1",
+  "org_id": "E2E-ORG-A",
+  "changed_files": [],
+  "changed_files_source": "pull_request_comparison",
+  "file_scope": "pr_comparison",
+  "triggered_by_name": "E2E QA Org A",
+  "created_at": "2026-11-28T04:52:09.162872+00:00",
+  "work_deadline": "2026-11-28T05:07:09.162904+00:00",
+  "completed_at": "2026-11-28T04:52:20.140283+00:00",
+  "quality_score": 95,
+  "quality_grade": "A",
+  "risk_score": 22,
+  "risk_level": "LOW",
+  "risk_factors": [],
+  "tools_executed": [],
+  "tools_skipped": [],
+  "analysis_duration_ms": null,
+  "error": null,
+  "request": {
+   "body": {
+    "repository_id": "PRJ-E2E-PLIMIT",
+    "pr_number": 93,
+    "changed_files": [],
+    "pr_context": {},
+    "analysis_level": "standard",
+    "use_ai": true,
+    "reanalysis_of": null,
+    "file_scope": "pr_comparison",
+    "repository_ref": null
+   },
+   "actor_id": "T-QA-A1",
+   "pinned_revision": null,
+   "expected_org": "E2E-ORG-A"
+  },
+  "claim_count": 1,
+  "claimed_at": "2026-11-28T04:52:09.171743+00:00",
+  "claimed_by": "8b00749802e545888eebee69e071bb84",
+  "lease_expires_at": "2026-11-28T04:54:09.181358+00:00",
+  "ai_analysis": {
+   "status": "completed",
+   "analysis": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+   "recommendations": [],
+   "confidence": 0.8,
+   "risk_level": "low",
+   "critical_issues": [],
+   "review_focus": null,
+   "errors": [],
+   "grounding": "no_findings",
+   "evidence_basis": [
+    "0 analyzer finding(s) from 2 analysed file(s) were given to the model.",
+    "Base vs head quality score: 95 -> 95; findings new 0, unchanged 0, resolved 0.",
+    "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+    "Test coverage was not measured."
+   ],
+   "advisory": {
+    "schema_version": "code-quality-advisory-v1",
+    "summary": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+    "summary_source": "server",
+    "suggestions": [],
+    "rejected_suggestions": 0,
+    "limitations": [
+     "Test coverage was not measured.",
+     "Dependency vulnerabilities were not checked."
+    ]
+   }
+  },
+  "ai_attempts": 1,
+  "ai_authorization_scope": {
+   "access_version": "ai-run-access-v1",
+   "owner_id": "T-QA-A1",
+   "project_id": "PRJ-E2E-PLIMIT",
+   "organization_id": "E2E-ORG-A"
+  },
+  "ai_provenance": {
+   "schema_version": "ai-internal-observation-v1",
+   "source_status": "SERVER_OBSERVED",
+   "caller_context_status": "UNVERIFIED",
+   "model_interpretation": "ADVISORY",
+   "policy_version": "code-quality-advisory-v1",
+   "model": "llama3.2:3b",
+   "latency_ms": 43486,
+   "evidence_digest": "sha256:5c8a8a31bb642909485c2858225a8e14069c7a7b5a630ace412f1d1b3da8662e"
+  },
+  "ai_status": "completed",
+  "analysis_scope": "code_quality",
+  "base_sha": "7d14b3f04aa990f621a853e24e2a4b796baf1ec9",
+  "child_run_ids": {
+   "base": "RUN-B7901558B802-base",
+   "head": "RUN-B7901558B802-head"
+  },
+  "dependency_audit": {
+   "base": "not_checked_offline",
+   "head": "not_checked_offline"
+  },
+  "finding_changes": {
+   "status": "available",
+   "identity_version": "finding-identity-v1",
+   "counts": {
+    "new": 0,
+    "existing": 0,
+    "resolved": 0
+   },
+   "new": [],
+   "resolved": [],
+   "truncated": false
+  },
+  "head_sha": "f810fd818570935a47a5169d27373ce4e80141b2",
+  "kind": "pr_quality_comparison",
+  "quality_analysis_status": "partial",
+  "quality_comparison": {
+   "base_score": 95,
+   "head_score": 95,
+   "delta": 0,
+   "delta_withheld_reason": null,
+   "policy_digest": "policy-dc41473c463a0352",
+   "base_status": "partial",
+   "head_status": "partial"
+  },
+  "report_incomplete_reasons": [],
+  "report_status": "complete",
+  "repository": "sindresorhus/p-limit",
+  "score_basis": "RUN-B7901558B802-head"
+ },
+ {
+  "run_id": "RUN-2DDBC995B95C",
+  "repository_id": "PRJ-E2E-PLIMIT",
+  "pr_number": 93,
+  "language": "javascript",
+  "detected_languages": [],
+  "analysis_level": "standard",
+  "use_ai": true,
+  "use_ai_requested": true,
+  "ai_required": true,
+  "repository_ref": null,
+  "status": "completed",
+  "triggered_by": "T-QA-A1",
+  "org_id": "E2E-ORG-A",
+  "changed_files": [],
+  "changed_files_source": "pull_request_comparison",
+  "file_scope": "pr_comparison",
+  "triggered_by_name": "E2E QA Org A",
+  "created_at": "2026-11-28T04:53:08.624824+00:00",
+  "work_deadline": "2026-11-28T05:08:08.625367+00:00",
+  "completed_at": "2026-11-28T04:53:25.594772+00:00",
+  "quality_score": 95,
+  "quality_grade": "A",
+  "risk_score": 22,
+  "risk_level": "LOW",
+  "risk_factors": [],
+  "tools_executed": [],
+  "tools_skipped": [],
+  "analysis_duration_ms": null,
+  "error": null,
+  "request": {
+   "body": {
+    "repository_id": "PRJ-E2E-PLIMIT",
+    "pr_number": 93,
+    "changed_files": [],
+    "pr_context": {},
+    "analysis_level": "standard",
+    "use_ai": true,
+    "reanalysis_of": null,
+    "file_scope": "pr_comparison",
+    "repository_ref": null
+   },
+   "actor_id": "T-QA-A1",
+   "pinned_revision": null,
+   "expected_org": "E2E-ORG-A"
+  },
+  "claim_count": 1,
+  "claimed_at": "2026-11-28T04:53:08.630205+00:00",
+  "claimed_by": "ab9bfeb11df94945be815b5165c5bb5f",
+  "lease_expires_at": "2026-11-28T04:54:38.630205+00:00",
+  "ai_analysis": {
+   "status": "completed",
+   "analysis": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+   "recommendations": [],
+   "confidence": 0.8,
+   "risk_level": "low",
+   "critical_issues": [],
+   "review_focus": null,
+   "errors": [],
+   "grounding": "no_findings",
+   "evidence_basis": [
+    "0 analyzer finding(s) from 2 analysed file(s) were given to the model.",
+    "Base vs head quality score: 95 -> 95; findings new 0, unchanged 0, resolved 0.",
+    "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+    "Test coverage was not measured."
+   ],
+   "advisory": {
+    "schema_version": "code-quality-advisory-v1",
+    "summary": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+    "summary_source": "server",
+    "suggestions": [],
+    "rejected_suggestions": 0,
+    "limitations": [
+     "Test coverage was not measured.",
+     "Dependency vulnerabilities were not checked."
+    ]
+   }
+  },
+  "ai_attempts": 2,
+  "ai_authorization_scope": {
+   "access_version": "ai-run-access-v1",
+   "owner_id": "T-QA-A1",
+   "project_id": "PRJ-E2E-PLIMIT",
+   "organization_id": "E2E-ORG-A"
+  },
+  "ai_provenance": {
+   "schema_version": "ai-internal-observation-v1",
+   "source_status": "SERVER_OBSERVED",
+   "caller_context_status": "UNVERIFIED",
+   "model_interpretation": "ADVISORY",
+   "policy_version": "code-quality-advisory-v1",
+   "model": "llama3.2:3b",
+   "latency_ms": 22193,
+   "evidence_digest": "sha256:5c8a8a31bb642909485c2858225a8e14069c7a7b5a630ace412f1d1b3da8662e"
+  },
+  "ai_status": "completed",
+  "analysis_scope": "code_quality",
+  "base_sha": "7d14b3f04aa990f621a853e24e2a4b796baf1ec9",
+  "child_run_ids": {
+   "base": "RUN-2DDBC995B95C-base",
+   "head": "RUN-2DDBC995B95C-head"
+  },
+  "dependency_audit": {
+   "base": "not_checked_offline",
+   "head": "not_checked_offline"
+  },
+  "finding_changes": {
+   "status": "available",
+   "identity_version": "finding-identity-v1",
+   "counts": {
+    "new": 0,
+    "existing": 0,
+    "resolved": 0
+   },
+   "new": [],
+   "resolved": [],
+   "truncated": false
+  },
+  "head_sha": "f810fd818570935a47a5169d27373ce4e80141b2",
+  "kind": "pr_quality_comparison",
+  "quality_analysis_status": "partial",
+  "quality_comparison": {
+   "base_score": 95,
+   "head_score": 95,
+   "delta": 0,
+   "delta_withheld_reason": null,
+   "policy_digest": "policy-dc41473c463a0352",
+   "base_status": "partial",
+   "head_status": "partial"
+  },
+  "report_incomplete_reasons": [],
+  "report_status": "complete",
+  "repository": "sindresorhus/p-limit",
+  "score_basis": "RUN-2DDBC995B95C-head",
+  "ai_retry_claimed_at": "2026-11-28T04:53:44.780019+00:00",
+  "ai_retry_state": "done"
+ },
+ {
+  "run_id": "RUN-483A8FE8E1FB",
+  "repository_id": "PRJ-E2E-PLIMIT",
+  "pr_number": null,
+  "language": "javascript",
+  "detected_languages": [
+   "javascript"
+  ],
+  "analysis_level": "quick",
+  "use_ai": true,
+  "use_ai_requested": false,
+  "ai_required": true,
+  "repository_ref": null,
+  "status": "completed",
+  "triggered_by": "T-QA-UI1",
+  "org_id": "E2E-ORG-A",
+  "changed_files": [
+   "index.js",
+   "scripts/benchmarker.js"
+  ],
+  "changed_files_source": "explicit",
+  "file_scope": "selected_files",
+  "selected_scope": [
+   "index.js",
+   "scripts"
+  ],
+  "triggered_by_name": "E2E UI QA",
+  "created_at": "2026-11-28T05:37:29.904379+00:00",
+  "work_deadline": "2026-11-28T05:52:29.911702+00:00",
+  "completed_at": "2026-11-28T05:38:54.808548+00:00",
+  "quality_score": 100,
+  "quality_grade": "A",
+  "risk_score": 22,
+  "risk_level": "LOW",
+  "risk_factors": [
+   "No test coverage data available"
+  ],
+  "tools_executed": [
+   "lizard",
+   "eslint"
+  ],
+  "tools_skipped": [
+   "tsc:configuration-unavailable",
+   "dependency-advisories-offline",
+   "coverage"
+  ],
+  "analysis_duration_ms": 2937.838823000675,
+  "error": null,
+  "request": {
+   "body": {
+    "repository_id": "PRJ-E2E-PLIMIT",
+    "pr_number": null,
+    "changed_files": [
+     "index.js",
+     "scripts"
+    ],
+    "pr_context": {},
+    "analysis_level": "quick",
+    "use_ai": false,
+    "reanalysis_of": null,
+    "file_scope": "selected_files",
+    "repository_ref": null
+   },
+   "actor_id": "T-QA-UI1",
+   "pinned_revision": null,
+   "expected_org": "E2E-ORG-A"
+  },
+  "claim_count": 1,
+  "claimed_at": "2026-11-28T05:37:29.921665+00:00",
+  "claimed_by": "8b00749802e545888eebee69e071bb84",
+  "lease_expires_at": "2026-11-28T05:40:24.748210+00:00",
+  "commit_sha": "a8a6fbec4e0e866d6d779b10889bb4f5567e70eb",
+  "repository": "sindresorhus/p-limit",
+  "is_truncated": false,
+  "source_selection_count": 2,
+  "ai_analysis": {
+   "status": "completed",
+   "analysis": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+   "recommendations": [],
+   "confidence": 0.8,
+   "risk_level": "low",
+   "critical_issues": [],
+   "review_focus": null,
+   "errors": [],
+   "grounding": "no_findings",
+   "evidence_basis": [
+    "0 analyzer finding(s) from 2 analysed file(s) were given to the model.",
+    "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+    "Test coverage was not measured."
+   ],
+   "advisory": {
+    "schema_version": "code-quality-advisory-v1",
+    "summary": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+    "summary_source": "server",
+    "suggestions": [],
+    "rejected_suggestions": 0,
+    "limitations": [
+     "Test coverage was not measured.",
+     "Dependency vulnerabilities were not checked."
+    ]
+   }
+  },
+  "ai_attempts": 1,
+  "ai_authorization_scope": {
+   "access_version": "ai-run-access-v1",
+   "owner_id": "T-QA-UI1",
+   "project_id": "PRJ-E2E-PLIMIT",
+   "organization_id": "E2E-ORG-A"
+  },
+  "ai_provenance": {
+   "schema_version": "ai-internal-observation-v1",
+   "source_status": "SERVER_OBSERVED",
+   "caller_context_status": "UNVERIFIED",
+   "model_interpretation": "ADVISORY",
+   "policy_version": "code-quality-advisory-v1",
+   "model": "llama3.2:3b",
+   "latency_ms": 75925,
+   "evidence_digest": "sha256:8ca55e833c7328a107be41a090bc7d80357136ebd0db5151eda2dc768e7344df"
+  },
+  "ai_status": "completed",
+  "analysis_confidence": 0.75,
+  "analysis_quality": {
+   "level": "partial",
+   "confidence": 0.75,
+   "degraded_dimensions": [
+    "static_analysis",
+    "security",
+    "testing"
+   ],
+   "reason": "Tool 'tsc:configuration-unavailable' not available in isolated worker; 'dependency-advisories-offline' not available; 'coverage' not available"
+  },
+  "analysis_scope": "code_quality",
+  "complexity": {
+   "is_available": true,
+   "average_complexity": 1.58,
+   "max_complexity": 4,
+   "high_complexity_functions": [],
+   "lines_of_code": 166,
+   "comment_ratio": 0,
+   "maintainability_index": null,
+   "avg_function_length": 0,
+   "avg_nesting_depth": 0
+  },
+  "duplication": {
+   "duplicate_blocks_count": 0,
+   "duplicated_lines_count": 0,
+   "duplication_percentage": 0,
+   "duplicated_files": []
+  },
+  "execution_provenance": {
+   "method": "quality-snapshot-v1",
+   "project_id": "PRJ-E2E-PLIMIT",
+   "repository": "sindresorhus/p-limit",
+   "organization_id": "E2E-ORG-A",
+   "revision": "a8a6fbec4e0e866d6d779b10889bb4f5567e70eb",
+   "source_hashes": {
+    "index.js": "edde12a4a4dbdbe8d27161cdd0853db0bab435d5dc6c15f9f4dedc27ee9bca60",
+    "scripts/benchmarker.js": "85ed48b4dd7c36e3154eda769138b0a16d07acdb447ded680738f58fbddaf0f7",
+    "package.json": "daa6b0d168d7197eccbfef1c678e8f00b79d063129bf48f4ee2db38dc605ca7f",
+    "index.test-d.ts": "2b2d5e162277d9643cd4f7a2efb3888c07bcf3b33cf0eb015a709280a923d5fa",
+    "test.js": "a803c332d9af3a9e14d657d63280c2e059e3fe5c343ab7ab869da8a85276204c",
+    "benchmark.js": "ff4678a088f186a55d63ab51f14f02408f5f26480e5493f02385d38b55586647",
+    "index.d.ts": "d367543c32631ba661e044b1d1f44deed2bbf54654dd0eb251061337162514ee"
+   },
+   "docker_version": "29.9.3",
+   "images": {
+    "samanvaya-quality:3": "sha256:af82a219f1d4e063fca831466b154ecc67b9532c21d85cb06e755ea49b9c49b2"
+   },
+   "network": "none",
+   "host_source_execution": false,
+   "limitations": [
+    "Static tools do not establish correctness or test execution",
+    "Dependency advisory access is unavailable in the offline worker"
+   ]
+  },
+  "files_analyzed": 2,
+  "findings_count": 0,
+  "policy_digest": "policy-70a7118cdd6f85ff",
+  "quality_analysis_status": "partial",
+  "quality_dimensions": {
+   "static_security": 100,
+   "testing": null,
+   "complexity": 100,
+   "architecture": null,
+   "duplication": 100
+  },
+  "quality_policy": {
+   "weights": {
+    "static_security": 0.25,
+    "testing": 0.25,
+    "complexity": 0.2,
+    "architecture": 0.2,
+    "duplication": 0.1
+   },
+   "scored_dimensions": [
+    "complexity",
+    "duplication",
+    "static_security"
+   ],
+   "source": "project"
+  },
+  "quality_unavailable_reason": "Tool 'tsc:configuration-unavailable' not available in isolated worker; 'dependency-advisories-offline' not available; 'coverage' not available",
+  "report_incomplete_reasons": [],
+  "report_status": "complete",
+  "risk_dimensions": {
+   "size_deviation": 0,
+   "hotspot_files": 0,
+   "dependency_vulnerabilities": 0,
+   "test_coverage_gap": 70,
+   "security_findings": 0,
+   "complexity_spike": 0
+  },
+  "risk_policy": {
+   "weights": {
+    "alpha_size_zscore": 12,
+    "beta_hotspot": 20,
+    "gamma_dependency": 15,
+    "delta_missing_tests": 18,
+    "epsilon_security": 25,
+    "zeta_complexity": 10
+   },
+   "base_risk": 10,
+   "thresholds": {
+    "critical": 70,
+    "high": 50,
+    "medium": 30
+   },
+   "baseline": "repository"
+  },
+  "score_explanation": {
+   "formula": "quality = round(100 - sum(effective_weight * penalty)) over measured dimensions, clamped to 0..100",
+   "renormalized": true,
+   "weighted_penalty": 0,
+   "dimensions": [
+    {
+     "dimension": "static_security",
+     "configured_weight": 0.25,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.4545
+    },
+    {
+     "dimension": "testing",
+     "configured_weight": 0.25,
+     "measured": false,
+     "penalty": null,
+     "score": null,
+     "effective_weight": null
+    },
+    {
+     "dimension": "complexity",
+     "configured_weight": 0.2,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.3636
+    },
+    {
+     "dimension": "architecture",
+     "configured_weight": 0.2,
+     "measured": false,
+     "penalty": null,
+     "score": null,
+     "effective_weight": null
+    },
+    {
+     "dimension": "duplication",
+     "configured_weight": 0.1,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.1818
+    }
+   ]
+  },
+  "testing": {
+   "test_framework": null,
+   "total_tests": 0,
+   "passed_tests": 0,
+   "failed_tests": 0,
+   "skipped_tests": 0,
+   "coverage_percentage": null,
+   "coverage_status": "unavailable",
+   "coverage_unavailable_reason": null,
+   "coverage_provenance": {},
+   "changed_code_coverage": null,
+   "untested_critical_paths": []
+  }
+ },
+ {
+  "run_id": "RUN-4AFBB1BDF3CB",
+  "repository_id": "PRJ-E2E-PLIMIT",
+  "pr_number": null,
+  "language": "javascript",
+  "detected_languages": [
+   "javascript",
+   "typescript"
+  ],
+  "analysis_level": "standard",
+  "use_ai": true,
+  "use_ai_requested": true,
+  "ai_required": true,
+  "repository_ref": null,
+  "status": "completed",
+  "triggered_by": "T-QA-UI1",
+  "org_id": "E2E-ORG-A",
+  "changed_files": [
+   "benchmark.js",
+   "index.d.ts",
+   "index.js",
+   "index.test-d.ts",
+   "scripts/benchmarker.js",
+   "test.js"
+  ],
+  "changed_files_source": "repository_tree",
+  "file_scope": "repository",
+  "triggered_by_name": "E2E UI QA",
+  "created_at": "2026-11-28T05:39:28.495880+00:00",
+  "work_deadline": "2026-11-28T05:54:28.498933+00:00",
+  "completed_at": "2026-11-28T05:40:24.328634+00:00",
+  "quality_score": 98,
+  "quality_grade": "A",
+  "risk_score": 22,
+  "risk_level": "LOW",
+  "risk_factors": [
+   "No test coverage data available"
+  ],
+  "tools_executed": [
+   "eslint",
+   "lizard"
+  ],
+  "tools_skipped": [
+   "coverage",
+   "dependency-advisories-offline",
+   "tsc:configuration-unavailable"
+  ],
+  "analysis_duration_ms": 8255.995853000059,
+  "error": null,
+  "request": {
+   "body": {
+    "repository_id": "PRJ-E2E-PLIMIT",
+    "pr_number": null,
+    "changed_files": [],
+    "pr_context": {},
+    "analysis_level": "standard",
+    "use_ai": true,
+    "reanalysis_of": null,
+    "file_scope": "repository",
+    "repository_ref": null
+   },
+   "actor_id": "T-QA-UI1",
+   "pinned_revision": null,
+   "expected_org": "E2E-ORG-A"
+  },
+  "claim_count": 1,
+  "claimed_at": "2026-11-28T05:39:28.523084+00:00",
+  "claimed_by": "8b00749802e545888eebee69e071bb84",
+  "lease_expires_at": "2026-11-28T05:41:54.316385+00:00",
+  "commit_sha": "a8a6fbec4e0e866d6d779b10889bb4f5567e70eb",
+  "repository": "sindresorhus/p-limit",
+  "is_truncated": false,
+  "source_selection_count": 6,
+  "ai_analysis": {
+   "status": "completed",
+   "analysis": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+   "recommendations": [],
+   "confidence": 0.8,
+   "risk_level": "medium",
+   "critical_issues": [],
+   "review_focus": null,
+   "errors": [],
+   "grounding": "no_findings",
+   "evidence_basis": [
+    "0 analyzer finding(s) from 6 analysed file(s) were given to the model.",
+    "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+    "Test coverage was not measured."
+   ],
+   "advisory": {
+    "schema_version": "code-quality-advisory-v1",
+    "summary": "Static analysis reported no findings in the analysed files, so there is nothing to fix from static analysis.",
+    "summary_source": "server",
+    "suggestions": [],
+    "rejected_suggestions": 0,
+    "limitations": [
+     "Test coverage was not measured.",
+     "Dependency vulnerabilities were not checked."
+    ]
+   }
+  },
+  "ai_attempts": 1,
+  "ai_authorization_scope": {
+   "access_version": "ai-run-access-v1",
+   "owner_id": "T-QA-UI1",
+   "project_id": "PRJ-E2E-PLIMIT",
+   "organization_id": "E2E-ORG-A"
+  },
+  "ai_provenance": {
+   "schema_version": "ai-internal-observation-v1",
+   "source_status": "SERVER_OBSERVED",
+   "caller_context_status": "UNVERIFIED",
+   "model_interpretation": "ADVISORY",
+   "policy_version": "code-quality-advisory-v1",
+   "model": "llama3.2:3b",
+   "latency_ms": 38285,
+   "evidence_digest": "sha256:25d31b2b4ab30f48969156f3e9f0f4a9c50f7c9316eb2a9c52dd6e964b6095cd"
+  },
+  "ai_status": "completed",
+  "analysis_confidence": 0.75,
+  "analysis_quality": {
+   "level": "partial",
+   "confidence": 0.75,
+   "degraded_dimensions": [
+    "security",
+    "static_analysis",
+    "testing"
+   ],
+   "reason": "Tool 'tsc:configuration-unavailable' not available in isolated worker; 'dependency-advisories-offline' not available; 'coverage' not available; Tool 'tsc:configuration-unavailable' not available in isolated worker; 'dependency-advisories-offline' not available; 'coverage' not available"
+  },
+  "analysis_scope": "code_quality",
+  "complexity": {
+   "is_available": true,
+   "average_complexity": 1.15,
+   "max_complexity": 4,
+   "high_complexity_functions": [],
+   "lines_of_code": 731,
+   "comment_ratio": 0,
+   "maintainability_index": null,
+   "avg_function_length": 0,
+   "avg_nesting_depth": 0
+  },
+  "duplication": {
+   "duplicate_blocks_count": 5,
+   "duplicated_lines_count": 20,
+   "duplication_percentage": 2.74,
+   "duplicated_files": [
+    {
+     "file": "test.js",
+     "duplicated_lines": 20
+    }
+   ]
+  },
+  "execution_provenance": {
+   "method": "quality-snapshot-v1",
+   "project_id": "PRJ-E2E-PLIMIT",
+   "repository": "sindresorhus/p-limit",
+   "organization_id": "E2E-ORG-A",
+   "revision": "a8a6fbec4e0e866d6d779b10889bb4f5567e70eb",
+   "source_hashes": {
+    "benchmark.js": "ff4678a088f186a55d63ab51f14f02408f5f26480e5493f02385d38b55586647",
+    "index.d.ts": "d367543c32631ba661e044b1d1f44deed2bbf54654dd0eb251061337162514ee",
+    "index.js": "edde12a4a4dbdbe8d27161cdd0853db0bab435d5dc6c15f9f4dedc27ee9bca60",
+    "index.test-d.ts": "2b2d5e162277d9643cd4f7a2efb3888c07bcf3b33cf0eb015a709280a923d5fa",
+    "scripts/benchmarker.js": "85ed48b4dd7c36e3154eda769138b0a16d07acdb447ded680738f58fbddaf0f7",
+    "test.js": "a803c332d9af3a9e14d657d63280c2e059e3fe5c343ab7ab869da8a85276204c",
+    "package.json": "daa6b0d168d7197eccbfef1c678e8f00b79d063129bf48f4ee2db38dc605ca7f"
+   },
+   "docker_version": "29.9.3",
+   "images": {
+    "samanvaya-quality:3": "sha256:af82a219f1d4e063fca831466b154ecc67b9532c21d85cb06e755ea49b9c49b2"
+   },
+   "network": "none",
+   "host_source_execution": false,
+   "limitations": [
+    "Static tools do not establish correctness or test execution",
+    "Dependency advisory access is unavailable in the offline worker"
+   ]
+  },
+  "files_analyzed": 6,
+  "findings_count": 0,
+  "policy_digest": "policy-dc41473c463a0352",
+  "quality_analysis_status": "partial",
+  "quality_dimensions": {
+   "static_security": 100,
+   "testing": null,
+   "complexity": 100,
+   "architecture": null,
+   "duplication": 91
+  },
+  "quality_policy": {
+   "weights": {
+    "static_security": 0.25,
+    "testing": 0.25,
+    "complexity": 0.2,
+    "architecture": 0.2,
+    "duplication": 0.1
+   },
+   "scored_dimensions": [
+    "complexity",
+    "duplication",
+    "static_security"
+   ],
+   "source": "project"
+  },
+  "quality_unavailable_reason": "Tool 'tsc:configuration-unavailable' not available in isolated worker; 'dependency-advisories-offline' not available; 'coverage' not available; Tool 'tsc:configuration-unavailable' not available in isolated worker; 'dependency-advisories-offline' not available; 'coverage' not available",
+  "report_incomplete_reasons": [],
+  "report_status": "complete",
+  "risk_dimensions": {
+   "size_deviation": 0,
+   "hotspot_files": 0,
+   "dependency_vulnerabilities": 0,
+   "test_coverage_gap": 70,
+   "security_findings": 0,
+   "complexity_spike": 0
+  },
+  "risk_policy": {
+   "weights": {
+    "alpha_size_zscore": 12,
+    "beta_hotspot": 20,
+    "gamma_dependency": 15,
+    "delta_missing_tests": 18,
+    "epsilon_security": 25,
+    "zeta_complexity": 10
+   },
+   "base_risk": 10,
+   "thresholds": {
+    "critical": 70,
+    "high": 50,
+    "medium": 30
+   },
+   "baseline": "fallback"
+  },
+  "score_explanation": {
+   "formula": "quality = round(100 - sum(effective_weight * penalty)) over measured dimensions, clamped to 0..100",
+   "renormalized": true,
+   "weighted_penalty": 1.66,
+   "dimensions": [
+    {
+     "dimension": "static_security",
+     "configured_weight": 0.25,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.4545
+    },
+    {
+     "dimension": "testing",
+     "configured_weight": 0.25,
+     "measured": false,
+     "penalty": null,
+     "score": null,
+     "effective_weight": null
+    },
+    {
+     "dimension": "complexity",
+     "configured_weight": 0.2,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.3636
+    },
+    {
+     "dimension": "architecture",
+     "configured_weight": 0.2,
+     "measured": false,
+     "penalty": null,
+     "score": null,
+     "effective_weight": null
+    },
+    {
+     "dimension": "duplication",
+     "configured_weight": 0.1,
+     "measured": true,
+     "penalty": 9.13,
+     "score": 91,
+     "effective_weight": 0.1818
+    }
+   ]
+  },
+  "testing": {
+   "test_framework": null,
+   "total_tests": 0,
+   "passed_tests": 0,
+   "failed_tests": 0,
+   "skipped_tests": 0,
+   "coverage_percentage": null,
+   "coverage_status": "unavailable",
+   "coverage_unavailable_reason": "Coverage is unavailable for one or more language evidence sources",
+   "coverage_provenance": {
+    "method": "existing-test-count-weighted-aggregation",
+    "sources": [
+     {
+      "coverage_percentage": null,
+      "test_count": 0,
+      "status": "unavailable",
+      "provenance": {}
+     },
+     {
+      "coverage_percentage": null,
+      "test_count": 0,
+      "status": "unavailable",
+      "provenance": {}
+     }
+    ]
+   },
+   "changed_code_coverage": null,
+   "untested_critical_paths": []
+  }
+ },
+ {
+  "run_id": "RUN-C61A34C925C5",
+  "repository_id": "PRJ-E2E-CLICK",
+  "pr_number": null,
+  "language": "python",
+  "detected_languages": [
+   "python"
+  ],
+  "analysis_level": "standard",
+  "use_ai": true,
+  "use_ai_requested": true,
+  "ai_required": true,
+  "repository_ref": null,
+  "status": "completed",
+  "triggered_by": "T-QA-UI1",
+  "org_id": "E2E-ORG-A",
+  "changed_files": [
+   "src/click/_compat.py",
+   "src/click/termui.py"
+  ],
+  "changed_files_source": "explicit",
+  "file_scope": "selected_files",
+  "selected_scope": [
+   "src/click/_compat.py",
+   "src/click/termui.py"
+  ],
+  "triggered_by_name": "E2E UI QA",
+  "created_at": "2026-11-28T05:40:35.926552+00:00",
+  "work_deadline": "2026-11-28T05:55:35.932269+00:00",
+  "completed_at": "2026-11-28T05:41:43.788400+00:00",
+  "quality_score": 96,
+  "quality_grade": "A",
+  "risk_score": 27,
+  "risk_level": "LOW",
+  "risk_factors": [
+   "No test coverage data available"
+  ],
+  "tools_executed": [
+   "ruff",
+   "mypy",
+   "bandit",
+   "lizard",
+   "radon",
+   "ast-test-discovery"
+  ],
+  "tools_skipped": [
+   "dependency-advisories-offline",
+   "coverage",
+   "snapshot-context-incomplete"
+  ],
+  "analysis_duration_ms": 4224.184057999992,
+  "error": null,
+  "request": {
+   "body": {
+    "repository_id": "PRJ-E2E-CLICK",
+    "pr_number": null,
+    "changed_files": [
+     "src/click/_compat.py",
+     "src/click/termui.py"
+    ],
+    "pr_context": {},
+    "analysis_level": "standard",
+    "use_ai": true,
+    "reanalysis_of": null,
+    "file_scope": "selected_files",
+    "repository_ref": null
+   },
+   "actor_id": "T-QA-UI1",
+   "pinned_revision": null,
+   "expected_org": "E2E-ORG-A"
+  },
+  "claim_count": 1,
+  "claimed_at": "2026-11-28T05:40:35.949638+00:00",
+  "claimed_by": "8b00749802e545888eebee69e071bb84",
+  "lease_expires_at": "2026-11-28T05:43:13.710746+00:00",
+  "commit_sha": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+  "repository": "pallets/click",
+  "is_truncated": false,
+  "source_selection_count": 2,
+  "ai_analysis": {
+   "status": "completed",
+   "analysis": "The code has several security and best practice concerns that need attention.",
+   "recommendations": [
+    "[src/click/_compat.py:77 BANDIT-B110] Try, Except, Pass detected. Consider adding meaningful error handling to prevent silent failures.",
+    "[src/click/_compat.py:170 BANDIT-B110] Try, Except, Pass detected. Ensure that error handling is properly implemented to prevent unexpected behavior.",
+    "[src/click/_compat.py:568 BANDIT-B110] Try, Except, Pass detected. Implement robust error handling to prevent potential security vulnerabilities."
+   ],
+   "confidence": 0.8,
+   "risk_level": "medium",
+   "critical_issues": [],
+   "review_focus": null,
+   "errors": [],
+   "grounding": "cited_findings",
+   "evidence_basis": [
+    "4 analyzer finding(s) from 2 analysed file(s) were given to the model.",
+    "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+    "Test coverage was not measured."
+   ],
+   "advisory": {
+    "schema_version": "code-quality-advisory-v1",
+    "summary": "The code has several security and best practice concerns that need attention.",
+    "summary_source": "model",
+    "suggestions": [
+     {
+      "finding_id": "FND-FCA933AF",
+      "why": "Try, Except, Pass detected.",
+      "action": "Try, Except, Pass detected. Consider adding meaningful error handling to prevent silent failures"
+     },
+     {
+      "finding_id": "FND-C032B798",
+      "why": "Try, Except, Pass detected.",
+      "action": "Try, Except, Pass detected. Ensure that error handling is properly implemented to prevent unexpected behavior"
+     },
+     {
+      "finding_id": "FND-EA2686A4",
+      "why": "Try, Except, Pass detected.",
+      "action": "Try, Except, Pass detected. Implement robust error handling to prevent potential security vulnerabilities"
+     }
+    ],
+    "rejected_suggestions": 0,
+    "limitations": [
+     "Test coverage was not measured.",
+     "Dependency vulnerabilities were not checked."
+    ]
+   }
+  },
+  "ai_attempts": 1,
+  "ai_authorization_scope": {
+   "access_version": "ai-run-access-v1",
+   "owner_id": "T-QA-UI1",
+   "project_id": "PRJ-E2E-CLICK",
+   "organization_id": "E2E-ORG-A"
+  },
+  "ai_provenance": {
+   "schema_version": "ai-internal-observation-v1",
+   "source_status": "SERVER_OBSERVED",
+   "caller_context_status": "UNVERIFIED",
+   "model_interpretation": "ADVISORY",
+   "policy_version": "code-quality-advisory-v1",
+   "model": "llama3.2:3b",
+   "latency_ms": 43180,
+   "evidence_digest": "sha256:167f15740d3578a45b136ac2ddac5619c3044f7687e84789e442ba116df142d1"
+  },
+  "ai_status": "completed",
+  "analysis_confidence": 0.6499999999999999,
+  "analysis_quality": {
+   "level": "partial",
+   "confidence": 0.6499999999999999,
+   "degraded_dimensions": [
+    "security",
+    "testing",
+    "source"
+   ],
+   "reason": "Tool 'dependency-advisories-offline' not available in isolated worker; 'coverage' not available; 'snapshot-context-incomplete' not available"
+  },
+  "analysis_scope": "code_quality",
+  "complexity": {
+   "is_available": true,
+   "average_complexity": 3.28,
+   "max_complexity": 21,
+   "high_complexity_functions": [
+    {
+     "function": "open_stream",
+     "file": "src/click/_compat.py",
+     "complexity": 21,
+     "severity": "critical"
+    },
+    {
+     "function": "prompt",
+     "file": "src/click/termui.py",
+     "complexity": 16,
+     "severity": "high"
+    },
+    {
+     "function": "confirm",
+     "file": "src/click/termui.py",
+     "complexity": 11,
+     "severity": "high"
+    },
+    {
+     "function": "_interpret_color",
+     "file": "src/click/termui.py",
+     "complexity": 12,
+     "severity": "high"
+    },
+    {
+     "function": "style",
+     "file": "src/click/termui.py",
+     "complexity": 13,
+     "severity": "high"
+    }
+   ],
+   "lines_of_code": 1154,
+   "comment_ratio": 0,
+   "maintainability_index": 36.81,
+   "avg_function_length": 0,
+   "avg_nesting_depth": 0
+  },
+  "duplication": {
+   "duplicate_blocks_count": 21,
+   "duplicated_lines_count": 80,
+   "duplication_percentage": 9.95,
+   "duplicated_files": [
+    {
+     "file": "src/click/termui.py",
+     "duplicated_lines": 80
+    }
+   ]
+  },
+  "execution_provenance": {
+   "method": "quality-snapshot-v1",
+   "project_id": "PRJ-E2E-CLICK",
+   "repository": "pallets/click",
+   "organization_id": "E2E-ORG-A",
+   "revision": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+   "source_hashes": {
+    "src/click/_compat.py": "43e898c7291c1c37f91484f838d8d474081754d83726d0444d06ae7ca68a6a69",
+    "src/click/termui.py": "16f6546b36d647d191788fc912e32d93e8b64289517f004e6d9604f4896ad1ca",
+    "src/click/testing.py": "e95823823bf2aa65739c2b064778c2893608eaec46080fcd7b7787adf9489b37",
+    "tests/conftest.py": "192be82444d6048fd222e2d73cd5c3bec768d65c6e10c0ffc230f307f363590b",
+    "tests/test_abort_interrupt.py": "4c3028bc1853a51590d632a068491485df8aab8fce373a99d3407dd2ad1fd8a2",
+    "tests/test_arguments.py": "af7a0c106a7153c9464e5eead84a3afef755fd6b332605b1fd411772708e22db",
+    "tests/test_basic.py": "92fadeb0688796f7f3da29de4db623bf6ed32001294605a2a007b03b40d0b262",
+    "tests/test_chain.py": "32247d8a208c84e571a89e87cbce389cc9aac08e98ece741c7d53fca0c63d881",
+    "tests/test_command_decorators.py": "234ede359da2839923af2436056680bab68bdba622bf596452bbfbe1e1cfd6fa",
+    "tests/test_commands.py": "96e2be17eb2b8275c0feb022ab8351f6d2c80e5ac44a1e07796b3e2f086638f8",
+    "tests/test_compat.py": "3ea55084e914970c85abb9306e7bed9374e7c4ec27a382fc00c1a0b6191fbced",
+    "tests/test_context.py": "4d381781fe658fc99f3f04e083a01b51868171cb5b99436e1235281e0b518736",
+    "tests/test_custom_classes.py": "9d403c3b960ca927170645dcb144db33eb42c705208b6fa3b235c54889eee8e0",
+    "tests/test_defaults.py": "c02b88eefe0730b57738348be673db3623158807836b9c2454a7eb79d302e9d0",
+    "tests/test_deprecations.py": "ad0faeffec5d4a1bbe7c7d0e133cce6a5052b7019ef90411ea04cdc9423f9d2b",
+    "tests/test_exceptions/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/test_exceptions/test_FileError.py": "e7f41a4a972295091744c34d6a8696bf5418d328b9577f0ccc6aee73d4bb1864",
+    "tests/test_formatting.py": "0cf8ac7d2d3d8b4e6949f41baf2d09cb380a1292624b47ca0a9285e925ab5fe7",
+    "tests/test_imports.py": "77357638cb04fda1e89abd7c4d3caf54194982270938fed8ca9029965ed5477b",
+    "tests/test_info_dict.py": "11cf88b0a4e6989dab1e1c1101266ba48f281f56f1062a6e38189b47e1fa1b21",
+    "tests/test_normalization.py": "5619fb315c33b79976693893dde41e84cd5e806e0c3e5bea15346f0fafa934e0",
+    "tests/test_options.py": "c85e8b3e9121890827abf152fbcf24c5ba31cc424c7380ad8d130977548f322e",
+    "tests/test_parser.py": "9e3a95fb896166e23bb8070de55a7d81a72a95c0b4909da659e54274b1615069",
+    "tests/test_shell_completion.py": "d45f0b1b42850463a3a07273989518d477f8b19c4ca0d8ef74dc29c309276bd8",
+    "tests/test_stream_lifecycle.py": "c36fbe184f4bff7e6c1ce2fdd10f750a1eb2e5c1f5287084c04cf4a8d2d4b935",
+    "tests/test_termui.py": "2e16ea25e8c98d4dc1b99d31f80dc927212949d6d5bea811bcd26287f7ee7a09",
+    "tests/test_testing.py": "f1e00dc38fb3b3f7e1c0e50eac7fb65287592cbfb328431f311b3ee3c191d789",
+    "tests/test_types/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   "docker_version": "29.9.3",
+   "images": {
+    "samanvaya-quality:3": "sha256:af82a219f1d4e063fca831466b154ecc67b9532c21d85cb06e755ea49b9c49b2"
+   },
+   "network": "none",
+   "host_source_execution": false,
+   "limitations": [
+    "Static tools do not establish correctness or test execution",
+    "Dependency advisory access is unavailable in the offline worker"
+   ]
+  },
+  "files_analyzed": 2,
+  "findings_count": 4,
+  "policy_digest": "policy-19da9b65a55c03e7",
+  "quality_analysis_status": "partial",
+  "quality_dimensions": {
+   "static_security": 100,
+   "testing": null,
+   "complexity": 100,
+   "architecture": 100,
+   "duplication": 67
+  },
+  "quality_policy": {
+   "weights": {
+    "static_security": 0.25,
+    "testing": 0.25,
+    "complexity": 0.2,
+    "architecture": 0.2,
+    "duplication": 0.1
+   },
+   "scored_dimensions": [
+    "architecture",
+    "complexity",
+    "duplication",
+    "static_security"
+   ],
+   "source": "project"
+  },
+  "quality_unavailable_reason": "Tool 'dependency-advisories-offline' not available in isolated worker; 'coverage' not available; 'snapshot-context-incomplete' not available",
+  "report_incomplete_reasons": [
+   "static_tools_skipped:snapshot-context-incomplete"
+  ],
+  "report_status": "partial",
+  "risk_dimensions": {
+   "size_deviation": 0,
+   "hotspot_files": 0,
+   "dependency_vulnerabilities": 0,
+   "test_coverage_gap": 70,
+   "security_findings": 0,
+   "complexity_spike": 0
+  },
+  "risk_policy": {
+   "weights": {
+    "alpha_size_zscore": 12,
+    "beta_hotspot": 20,
+    "gamma_dependency": 15,
+    "delta_missing_tests": 18,
+    "epsilon_security": 25,
+    "zeta_complexity": 10
+   },
+   "base_risk": 10,
+   "thresholds": {
+    "critical": 70,
+    "high": 50,
+    "medium": 30
+   },
+   "baseline": "repository"
+  },
+  "score_explanation": {
+   "formula": "quality = round(100 - sum(effective_weight * penalty)) over measured dimensions, clamped to 0..100",
+   "renormalized": true,
+   "weighted_penalty": 4.42,
+   "dimensions": [
+    {
+     "dimension": "static_security",
+     "configured_weight": 0.25,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.3333
+    },
+    {
+     "dimension": "testing",
+     "configured_weight": 0.25,
+     "measured": false,
+     "penalty": null,
+     "score": null,
+     "effective_weight": null
+    },
+    {
+     "dimension": "complexity",
+     "configured_weight": 0.2,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.2667
+    },
+    {
+     "dimension": "architecture",
+     "configured_weight": 0.2,
+     "measured": true,
+     "penalty": 0,
+     "score": 100,
+     "effective_weight": 0.2667
+    },
+    {
+     "dimension": "duplication",
+     "configured_weight": 0.1,
+     "measured": true,
+     "penalty": 33.17,
+     "score": 67,
+     "effective_weight": 0.1333
+    }
+   ]
+  },
+  "testing": {
+   "test_framework": "pytest",
+   "total_tests": 560,
+   "passed_tests": 0,
+   "failed_tests": 0,
+   "skipped_tests": 0,
+   "coverage_percentage": null,
+   "coverage_status": "unavailable",
+   "coverage_unavailable_reason": "Coverage unavailable: unavailable",
+   "coverage_provenance": {},
+   "changed_code_coverage": null,
+   "untested_critical_paths": []
+  }
+ }
+]

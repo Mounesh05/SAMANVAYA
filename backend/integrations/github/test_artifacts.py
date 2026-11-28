@@ -60,7 +60,7 @@ def _junit(data):
                for key, value in counts.items()):
             raise ValueError('JUnit summary conflicts with actual cases')
     return {'tests_run': len(cases), 'tests_passed': len(cases) - failed - skipped,
-            'tests_failed': failed, 'tests_skipped': skipped, 'status': 'failed' if failed else 'passed'}
+            'tests_failed': failed, 'tests_skipped': skipped, 'status': 'failed' if failed else ('passed' if len(cases) - skipped else 'skipped')}  # v4 CI-09
 
 
 def parse_archive(data):

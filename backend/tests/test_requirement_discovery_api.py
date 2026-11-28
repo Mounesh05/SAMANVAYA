@@ -30,10 +30,11 @@ async def api(mock_db, monkeypatch):
 
 
 async def test_only_authorized_project_requirements_can_be_read(api):
+    # P2 belongs to another organisation: v4 BASE-04 answers exactly like a missing project.
     response = await api.client.post("/algorithms/requirements/discover", json={"project_id": "P2"})
-    assert response.status_code == 403
+    assert response.status_code == 404
     response = await api.client.get("/algorithms/projects/P2/requirement-sources")
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 async def test_no_source_payload_can_forge_authority(api):

@@ -1,10 +1,10 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { RoleGuard } from '../auth/RoleGuard';
 import { AppShell } from '../components/layout/AppShell';
 import { ROLES } from '../utils/constants';
+import { HomeRedirect } from './home';
 
 // ── Lazy-loaded Pages (code-split per route) ────────────────────────────────
 
@@ -277,17 +277,6 @@ function RouteSpinner() {
   );
 }
 
-// ── Root Redirector ─────────────────────────────────────────────────────────
-
-function RootRedirect() {
-  const { user, isAuthenticated } = useAuthStore();
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
-  }
-  const role = user?.role?.toLowerCase() || 'developer';
-  return <Navigate to={`/${role}/dashboard`} replace />;
-}
-
 // ── App Routes ──────────────────────────────────────────────────────────────
 
 export function AppRoutes() {
@@ -307,7 +296,9 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<RootRedirect />} />
+          <Route index element={<HomeRedirect />} />
+          {/* "/dashboard" means "my home page" (bookmarks, old links, return paths). */}
+          <Route path="dashboard" element={<HomeRedirect />} />
 
           {/* 7 Role Dashboards */}
           {Object.values(ROLES).map((role) => (

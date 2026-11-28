@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { canOpenPage } from '../routes/access';
+import { homePath } from '../routes/home';
 
 /**
  * Guards a route using the shared page-access table (routes/access.js), which
@@ -20,6 +21,6 @@ export function RoleGuard({ page, children }) {
     return children;
   }
 
-  // Send the user to their own dashboard.
-  return <Navigate to={`/${role.toLowerCase()}/dashboard`} replace />;
+  // Send the user to their own dashboard ("/" shows "not found" for an unknown role).
+  return <Navigate to={homePath(user) || '/'} replace />;
 }

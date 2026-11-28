@@ -1,0 +1,57 @@
+# Phase 1 closure
+
+- **Baseline HEAD / final HEAD / branch / worktree status:** `testing` 4dbbd17 → PR base `feature/algorithm-intelligence-v2` 8b56018 (merged) → code verified at `aebcac6` on `fix/algorithm-v2-tests`. The worktree was clean at verification and the branch is 0 behind `testing`. See BASELINE.md.
+- **Actual worker image ID, tools and versions, model and endpoint type (no secrets):** `samanvaya-quality:3` sha256:af82a219f1d4…; ruff, bandit, mypy, radon, lizard, eslint, tsc (when configured); Ollama `llama3.2:3b`, local endpoint via a disposable relay.
+- **Source scopes and revision hashes:**
+  - fixture snapshot revision `ffff…` (Phase 1 analyzer_cases);
+  - p-limit `sindresorhus/p-limit` main a8a6fbe (repository and selected files) and PR #93 (base 7d14b3f, head f810fd8);
+  - Click `src/click/_compat.py` and `termui.py` (selected files).
+- **Work packages accepted / blocked:**
+  - Accepted: compulsory AI on every normal report; advisory contract v1; composite status; AI-only retry with lease; provenance; report tabs, findings paging and filters; score explanation; worker fixes; role gating via `USE_ENGINEERING_INTELLIGENCE`.
+  - Blocked: see below.
+- **Matrix counts:** PASS 54 / FAIL 0 / BLOCKED 4 / NOT_RUN 0 / N/A 0. The blocked checks are:
+  - BASE-06: pilot credential rotation, which only the owner can confirm;
+  - CQ-27: live webhook replay, which needs an approved pilot; the service-level tests pass;
+  - CQ-48: no large-repository timing benchmark; paging is verified;
+  - CQ-50: Click #3902 full PR comparison not run, because of the GitHub anonymous rate limit and no token.
+- **Golden and held-out precision/recall per language with denominators:**
+  - Python fixtures: 8 cases. Expected positives found 5/5 (F401, syntax, secret, complexity, B608). Clean controls 2/2 have no findings, so there are no false positives. Duplication (A-PY06) was not detected because the block is below the configured threshold.
+  - JS: 2/2 cases.
+  - TS: 1/1 detected. A-TS02 has no fake result because tsc is not configured.
+  - No held-out set was supplied.
+- **Historical PR results, independent comparator and mismatch adjudication:**
+  - p-limit #93: delta 0 (95 → 95), no findings.
+  - Click (selected files): 4 Bandit findings with 3 grounded model suggestions.
+  - Standalone ruff 0.6.9 and bandit 1.7.10 compared with the worker (`evidence/tool_parity.py`): F401 and B608 identical. The syntax error is on the same line under a different label. The secret is found by the worker's own scanner.
+  - JS standalone ESLint parity was not run.
+- **Mandatory AI real success/failure/retry evidence and latency:**
+  - Success:
+    - repository RUN-4AFBB1BDF3CB, 38.3 s;
+    - selected files RUN-483A8FE8E1FB, 75.9 s;
+    - Click RUN-C61A34C925C5, 43.2 s;
+    - PR RUN-B7901558B802, 43.5 s.
+  - Model down: RUN-2DDBC995B95C was partial, with `ai_interpretation_unavailable:MODEL_UNAVAILABLE`.
+  - Retry: 200 in 22.3 s with the same evidence digest; attempts 2; the next retry returned 409.
+- **Actual UI and API/persistence evidence:**
+  - QA account: the Overview, Findings (79 findings, pages 1–25 and 26–50), Metrics and Evidence tabs match the API.
+  - PM account: sees and opens Algorithm Intelligence.
+  - HR account: no menu entry, the route redirects, and Code Quality returns 403.
+  - Run records are in `evidence/live_runs_phase1.json`; the AI input is never exposed.
+- **Full regression commands, exit codes, counts, skips:**
+  - Backend: 4361 passed, 0 failed, 123 skipped (exit 0). Every skip is an opt-in real-MongoDB or Docker-worker suite.
+  - Live run (Mongo + Docker enabled): 4482 passed, 2 failed, 0 skipped.
+    - The 2 failures are a Hypothesis slow-input health check under load and the new mongod-restart test, which needs a local `mongod`.
+    - Both passed on rerun, the restart test against a real mongod 7.0.45 (`pr_algorithm_mongo_restart.txt`).
+  - Frontend: 513/513. Vite build OK. Ruff (E9, F63, F7, F82) OK. Bandit (-ll -iii) OK.
+  - Logs are in `samanvaya-audit-logs/algo-v2-fix/*_aebcac6.txt`.
+- **Security, isolation, tenant and stale-run tests:** BASE-04/05 and CQ-11, 20, 21, 22, 38, 39 and 40 all pass (see the matrix).
+- **Defects resolved/open, owner and next action:** DEF-CQ1-01 to 08 are all fixed (defect_log.csv). There are no open defects. The four blocked checks above need an owner decision or access.
+- **Changes excluded and scope preservation:**
+  - Existing 7 roles only.
+  - No DEMO data.
+  - Mounesh's 8b56018 behaviour is kept. Only its regressions changed: the fingerprint guard, local collection kinds, a test encoding slip, and test calls for the new parameter.
+  - The Phase 2 package (121 checks) was not provided, so it was not started.
+- **Final status:** INCOMPLETE. All applicable P0/P1 checks verified pass except the 4 BLOCKED items, which need external access or owner confirmation.
+- **Reviewer / verification date / evidence paths:**
+  - Verified by Claude (agent) on 2026-11-28.
+  - Evidence: `docs/reports/code-quality-phase1/` and `samanvaya-audit-logs/algo-v2-fix/`.

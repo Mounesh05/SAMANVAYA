@@ -130,9 +130,66 @@ async def interpret_code(evidence, context, authority, evidence_available=True, 
                          if isinstance(f, dict) and f.get("file") and f.get("line") and f.get("rule_id")}
             for field in ("recommendations", "critical_issues"):
                 interpretation[field] = [text for text in interpretation[field] if any(c in text for c in citations)]
-        return interpretation
+        return grounded_interpretation(interpretation, evidence)
     except Exception:
         return failed_interpretation("MODEL_UNAVAILABLE", unavailable=True)
+
+
+MAX_AI_POINTS, MAX_AI_POINT_CHARS = 3, 280
+_DEPENDENCY_FACTS = {
+    "not_checked_offline": "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+    "not_checked": "Dependency vulnerabilities were not checked: no dependency auditor ran.",
+    "checked": "Dependency vulnerabilities were checked by an auditing tool.",
+}
+
+
+def evidence_basis(evidence):
+    """The server-measured facts an interpretation was given, as plain sentences."""
+    findings = (evidence.get("static_analysis") or {}).get("findings") or []
+    facts = [f"{len(findings)} analyzer finding(s) from {evidence.get('files_analyzed', 'an unknown number of')} "
+             "analysed file(s) were given to the model."]
+    comparison = evidence.get("pr_comparison")
+    if isinstance(comparison, dict):
+        changes = comparison.get("finding_changes") or {}
+        if changes.get("status") == "available":
+            counts = changes.get("counts") or {}
+            facts.append(f"Base vs head quality score: {comparison.get('base_score')} -> {comparison.get('head_score')}; "
+                         f"findings new {counts.get('new', 0)}, unchanged {counts.get('existing', 0)}, "
+                         f"resolved {counts.get('resolved', 0)}.")
+        else:
+            facts.append("Finding changes between base and head were withheld "
+                         f"({changes.get('reason', 'unknown')}); nothing is claimed as introduced or resolved.")
+    if evidence.get("dependency_audit") in _DEPENDENCY_FACTS:
+        facts.append(_DEPENDENCY_FACTS[evidence["dependency_audit"]])
+    coverage = ((evidence.get("tests") or {}).get("coverage") or {}).get("line_coverage")
+    facts.append("Test coverage was not measured." if coverage is None else f"Line coverage: {coverage}%.")
+    return facts
+
+
+def grounded_interpretation(interpretation, evidence):
+    """v4 DEF-V4-027: keep a completed interpretation within its evidence.
+
+    Without analyzer findings the summary is a fixed factual statement (a small
+    model otherwise invents "areas that need attention") and there is nothing to
+    recommend. Recommendations and critical issues stay short and few. Every
+    completed result carries the facts it was based on.
+    """
+    if interpretation.get("status") != "completed":
+        return interpretation
+    findings = (evidence.get("static_analysis") or {}).get("findings") or []
+    result = dict(interpretation)
+    if not findings:
+        result.update(analysis="Static analysis reported no findings in the analysed files, so there is nothing "
+                               "to fix from static analysis.", recommendations=[], critical_issues=[],
+                      grounding="no_findings")
+    else:
+        result["grounding"] = "cited_findings"
+        for field in ("recommendations", "critical_issues"):
+            result[field] = [str(text)[:MAX_AI_POINT_CHARS] for text in (result.get(field) or [])[:MAX_AI_POINTS]]
+    result["evidence_basis"] = evidence_basis(evidence)
+    from domain.services.quality_advisory import advisory_v1
+    result["advisory"] = advisory_v1(result, evidence)
+    return result
 
 
 def internal_run(authority, kind, evidence, context, interpretation, triggered_by):

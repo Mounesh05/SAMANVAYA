@@ -134,8 +134,8 @@ async def test_all_endpoints_require_authenticated_dependency(api, body, method,
 
 
 @pytest.mark.parametrize("project_id,status,detail", [
-    ("unassigned", 403, "don't have access"), ("missing", 404, "Project not found"),
-    ("foreign", 403, "different organization"),
+    ("unassigned", 403, "don't have access"), ("missing", 404, "not found"),
+    ("foreign", 404, "not found"),  # v4 BASE-04: was 403 "different organization", an existence leak
 ])
 @pytest.mark.parametrize("endpoint", ["start", "history", "get", "feedback", "explanation"])
 async def test_project_authorization_on_all_evidence_paths(api, body, project_id, status, detail, endpoint):
@@ -157,7 +157,7 @@ async def test_project_authorization_on_all_evidence_paths(api, body, project_id
     api.service.runner.run.assert_not_awaited()
 
 
-@pytest.mark.parametrize("role,project_id,status", [("LEAD", "missing", 404), ("PM", "foreign", 403)])  # CR-015: was CEO
+@pytest.mark.parametrize("role,project_id,status", [("LEAD", "missing", 404), ("PM", "foreign", 404)])  # CR-015: was CEO; v4: foreign = missing
 async def test_privileged_roles_do_not_bypass_existence_or_org(api, body, role, project_id, status):
     api.user["role"] = role
     response = await api.client.post("/algorithms/runs", json={**body, "project_id": project_id})
@@ -192,8 +192,10 @@ async def test_missing_user_org_cannot_access_tenant_evidence(api, body, role, o
 async def test_missing_project_org_fails_closed(api, body, user_org):
     api.lookup.side_effect = lambda project_id: {"id": project_id}
     api.user.update(role="CEO", org_id=user_org)
-    assert (await api.client.post("/algorithms/runs", json=body)).status_code == 403
-    assert (await api.client.get("/algorithms/projects/P1/history")).status_code == 403
+    # v4 BASE-04: no caller org -> 403 before lookup; an org-less project is not the caller's -> 404.
+    expected = 403 if user_org is None else 404
+    assert (await api.client.post("/algorithms/runs", json=body)).status_code == 403  # CEO may not start runs
+    assert (await api.client.get("/algorithms/projects/P1/history")).status_code == expected
     api.service.runner.run.assert_not_awaited()
 
 
@@ -295,7 +297,7 @@ async def test_request_schema_and_api_reject_invalid_bounds(api, body, key, valu
 
 
 @pytest.mark.parametrize("field,value", [
-    ("source", ""), ("source", " \n\t"), ("source", "x" * 200001), ("source", "Ã©" * 100001),
+    ("source", ""), ("source", " \n\t"), ("source", "x" * 200001), ("source", "é" * 100001),
     ("name", "  "), ("name", "x" * 201), ("name", "bad\x00key"), ("entrypoint", "sort();evil()"),
     ("entrypoint", "class"), ("entrypoint", "$sort"), ("entrypoint", "x" * 129),
     ("image", "untrusted:latest"),
@@ -337,7 +339,7 @@ async def test_node_peak_memory_constraints_unsupported(api, body, language, con
 @pytest.mark.parametrize("language", ["python", "javascript", "typescript"])
 def test_valid_boundary_contract_and_defaults(body, language):
     body.update(language=language, project_id=" P1 ", sizes=[0, 10000], repetitions=10, seed=2**32 - 1)
-    body["candidates"][0].update(name=" fast ", source="Ã©" * 100000)
+    body["candidates"][0].update(name=" fast ", source="é" * 100000)
     if language == "python":
         body.update(objective="memory", memory_limit_bytes=536870912)
     else:
@@ -389,3 +391,22 @@ async def test_history_limit_validation(api, limit):
 async def test_history_limit_boundaries(api, limit):
     response = await api.client.get(f"/algorithms/projects/P1/history?limit={limit}")
     assert response.status_code == 200 and response.json() == {"history": []}
+
+
+@pytest.mark.parametrize("endpoint", ["get", "feedback", "explanation", "compatible-history"])
+async def test_foreign_run_is_indistinguishable_from_a_missing_run(api, body, endpoint):
+    """v4 BASE-04: no cross-tenant existence oracle on algorithm run paths."""
+    foreign_run = await seed_run(api, {**body, "project_id": "foreign"})
+    method = "GET" if endpoint in {"get", "compatible-history"} else "POST"
+    payload = {"decision": "accepted", "reason": "Useful"} if endpoint == "feedback" else None
+    suffix = "" if endpoint == "get" else "/" + endpoint
+    foreign = await api.client.request(method, f"/algorithms/runs/{foreign_run}{suffix}", json=payload)
+    missing = await api.client.request(method, f"/algorithms/runs/RUN-DOES-NOT-EXIST{suffix}", json=payload)
+    assert (foreign.status_code, foreign.json()) == (missing.status_code, missing.json())
+    assert foreign.status_code == 404
+
+
+async def test_foreign_project_is_indistinguishable_from_a_missing_project(api):
+    foreign = await api.client.get("/algorithms/projects/foreign/history")
+    missing = await api.client.get("/algorithms/projects/missing/history")
+    assert (foreign.status_code, foreign.json()) == (missing.status_code, missing.json()) == (404, {"detail": "Project not found"})

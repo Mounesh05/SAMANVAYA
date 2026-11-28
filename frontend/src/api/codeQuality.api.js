@@ -9,6 +9,11 @@ export const codeQualityApi = {
     return apiClient.get(`/code-quality/runs/${runId}`);
   },
 
+  // CQ-30: retry only the AI interpretation of a finished report.
+  retryAiInterpretation: async (runId) => {
+    return apiClient.post(`/code-quality/runs/${runId}/ai-retry`);
+  },
+
   getDiscoveredFunctions: async (runId, params = {}) => {
     return apiClient.get(`/code-quality/runs/${runId}/functions`, { params });
   },
