@@ -108,3 +108,17 @@ it('labels a legacy run without inventing an AI interpretation', async () => {
   fireEvent.click(screen.getByRole('tab', { name: 'Evidence' }));
   expect(screen.getByText('Legacy run: no AI interpretation was recorded.')).toBeInTheDocument();
 });
+
+it('shows the composite report status in the header, not the per-tool status', async () => {
+  codeQualityApi.getRun.mockResolvedValue({ ...RUN, quality_analysis_status: 'partial', file_scope: 'pr_comparison' });
+  show();
+  expect(await screen.findByText('Report complete')).toBeInTheDocument();
+  expect(screen.queryByText('Partially analyzed')).not.toBeInTheDocument();
+});
+
+it('says a report is incomplete in the header when the AI interpretation is missing', async () => {
+  codeQualityApi.getRun.mockResolvedValue({ ...RUN, ai_status: 'unavailable', report_status: 'partial',
+    report_incomplete_reasons: ['ai_interpretation_unavailable:MODEL_UNAVAILABLE'] });
+  show();
+  expect(await screen.findByText('Report incomplete')).toBeInTheDocument();
+});

@@ -5,6 +5,9 @@ export function isQualityActive(run) {
 export function qualityTone(run) {
   if (run?.status === 'failed') return 'danger';
   if (isQualityActive(run)) return 'active';
+  if (run?.status === 'completed' && run?.report_status) {
+    return run.report_status === 'complete' ? 'success' : run.report_status === 'failed' ? 'danger' : 'warning';
+  }
   if (run?.quality_analysis_status === 'partial' || run?.is_truncated) return 'warning';
   if (run?.quality_analysis_status === 'available' && run.status === 'completed') return 'success';
   return 'neutral';
@@ -22,12 +25,19 @@ export function hasFullFileCount(count) {
   return count?.selected > 0 && count.analyzed === count.selected;
 }
 
+const REPORT_LABELS = { complete: 'Report complete', partial: 'Report incomplete', failed: 'Report failed' };
+
 export function qualityStatus(run = {}) {
   if (run.analysis_scope === 'pr_algorithm_intelligence' || run.kind === 'pr_algorithm_intelligence') {
     return 'Algorithm analysis · ' + String(run.status || 'unavailable').replaceAll('_', ' ');
   }
   if (run.status === 'completed' && (run.analysis_scope === 'purpose_discovery' || run.analysis_level === 'purpose_discovery')) {
     return 'Discovery finished · quality not run';
+  }
+  // A Phase 1 report carries one composite status (static evidence + AI); it wins over the
+  // per-tool status so the header never contradicts the report.
+  if (run.status === 'completed' && REPORT_LABELS[run.report_status]) {
+    return REPORT_LABELS[run.report_status];
   }
   if (run.status === 'completed' && run.is_truncated) {
     return 'Truncated (partial scope)';

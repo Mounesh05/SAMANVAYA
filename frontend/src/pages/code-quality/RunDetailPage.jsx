@@ -14,7 +14,9 @@ import { ArrowLeft } from 'lucide-react';
 import { getGradeColor } from '../../utils/formatters';
 import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
-import { fileScopeLabel, qualityStatus } from './qualityStatus';
+import { fileScopeLabel, qualityStatus, qualityTone } from './qualityStatus';
+
+const TONE_COLOR = { success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)', active: 'var(--text-secondary)' };
 import { DiscoveredFunctions } from './DiscoveredFunctions';
 import { AIInterpretation, ReportStatusNotice, ScoreExplanation, dependencyAuditLabel } from './AIInterpretation';
 
@@ -177,13 +179,16 @@ function ScoreCards({ run, findingsTotal, qualityRan, findingsError }) {
   );
 }
 
+const SIDE_STATUS = { available: 'fully measured', partial: 'measured with gaps (see limitations)', unavailable: 'not measured' };
+
 function RevisionComparison({ run, navigate }) {
   const comparison = run.quality_comparison;
   return (
     <Card title="Revision comparison" style={{ marginBottom: 24 }}>
       {Object.entries(run.child_run_ids || {}).map(([side, id]) => <p key={id}>
         <Button variant="ghost" onClick={() => navigate('/code-quality/runs/' + id)}>{side} {run[side + '_sha']?.slice(0, 12)}</Button>
-        {comparison[side + '_score'] ?? 'Not measured'} ({comparison[side + '_status']})
+        {' '}Quality score: {comparison[side + '_score'] ?? 'Not measured'}
+        {' · '}{SIDE_STATUS[comparison[side + '_status']] || comparison[side + '_status'] || 'status not recorded'}
       </p>)}
       <p>Displayed quality and risk scores use the head revision.</p>
       <p>Quality score change: {comparison.delta ?? 'Not comparable'}
@@ -282,7 +287,7 @@ export function RunDetailPage() {
       <PageHeader
         title={`Analysis Run: ${run?.run_id}`}
         subtitle={`Repository: ${run?.repository_id} ${run?.pr_number ? `• PR #${run.pr_number}` : ''}`}
-        badge={<span style={{ color: isCompleted ? 'var(--success)' : 'var(--warning)', fontWeight: 600 }}>{qualityStatus(run)}</span>}
+        badge={<span style={{ color: TONE_COLOR[qualityTone(run)] || 'var(--text-secondary)', fontWeight: 600 }}>{qualityStatus(run)}</span>}
       />
       <ReportStatusNotice run={run} />
     </>
