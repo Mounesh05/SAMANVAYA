@@ -166,13 +166,17 @@ def advisory_v1(interpretation, evidence):
             "limitations": limitations(evidence, evidence.get("omitted_findings") or 0)}
 
 
-def static_reasons_for_run(result):
-    """Why a single-revision report's static evidence is partial (empty = complete)."""
+def static_reasons_for_run(result, truncated=False):
+    """Why a single-revision report's static evidence is partial (empty = complete).
+
+    A selection cut at the file limit is never a complete report: files were left out.
+    """
     state = result.get("quality_analysis_status")
     if state in ("failed", "unsupported") or result.get("quality_score") is None:
         return None  # static evidence unavailable: the report failed
     skipped = sorted(set(result.get("tools_skipped") or []) - DISCLOSED_ENVIRONMENT_SKIPS)
-    return ["static_tools_skipped:" + ",".join(skipped)] if skipped else []
+    reasons = ["static_tools_skipped:" + ",".join(skipped)] if skipped else []
+    return reasons + ["scope_truncated"] if truncated else reasons
 
 
 def static_reasons_for_comparison(summary):

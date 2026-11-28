@@ -344,6 +344,7 @@ describe('Sidebar Navigation Stress & Role Matrix Suite', () => {
       const releaseWorkspaces = [ROLES.PM, ROLES.LEAD, ROLES.DEVELOPER, ROLES.QA, ROLES.DEVOPS];
       const expectedRoutes = releaseWorkspaces.includes(spec.role)
         ? [...spec.expectedRoutes, '/releases'] : spec.expectedRoutes;
+      if (spec.expectedRoutes.includes('/code-quality') && !expectedRoutes.includes('/algorithm-intelligence')) expectedRoutes.push('/algorithm-intelligence');
       expect(renderedHrefs.sort(), `Failed route set for role ${spec.role}`).toEqual(expectedRoutes.sort());
 
       // Verify forbidden routes are absent

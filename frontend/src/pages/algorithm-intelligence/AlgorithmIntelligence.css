@@ -51,3 +51,10 @@
 .ai-function-summary span { font-weight: 400; color: var(--text-secondary); }
 .ai-function-summary strong { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .ai-review dl { grid-template-columns: 1fr; } }
+
+.ai-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); align-items: start; gap: .875rem; }
+.ai-paths { max-height: 18rem; overflow: auto; display: grid; gap: .5rem; }
+.ai-table-wrap { overflow: auto; max-width: 100%; }
+.ai-table-wrap th, .ai-table-wrap td { padding: .5rem; text-align: left; }
+.ai-workspace fieldset { min-width: 0; }
+.ai-workspace legend { font-weight: 600; padding-inline: .3rem; }

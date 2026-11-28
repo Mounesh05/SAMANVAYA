@@ -12,13 +12,22 @@ export function AlgorithmAdvisory({ run, kind, refresh }) {
     mutationFn: () => kind === 'pr' ? algorithmsApi.retryPRAdvisory(run.run_id) : algorithmsApi.retryBenchmarkAdvisory(run.run_id),
     onSuccess: () => refresh?.(),
   });
-  const report = retry.data || run.algorithm_advisory;
+  const report = run.algorithm_advisory;
   const status = report?.status || 'not yet available';
-  const expired = status === 'running' && Date.parse(report.lease_expires_at || '') <= Date.now();
+  const lease = status === 'running' ? report.lease_expires_at : null;
+  const [expiredLease, setExpiredLease] = React.useState(null);
+  React.useEffect(() => {
+    const deadline = Date.parse(lease);
+    if (!Number.isFinite(deadline)) return;
+    const timer = setTimeout(() => setExpiredLease(lease), Math.max(0, deadline - Date.now()));
+    return () => clearTimeout(timer);
+  }, [lease]);
+  const expired = Boolean(lease && lease === expiredLease);
   const terminal = ['completed', 'failed', 'insufficient_evidence', 'unsupported', 'unavailable'].includes(run.status);
   return <section className="ai-stack" aria-label="Algorithm AI advisory">
     <h4>AI advisory</h4>
     <p>Report: {run.report_status || 'historical'} · AI: {expired ? 'interrupted' : status.replaceAll('_', ' ')}</p>
+    {report?.model && <small>{report.model}{report.completed_at && ' ? ' + report.completed_at}</small>}
     {report?.status === 'completed' && report.advisory && <div className="ai-stack">
       <p>{report.advisory.summary}</p>
       {(report.advisory.suggestions || []).map((s, i) => <div className="ai-review" key={i}>
@@ -30,7 +39,7 @@ export function AlgorithmAdvisory({ run, kind, refresh }) {
     </div>}
     {report?.error && <p role="status">{report.error}</p>}
     {retry.isError && <p role="alert">{retry.error.message}</p>}
-    {allowed && terminal && !run.historical_only && status !== 'completed' && (status !== 'running' || expired) &&
+    {kind !== 'discovery' && allowed && terminal && !run.historical_only && status !== 'completed' && (status !== 'running' || expired) &&
       (report?.attempt || 0) < 3 && <Button size="sm" variant="outline" isLoading={retry.isPending} onClick={() => retry.mutate()}>Retry AI only</Button>}
   </section>;
 }

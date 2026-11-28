@@ -11,6 +11,9 @@ import { DecisionResults } from './DecisionResults';
 import { BehavioralCompatibilitySection } from './BehavioralCompatibilitySection';
 import { RequirementsSection } from './RequirementsPanel';
 import { AlgorithmAdvisory } from '../algorithm-intelligence/AlgorithmAdvisory';
+import { EmpiricalGrowth } from '../algorithm-intelligence/AnalysisReport';
+import { FunctionFixtures, fixturePayload, newFixtureForm } from '../algorithm-intelligence/FunctionFixtures';
+import { useSessionScope } from '../../store/useSessionScope';
 
 const activeStatuses = ['pending', 'running'];
 const pythonKeywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
@@ -154,6 +157,7 @@ export function RunDetails({ run, canSubmit, onSelectRun }) {
       <h4>Run {run.run_id}</h4>
       <p role="status">Status: {run.status}</p>
       {(run.algorithm_advisory || run.report_status) && <AlgorithmAdvisory run={run} kind="benchmark" refresh={() => queryClient.invalidateQueries({queryKey:['algorithms','run']})} />}
+      <EmpiricalGrowth report={run.empirical_growth} />
       <ErrorMessage error={run.error} />
       {run.status === 'unavailable' && <p>Ask an administrator to restore the benchmark worker, recheck availability, and submit a new run. History remains available.</p>}
       {run.request && <>
@@ -309,6 +313,8 @@ export function RunDetails({ run, canSubmit, onSelectRun }) {
 
 export function AlgorithmComparisonPanel({ workspaceProject } = {}) {
   const id = useId();
+  const scope = useSessionScope();
+  const [fixtures, setFixtures] = useState(newFixtureForm);
   const user = useAuthStore((state) => state.user);
   const canSubmit = hasPermission(user, PERMISSIONS.USE_ENGINEERING_INTELLIGENCE);  // same check as the backend
   const queryClient = useQueryClient();
@@ -329,18 +335,18 @@ export function AlgorithmComparisonPanel({ workspaceProject } = {}) {
   const [inspectionError, setInspectionError] = useState('');
   const inspection = useMutation({ mutationFn: (request) => algorithmsApi.inspectStructure(request) });
   const availability = useQuery({
-    queryKey: ['algorithms', 'availability'], queryFn: algorithmsApi.getAvailability, retry: false,
+    queryKey: ['algorithms', 'availability', scope], queryFn: algorithmsApi.getAvailability, retry: false,
   });
   const history = useQuery({
-    queryKey: ['algorithms', 'history', historyProject],
+    queryKey: ['algorithms', 'history', historyProject, scope],
     queryFn: () => algorithmsApi.getHistory(historyProject, 10), enabled: Boolean(historyProject),
   });
   const runQuery = useQuery({
-    queryKey: ['algorithms', 'run', runId], queryFn: () => algorithmsApi.getRun(runId), enabled: Boolean(runId),
+    queryKey: ['algorithms', 'run', runId, scope], queryFn: () => algorithmsApi.getRun(runId), enabled: Boolean(runId),
     retry: false, refetchOnWindowFocus: false,
     refetchInterval: (query) => !query.state.error && activeStatuses.includes(query.state.data?.status) ? 2000 : false,
   });
-  const run = runQuery.data;
+  const run = !runQuery.isError && (!workspaceProject || runQuery.data?.project_id === workspaceProject) ? runQuery.data : null;
   useEffect(() => {
     if (run?.status && !activeStatuses.includes(run.status)) {
       queryClient.invalidateQueries({ queryKey: ['algorithms', 'history'] });
@@ -408,7 +414,7 @@ export function AlgorithmComparisonPanel({ workspaceProject } = {}) {
     let policy = {};
     if (!error) {
       try {
-        modePayload = generic ? genericPayload(functionJson) : { sizes: parsedSizes, distributions };
+        modePayload = generic ? (workspaceProject ? fixturePayload(fixtures) : genericPayload(functionJson)) : { sizes: parsedSizes, distributions };
         resources = resourcePayload(resourcesJson);
         if (policyJson.trim()) {
           const value = parseEditor(policyJson, 'Decision policy');
@@ -474,7 +480,8 @@ export function AlgorithmComparisonPanel({ workspaceProject } = {}) {
             {!generic && <Input label="Input sizes" value={sizes} onChange={(event) => setSizes(event.target.value)} />}
             <Input label="Memory limit in bytes (optional)" disabled={language !== 'python'} inputMode="numeric" value={memoryLimit} onChange={(event) => setMemoryLimit(event.target.value)} />
           </div>
-          {generic && <>
+          {generic && workspaceProject && <FunctionFixtures value={fixtures} onChange={setFixtures} />}
+          {generic && !workspaceProject && <>
             <label htmlFor={`${id}-function-json`}>Contract and datasets JSON</label>
             <textarea id={`${id}-function-json`} rows={workspaceProject ? 7 : 20} spellCheck={false} style={textAreaStyle} value={functionJson} onChange={(event) => setFunctionJson(event.target.value)} />
           </>}

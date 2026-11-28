@@ -63,16 +63,42 @@ async def project_access(user, project_id):
 
 
 async def authorized_run(run_id, user):
-    document = await service.get(run_id)
-    if document is None:
-        raise HTTPException(status_code=404, detail="Benchmark run not found")
+    missing = HTTPException(status_code=404, detail="Benchmark run not found")
+    if not user.get("org_id"):
+        raise HTTPException(status_code=403, detail="Organization identity required")
+    owner = await service.collection.find_one({"run_id": run_id}, {"project_id": 1})
+    if not owner:
+        raise missing
     try:
-        await project_access(user, document["project_id"])
+        await project_access(user, owner["project_id"])
     except HTTPException as error:
-        if error.status_code == 404:  # a foreign run looks exactly like a missing one
-            raise HTTPException(status_code=404, detail="Benchmark run not found") from None
+        if error.status_code in (403, 404):
+            raise missing from error
         raise
+    document = await service.get(run_id)
+    if document is None or document["project_id"] != owner["project_id"]:
+        raise missing
     return document
+
+
+async def reviewed_record(collection, identity, user, detail):
+    missing = HTTPException(status_code=404, detail=detail)
+    if not user.get("org_id"):
+        raise HTTPException(status_code=403, detail="Organization identity required")
+    query = {**identity, "organization_id": user["org_id"]}
+    owner = await collection.find_one(query, {"project_id": 1})
+    if not owner:
+        raise missing
+    try:
+        await project_access(user, owner["project_id"])
+    except HTTPException as error:
+        if error.status_code in (403, 404):
+            raise missing from error
+        raise
+    doc = await collection.find_one({**query, "project_id": owner["project_id"]}, {"_id": 0})
+    if not doc:
+        raise missing
+    return doc
 
 
 @router.get("/availability")
@@ -191,11 +217,8 @@ async def propose_contract(body: ContractProposal, user: dict = Depends(engineer
 
 @router.get("/contracts/{contract_id}")
 async def read_contract(contract_id: str, user: dict = Depends(get_current_user)):
-    document = await contract_service.get(contract_id)
-    if not document:
-        raise HTTPException(status_code=404, detail="Functional contract not found")
-    await project_access(user, document["project_id"])
-    return document
+    return await reviewed_record(contract_service.collection, {"contract_id": contract_id}, user,
+                                 "Functional contract not found")
 
 
 async def continue_approved_analysis(approved):
@@ -203,9 +226,13 @@ async def continue_approved_analysis(approved):
     try:
         from domain.services.github_api_service import GitHubAPIService
         from domain.services.pr_algorithm_intelligence_service import PRAlgorithmIntelligenceService
-        await PRAlgorithmIntelligenceService(GitHubAPIService()).resume_after_approval(approved)
+        from domain.services.algorithm_approval_recovery import dispatch_page
+        workflow = PRAlgorithmIntelligenceService(GitHubAPIService())
+        key = "contract_id" if "contract_id" in approved else "source_id"
+        collection = contract_service.collection if key == "contract_id" else requirement_service.collection("algorithm_requirement_sources")
+        await dispatch_page(workflow, collection, {key: approved[key]})
     except Exception:
-        logger.exception("Approval continuation unavailable; normal PR sync can retry")
+        logger.exception("Approval continuation deferred to persisted recovery")
 
 
 async def review_requirement(collection, document, body, user, is_contract):
@@ -233,10 +260,8 @@ async def review_contract(contract_id: str, body: ReviewAction, user: dict = Dep
 
 @router.post("/requirements/sources/{source_id}/review-action")
 async def review_source(source_id: str, body: ReviewAction, user: dict = Depends(engineering_user)):
-    document = await requirement_service.get(source_id)
-    if not document or document.get("organization_id") != user.get("org_id"):
-        raise HTTPException(status_code=404, detail="Requirement source not found")
-    await project_access(user, document["project_id"])
+    document = await reviewed_record(requirement_service.collection("algorithm_requirement_sources"),
+                                     {"source_id": source_id}, user, "Requirement source not found")
     return await review_requirement(requirement_service.collection("algorithm_requirement_sources"), document, body, user, False)
 
 
@@ -285,7 +310,7 @@ async def candidate_relationships(project_id: str, previous_run_id: str, current
         if run is None:
             raise HTTPException(status_code=404, detail="Project discovery snapshot not found")
         snapshots.append(run.get("function_discovery", {}))
-    approved = await contract_service.collection.find({"project_id": project_id, "status": "APPROVED"}, {"_id": 0}).limit(100).to_list(100)
+    approved = await contract_service.collection.find({"organization_id": user["org_id"], "project_id": project_id, "status": "APPROVED"}, {"_id": 0}).limit(100).to_list(100)
     return {"relationships": provisional_relationships(*snapshots, previous_run_id, current_run_id, approved),
             "status": "PROVISIONAL", "execution_performed": False}
 
@@ -305,7 +330,7 @@ async def function_compatibility_history(function_id: str, project_id: str,
 @router.get("/projects/{project_id}/contracts")
 async def list_contracts(project_id: str, user: dict = Depends(get_current_user)):
     await project_access(user, project_id)
-    return {"contracts": await contract_service.collection.find({"project_id": project_id}, {"_id": 0}).limit(100).to_list(100)}
+    return {"contracts": await contract_service.collection.find({"organization_id": user["org_id"], "project_id": project_id}, {"_id": 0}).limit(100).to_list(100)}
 
 
 @router.post("/requirements/discover")
@@ -331,16 +356,14 @@ async def propose_requirement_source(body: RequirementSourceProposal, user: dict
 @router.get("/projects/{project_id}/requirement-sources")
 async def list_requirement_sources(project_id: str, user: dict = Depends(engineering_user)):
     await project_access(user, project_id)
-    return {"sources": await requirement_service.collection("algorithm_requirement_sources").find({"project_id": project_id}, {"_id": 0}).limit(32).to_list(32)}
+    return {"sources": await requirement_service.collection("algorithm_requirement_sources").find({"organization_id": user["org_id"], "project_id": project_id}, {"_id": 0}).limit(32).to_list(32)}
 
 
 @router.post("/requirements/sources/{source_id}/approve")
 async def approve_requirement_source(source_id: str, body: RequirementReview, user: dict = Depends(engineering_user),
                                      background_tasks: BackgroundTasks = None):
-    document = await requirement_service.get(source_id)
-    if document is None:
-        raise HTTPException(status_code=404, detail="Requirement source not found")
-    await project_access(user, document["project_id"])
+    document = await reviewed_record(requirement_service.collection("algorithm_requirement_sources"),
+                                     {"source_id": source_id}, user, "Requirement source not found")
     try:
         approved = await requirement_service.approve(document, body.model_dump(), user)
         if background_tasks is not None:
@@ -353,13 +376,10 @@ async def approve_requirement_source(source_id: str, body: RequirementReview, us
 
 
 @router.get("/pr-intelligence")
-async def pr_intelligence_history(project_id: str | None = None, pr_id: str | None = None,
+async def pr_intelligence_history(project_id: str | None = None, pr_id: str | None = None, run_id: str | None = None,
                                   user: dict = Depends(engineering_user)):
-    if pr_id:
-        pr = await col("pull_requests").find_one({"id": pr_id})
-        if not pr:
-            raise HTTPException(status_code=404, detail="PR not found")
-        project_id = pr["project_id"]
+    if not user.get("org_id"):
+        raise HTTPException(status_code=403, detail="Organization identity required")
     if project_id:
         await project_access(user, project_id)
         projects = [project_id]
@@ -376,7 +396,9 @@ async def pr_intelligence_history(project_id: str | None = None, pr_id: str | No
     from domain.services.pr_algorithm_intelligence_service import expire_pr_jobs, recommendation_status
     # Reads also expire interrupted local continuations, without replaying code.
     await expire_pr_jobs(col("code_quality_runs"), col("pull_requests"), project_ids=projects)
-    query = {"kind": "pr_algorithm_intelligence", "project_id": {"$in": projects}}
+    query = {"kind": "pr_algorithm_intelligence", "organization_id": user["org_id"], "project_id": {"$in": projects}}
+    if run_id:
+        query["run_id"] = run_id
     if pr_id:
         query["pr_id"] = pr_id
     rows = await col("code_quality_runs").find(query, {"_id": 0, "function_discovery": 0, "files": 0}).sort("created_at", -1).limit(30).to_list(30)
@@ -424,15 +446,8 @@ async def retry_pr_advisory(run_id: str, user: dict = Depends(engineering_user))
 
 @router.post("/pr-intelligence/{run_id}/functions/{function_id}/explanation")
 async def explain_pr_function(run_id: str, function_id: str, user: dict = Depends(engineering_user)):
-    record = await col("code_quality_runs").find_one(
-        {"run_id": run_id, "kind": "pr_algorithm_intelligence"},
-        {"project_id": 1, "organization_id": 1, "functions": 1},
-    )
-    if record is None:
-        raise HTTPException(status_code=404, detail="PR analysis not found")
-    await project_access(user, record["project_id"])
-    if record.get("organization_id") != user.get("org_id"):
-        raise HTTPException(status_code=403, detail="The analysis belongs to another organization")
+    record = await reviewed_record(col("code_quality_runs"), {"run_id": run_id, "kind": "pr_algorithm_intelligence"},
+                                   user, "PR analysis not found")
     row = next((item for item in record.get("functions", [])
                 if item.get("current", {}).get("function_id") == function_id), None)
     if row is None or (row.get("static") or {}).get("status") != "analyzed":

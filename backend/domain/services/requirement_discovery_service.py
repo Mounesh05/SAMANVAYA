@@ -67,12 +67,17 @@ class RequirementDiscoveryService:
             raise ValueError("Reviewed source revision changed or is no longer proposed")
         if document.get("supersedes"):
             old = await self.get(document["supersedes"])
-            if not old or old.get("status") not in {"APPROVED", "REVOKED"} or not trusted_source(old, include_superseded=True) or old["project_id"] != document["project_id"]:
-                raise ValueError("Only a currently approved source revision can be superseded")
+            if (not old or old["project_id"] != document["project_id"] or old["organization_id"] != user["org_id"]
+                    or old["source_revision"] == document["source_revision"] or (
+                        old.get("status") not in {"CHANGES_REQUESTED", "REJECTED"}
+                        and not (old.get("status") in {"APPROVED", "REVOKED"} and trusted_source(old, include_superseded=True)))):
+                raise ValueError("Revision requires an independently reviewed predecessor and a distinct revision")
         review.update(approved_by=actor(user), organization_id=user["org_id"], approved_at=datetime.now(timezone.utc).isoformat())
         result = await self.collection("algorithm_requirement_sources").update_one(
-            {"source_id": document["source_id"], "status": "PROPOSED", "payload_fingerprint": expected},
-            {"$set": {"status": "APPROVED", "approval": review}})
+            {"source_id": document["source_id"], "project_id": document["project_id"], "organization_id": user["org_id"],
+             "status": "PROPOSED", "payload_fingerprint": expected},
+            {"$set": {"status": "APPROVED", "approval": review,
+                      "continuation": {"status": "pending", "ready_at": review["approved_at"], "cursor": ""}}})
         if result.matched_count != 1:
             raise ValueError("Source was concurrently changed")
         # Supersession is resolved from the new approved revision too. A crash here

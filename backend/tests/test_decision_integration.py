@@ -119,7 +119,8 @@ async def test_changed_functional_context_rejected_without_changing_revisions(co
 
 
 @pytest.mark.parametrize("role,org,projects,status", [("HR", "O1", ["P1"], 403), ("DEVELOPER", "O2", ["P1"], 404),  # v4 BASE-04: foreign tenant reads as not found
-    ("DEVELOPER", "O1", [], 403), ("DEVELOPER", "O1", ["P1"], 200)])
+    # 8b56018: a run in a project the caller cannot access reads as not found.
+    ("DEVELOPER", "O1", [], 404), ("DEVELOPER", "O1", ["P1"], 200)])
 async def test_reevaluation_uses_existing_project_authorization(context, role, org, projects, status):
     doc = await complete(context)
     context.user.update(role=role, org_id=org, project_ids=projects)

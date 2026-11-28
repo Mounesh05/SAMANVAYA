@@ -1,14 +1,36 @@
 """Python AST extraction. Never import, compile or evaluate submitted source."""
 
 import ast
+import json
 
 from intelligence.algorithms.structure import _discover, _observe, _call_name
+from intelligence.algorithms.discovery.control_flow import python_statements
 
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
 
 def symbol(node):
     return _call_name(node) or ""
+
+
+def equality_fixture(test, call):
+    """Extract a bounded JSON equality example from literal syntax only."""
+    if not (isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.Eq)
+            and test.left is call and not call.keywords):
+        return None
+    nodes = [*call.args, test.comparators[0]]
+    allowed = (ast.Constant, ast.Dict, ast.List, ast.Load, ast.UnaryOp, ast.USub, ast.UAdd)
+    if sum(1 for node in nodes for _ in ast.walk(node)) > 128:
+        return None
+    if any(not isinstance(child, allowed) for node in nodes for child in ast.walk(node)):
+        return None
+    try:
+        values = [ast.literal_eval(node) for node in nodes]
+        fixture = {"args": values[:-1], "expected": values[-1]}
+        data = json.dumps(fixture, allow_nan=False)
+        return fixture if len(data) <= 2048 and json.loads(data) == fixture else None
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def extract(source: str, path: str) -> dict:
@@ -241,7 +263,7 @@ def extract(source: str, path: str) -> dict:
                         peers = {id(test.left): right, id(test.comparators[0]): left}
                 for child in ast.walk(node.test):
                     if isinstance(child, ast.Call) and symbol(child.func):
-                        assertions.append(dict(target=symbol(child.func), line=node.lineno, peer=peers.get(id(child), ""),
+                        assertions.append(dict(target=symbol(child.func), line=node.lineno, peer=peers.get(id(child), ""), fixture=equality_fixture(node.test, child),
                                                detail="Static assert references this call; not executed or proven authoritative."))
         # Parameters are labels/type syntax only; defaults and annotations never run.
         parameters = []
@@ -261,6 +283,7 @@ def extract(source: str, path: str) -> dict:
             if item["kind"] == "return_value":
                 item["related"] = collections.get(item["subject"], item["related"])
         records.append(dict(name=binding or qualified_name, qualified_name=qualified_name,
+                            control_statements=python_statements(function),
                             line=function.lineno, end_line=function.end_lineno, column=function.col_offset,
                             end_column=function.end_col_offset,
                             definition_line=min([function.lineno, *(d.lineno for d in getattr(function, "decorator_list", []))]),

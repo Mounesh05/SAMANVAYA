@@ -86,6 +86,10 @@ async def lifespan(app: FastAPI):
     from domain.services.pr_workflow_runtime import PRWorkflowRuntime
     from domain.services.github_pr_poller import pr_poller
     from api.routes.code_quality import recovery as code_quality_recovery
+    import asyncio
+    from contextlib import suppress
+    from domain.services.algorithm_approval_recovery import run_recovery
+    approval_recovery = asyncio.create_task(run_recovery())
     workflow_runtime = PRWorkflowRuntime()
     app.state.pr_workflow_runtime = workflow_runtime
     try:
@@ -97,6 +101,9 @@ async def lifespan(app: FastAPI):
         code_quality_recovery.start()
         yield
     finally:
+        approval_recovery.cancel()
+        with suppress(asyncio.CancelledError):
+            await approval_recovery
         await code_quality_recovery.stop()
         await pr_poller.stop()
         await workflow_runtime.stop()

@@ -320,6 +320,7 @@ describe('Numeric sorting benchmark', () => {
     useAuthStore.setState({ user: withPermissions({ role: 'QA', permissions: ['TRIGGER_CODE_ANALYSIS'] }) });
     const analyze = vi.spyOn(codeQualityApi, 'startAnalysis').mockResolvedValue({});
     server.use(
+      http.get('*/api/projects/', () => HttpResponse.json([{ id: '1', name: 'Fixture project' }])),
       http.get('*/api/code-quality/repositories/1/history', () => HttpResponse.json({ history: [] })),
       http.get('*/api/github/projects/1/config', () => HttpResponse.json({
         repository_owner: 'owner', repository_name: 'repo', default_branch: 'main',
@@ -336,9 +337,7 @@ describe('Numeric sorting benchmark', () => {
     await screen.findByRole('button', { name: 'Open Algorithm Intelligence' });
     expect(screen.queryByText('Benchmark worker available.')).not.toBeInTheDocument();
     expect(screen.getByText('Analysis history')).toBeInTheDocument();
-    // The Algorithm Intelligence link renders before the project list loads, so
-    // wait for the project selection before opening the analysis form.
-    await waitFor(() => expect(document.getElementById('quality-history-project')).toHaveValue('1'));
+    await waitFor(() => expect(screen.getByLabelText('Project')).toHaveValue('1'));
     fireEvent.click(screen.getByRole('button', { name: 'Start analysis' }));
     await screen.findByText('owner/repo');
     fireEvent.click(screen.getByRole('tab', { name: /Selected files/i }));

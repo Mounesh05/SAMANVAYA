@@ -166,6 +166,8 @@ def test_disclosed_environment_skips_do_not_make_static_evidence_partial():
     assert static_reasons_for_run({**base, "tools_skipped": ["dependency-advisories-offline", "coverage"]}) == []
     assert static_reasons_for_run({**base, "tools_skipped": ["bandit", "coverage"]}) == ["static_tools_skipped:bandit"]
     assert static_reasons_for_run({"quality_analysis_status": "failed", "quality_score": None}) is None
+    # A selection cut at the file limit is partial even when every tool ran.
+    assert static_reasons_for_run({**base, "tools_skipped": []}, truncated=True) == ["scope_truncated"]
 
 
 def test_comparison_reasons():
@@ -334,6 +336,8 @@ async def test_findings_pages_are_ordered_by_priority_and_filterable(repository_
     assert [f["id"] for f in first["findings"] + second["findings"]] == ["FND-1", "FND-3", "FND-2", "FND-4"]
     assert first["total"] == 5 and "_severity_rank" not in first["findings"][0]
     assert [f["id"] for f in (await page(file="src/a.py"))["findings"]] == ["FND-3", "FND-2"]
+    assert (await page(file="src"))["total"] == 4 and (await page(file="src/"))["total"] == 4
+    assert (await page(file="src/a"))["total"] == 0  # a folder boundary, not a raw text prefix
     assert (await page(search="PASSWORD"))["total"] == 2
     assert (await page(search=".*"))["total"] == 0  # text, never a pattern
     assert [f["id"] for f in (await page(comparison_status="new"))["findings"]] == ["FND-1", "FND-2"]

@@ -356,7 +356,9 @@ async def get_run_findings(
     if category:
         query["category"] = category
     if file:
-        query["file_path"] = {"$regex": "^" + re.escape(file.strip().lstrip("/"))}
+        # The exact file, or everything under the folder: "src/a" never matches "src/ab.py".
+        path = file.strip().strip("/")
+        query["file_path"] = {"$regex": "^" + re.escape(path) + "(/|$)"}
     if search and search.strip():
         pattern = {"$regex": re.escape(search.strip()), "$options": "i"}
         query["$and"] = [{"$or": [{"message": pattern}, {"rule_id": pattern}]}]
@@ -932,7 +934,8 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
                     **result,
                     "completed_at": now,
                     "findings_count": min(500, len(findings)),
-                    **_ai_fields(ai_analysis, authority, static_reasons_for_run(result), ai_request, ai_latency),
+                    **_ai_fields(ai_analysis, authority, static_reasons_for_run(result, truncated=bool(scope_details.get("is_truncated"))),
+                                 ai_request, ai_latency),
                 }
             },
         )

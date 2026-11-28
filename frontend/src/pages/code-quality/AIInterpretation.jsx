@@ -26,6 +26,7 @@ const REPORT_REASONS = {
   comparison_partial: 'the two revisions could not be compared finding by finding',
   base_revision_not_measured: 'the base revision was not measured',
   head_revision_not_measured: 'the head revision was not measured',
+  scope_truncated: 'the selection exceeded the file limit, so some files were not analysed',
 };
 
 const DEPENDENCY_AUDIT = {

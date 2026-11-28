@@ -56,9 +56,8 @@ def test_heap_scheduling_bounds_match_the_observed_operations():
         "schedule",
     )
     assert record["status"] == "estimated"
-    # One input (tasks); the heap built from it shares its dimension.
-    assert record["time_complexity"] == "O(n log n)"
     assert record["dimension_bindings"] == {"n": "tasks"}
+    assert record["time_complexity"] == "O(n log n)"
     assert record["space_complexity"] is not None
     assert record["assumptions"] or record["derivation"]
 
@@ -76,9 +75,8 @@ def test_repeated_sorting_bounds_include_the_repeated_sort():
         """,
         "schedule",
     )
-    # One input (tasks); 'remaining' is a copy of it, not a second input.
-    assert record["time_complexity"] == "O(n n log n)"
     assert record["dimension_bindings"] == {"n": "tasks"}
+    assert record["time_complexity"] == "O(n n log n)"
     assert record["status"] == "estimated"
 
 
@@ -212,8 +210,14 @@ def test_independent_symbolic_dimensions_are_not_discarded_by_total_degree():
     assert complexity.big_o(bound) == "O(n² + m)"
 
 
-def test_unproved_recursive_depth_is_not_reported_as_linear():
+def test_branching_decrement_recurrence_has_exponential_time_and_linear_stack():
     result = estimate("def fib(n):\n    if n <= 1: return n\n    return fib(n - 1) + fib(n - 2)\n", "fib")
+    assert result["time_complexity"] == "O(2^n)"
+    assert result["space_complexity"] == "O(n)"
+
+
+def test_unproved_recursive_depth_is_not_reported_as_linear():
+    result = estimate("def fib(n):\n    if n <= 1: return n\n    return fib(n) + fib(n - 2)\n", "fib")
     assert result["time_complexity"] is None
     assert result["space_complexity"] is None
 
@@ -238,8 +242,67 @@ def test_range_division_is_not_a_logarithmic_update():
 def test_js_ts_cost_discovery_supported_subset(path, source, expected):
     from domain.services.pr_algorithm_intelligence_service import static_findings
     report = asyncio.run(discover_sources({path: source}, "fixture-repository", "fixture-revision"))
-    if not report.functions:
-        pytest.skip("The pinned JS/TS parser runtime is unavailable")
+    assert report.functions, report.diagnostics
     record = static_findings(report.functions[0].model_dump(), source)["complexity"]
     assert record["method"] == "static-ts-ast-cost-v1"
     assert record["time_complexity"] == expected
+
+
+@pytest.mark.parametrize("path", ["input.ts", "input.js"])
+def test_element_magnitude_is_independent_of_collection_length(path):
+    from domain.services.pr_algorithm_intelligence_service import static_findings
+
+    source = "function f(xs){let s=0;for(const x of xs){for(let j=0;j<x;j++){s+=j;}}return s;}"
+    report = asyncio.run(discover_sources({path: source}, "fixture", "revision"))
+    function, = report.functions
+    record = static_findings(function.model_dump(), source)["complexity"]
+    # Each outer pass costs one plus the element value in the scalar model.
+    assert record["time_complexity"] == "O(n·m)"
+    assert record["dimension_bindings"] == {"n": "xs:length", "m": "xs:max(1, maximum nonnegative element)"}
+
+
+def test_growing_string_requires_an_allocation_model():
+    from domain.services.pr_algorithm_intelligence_service import static_findings
+
+    source = 'function join(xs){let s="";for(const x of xs){s+=x;}return s;}'
+    report = asyncio.run(discover_sources({"input.js": source}, "fixture", "revision"))
+    function, = report.functions
+    record = static_findings(function.model_dump(), source)["complexity"]
+    assert record["space_complexity"] is None
+    assert any("String" in reason for reason in record["unknown_reasons"])
+
+
+@pytest.mark.parametrize("path,source", [
+    ("a.py", "def f(x, y):\n v = x\n if x:\n  v = y\n return v"),
+    ("a.js", "function f(x,y){let v=x;if(x){v=y;}return v;}"),
+    ("a.ts", "function f(x:number,y:number){let v=x;if(x){v=y;}return v;}"),
+])
+def test_branch_join_preserves_both_possible_definitions(path, source):
+    report = asyncio.run(discover_sources({path: source}, "fixture", "revision"))
+    function, = report.functions
+    flow = function.structure["control_flow"]
+    assert flow["status"] == "available"
+    returned, = [block for block in flow["blocks"] if block["op"] == "return"]
+    sites = [flow["blocks"][i] for i in returned["reaching"]["v"]]
+    assert {s["aliases"]["v"] for s in sites} == {"x", "y"}
+
+
+@pytest.mark.parametrize("body,time,space", [
+    ("while xs:\n    if flag:\n        xs.pop()", None, "O(1)"),
+    ("return xs[:]", "O(n)", "O(n)"),
+    ("return [(x,y) for x in xs for y in flag]", "O(m·n)", "O(m·n)"),
+])
+def test_copy_allocation_and_guarded_progress(body, time, space):
+    result = estimate("def f(xs,flag):\n" + textwrap.indent(body, "    "), "f")
+    assert (result["time_complexity"], result["space_complexity"]) == (time, space)
+
+
+def test_a_local_keeps_its_collection_kind_only_when_it_cannot_change():
+    typed = estimate("def f(xs):\n    out = []\n    for x in xs:\n        out.append(x)\n    return out\n", "f")
+    assert typed["time_complexity"] == "O(n)"
+    # Rebound to an unknown object: its method costs are not assumed.
+    rebound = estimate("def f(xs, make):\n    out = []\n    out = make()\n    for x in xs:\n        out.append(x)\n"
+                       "    return out\n", "f")
+    assert rebound["time_complexity"] is None
+    shadowed = estimate("def f(xs, list):\n    out = list(xs)\n    out.sort()\n    return out\n", "f")
+    assert shadowed["time_complexity"] is None

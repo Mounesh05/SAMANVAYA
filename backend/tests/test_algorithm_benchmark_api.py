@@ -141,6 +141,7 @@ async def test_all_endpoints_require_authenticated_dependency(api, body, method,
 async def test_project_authorization_on_all_evidence_paths(api, body, project_id, status, detail, endpoint):
     foreign_body = {**body, "project_id": project_id}
     if endpoint in {"get", "feedback", "explanation"}:
+        status, detail = 404, "Benchmark run not found"
         run_id = await seed_run(api, foreign_body)
         path = f"/algorithms/runs/{run_id}" + ("" if endpoint == "get" else "/" + endpoint)
         method = "GET" if endpoint == "get" else "POST"

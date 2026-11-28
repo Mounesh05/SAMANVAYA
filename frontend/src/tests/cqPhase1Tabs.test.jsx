@@ -35,7 +35,7 @@ beforeEach(() => {
   useAuthStore.setState({ user: { employee_id: 'QA-1', role: 'QA', permissions: [PERMISSIONS.VIEW_CODE_QUALITY, PERMISSIONS.TRIGGER_CODE_ANALYSIS] } });
   codeQualityApi.getDiscoveredFunctions.mockResolvedValue({ status: 'available', functions: [], total: 0 });
   codeQualityApi.getRunFindings.mockImplementation(async (_, params) => {
-    const all = Array.from({ length: 60 }, (_, i) => finding(i + 1)).filter((f) => !params.file || f.file_path.startsWith(params.file));
+    const all = Array.from({ length: 60 }, (_, i) => finding(i + 1)).filter((f) => !params.file || f.file_path === params.file || f.file_path.startsWith(params.file + '/'));
     const skip = params.skip || 0;
     return { total: all.length, findings: all.slice(skip, skip + params.limit) };
   });
@@ -76,9 +76,9 @@ it('pages through all findings with an exact total and resets the page on a filt
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   expect(await screen.findByText('Showing 51–60 of 60')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
-  fireEvent.change(screen.getByLabelText('File or folder'), { target: { value: 'src/m1' } });
-  expect(await screen.findByText('Showing 1–11 of 11')).toBeInTheDocument();
-  await waitFor(() => expect(codeQualityApi.getRunFindings).toHaveBeenLastCalledWith('RUN-1', { file: 'src/m1', limit: 25, skip: 0 }));
+  fireEvent.change(screen.getByLabelText('File or folder'), { target: { value: 'src/m12.py' } });
+  expect(await screen.findByText('Showing 1–1 of 1')).toBeInTheDocument();
+  await waitFor(() => expect(codeQualityApi.getRunFindings).toHaveBeenLastCalledWith('RUN-1', { file: 'src/m12.py', limit: 25, skip: 0 }));
 });
 
 it('offers the PR change filter on a revision child run', async () => {

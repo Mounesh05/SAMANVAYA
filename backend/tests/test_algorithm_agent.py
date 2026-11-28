@@ -31,3 +31,18 @@ def test_no_source_or_user_text_in_advisory_context():
 def test_deterministic_blocker_prevents_complete_status():
     doc = {"status": "completed", "functions": [{"status": "analyzed", "benchmark_status": "blocked"}]}
     assert not deterministic_complete(doc, "pr")
+
+
+def test_exact_reference_with_false_observation_or_unrelated_action():
+    from agents.algorithm_agent import grounded_response
+    value = response()
+    item = value["suggestions"][0]
+    facts = [{"id": "function-1", "benchmark": "blocked"}]
+    item.update(field="benchmark", observed="available")
+    with pytest.raises(ValueError, match="contradicts"):
+        grounded_response(value, facts)
+    item.update(observed="blocked")
+    with pytest.raises(ValueError, match="address"):
+        grounded_response(value, facts)
+    item.update(action="Review the benchmark inputs.")
+    assert grounded_response(value, facts)["suggestions"][0]["observation"]["value"] == "blocked"

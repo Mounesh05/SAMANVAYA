@@ -484,10 +484,11 @@ async def test_ai_draft_is_not_approval_or_execution(workflow, monkeypatch):
     from core.config import settings
     monkeypatch.setattr(settings, "ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED", True)
     value = {"status": "proposed", "input_schema": {"type": "array"}, "output_schema": {"type": "array"},
-             "mutation": "forbidden", "datasets": [{"id": "empty", "args": [[]], "expected": []}],
-             "requirements": [{"description": "Return the required values", "dataset_ids": ["empty"]}]}
+             "mutation": "forbidden",
+             "requirements": [{"description": "Return the required values", "dataset_ids": ["case-1"]}]}
     response = httpx.Response(200, json={"response": json.dumps(value)}, request=httpx.Request("POST", "http://model/api/generate"))
     monkeypatch.setattr(httpx.AsyncClient, "post", AsyncMock(return_value=response))
+    workflow.snapshots["head"]["test_module.py"] = "from module import solve\ndef test_empty():\n    assert solve([]) == []\n"
     result = await run(workflow)
     draft_id = result["functions"][0]["requirement_proposal"]["contract_id"]
     draft = await workflow.service.contracts.get(draft_id)
@@ -503,8 +504,17 @@ async def test_malformed_ai_draft_preserves_static_results(workflow, monkeypatch
     monkeypatch.setattr(settings, "ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED", True)
     response = httpx.Response(200, json={"response": '{"status":"APPROVED"}'}, request=httpx.Request("POST", "http://model/api/generate"))
     monkeypatch.setattr(httpx.AsyncClient, "post", AsyncMock(return_value=response))
+    workflow.snapshots["head"]["test_module.py"] = "from module import solve\ndef test_empty():\n    assert solve([]) == []\n"
     result = await run(workflow)
     assert result["functions"][0]["static_status"] == "analyzed"
     assert result["functions"][0]["requirement_proposal"]["status"] == "unavailable"
     assert await workflow.service.contracts.collection.count_documents({}) == 0
     workflow.runner.run.assert_not_awaited()
+
+
+async def test_ai_draft_without_external_oracle_abstains(workflow, monkeypatch):
+    from core.config import settings
+    monkeypatch.setattr(settings, "ALGORITHM_AI_CONTRACT_PROPOSALS_ENABLED", True)
+    result = await run(workflow)
+    assert result["functions"][0]["requirement_proposal"]["status"] == "insufficient_evidence"
+    assert not await workflow.service.contracts.collection.count_documents({})

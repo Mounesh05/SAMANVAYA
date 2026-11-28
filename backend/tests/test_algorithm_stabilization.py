@@ -80,7 +80,7 @@ async def test_history_labels_superseded_manifest_as_historical_before_pr_catche
     await workflow.db.code_quality_runs.update_one({"run_id": result["run_id"]}, {"$set": {"status": "superseded"}})
     monkeypatch.setattr(algorithms, "col", lambda name: workflow.db[name])
     monkeypatch.setattr(algorithms.ProjectRepository, "find_by_id", AsyncMock(return_value={"id": "P1", "org_id": "org"}))
-    history = await algorithms.pr_intelligence_history("P1", None, {"employee_id": "dev", "role": "DEVELOPER", "org_id": "org", "project_ids": ["P1"]})
+    history = await algorithms.pr_intelligence_history("P1", None, user={"employee_id": "dev", "role": "DEVELOPER", "org_id": "org", "project_ids": ["P1"]})
     assert history["analyses"][0]["historical_only"]
 
 
@@ -300,7 +300,7 @@ async def test_new_decision_revision_cannot_leave_old_pr_finding_authoritative(w
     else:
         monkeypatch.setattr(algorithms, "col", lambda name: workflow.db[name])
         monkeypatch.setattr(algorithms.ProjectRepository, "find_by_id", AsyncMock(return_value={"id": "P1", "org_id": "org"}))
-        history = await algorithms.pr_intelligence_history("P1", None, {"employee_id": "dev", "role": "DEVELOPER", "org_id": "org", "project_ids": ["P1"]})
+        history = await algorithms.pr_intelligence_history("P1", None, user={"employee_id": "dev", "role": "DEVELOPER", "org_id": "org", "project_ids": ["P1"]})
         assert history["analyses"][0]["functions"][0]["finding_status"] == "CONSTRAINT_FAILURE"
         assert history["analyses"][0]["functions"][0]["current_decision_reference"] == child_id + "/" + decision["revision_id"]
 

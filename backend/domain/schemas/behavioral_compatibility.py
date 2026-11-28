@@ -39,6 +39,15 @@ class AutomaticFunctionScope(StrictModel):
         return self
 
 
+class GrowthSeries(StrictModel):
+    """An independent reviewer selects a finite prefix workload and its oracle cases."""
+
+    dimension: str = Field(min_length=1, max_length=64)
+    argument_index: int = Field(ge=0, le=31, strict=True)
+    dataset_ids: list[str] = Field(min_length=6, max_length=32)
+    distribution: str = Field(min_length=1, max_length=160)
+
+
 class ContractProposal(StrictModel):
     project_id: str = Field(min_length=1, max_length=200)
     contract: dict
@@ -49,11 +58,18 @@ class ContractProposal(StrictModel):
     validator_requirement: Literal["expected_output", "numerical_tolerance", "property_oracle", "stability_oracle"] = "expected_output"
     function_bindings: list[FunctionReference] = Field(default_factory=list, max_length=64)
     automatic_scope: AutomaticFunctionScope | None = None
+    supersedes: str | None = Field(default=None, min_length=1, max_length=100)
+    growth_series: GrowthSeries | None = None
 
     @model_validator(mode="after")
     def validate_scope(self):
         validate_function_payload({"contract": self.contract, "datasets": self.datasets})
         ids = set(self.required_dataset_ids)
+        if self.growth_series:
+            from intelligence.algorithms.empirical import prefix_workload
+            if not set(self.growth_series.dataset_ids) <= ids or self.contract.get("correctness") != "expected":
+                raise ValueError("Growth series requires reviewed expected outputs for every size")
+            prefix_workload(self.growth_series.model_dump(), self.datasets)
         if len(ids) != len(self.required_dataset_ids) or any(not key.strip() or len(key) > 128 for key in ids):
             raise ValueError("Required check IDs must be nonblank and unique")
         if len({r.id for r in self.requirements}) != len(self.requirements):

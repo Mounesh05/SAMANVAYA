@@ -34,13 +34,13 @@ export function qualityStatus(run = {}) {
   if (run.status === 'completed' && (run.analysis_scope === 'purpose_discovery' || run.analysis_level === 'purpose_discovery')) {
     return 'Discovery finished · quality not run';
   }
-  // A Phase 1 report carries one composite status (static evidence + AI); it wins over the
-  // per-tool status so the header never contradicts the report.
-  if (run.status === 'completed' && REPORT_LABELS[run.report_status]) {
-    return REPORT_LABELS[run.report_status];
-  }
   if (run.status === 'completed' && run.is_truncated) {
     return 'Truncated (partial scope)';
+  }
+  // A Phase 1 report carries one composite status (static evidence + AI); it wins over the
+  // per-tool status (truncation is always named first) so the header never contradicts the report.
+  if (run.status === 'completed' && REPORT_LABELS[run.report_status]) {
+    return REPORT_LABELS[run.report_status];
   }
   if (run.status === 'completed' && run.quality_analysis_status === 'partial') {
     const fileCounts = run.file_counts;
