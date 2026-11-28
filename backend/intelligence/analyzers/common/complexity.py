@@ -87,6 +87,8 @@ async def analyze_complexity(
                     tools_executed.append("radon")
                     complexity_tools.append("radon")
                     _merge_radon_supplement(evidence, radon_result)
+                    if radon_result.get("unparsed_files"):
+                        tools_skipped.append("complexity:unparsable-source")
                 radon_mi = await _run_radon_supplement_async(py_files)
                 if radon_mi:
                     _merge_radon_supplement(evidence, radon_mi)
@@ -102,6 +104,8 @@ async def analyze_complexity(
         if result:
             tools_executed.append("radon")
             complexity_tools.append("radon")
+            if result.get("unparsed_files"):
+                tools_skipped.append("complexity:unparsable-source")
             _merge(evidence, result)
             radon_mi = await _run_radon_supplement_async(py_files)
             if radon_mi:
@@ -194,9 +198,17 @@ async def _run_radon(files: List[str]) -> Optional[Dict]:
     total_cc = 0
     max_cc = 0
     count = 0
+    unparsed = 0
 
     for filepath, items in data.items():
+        # Radon reports a file it cannot parse as {"error": "..."}: measure the
+        # others and disclose the gap instead of failing the whole pipeline.
+        if not isinstance(items, list):
+            unparsed += 1
+            continue
         for item in items:
+            if not isinstance(item, dict):
+                continue
             cc = item.get("complexity", 0)
             total_cc += cc
             count += 1
@@ -216,6 +228,7 @@ async def _run_radon(files: List[str]) -> Optional[Dict]:
         "max_complexity": max_cc,
         "high_complexity_functions": functions,
         "lines_of_code": 0,  # supplemented by other tools
+        "unparsed_files": unparsed,
     }
 
 

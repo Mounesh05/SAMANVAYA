@@ -328,9 +328,16 @@ async def get_run_findings(
     category: Optional[str] = Query(None, description="Filter: security|syntax|type|maintainability"),
     limit: int = Query(50, ge=1, le=500),
     skip: int = Query(0, ge=0),
+    file: Optional[str] = Query(None, max_length=500, description="Repository path or directory prefix"),
+    search: Optional[str] = Query(None, max_length=100, description="Text in the message or rule"),
+    comparison_status: Optional[Literal["new", "existing", "resolved"]] = Query(None),
     user: dict = Depends(get_current_user),
 ):
-    """Get paginated findings for a completed analysis run."""
+    """Get paginated findings for a completed analysis run.
+
+    Phase 1 CQ-48: ordered deterministically (severity, path, line, rule, ID) so
+    pages are stable, with file, text and PR transition filters and an exact total.
+    """
     # First verify user has access to this run
     runs_collection = col(RUNS_COLLECTION)
     run = await runs_collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)},
@@ -348,9 +355,25 @@ async def get_run_findings(
         query["severity"] = severity
     if category:
         query["category"] = category
+    if file:
+        query["file_path"] = {"$regex": "^" + re.escape(file.strip().lstrip("/"))}
+    if search and search.strip():
+        pattern = {"$regex": re.escape(search.strip()), "$options": "i"}
+        query["$and"] = [{"$or": [{"message": pattern}, {"rule_id": pattern}]}]
+    if comparison_status:
+        query["comparison_status"] = comparison_status
 
     collection = col(FINDINGS_COLLECTION)
-    findings = await collection.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
+    rank = 5  # unknown severities last
+    for position, level in reversed(list(enumerate(["critical", "high", "medium", "low", "info"]))):
+        rank = {"$cond": [{"$eq": ["$severity", level]}, position, rank]}
+    findings = await collection.aggregate([
+        {"$match": query},
+        {"$addFields": {"_severity_rank": rank}},
+        {"$sort": {"_severity_rank": 1, "file_path": 1, "line_number": 1, "rule_id": 1, "id": 1}},
+        {"$skip": skip}, {"$limit": limit},
+        {"$project": {"_id": 0, "_severity_rank": 0}},
+    ]).to_list(limit)
     total = await collection.count_documents(query)
 
     return {

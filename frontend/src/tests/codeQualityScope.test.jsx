@@ -104,8 +104,10 @@ it('does not present discovery-only snapshots as clean quality analysis', async 
   codeQualityApi.getRun.mockResolvedValue({ run_id: 'fixture', status: 'completed', analysis_level: 'purpose_discovery', language: 'python' });
   show();
   expect(await screen.findByText('Discovery finished · quality not run')).toBeInTheDocument();
-  expect(screen.getByText('Quality score unavailable')).toBeInTheDocument();
-  expect(screen.getByText(/No clean-code conclusion/)).toBeInTheDocument();
+  // Phase 1: a discovery-only run is not a quality report: no score cards, tabs or AI.
+  expect(screen.getByText(/Quality and risk were not measured/)).toBeInTheDocument();
+  expect(screen.queryByRole('tab', { name: 'Overview' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Quality score/)).not.toBeInTheDocument();
   expect(screen.queryByText(/0 issues|passes all quality/)).not.toBeInTheDocument();
 });
 
@@ -119,12 +121,16 @@ it('shows partial tools and unavailable coverage with recorded findings', async 
   codeQualityApi.getRunFindings.mockResolvedValue({ total: 1, findings: [{ file_path: 'module.py', line_number: 4, message: 'Unused binding', severity: 'low' }] });
   show();
   expect(await screen.findByText('Partially analyzed')).toBeInTheDocument();
+  expect(await screen.findByText(/Unused binding/)).toBeInTheDocument();  // Overview: highest-priority findings
+  fireEvent.click(screen.getByRole('tab', { name: 'Evidence' }));
   expect(screen.getByText('Bandit unavailable')).toBeInTheDocument();
   expect(screen.getByText('Test coverage: Not measured')).toBeInTheDocument();
   expect(screen.getByText(/coverage report for this revision/)).toBeInTheDocument();
   expect(screen.getByText(/cannot reach advisory databases/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('tab', { name: 'Findings' }));
   expect(await screen.findByText('Unused binding')).toBeInTheDocument();
   expect(screen.getByText('module.py')).toBeInTheDocument();
+  expect(screen.getByText('Showing 1–1 of 1')).toBeInTheDocument();
 });
 
 it('does not replace retrieval failures with zero findings', async () => {
@@ -133,6 +139,7 @@ it('does not replace retrieval failures with zero findings', async () => {
   show();
   expect(await screen.findByText('Evidence unavailable')).toBeInTheDocument();
   expect(screen.getByText('Retrieval failed')).toBeInTheDocument();
+  expect(screen.queryByText(/No findings recorded/)).not.toBeInTheDocument();
 });
 
 it('preserves a measured zero score as distinct from unavailable', async () => {
@@ -141,8 +148,9 @@ it('preserves a measured zero score as distinct from unavailable', async () => {
     quality_score: 0, quality_grade: 'F', risk_score: 0, testing: { coverage_percentage: 0 } });
   show();
   await screen.findByText('Completed');
-  expect(screen.getByText('Quality Score').parentElement).toHaveTextContent(/^Quality Score0/);
+  expect(screen.getByText('Quality score').parentElement).toHaveTextContent(/^Quality score0/);
   expect(screen.queryByText('Quality score unavailable')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('tab', { name: 'Evidence' }));
   expect(screen.getByText('Source scope: Whole revision')).toBeInTheDocument();
   expect(screen.getByText('Tools executed: ruff')).toBeInTheDocument();
   expect(screen.getByText('Test coverage: 0%')).toBeInTheDocument();

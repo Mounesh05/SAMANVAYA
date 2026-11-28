@@ -11,8 +11,8 @@ interpretation into ``code-quality-advisory-v1``:
   (<= 180), ``action`` the model's advice (<= 240). Unsafe or empty advice is dropped.
 * ``limitations`` (<= 3, <= 160 chars each): server-written from measured gaps.
 
-Model text that inflates a finding's severity, echoes injected instructions or looks
-like a credential is withheld (CQ-31..34).
+Model text that inflates a finding's severity, echoes injected instructions, looks
+like a credential or is unrelated to the cited finding is withheld (CQ-31..34).
 
 No score, severity or confidence field is part of the contract.
 """
@@ -48,6 +48,27 @@ def _claimed_rank(text):
     """Most severe level the text asserts (None when it asserts none)."""
     ranks = [0 if m.lower() == "critical" else 1 for m in _SEVERITY_CLAIM.findall(text)]
     return min(ranks) if ranks else None
+
+
+_WORD = re.compile(r"[a-z][a-z0-9]{3,}")
+_STOPWORDS = frozenset({"this", "that", "with", "from", "into", "when", "should", "would", "could", "consider",
+                        "code", "file", "line", "make", "sure", "instead", "remove", "change", "update", "replace",
+                        "using", "used", "possible", "issue", "finding", "rule", "need", "needs"})
+
+
+def _content_words(text):
+    words = set()
+    for word in _WORD.findall(str(text).lower()):
+        if word not in _STOPWORDS:
+            words.add(word)
+            words.add(word[:5])  # crude stem: import/imported, unused/unuse
+    return words
+
+
+def _relevant(action, finding):
+    """Advice must be about the cited finding: share a content word with its message or rule."""
+    basis = " ".join(str(finding.get(k) or "") for k in ("message", "rule_id"))
+    return bool(_content_words(action) & _content_words(basis))
 
 
 def _withheld(text):
@@ -124,7 +145,7 @@ def advisory_v1(interpretation, evidence):
         claimed = _claimed_rank(action)
         inflated = claimed is not None and claimed < _SEVERITY_RANK.get(finding.get("severity"), 5)
         if (not action or _UNSAFE_ACTIONS.search(action) or _UNMEASURED_CLAIMS.search(action) or _withheld(action)
-                or inflated or finding["id"] in used):
+                or inflated or not _relevant(action, finding) or finding["id"] in used):
             rejected += 1
             continue
         used.add(finding["id"])
