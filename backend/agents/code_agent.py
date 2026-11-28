@@ -122,6 +122,8 @@ def _build_evidence_text(evidence: Dict[str, Any], context: Dict[str, Any]) -> s
     if tests:
         cov = tests.get("coverage", {}).get("line_coverage")
         parts.append(f"Test Coverage: {cov}%" if cov is not None else "Test Coverage: Unknown")
+    if evidence.get("dependency_audit") in ("not_checked_offline", "not_checked"):
+        parts.append("Dependency vulnerabilities: NOT CHECKED in this run (unknown, not passing).")
     comparison = evidence.get("pr_comparison")
     if isinstance(comparison, dict):
         changes = comparison.get("finding_changes") or {}

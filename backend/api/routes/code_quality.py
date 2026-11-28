@@ -635,17 +635,27 @@ recovery = jobs.RecoveryLoop(lambda: col(RUNS_COLLECTION), _dispatch_recovered)
 
 
 def _ai_fields(ai_analysis, authority):
+    # AI interpretation is part of every normal report: when it did not complete,
+    # the report says so explicitly instead of looking finished.
+    complete = ai_analysis["status"] == "completed"
     return {"ai_analysis": ai_analysis, "ai_status": ai_analysis["status"],
+            "report_status": "complete" if complete else "incomplete",
+            "report_incomplete_reasons": [] if complete else
+                ["ai_interpretation_" + ai_analysis["status"] + ":" + ",".join(ai_analysis.get("errors") or [])],
             "ai_authorization_scope": authority.scope if authority is not None else None,
             "ai_provenance": {"schema_version": "ai-internal-observation-v1", "source_status": "SERVER_OBSERVED",
                               "caller_context_status": "UNVERIFIED", "model_interpretation": "ADVISORY"}}
 
 
 async def _interpret_quality(body, actor_id, context, evidence, findings, result, comparison=None):
-    """Advisory AI interpretation of server-measured evidence; it never changes scores."""
+    """Compulsory, advisory AI interpretation of server-measured evidence.
+
+    It is attempted for every normal report, whatever the request's ``use_ai``;
+    when the model is unreachable or its answer is invalid, the result is recorded
+    as unavailable/failed and the report is marked incomplete. It never changes scores.
+    """
     from domain.services.internal_agent_adapter import resolve_code_authority, interpret_code, failed_interpretation
-    if not body.use_ai or body.analysis_level == "quick":
-        return {"status": "skipped", "errors": []}, None
+    from domain.services.pr_quality_comparison import dependency_audit
     authority = None
     try:
         authority = await resolve_code_authority({"employee_id": actor_id}, context, operation="code_quality")
@@ -659,6 +669,8 @@ async def _interpret_quality(body, actor_id, context, evidence, findings, result
         package = {"files_analyzed": evidence.files_analyzed, "static_analysis": {"findings": observations},
                    "complexity": complexity,
                    "tests": {"coverage": {"line_coverage": evidence.testing.coverage_percentage}}}
+        package["dependency_audit"] = dependency_audit(
+            {"tools_skipped": evidence.tools_skipped, "tools_executed": evidence.tools_executed})
         if comparison is not None:
             package["pr_comparison"] = comparison
         ai_analysis = await interpret_code(
@@ -711,13 +723,12 @@ async def _execute_analysis(run_id, body, actor_id, pinned_revision, expected_or
             ):
                 raise ValueError("Pull request revisions changed during source selection. Start a new comparison.")
             async def interpret(summary, head_evidence):
-                # v4 AI-PR: the parent gets one advisory interpretation of the measured head
-                # revision plus the comparison evidence; the child runs carry none.
+                # v4 AI-PR: every PR comparison parent gets one compulsory, advisory
+                # interpretation of the measured head revision plus the comparison
+                # evidence; the child runs carry none.
                 if head_evidence is None:  # the head revision was not measured
                     from domain.services.internal_agent_adapter import failed_interpretation
-                    skipped = not body.use_ai or body.analysis_level == "quick"
-                    return _ai_fields({"status": "skipped", "errors": []} if skipped
-                                      else failed_interpretation("MISSING_EVIDENCE"), None)
+                    return _ai_fields(failed_interpretation("MISSING_EVIDENCE"), None)
                 from domain.services.quality_run_results import quality_findings
                 comparison = {**(summary.get("quality_comparison") or {}),
                               "finding_changes": summary.get("finding_changes") or {}}

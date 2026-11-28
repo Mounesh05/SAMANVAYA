@@ -16,6 +16,7 @@ import { PermissionGuard } from '../../auth/PermissionGuard';
 import { PERMISSIONS } from '../../auth/permissions';
 import { fileScopeLabel, qualityStatus } from './qualityStatus';
 import { DiscoveredFunctions } from './DiscoveredFunctions';
+import { AIInterpretation, ReportStatusNotice, dependencyAuditLabel } from './AIInterpretation';
 
 // CQ-02: why a before/after quality change is not shown.
 const WITHHELD_REASONS = {
@@ -167,6 +168,7 @@ export function RunDetailPage() {
           </span>
         }
       />
+      <ReportStatusNotice run={run} />
 
       {!run?.quality_comparison && (isCompleted || discoveryOnly || run?.quality_analysis_status === 'partial' || run?.quality_unavailable_reason || run?.error) && <Card title="Analysis scope" style={{ marginBottom: 24 }}>
         <p>Source scope: {fileScopeLabel(run)}</p>
@@ -182,7 +184,7 @@ export function RunDetailPage() {
           <p>Dependency vulnerabilities were not checked because the isolated worker cannot reach advisory databases.</p>}
       </Card>}
 
-      {run?.quality_comparison && <Card title="Revision comparison">
+      {run?.quality_comparison && <Card title="Revision comparison" style={{ marginBottom: 24 }}>
         {Object.entries(run.child_run_ids).map(([side, id]) => <p key={id}>
           <Button variant="ghost" onClick={() => navigate('/code-quality/runs/' + id)}>{side} {run[side + '_sha']?.slice(0, 12)}</Button>
           {run.quality_comparison[side + '_score'] ?? 'Not measured'} ({run.quality_comparison[side + '_status']})
@@ -191,6 +193,8 @@ export function RunDetailPage() {
         <p>Quality score change: {run.quality_comparison.delta ?? 'Not comparable'}
           {run.quality_comparison.delta == null && WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]
             ? ` (${WITHHELD_REASONS[run.quality_comparison.delta_withheld_reason]})` : ''}</p>
+        {run.dependency_audit && Object.entries(run.dependency_audit).map(([side, status]) =>
+          <p key={side}>Dependency vulnerabilities ({side}): {dependencyAuditLabel(status)}</p>)}
       </Card>}
       {run?.finding_changes && <FindingChanges changes={run.finding_changes} />}
       {run?.is_truncated && <p>Analysis was limited to {run.changed_files?.length ?? 0} of {run.source_selection_count} selected files.</p>}
@@ -207,9 +211,7 @@ export function RunDetailPage() {
         <p>Maintainability index: {run.complexity.maintainability_index ?? 'Not measured'}</p>
         <p>Duplicated lines: {run.duplication?.duplicated_lines_count ?? 'Not measured'}</p>
       </Card>}
-      {run?.ai_analysis?.recommendations?.length > 0 && <Card title="AI review suggestions">
-        <ul>{run.ai_analysis.recommendations.map((suggestion, index) => <li key={index}>{suggestion}</li>)}</ul>
-      </Card>}
+      <AIInterpretation ai={run?.ai_analysis} />
       {/* Overview Score Cards */}
       <div
         style={{

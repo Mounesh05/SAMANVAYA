@@ -87,7 +87,7 @@ async def test_pr_comparison_parent_receives_one_scoped_interpretation(repositor
 
 
 @pytest.mark.anyio
-async def test_pr_comparison_without_ai_records_a_skip_and_never_calls_the_model(repository_client, monkeypatch):
+async def test_pr_comparison_interpretation_is_compulsory_even_when_ai_was_not_requested(repository_client, monkeypatch):
     client, _, github, mock_db = repository_client
     interpret, _ = _arrange(github, monkeypatch)
     response = await client.post(f"{BASE}/analyze", json={
@@ -95,8 +95,72 @@ async def test_pr_comparison_without_ai_records_a_skip_and_never_calls_the_model
     })
     parent = await mock_db.code_quality_runs.find_one({"run_id": response.json()["run_id"]})
     assert parent["status"] == "completed"
-    assert parent["ai_status"] == "skipped"
-    interpret.assert_not_awaited()
+    assert parent["ai_status"] == "completed"
+    assert parent["report_status"] == "complete" and parent["report_incomplete_reasons"] == []
+    interpret.assert_awaited_once()
+    assert interpret.await_args.args[0]["dependency_audit"] == "not_checked"
+    assert parent["dependency_audit"] == {"base": "not_checked", "head": "not_checked"}
+
+
+@pytest.mark.anyio
+async def test_failed_inference_marks_the_report_incomplete_and_keeps_measured_scores(repository_client, monkeypatch):
+    client, _, github, mock_db = repository_client
+    interpret, _ = _arrange(github, monkeypatch)
+    interpret.return_value = internal_agent_adapter.failed_interpretation("MODEL_UNAVAILABLE", unavailable=True)
+    response = await client.post(f"{BASE}/analyze", json={
+        "repository_id": "P", "file_scope": "pr_comparison", "pr_number": 17,
+    })
+    parent = await mock_db.code_quality_runs.find_one({"run_id": response.json()["run_id"]})
+    assert parent["status"] == "completed"  # the measured comparison stands
+    assert parent["quality_comparison"]["delta"] == 14
+    assert parent["ai_status"] == "unavailable"
+    assert parent["report_status"] == "incomplete"
+    assert parent["report_incomplete_reasons"] == ["ai_interpretation_unavailable:MODEL_UNAVAILABLE"]
+
+
+def test_clean_code_summary_is_fixed_fact_and_never_invented():
+    model_answer = {"status": "completed", "analysis": "Several areas require attention.",
+                    "recommendations": ["Refactor everything"], "critical_issues": ["Unclear"], "errors": []}
+    grounded = internal_agent_adapter.grounded_interpretation(model_answer, {
+        "files_analyzed": 2, "static_analysis": {"findings": []}, "dependency_audit": "not_checked_offline",
+        "tests": {"coverage": {"line_coverage": None}}})
+    assert grounded["grounding"] == "no_findings"
+    assert "no findings" in grounded["analysis"] and "attention" not in grounded["analysis"]
+    assert grounded["recommendations"] == [] and grounded["critical_issues"] == []
+    assert grounded["evidence_basis"] == [
+        "0 analyzer finding(s) from 2 analysed file(s) were given to the model.",
+        "Dependency vulnerabilities were not checked: the isolated worker cannot reach advisory databases.",
+        "Test coverage was not measured.",
+    ]
+
+
+def test_cited_recommendations_are_capped_and_kept_short():
+    finding = {"file": "a.py", "line": 3, "rule_id": "RUFF-F401", "message": "unused import"}
+    model_answer = {"status": "completed", "analysis": "One unused import.", "errors": [], "critical_issues": [],
+                    "recommendations": [f"[a.py:3 RUFF-F401] fix {i} " + "x" * 400 for i in range(5)]}
+    grounded = internal_agent_adapter.grounded_interpretation(model_answer, {
+        "files_analyzed": 1, "static_analysis": {"findings": [finding]},
+        "pr_comparison": {"base_score": 90, "head_score": 88,
+                          "finding_changes": {"status": "available", "counts": {"new": 1, "existing": 0, "resolved": 0}}}})
+    assert grounded["grounding"] == "cited_findings" and grounded["analysis"] == "One unused import."
+    assert len(grounded["recommendations"]) == 3
+    assert all(len(text) <= 280 for text in grounded["recommendations"])
+    assert "Base vs head quality score: 90 -> 88; findings new 1, unchanged 0, resolved 0." in grounded["evidence_basis"]
+
+
+def test_failed_interpretations_are_left_unchanged():
+    failed = internal_agent_adapter.failed_interpretation("INVALID_AGENT_RESULT")
+    assert internal_agent_adapter.grounded_interpretation(failed, {}) is failed
+
+
+@pytest.mark.parametrize("record,expected", [
+    ({"tools_skipped": ["dependency-advisories-offline"], "tools_executed": ["ruff"]}, "not_checked_offline"),
+    ({"tools_skipped": [], "tools_executed": ["pip-audit"]}, "checked"),
+    ({"tools_skipped": [], "tools_executed": ["npm-audit"]}, "checked"),
+    ({"tools_skipped": ["pip-audit"], "tools_executed": ["ruff"]}, "not_checked"),
+])
+def test_dependency_audit_is_never_reported_as_checked_unless_an_auditor_ran(record, expected):
+    assert pr_quality_comparison.dependency_audit(record) == expected
 
 
 def test_comparison_evidence_is_rendered_as_data_and_withheld_changes_are_not_claimed():

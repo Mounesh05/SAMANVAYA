@@ -140,6 +140,19 @@ async def _mark_findings(collection, run_id, fingerprints, changed, changed_stat
         await collection.bulk_write(operations, ordered=False)
 
 
+_DEPENDENCY_AUDITORS = frozenset({"pip-audit", "safety", "npm-audit"})
+
+
+def dependency_audit(record):
+    """How a revision's dependencies were audited. Never reported as passing unless a tool ran."""
+    skipped = set(record.get("tools_skipped") or [])
+    if "dependency-advisories-offline" in skipped:
+        return "not_checked_offline"
+    if _DEPENDENCY_AUDITORS & set(record.get("tools_executed") or []):
+        return "checked"
+    return "not_checked"
+
+
 def now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -256,6 +269,7 @@ async def compare_revisions(api, project_id, owner, repo, pr, files, triggered_b
         finding_changes, identities = classify_findings(
             base_findings, head_findings, renames, base_available=comparable, head_available=comparable)
         summary["finding_changes"] = finding_changes
+        summary["dependency_audit"] = {"base": dependency_audit(before), "head": dependency_audit(after)}
         if identities:
             stored = col("code_quality_findings")
             await _mark_findings(stored, child_ids["head"], identities["head"], identities["new"], "new")
