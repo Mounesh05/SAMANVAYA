@@ -98,19 +98,21 @@ class RecommendationEngine:
             target_user_id=pr_data.get("author"),
             estimated_impact="high",
             estimated_effort="low",
-            confidence=0.95
+            confidence=None  # v4 REC-13: rule output has no measured confidence
         )
         recs.append(rec_id)
         
         # Rec 2: Add more tests if needed
         risk_factors_text = " ".join(risk_factors).lower()
         if "test" in risk_factors_text or "coverage" in risk_factors_text:
+            # v4 REC-C: say what was measured; a failing test is not a coverage measurement.
+            test_factors = [factor for factor in risk_factors if "test" in factor.lower() or "coverage" in factor.lower()]
             rec_id = await self._create_recommendation(
                 entity_type="pull_request",
                 entity_id=pr_id,
                 project_id=project_id,
                 title="Add unit tests before merge",
-                description="Insufficient test coverage detected for code changes",
+                description="Risk analysis reported: " + ", ".join(test_factors[:3]),
                 action="Write unit tests covering the main code paths modified in this PR",
                 category=RecommendationCategory.TESTING,
                 priority=RecommendationPriority.HIGH,
@@ -119,7 +121,7 @@ class RecommendationEngine:
                 target_user_id=pr_data.get("author"),
                 estimated_impact="high",
                 estimated_effort="medium",
-                confidence=0.9
+                confidence=None  # v4 REC-13
             )
             recs.append(rec_id)
         
@@ -137,11 +139,15 @@ class RecommendationEngine:
         
         ai_recommendations = ai_analysis.get("recommendations", [])
         critical_issues = ai_analysis.get("critical_issues", [])
-        confidence = ai_analysis.get("confidence", 0.7)
-        
+        # v4 item 6: the code agent's reply carries no evidence references, so its advice is
+        # stored as an unverified suggestion: INFO priority (wording never escalates it), no
+        # self-reported confidence, and labelled as model output rather than rule output.
+        unverified = ("Unverified model suggestion: the code agent cited no evidence for it. "
+                      "Review it against the PR before acting.")
+
         # Convert AI recommendations to structured recommendations
         for idx, ai_rec in enumerate(ai_recommendations[:5]):  # Limit to top 5
-            category, priority = self._infer_category_priority(ai_rec)
+            category, _ = self._infer_category_priority(ai_rec)
             
             rec_id = await self._create_recommendation(
                 entity_type="pull_request",
@@ -151,13 +157,14 @@ class RecommendationEngine:
                 description=ai_rec,
                 action=ai_rec,
                 category=category,
-                priority=priority,
-                reasoning="AI analysis of code quality and patterns",
+                priority=RecommendationPriority.INFO,
+                reasoning=unverified,
                 target_roles=["DEVELOPER"],
                 target_user_id=pr_data.get("author"),
                 estimated_impact="medium",
                 estimated_effort="medium",
-                confidence=confidence
+                confidence=None,
+                generated_by="code-agent",
             )
             recs.append(rec_id)
         
@@ -167,17 +174,18 @@ class RecommendationEngine:
                 entity_type="pull_request",
                 entity_id=pr_id,
                 project_id=project_id,
-                title=f"Critical: {issue[:80]}",
+                title=f"Model-flagged issue (unverified): {issue[:60]}",
                 description=issue,
-                action=f"Address this critical issue before merging: {issue}",
+                action=f"Check whether this issue exists before merging: {issue}",
                 category=RecommendationCategory.CODE_QUALITY,
-                priority=RecommendationPriority.CRITICAL,
-                reasoning="Flagged as critical by AI analysis",
+                priority=RecommendationPriority.INFO,
+                reasoning=unverified,
                 target_roles=["DEVELOPER", "LEAD"],
                 target_user_id=pr_data.get("author"),
                 estimated_impact="high",
                 estimated_effort="medium",
-                confidence=confidence
+                confidence=None,
+                generated_by="code-agent",
             )
             recs.append(rec_id)
         
@@ -212,7 +220,7 @@ class RecommendationEngine:
                 target_user_id=pr_data.get("author"),
                 estimated_impact="critical",
                 estimated_effort="high",
-                confidence=0.95
+                confidence=None  # v4 REC-13: rule output has no measured confidence
             )
             recs.append(rec_id)
         
@@ -233,7 +241,8 @@ class RecommendationEngine:
         target_user_id: Optional[str],
         estimated_impact: str,
         estimated_effort: str,
-        confidence: float
+        confidence: Optional[float] = None,
+        generated_by: str = "recommendation-engine",
     ) -> str:
         """Create and store a recommendation."""
         
@@ -255,7 +264,7 @@ class RecommendationEngine:
             estimated_impact=estimated_impact,
             estimated_effort=estimated_effort,
             confidence=confidence,
-            generated_by="recommendation-engine",
+            generated_by=generated_by,
             expires_at=expires_at
         )
         

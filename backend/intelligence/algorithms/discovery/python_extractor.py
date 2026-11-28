@@ -229,9 +229,19 @@ def extract(source: str, path: str) -> dict:
                     fact("constant_return", node, literal_bindings[returned.id],
                          "Returns a name bound to a literal sentinel.")
             if isinstance(node, ast.Assert):
+                # v4 AL-16: two calls are peers only when the assertion compares them with each
+                # other as equals (``assert f(x) == g(x)``), not when one feeds the other or both
+                # merely appear on the same line.
+                peers = {}
+                test = node.test
+                if (isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.Eq)
+                        and isinstance(test.left, ast.Call) and isinstance(test.comparators[0], ast.Call)):
+                    left, right = symbol(test.left.func), symbol(test.comparators[0].func)
+                    if left and right and left != right:
+                        peers = {id(test.left): right, id(test.comparators[0]): left}
                 for child in ast.walk(node.test):
                     if isinstance(child, ast.Call) and symbol(child.func):
-                        assertions.append(dict(target=symbol(child.func), line=node.lineno,
+                        assertions.append(dict(target=symbol(child.func), line=node.lineno, peer=peers.get(id(child), ""),
                                                detail="Static assert references this call; not executed or proven authoritative."))
         # Parameters are labels/type syntax only; defaults and annotations never run.
         parameters = []

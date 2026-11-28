@@ -272,6 +272,8 @@ class PythonAnalyzer(BaseAnalyzer):
             self._degrade_quality(evidence, "static_analysis", "flake8-failed")
         else:
             self._degrade_quality(evidence, "static_analysis", "flake8")
+            if not self._tool_available("ruff"):
+                evidence.tools_skipped.append("ruff")  # v4 CQ-10: no linter ran; disclose both
 
         # AST syntax fallback
         evidence.tools_executed.append("ast-syntax-fallback")
@@ -627,6 +629,19 @@ class PythonAnalyzer(BaseAnalyzer):
         findings = []
         for item in items:
             code = item.get("code", "E000")
+            if code is None:
+                # Ruff reports a file it cannot parse with "code": null. Keep it as a
+                # critical syntax finding, like the AST fallback, so the file never looks clean.
+                findings.append(Finding(
+                    file_path=item.get("filename", ""),
+                    line_number=(item.get("location") or {}).get("row"),
+                    rule_id="RUFF-SYNTAX-ERROR",
+                    category="syntax",
+                    severity=SeverityEnum.CRITICAL,
+                    source_tool="ruff",
+                    message=item.get("message", ""),
+                ))
+                continue
             findings.append(Finding(
                 file_path=item.get("filename", ""),
                 line_number=item.get("location", {}).get("row"),

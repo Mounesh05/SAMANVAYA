@@ -36,7 +36,7 @@ from domain.services.quality_run_results import expired, run_deadline, RUN_TIMEO
 from domain.services.ai_run_access import invocation_scope, permissions, ACCESS_VERSION
 from intelligence.algorithms.discovery.service import MAX_FILES
 from intelligence.analyzers.language_detector import LanguageDetector
-from intelligence.analyzers.registry import list_supported_languages
+from intelligence.analyzers.registry import list_runtime_verified_languages, list_supported_languages
 
 router = APIRouter()
 cq_service = CodeQualityService()
@@ -253,7 +253,9 @@ async def start_analysis(
 async def get_run(run_id: str, user: dict = Depends(get_current_user)):
     """Get the current status and results of a code quality run."""
     collection = col(RUNS_COLLECTION)
-    run = await collection.find_one({"run_id": run_id}, {"_id": 0})
+    # v4 BASE-04: scope the lookup to the caller's tenant first, so another
+    # organisation's run is indistinguishable from a missing one.
+    run = await collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)}, {"_id": 0})
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     
@@ -275,7 +277,8 @@ async def get_run_findings(
     """Get paginated findings for a completed analysis run."""
     # First verify user has access to this run
     runs_collection = col(RUNS_COLLECTION)
-    run = await runs_collection.find_one({"run_id": run_id}, {"repository_id": 1, "org_id": 1, "organization_id": 1})
+    run = await runs_collection.find_one({"run_id": run_id, **code_quality_tenant_filter(user)},
+                                         {"repository_id": 1, "org_id": 1, "organization_id": 1})
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     
@@ -536,8 +539,10 @@ async def get_project_config(
 
 @router.get("/languages")
 async def supported_languages():
-    """List all languages supported by the analyzer registry."""
-    return {"supported_languages": list_supported_languages()}
+    """Languages analyzed with a proven toolchain, and registered adapters that are not yet verified."""
+    verified = list_runtime_verified_languages()
+    return {"supported_languages": verified,
+            "experimental_languages": [lang for lang in list_supported_languages() if lang not in verified]}
 
 
 # ── Background task ───────────────────────────────────────────────────────────

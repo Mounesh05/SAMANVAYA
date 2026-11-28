@@ -362,7 +362,9 @@ async def test_legacy_recommendation_route_cannot_bypass_algorithm_organization_
             response = await client.get("/" + rec_id)
         else:
             response = await client.post("/" + rec_id + "/" + surface)
-    assert response.status_code == 403
+    # v4 BASE-04: algorithm-scoped surfaces read another tenant's project as not found; the
+    # entity surface still uses the shared core helper (403), logged for phase 4.
+    assert response.status_code == (403 if surface == "entity" else 404)
     assert (await workflow.db.recommendations.find_one({"id": rec_id}))["status"] == "pending"
 
 

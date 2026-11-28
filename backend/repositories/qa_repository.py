@@ -87,9 +87,17 @@ class QARepository:
         return await self.find_one(self.ci_configs, query)
 
     async def get_all_ci_configs(self, project_id: str):
-        """Get all CI configurations for a project (all branches)."""
-        cursor = self.ci_configs.find({"project_id": project_id}, {"_id": 0})
-        return await cursor.to_list(length=None)
+        """Get all CI configurations for a project (all branches).
+
+        Each item carries ``config_id`` (the record's id as text) so clients have
+        a stable, unique identifier: ``branch`` is absent on records registered
+        by the test-report import, which are keyed by repository instead.
+        """
+        cursor = self.ci_configs.find({"project_id": project_id})
+        configs = await cursor.to_list(length=None)
+        for config in configs:
+            config["config_id"] = str(config.pop("_id"))
+        return configs
 
     async def delete_ci_config(self, project_id: str, branch: str):
         """Delete CI configuration for a specific branch."""

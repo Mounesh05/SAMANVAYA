@@ -51,13 +51,14 @@ async def engineering_user(user: dict = Depends(get_current_user)):
 async def project_access(user, project_id):
     # The shared helper bypasses existence for CEO and currently grants PM access
     # across orgs. Keep this new evidence store scoped to an actual project/org.
-    project = await ProjectRepository().find_by_id(project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    # v4 BASE-04: a caller without an organisation is refused before any lookup,
+    # and another organisation's project looks exactly like a missing one.
     org_id = user.get("org_id")
-    if (not isinstance(org_id, str) or not org_id.strip()
-            or org_id != project.get("org_id")):
-        raise HTTPException(status_code=403, detail="Project belongs to a different organization")
+    if not isinstance(org_id, str) or not org_id.strip():
+        raise HTTPException(status_code=403, detail="Your account has no organization")
+    project = await ProjectRepository().find_by_id(project_id)
+    if project is None or org_id != project.get("org_id"):
+        raise HTTPException(status_code=404, detail="Project not found")
     await verify_project_access({**user, "role": normalized_role(user)}, project_id)
 
 
@@ -65,7 +66,12 @@ async def authorized_run(run_id, user):
     document = await service.get(run_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Benchmark run not found")
-    await project_access(user, document["project_id"])
+    try:
+        await project_access(user, document["project_id"])
+    except HTTPException as error:
+        if error.status_code == 404:  # a foreign run looks exactly like a missing one
+            raise HTTPException(status_code=404, detail="Benchmark run not found") from None
+        raise
     return document
 
 

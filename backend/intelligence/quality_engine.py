@@ -117,8 +117,13 @@ class QualityEngine:
                 missing.add("architecture")
             if "duplication-pipeline-failed" in evidence.tools_skipped:
                 missing.add("duplication")
-            if not set(evidence.tools_executed).intersection({"ruff", "mypy", "bandit", "eslint", "tsc", "ast-syntax-fallback", "flake8"}):
+            # v4 CQ-10: the AST fallback only proves the file parses; it is not lint or security evidence.
+            if not set(evidence.tools_executed).intersection({"ruff", "mypy", "bandit", "eslint", "tsc", "flake8"}):
                 missing.add("static_security")
+            # v4 CQ-01/CQ-17: with no analysed file, or no lint/security tool run, the remaining
+            # dimensions (e.g. duplication alone) cannot stand for the code's quality. Leave it unscored.
+            if not evidence.files_analyzed or "static_security" in missing:
+                missing.update({"static_security", "testing", "complexity", "architecture", "duplication"})
         return missing
 
     async def effective_policy(self, evidence: CodeQualityEvidence) -> dict:

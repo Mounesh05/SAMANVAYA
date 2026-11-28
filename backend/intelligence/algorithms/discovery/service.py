@@ -102,11 +102,13 @@ def _resolve_calls(records, raw_records, source_paths=()):
             target = target_for(caller, assertion["target"], raw.get("imports", {}))
             if not target or len(target.evidence) >= 144:
                 continue
+            # v4 AL-16: the function this call is compared with as an equal, when resolvable.
+            peer = target_for(caller, assertion["peer"], raw.get("imports", {})) if assertion.get("peer") else None
             evidence = PurposeEvidence(
                 id=identifier(target.function_id, caller.source_hash, assertion["line"], "test_expectation"),
                 kind="test_expectation", path=caller.path, line=assertion["line"], end_line=assertion["line"],
                 source_revision=caller.source_revision, source_hash=caller.source_hash,
-                subject=target.qualified_name, detail=assertion["detail"],
+                subject=target.qualified_name, related=peer.function_id if peer else "", detail=assertion["detail"],
             )
             if any(existing.id == evidence.id for existing in target.evidence):
                 continue

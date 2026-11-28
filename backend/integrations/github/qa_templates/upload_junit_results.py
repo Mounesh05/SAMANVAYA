@@ -78,6 +78,7 @@ def main() -> int:
     api_url = api_url.rstrip("/")
     if urllib.parse.urlsplit(api_url).scheme not in {"https", "http"}:
         raise ValueError("SAMANVAYA_API_URL must be an http(s) URL")
+    tests_passed = max(tests_run - tests_failed - skipped, 0)
     payload = {
         "project_id": project_id,
         "repository": os.environ["GITHUB_REPOSITORY"],
@@ -85,11 +86,12 @@ def main() -> int:
         "commit_sha": os.environ["GITHUB_SHA"],
         "test_suite": os.environ.get("SAMANVAYA_TEST_SUITE", "backend"),
         "tests_run": tests_run,
-        "tests_passed": max(tests_run - tests_failed - skipped, 0),
+        "tests_passed": tests_passed,
         "tests_failed": tests_failed,
         "tests_skipped": skipped,
         "duration_seconds": sum(float(s.get("time", 0) or 0) for s in suites),
-        "status": "passed" if tests_failed == 0 else "failed",
+        # v4 CI-09: a report in which nothing passed is not a pass.
+        "status": "failed" if tests_failed else ("passed" if tests_passed else "skipped"),
     }
     payload.update(_github_metadata())
     request = urllib.request.Request(

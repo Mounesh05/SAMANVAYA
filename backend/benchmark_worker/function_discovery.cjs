@@ -107,7 +107,21 @@ function extract(sourceText, filePath) {
             }
             // Tests supply observed expectations, never verified requirements.
             if (target === 'expect' && n.arguments[0] && ts.isCallExpression(n.arguments[0])) {
-              assertions.push({target: symbol(n.arguments[0].expression), line: line(n), detail: 'Static expect call; test not executed or proven authoritative.'});
+              const subject = symbol(n.arguments[0].expression), detail = 'Static expect call; test not executed or proven authoritative.';
+              // v4 AL-16: expect(f(x)).toEqual(g(x)) compares two calls as peers.
+              const access = n.parent, matcher = access && access.parent;
+              let peer = '';
+              if (access && ts.isPropertyAccessExpression(access) && access.expression === n
+                  && ['toBe', 'toEqual', 'toStrictEqual'].includes(access.name.text)
+                  && matcher && ts.isCallExpression(matcher) && matcher.expression === access
+                  && matcher.arguments.length === 1 && ts.isCallExpression(matcher.arguments[0])) {
+                const other = symbol(matcher.arguments[0].expression);
+                if (other && other !== subject) {
+                  peer = other;
+                  assertions.push({target: other, line: line(n), peer: subject, detail});
+                }
+              }
+              assertions.push({target: subject, line: line(n), peer, detail});
             }
           }
           if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken) fact('accumulator_update', n, symbol(n.left));
