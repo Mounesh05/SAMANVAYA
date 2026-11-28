@@ -263,7 +263,11 @@ def static_findings(function, source):
                 annotations[argument.arg] = ast.unparse(argument.annotation) if argument.annotation else ""
     try:
         parser_cost = (function.get("structure") or {}).get("static_cost") if language != "python" else None
-        record["complexity"] = ({**parser_cost, "language": language} if parser_cost else
+        # Discovery output never carries confidence; the analysis record derives it
+        # from the parser's own status (estimated -> medium, otherwise none).
+        record["complexity"] = ({**parser_cost, "language": language,
+                                 "confidence": "medium" if parser_cost.get("status") == "estimated" else "none"}
+                                if parser_cost else
                                 complexity.estimate(node, function.get("name") or "", facts=facts,
                                                     parameter_annotations=annotations, language=language))
     except Exception:  # pragma: no cover - defensive; a bound is never guessed

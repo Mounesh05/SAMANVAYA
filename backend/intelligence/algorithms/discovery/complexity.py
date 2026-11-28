@@ -292,8 +292,39 @@ def collection_size(expr, ctx, *, allow_unknown=True):
     if isinstance(expr, ast.Subscript):
         return UNK("size of an indexed element is not statically known") if allow_unknown else C(1)
     if isinstance(expr, (ast.ListComp, ast.SetComp, ast.DictComp)):
+        # A single-generator comprehension has at most as many elements as its
+        # iterable; nested generators are left to the conservative constant.
+        if len(expr.generators) == 1:
+            return collection_size(expr.generators[0].iter, ctx, allow_unknown=allow_unknown)
         return C(1)
     return UNK("size of this expression is not statically known") if allow_unknown else C(1)
+
+
+def _alias_size(statement, ctx):
+    """Let a collection copied from an input share that input's dimension.
+
+    ``remaining = list(tasks)`` or ``heap = [... for t in tasks]`` has the size of
+    ``tasks``; giving it a fresh letter would invent an unrelated input.
+    """
+    value = getattr(statement, "value", None)
+    targets = getattr(statement, "targets", None) or [getattr(statement, "target", None)]
+    if value is None or len(targets) != 1 or not isinstance(targets[0], ast.Name):
+        return
+    name = targets[0].id
+    if name in ctx.dims or name in ctx.parameters:
+        return
+    if isinstance(value, ast.Name) or _literal_size(value) is not None:
+        return
+    source = value
+    while isinstance(source, ast.Call) and source.args:
+        source = source.args[0]
+    if isinstance(source, (ast.ListComp, ast.SetComp, ast.DictComp)) and len(source.generators) == 1:
+        source = source.generators[0].iter
+    if not isinstance(source, ast.Name):
+        return
+    size = collection_size(value, ctx)
+    if size[0] == "dim":
+        ctx.dims[name] = size
 
 
 def _sorted_cost(value, ctx):
@@ -552,6 +583,7 @@ def statement_cost(statement, ctx, depth=0):
                    block_cost(statement.body, ctx, depth + 1))
     if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
         value = statement.value
+        _alias_size(statement, ctx)
         return expression_cost(value, ctx, depth=depth + 1) if value is not None else C(1)
     if isinstance(statement, ast.AugAssign):
         return ADD(expression_cost(statement.value, ctx, depth=depth + 1),

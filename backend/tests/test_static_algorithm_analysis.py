@@ -56,7 +56,9 @@ def test_heap_scheduling_bounds_match_the_observed_operations():
         "schedule",
     )
     assert record["status"] == "estimated"
-    assert record["time_complexity"] == "O(m log m)"
+    # One input (tasks); the heap built from it shares its dimension.
+    assert record["time_complexity"] == "O(n log n)"
+    assert record["dimension_bindings"] == {"n": "tasks"}
     assert record["space_complexity"] is not None
     assert record["assumptions"] or record["derivation"]
 
@@ -74,7 +76,9 @@ def test_repeated_sorting_bounds_include_the_repeated_sort():
         """,
         "schedule",
     )
-    assert record["time_complexity"] == "O(m m log m)"
+    # One input (tasks); 'remaining' is a copy of it, not a second input.
+    assert record["time_complexity"] == "O(n n log n)"
+    assert record["dimension_bindings"] == {"n": "tasks"}
     assert record["status"] == "estimated"
 
 
