@@ -51,7 +51,7 @@ There is no score or confidence field. A clean measured scope gives zero suggest
 | `ai_status` | `completed`, `failed`, `unavailable`, `blocked` (no usable static evidence), `not_applicable` (discovery) |
 | `report_status` | `complete` only with full static evidence and a validated AI interpretation; otherwise `partial`, or `failed` when there is no static evidence. `report_incomplete_reasons` says why. |
 
-Expected environment gaps in the isolated worker do not by themselves make static evidence partial. These are: no live dependency advisories, no repository test run or coverage, TypeScript without a project configuration, and npm audit without a manifest. They are always shown as limitations. Any other skipped tool makes the report partial. For example, `complexity:unparsable-source` is recorded when a Python file cannot be parsed.
+Expected environment gaps in the isolated worker do not by themselves make static evidence partial. These are: no live dependency advisories, no repository test run or coverage, TypeScript without a project configuration, and npm audit without a manifest. They are always shown as limitations. Any other skipped tool makes the report partial. For example, `complexity:unparsable-source` is recorded when a Python file cannot be parsed. A selection cut at the file limit is partial too (`scope_truncated`), and the page header says "Truncated (partial scope)".
 
 ## AI-only retry
 
