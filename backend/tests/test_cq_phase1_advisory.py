@@ -1,4 +1,5 @@
 """Phase 1 CQ-W5 / CQ-15..18 / CQ-30..36: advisory contract, composite status, AI-only retry, score explanation."""
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -233,10 +234,23 @@ async def test_ai_retry_of_another_organisations_run_looks_missing(repository_cl
 @pytest.mark.anyio
 async def test_ai_retry_refuses_a_concurrent_retry(repository_client, monkeypatch):
     client, _, _, db = repository_client
-    await _failed_run(db, ai_retry_state="running")
+    await _failed_run(db, ai_retry_state="running", ai_retry_claimed_at=datetime.now(timezone.utc).isoformat())
     _, interpret = _model(monkeypatch, completed())
     assert (await client.post(f"{BASE}/runs/RUN-AI/ai-retry")).status_code == 409
     interpret.assert_not_awaited()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("claimed_at", [None, "2020-01-01T00:00:00+00:00"])
+async def test_an_abandoned_retry_claim_is_reclaimed_within_the_cap(repository_client, monkeypatch, claimed_at):
+    # Found live: a retry whose API process stopped left the report "running" for good.
+    client, _, _, db = repository_client
+    extra = {"ai_retry_claimed_at": claimed_at} if claimed_at else {}
+    await _failed_run(db, ai_retry_state="running", ai_attempts=2, **extra)
+    _model(monkeypatch, completed(analysis="Clean."))
+    assert (await client.post(f"{BASE}/runs/RUN-AI/ai-retry")).status_code == 200
+    stored = await db.code_quality_runs.find_one({"run_id": "RUN-AI"})
+    assert stored["ai_status"] == "completed" and stored["ai_retry_state"] == "done" and stored["ai_attempts"] == 3
 
 
 @pytest.mark.anyio

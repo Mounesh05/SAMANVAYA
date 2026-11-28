@@ -18,7 +18,7 @@ import json
 import re
 import uuid
 from pymongo.errors import DuplicateKeyError
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -284,10 +284,17 @@ async def retry_ai_interpretation(run_id: str,
         raise HTTPException(status_code=409, detail="This report has no failed AI interpretation to retry")
     if (run.get("ai_attempts") or 1) >= MAX_AI_ATTEMPTS:
         raise HTTPException(status_code=409, detail="The AI interpretation retry limit was reached")
+    # A claim older than the lease belongs to a retry whose process died; it may be
+    # reclaimed (still within the attempt cap) so the report is never stuck "running".
+    now = datetime.now(timezone.utc)
+    claimed_at = now.isoformat()
+    stale_before = (now - timedelta(seconds=AI_RETRY_LEASE_SECONDS)).isoformat()
     claim = await collection.update_one(
         {"run_id": run_id, "ai_status": run["ai_status"], "ai_attempts": run.get("ai_attempts") or 1,
-         "ai_retry_state": {"$ne": "running"}},
-        {"$set": {"ai_retry_state": "running"}, "$inc": {"ai_attempts": 1}})
+         "$or": [{"ai_retry_state": {"$ne": "running"}},
+                 {"ai_retry_claimed_at": {"$exists": False}},
+                 {"ai_retry_claimed_at": {"$lt": stale_before}}]},
+        {"$set": {"ai_retry_state": "running", "ai_retry_claimed_at": claimed_at}, "$inc": {"ai_attempts": 1}})
     if claim.matched_count != 1:
         raise HTTPException(status_code=409, detail="An AI interpretation retry is already running")
     authority = None
@@ -302,7 +309,7 @@ async def retry_ai_interpretation(run_id: str,
     except Exception:
         ai_analysis = failed_interpretation("AGENT_ADAPTER_FAILED")
     fields = _ai_fields(ai_analysis, authority, request.get("static_reasons"))
-    await collection.update_one({"run_id": run_id, "ai_retry_state": "running"},
+    await collection.update_one({"run_id": run_id, "ai_retry_state": "running", "ai_retry_claimed_at": claimed_at},
                                 {"$set": {**fields, "ai_retry_state": "done"}})
     updated = await collection.find_one({"run_id": run_id}, {"_id": 0})
     return await _visible_ai_result(updated, user)
@@ -679,6 +686,7 @@ recovery = jobs.RecoveryLoop(lambda: col(RUNS_COLLECTION), _dispatch_recovered)
 
 
 MAX_AI_ATTEMPTS = 3
+AI_RETRY_LEASE_SECONDS = 15 * 60
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
